@@ -135,6 +135,10 @@ def section_markdown_from_section_cls(
         ]
         result += f'**inherits from**: {", ".join(base_sections)}\n\n'
 
+    if section_def.links:
+        links = [f'[{link}]({link})' for link in section_def.links]
+        result += f'**links**: {", ".join(links)}\n\n'
+
     if len(properties) > 0:
         result += '**properties**:\n\n'
         result += '|name|type| |\n'
