@@ -32,6 +32,7 @@ from nomad.app.v1.models import query_documentation, owner_documentation
 from nomad.app.v1.routers.entries import archive_required_documentation
 from nomad import utils
 from nomad.metainfo import Property, Quantity, Datatype, Reference, SubSection
+from nomad.datamodel.data import ArchiveSection
 
 
 def get_reference(section_def, pkg) -> str:
@@ -152,7 +153,7 @@ def section_markdown_from_section_cls(
         )
         result += '\n\n'
 
-    if section_cls.normalize:
+    if section_cls.normalize and section_cls.normalize.__doc__ != ArchiveSection.normalize.__doc__:
         if section_cls.normalize.__doc__:
             result += (
                 f'**normalization**: {utils.strip(section_cls.normalize.__doc__)}\n\n'
