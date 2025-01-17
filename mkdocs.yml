@@ -29,9 +29,7 @@ nav:
           - Transform data: howto/programmatic/json_transformer.md
       - NOMAD Oasis:
           - Install an Oasis: howto/oasis/install.md
-          - Customize an Oasis: howto/oasis/customize.md
-          - Install plugins: howto/oasis/plugins_install.md
-          - Migrate Oasis versions: howto/oasis/migrate.md
+          - Update an Oasis: howto/oasis/update.md
           - Perform admin tasks: howto/oasis/admin.md
       - Plugins:
           - Get started with plugins: howto/plugins/plugins.md
