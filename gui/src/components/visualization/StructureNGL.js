@@ -26,15 +26,18 @@ import React, {
 import { useResizeDetector } from 'react-resize-detector'
 import { makeStyles } from '@material-ui/core'
 import PropTypes from 'prop-types'
-import { isNil, isEqual, range } from 'lodash'
-import { Stage, Vector3 } from 'ngl'
+import { isNil, isEqual, range, get } from 'lodash'
+import {Structure, Stage, Vector3, ColormakerRegistry } from 'ngl'
 import StructureBase from './StructureBase'
+import StructureBuilder from './StructureBuilder'
 import { wrapModes } from '../buttons/DownloadSystemButton'
 import * as THREE from 'three'
+import elementData from '../../elementData.json'
 import { withErrorHandler } from '../ErrorHandler'
 import { useAsyncError } from '../../hooks'
 import { useApi } from '../api'
-import { download, parseNomadUrl } from '../../utils'
+import { download, scale } from '../../utils'
+import { hsl } from 'chroma-js'
 
 const useStyles = makeStyles((theme) => ({
   canvas: {
@@ -63,7 +66,7 @@ const StructureNGL = React.memo(({
   const [accepted, setAccepted] = useState(false)
   const [noData, setNoData] = useState(false)
   const [ready, setReady] = useState(false)
-  const [showBonds, setShowBonds] = useState(false)
+  const [showBonds, setShowBonds] = useState(true)
   const [showCell, setShowCell] = useState(true)
   const [showLatticeConstants, setShowLatticeConstants] = useState(true)
   const [disableShowLatticeConstants, setDisableShowLatticeContants] = useState(true)
@@ -84,7 +87,7 @@ const StructureNGL = React.memo(({
   const selectionRef = useRef()
   const { api } = useApi()
   const asyncError = useAsyncError()
-  const {entryId: newEntryId, path} = getSystemAPIQuery(selected, entryId, topologyMap)
+  const path = getStructure(selected, entryId, topologyMap)
   const system = topologyMap?.[selected]
   const nAtomsAccepted = useRef(0)
 
@@ -107,29 +110,6 @@ const StructureNGL = React.memo(({
     }
     return nAtoms
   }, [sizeLimit, topologyMap, selected])
-
-  // Updated the list of the species for the currently shown system
-  useEffect(() => {
-    const elements = system?.elements
-    let species
-    if (elements) {
-      try {
-        species = elements.map(symbol => {
-          const symbolUpperCase = symbol.toUpperCase()
-          const atomicNumber = atomicNumbers[symbolUpperCase]
-          const color = elementColors[symbolUpperCase]
-          return {
-            label: symbol,
-            color: color ? `#${color.toString(16).padStart(6, 0)}` : '#ff1493',
-            radius: vdwRadii[atomicNumber] || 0.1,
-            atomicNumber: atomicNumber || 0
-          }
-        })
-      } catch {
-      }
-    }
-    setSpecies(species)
-  }, [system])
 
   // Forces a three.js render
   const render = useCallback(() => {
@@ -276,46 +256,85 @@ const StructureNGL = React.memo(({
    */
   const loadComponent = useCallback(async (system, entryId, path, componentKey, topologyMap) => {
     // Load the structure if not already cached
-    const format = 'pdb'
     let component = componentsRef.current[componentKey]
     let root
     if (!component) {
-      const systemResponse = await api.get(
-        `systems/${entryId}`,
-        {path: path, format},
-        {responseType: 'blob'}
-      )
-
-      // PDB files (or any other file formats supported by NGL) cannot contain
-      // both the full lattice vectors and the PBC. These are, however, needed
-      // for the proper visualization of the system. To work around this, they
-      // are stored as a REMARK 285 and read here.
-      const header = await systemResponse.slice([0], [280]).text()
-      let pbc = [true, true, true]
-      let a, b, c
-      const regexFloat = /[+-]?\d+(\.\d+)?/g
-      for (const value of header.split('\n')) {
-        const aPrefix = 'REMARK 285  A:'
-        const bPrefix = 'REMARK 285  B:'
-        const cPrefix = 'REMARK 285  C:'
-        const pbcPrefix = 'REMARK 285 PBC'
-        if (value.startsWith(aPrefix)) {
-          a = value.slice(aPrefix.length).match(regexFloat).map((v) => parseFloat(v))
-        } else if (value.startsWith(bPrefix)) {
-          b = value.slice(bPrefix.length).match(regexFloat).map((v) => parseFloat(v))
-        } else if (value.startsWith(cPrefix)) {
-          c = value.slice(cPrefix.length).match(regexFloat).map((v) => parseFloat(v))
-        } else if (value.startsWith(pbcPrefix)) {
-          const regex = /TRUE|FALSE/g
-          pbc = value.match(regex)?.map((v) => v === 'TRUE')
+      // Create the required archive API query to get the full system section.
+      let atoms, atomParameters
+      if (system?.atoms_ref) {
+        const required = {}
+        let current = required
+        let systemPath = system.atoms_ref
+        const prefix = '#/'
+        if (systemPath.startsWith(prefix)) {
+          systemPath = systemPath.slice(prefix.length)
         }
+        const parts = systemPath?.split('/') || []
+        for (let i = 0; i < parts.length; i++) {
+          let part = parts[i]
+          if (!isNaN(parts[i + 1])) {
+            part = `${part}[${parts[i + 1]}]`
+            i++ // Skip the next part as it is already used
+          }
+          current[part] = i === parts.length - 1 ? '*' : {}
+          current = current[part]
+        }
+        // Also request the atom parameters. TODO: It is assumed that there is
+        // only one set of atom parameters. A better solution would be to store
+        // a reference to the atom parameters in the system.
+        required['run[0]']['method[0]'] = {'atom_parameters': '*'}
+
+        // Get the full section from the archive
+        const systemSection = await api.post(
+          `entries/${entryId}/archive/query`,
+          {required}
+        )
+
+        // In the response, the original index of the run and system are both 0
+        atoms = get(systemSection?.data?.archive, ['run', 0, 'system', 0, 'atoms'])
+        atomParameters = get(systemSection?.data?.archive, ['run', 0, 'method', 0, 'atom_parameters'])
+      } else if (system.atoms) {
+        atoms = system.atoms
+      }
+      const positions = scale(atoms.positions, 1e10)
+      const a = atoms?.lattice_vectors?.[0] && new THREE.Vector3().fromArray(scale(atoms.lattice_vectors[0], 1E10))
+      const b = atoms?.lattice_vectors?.[1] && new THREE.Vector3().fromArray(scale(atoms.lattice_vectors[1], 1E10))
+      const c = atoms?.lattice_vectors?.[2] && new THREE.Vector3().fromArray(scale(atoms.lattice_vectors[2], 1E10))
+      const a_length = a?.length()
+      const b_length = b?.length()
+      const c_length = c?.length()
+      const pbc = atoms?.periodic
+
+      // Create all atoms
+      const structure = new Structure()
+      const structureBuilder = new StructureBuilder(structure)
+      const atomStore = structure.atomStore
+      const atomMap = structure.atomMap
+      atomStore.resize(positions.length)
+      const [speciesMap, species] = getSpeciesMap(atomParameters, atoms)
+      for (let i = 0; i < positions.length; i++) {
+        const x = positions[i][0]
+        const y = positions[i][1]
+        const z = positions[i][2]
+        const speciesId = species[i]
+        const radius = speciesMap[speciesId].radius
+        const label = speciesMap[speciesId].label
+        atomStore.x[i] = x
+        atomStore.y[i] = y
+        atomStore.z[i] = z
+        atomStore.serial[i] = i
+        atomStore.bfactor[i] = radius
+        atomStore.altloc[i] = speciesId
+        const typeIndex = atomMap.add(label, speciesId)
+        atomStore.atomTypeId[i] = typeIndex
+        structureBuilder.addAtom('', '', '', '', '', false, undefined, '')
       }
 
-      // Load file
-      component = await stageRef.current.loadFile(
-        systemResponse,
-        {ext: format, defaultRepresentation: false}
-      )
+      structureBuilder.finalize()
+      structure.finalizeAtoms()
+
+      atomMap.species = speciesMap
+      component = await stageRef.current.addComponentFromObject(structure)
 
       // Find the 'root' system for the selected item. The root system contains
       // information about the cell and periodic boundary conditions.
@@ -325,67 +344,22 @@ const StructureNGL = React.memo(({
           : getRoot(topologyMap[top.parent_system])
       }
       root = getRoot(system)
-
-      // Recursively add a new representation for each child that does not have
-      // it's own component
-      function addRepresentation(top) {
-        const structuralType = top.structural_type
-        const isMonomer = structuralType === 'monomer'
-        const isMolecule = structuralType === 'molecule'
-        const indices = top.indices
-          ? ((isMolecule || isMonomer)
-            ? top.indices[0]
-            : top.indices).flat()
-          : range(top.n_atoms)
-        const sele = top.indices
-          ? `@${indices.join(',')}`
-          : 'all'
-
-        // Add representation for the bonds
-        const bondRepr = component.addRepresentation(
-          'licorice',
-          {
-            colorScheme: 'uniform',
-            colorValue: 'white',
-            bondScale: 0.1,
-            sele
-          }
-        )
-        // Add representation for the atoms
-        const atomRepr = component.addRepresentation('spacefill', {radiusScale: 0.3, sele})
-        representationMap.current[top.system_id] = {
-          bonds: bondRepr,
-          atoms: atomRepr,
-          sele: sele,
-          indices: indices,
-          wrapMode: (isMonomer || isMolecule) ? wrapModes.unwrap.key : wrapModes.wrap.key
-        }
-        for (const child of top.child_systems || []) {
-          if (!child.atoms) addRepresentation(child)
-        }
-      }
       addRepresentation(root)
-
-      // The file formats supported by NGL don't include the true lattice
-      // vectors, only the shape of the cell. If the lattive vectors aren't
-      // aligned with the cartesian coordinates, the visualization will be
-      // incorrect. This is why we need to fetch the true lattice vectors from
-      // the archive. Also none of the file formats store the full periodicity
-      // of the system, which is also needed for correct wrapping.
 
       // Add a completely custom unit cell and lattice parameter visualization.
       // The objects are added to a dummy 'unitcell' representation that is
       // supported by NGL.
       if (a && b && c) {
-        a = new THREE.Vector3().fromArray(a)
-        b = new THREE.Vector3().fromArray(b)
-        c = new THREE.Vector3().fromArray(c)
         const metaCell = root?.cell
+
+        // Add dummy unit cell data to the structure. This is required for the
+        // visualization to work.
+        structure.unitcell = {getData: () => ({vertex: {}, edge: {}})}
         component.addRepresentation('unitcell', {opacity: 0})
 
         // If some of the basis vectors are collapsed, we need to create
         // artificial ones for the wrapping
-        const collapsed = [a.length() === 0, b.length() === 0, c.length() === 0]
+        const collapsed = [a_length === 0, b_length === 0, c_length === 0]
         const valid = [metaCell.a !== undefined, metaCell.b !== undefined, metaCell.c !== undefined]
         const basis = [a, b, c]
         const validBases = []
@@ -440,11 +414,65 @@ const StructureNGL = React.memo(({
         component.pbc = pbc
         component.latticeConstants = latticeConstants
       }
+
+      // Recursively add a new representation for each child that does not have
+      // it's own component
+      // eslint-disable-next-line no-unused-vars
+      function addRepresentation(top) {
+        const structuralType = top.structural_type
+        const isMonomer = structuralType === 'monomer'
+        const isMolecule = structuralType === 'molecule'
+        const indices = top.indices
+          ? ((isMolecule || isMonomer)
+            ? top.indices[0]
+            : top.indices).flat()
+          : range(top.n_atoms)
+        const sele = top.indices
+          ? `@${indices.join(',')}`
+          : 'all'
+
+        // Add representation for the bonds
+        const bondRepr = component.addRepresentation(
+          'licorice',
+          {
+            colorScheme: 'uniform',
+            colorValue: 'white',
+            bondScale: 1,
+            sele
+          }
+        )
+        // Add representation for the atoms
+        const atomRepr = component.addRepresentation(
+          'spacefill',
+          {
+            radiusType: 'bfactor',
+            radiusScale: 0.3,
+            color: schemeId,
+            sele
+          }
+        )
+        const reprSpecies = {}
+        for (const index of indices) {
+          const speciesId = species[index]
+          if (!reprSpecies[speciesId]) {
+            reprSpecies[speciesId] = {...speciesMap[speciesId], color: `#${speciesMap[speciesId].color.toString(16).padStart(6, 0)}`}
+          }
+        }
+        representationMap.current[top.system_id] = {
+          bonds: bondRepr,
+          atoms: atomRepr,
+          sele: sele,
+          indices: indices,
+          species: Object.values(reprSpecies),
+          wrapMode: (isMonomer || isMolecule) ? wrapModes.unwrap.key : wrapModes.wrap.key
+        }
+        for (const child of top.child_systems || []) {
+          if (!child.atoms) addRepresentation(child)
+        }
+      }
     }
     componentRef.current = component
     componentsRef.current[componentKey] = component
-
-  // We dont want this effect to react to 'wrap'
   }, [api])
 
   // Called whenever the system changes. Loads the structure asynchronously.
@@ -458,7 +486,7 @@ const StructureNGL = React.memo(({
     }
 
     // Start loading component
-    const componentKey = `${newEntryId}/${path}`
+    const componentKey = `${entryId}/${path}`
     if (isNil(componentsRef.current[componentKey])) {
       setLoading(true)
     }
@@ -471,7 +499,7 @@ const StructureNGL = React.memo(({
 
     // Remember to catch since react error boundaries do not automatically catch
     // from async calls.
-    loadComponent(system, newEntryId, path, componentKey, topologyMap)
+    loadComponent(system, entryId, path, componentKey, topologyMap)
       .catch(asyncError)
       .finally(() => {
         // Hide other components that have been loaded
@@ -481,7 +509,7 @@ const StructureNGL = React.memo(({
         setReady(true)
         readyRef.current = true
       })
-  }, [system, newEntryId, path, topologyMap, api, asyncError, loadComponent, accepted])
+  }, [system, entryId, path, topologyMap, api, asyncError, loadComponent, accepted])
 
   // React to selection
   useEffect(() => {
@@ -501,6 +529,7 @@ const StructureNGL = React.memo(({
     const isMonomerGroup = isGroup && isEqual(child_types, new Set(['monomer']))
 
     // Determine the selection to center on.
+    setSpecies(representationMap.current[selected].species)
     const representation = representationMap.current[independent ? selected : topParent]
     if (representation) {
       representationRef.current = representation
@@ -551,8 +580,7 @@ const StructureNGL = React.memo(({
       handleReset()
     }
     setLoading(false)
-  // We don't want this effect to react to 'showCell', 'showBonds',
-  // 'showLatticeParameters', or 'wrapMode'
+  // We don't want this effect to react to 'showCell' or 'showBonds',
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected, system, ready, handleShowCell, handleShowLatticeConstants, handleReset])
 
@@ -584,7 +612,7 @@ const StructureNGL = React.memo(({
     // does not have atoms_ref filled.
     disableFileDownload={!isNil(system?.indices) && isNil(system.atoms_ref)}
     sizeLimit={sizeLimit}
-    entryId={newEntryId}
+    entryId={entryId}
     path={selected}
     {...rest}
   >
@@ -613,17 +641,16 @@ StructureNGL.defaultProps = {
 export default withErrorHandler('Could not load structure.')(StructureNGL)
 
 /**
- * Used to resolve the API parameters for fetching a structure that is required
- * to visualize the current selection.
+ * Used to resolve which structure to load for the given selection.
  *
  * @param {string} selected The selected system
  * @param {string} entryId Entry id
  * @param {object} topologyMap Object containing a mapping from system ids to the data.
  * @returns The final entry_id and path for fetching the system file through the API.
  */
-export function getSystemAPIQuery(selected, entryId, topologyMap) {
+export function getStructure(selected, entryId, topologyMap) {
   if (isNil(selected) || isNil(entryId) || isNil(topologyMap)) {
-    return {entryId: undefined, path: undefined}
+    return undefined
   }
 
   // Get path to the first system which stores a reference or actual data for
@@ -638,16 +665,7 @@ export function getSystemAPIQuery(selected, entryId, topologyMap) {
     }
     return path
   }
-  let path = getPath(topologyMap[selected])
-
-  // The path may be a reference that points to some other entry as well,
-  // here it is resolved
-  if (path && !path.startsWith('results')) {
-    const nomadUrl = parseNomadUrl(path)
-    entryId = nomadUrl.entryId || entryId
-    path = nomadUrl.path
-  }
-  return {entryId, path}
+  return getPath(topologyMap[selected])
 }
 
 /**
@@ -1201,15 +1219,15 @@ function createCylinder(pos1, pos2, radius, nSegments, material) {
  * @param stage - The NGL Stage to add the object into.
  * @param obects - List of custom objects into which the given one is added.
  */
+// eslint-disable-next-line no-unused-vars
 function addObject3DToStage(object, stage) {
   const scene = stage.viewer.scene
   const rotationGroup = scene.getObjectByName('rotationGroup')
   const translationGroup = rotationGroup.getObjectByName('translationGroup')
-  const pickingGroup = translationGroup.getObjectByName('modelGroup')
-  // TODO: Since we don't know the actual three.js Object3Ds that correspond to
-  // each component, we are simply adding the object to the latest model object
-  // that is found and is visible by default.
-  const group = pickingGroup.children[pickingGroup.children.length - 2]
+  const modelGroup = translationGroup.getObjectByName('modelGroup')
+  // The object is added to the second last group, which is that corresponds to
+  // the unit cell representation.
+  const group = modelGroup.children[modelGroup.children.length - 2]
   group.add(object)
 }
 
@@ -1227,6 +1245,7 @@ function wrapRepresentation(component, representation) {
   const cartToFrac = component.cartToFrac
   const fracToCart = component.fracToCart
   const pbc = component.pbc
+  const structure = component.structure
 
   if (!basis) return
   if (!pbc.some(a => a)) return
@@ -1236,7 +1255,7 @@ function wrapRepresentation(component, representation) {
   if (isNil(representation.posCart)) {
     representation.posCart = []
     for (const index of indices) {
-      const ap = component.structure.getAtomProxy(index)
+      const ap = structure.getAtomProxy(index)
       representation.posCart.push(ap.positionToVector3(new THREE.Vector3()))
     }
   }
@@ -1278,7 +1297,7 @@ function wrapRepresentation(component, representation) {
   // Structure.updatePosition()-function in NGL.
   let i = 0
   for (const index of indices) {
-    const ap = component.structure.getAtomProxy(index)
+    const ap = structure.getAtomProxy(index)
     ap.positionFromVector3(posNew[i])
     ++i
   }
@@ -1317,17 +1336,6 @@ function wrapPositions(posFrac, cartToFrac, pbc) {
       iFracPos.setComponent(i, remainder)
     }
   }
-}
-
-// This data is copied directly from NGL as it cannot be imported directly.
-const atomicNumbers = {
-  H: 1, D: 1, T: 1, HE: 2, LI: 3, BE: 4, B: 5, C: 6, N: 7, O: 8, F: 9, NE: 10, NA: 11, MG: 12, AL: 13, SI: 14, P: 15, S: 16, CL: 17, AR: 18, K: 19, CA: 20, SC: 21, TI: 22, V: 23, CR: 24, MN: 25, FE: 26, CO: 27, NI: 28, CU: 29, ZN: 30, GA: 31, GE: 32, AS: 33, SE: 34, BR: 35, KR: 36, RB: 37, SR: 38, Y: 39, ZR: 40, NB: 41, MO: 42, TC: 43, RU: 44, RH: 45, PD: 46, AG: 47, CD: 48, IN: 49, SN: 50, SB: 51, TE: 52, I: 53, XE: 54, CS: 55, BA: 56, LA: 57, CE: 58, PR: 59, ND: 60, PM: 61, SM: 62, EU: 63, GD: 64, TB: 65, DY: 66, HO: 67, ER: 68, TM: 69, YB: 70, LU: 71, HF: 72, TA: 73, W: 74, RE: 75, OS: 76, IR: 77, PT: 78, AU: 79, HG: 80, TL: 81, PB: 82, BI: 83, PO: 84, AT: 85, RN: 86, FR: 87, RA: 88, AC: 89, TH: 90, PA: 91, U: 92, NP: 93, PU: 94, AM: 95, CM: 96, BK: 97, CF: 98, ES: 99, FM: 100, MD: 101, NO: 102, LR: 103, RF: 104, DB: 105, SG: 106, BH: 107, HS: 108, MT: 109, DS: 110, RG: 111, CN: 112, NH: 113, FL: 114, MC: 115, LV: 116, TS: 117, OG: 118
-}
-const vdwRadii = {
-  1: 1.1, 2: 1.4, 3: 1.81, 4: 1.53, 5: 1.92, 6: 1.7, 7: 1.55, 8: 1.52, 9: 1.47, 10: 1.54, 11: 2.27, 12: 1.73, 13: 1.84, 14: 2.1, 15: 1.8, 16: 1.8, 17: 1.75, 18: 1.88, 19: 2.75, 20: 2.31, 21: 2.3, 22: 2.15, 23: 2.05, 24: 2.05, 25: 2.05, 26: 2.05, 27: 2.0, 28: 2.0, 29: 2.0, 30: 2.1, 31: 1.87, 32: 2.11, 33: 1.85, 34: 1.9, 35: 1.83, 36: 2.02, 37: 3.03, 38: 2.49, 39: 2.4, 40: 2.3, 41: 2.15, 42: 2.1, 43: 2.05, 44: 2.05, 45: 2.0, 46: 2.05, 47: 2.1, 48: 2.2, 49: 2.2, 50: 1.93, 51: 2.17, 52: 2.06, 53: 1.98, 54: 2.16, 55: 3.43, 56: 2.68, 57: 2.5, 58: 2.48, 59: 2.47, 60: 2.45, 61: 2.43, 62: 2.42, 63: 2.4, 64: 2.38, 65: 2.37, 66: 2.35, 67: 2.33, 68: 2.32, 69: 2.3, 70: 2.28, 71: 2.27, 72: 2.25, 73: 2.2, 74: 2.1, 75: 2.05, 76: 2.0, 77: 2.0, 78: 2.05, 79: 2.1, 80: 2.05, 81: 1.96, 82: 2.02, 83: 2.07, 84: 1.97, 85: 2.02, 86: 2.2, 87: 3.48, 88: 2.83, 89: 2.0, 90: 2.4, 91: 2.0, 92: 2.3, 93: 2.0, 94: 2.0, 95: 2.0, 96: 2.0, 97: 2.0, 98: 2.0, 99: 2.0, 100: 2.0, 101: 2.0, 102: 2.0, 103: 2.0, 104: 2.0, 105: 2.0, 106: 2.0, 107: 2.0, 108: 2.0, 109: 2.0, 110: 2.0, 111: 2.0, 112: 2.0, 113: 2.0, 114: 2.0, 115: 2.0, 116: 2.0, 117: 2.0, 118: 2.0
-}
-const elementColors = {
-  'H': 0xFFFFFF, 'HE': 0xD9FFFF, 'LI': 0xCC80FF, 'BE': 0xC2FF00, 'B': 0xFFB5B5, 'C': 0x909090, 'N': 0x3050F8, 'O': 0xFF0D0D, 'F': 0x90E050, 'NE': 0xB3E3F5, 'NA': 0xAB5CF2, 'MG': 0x8AFF00, 'AL': 0xBFA6A6, 'SI': 0xF0C8A0, 'P': 0xFF8000, 'S': 0xFFFF30, 'CL': 0x1FF01F, 'AR': 0x80D1E3, 'K': 0x8F40D4, 'CA': 0x3DFF00, 'SC': 0xE6E6E6, 'TI': 0xBFC2C7, 'V': 0xA6A6AB, 'CR': 0x8A99C7, 'MN': 0x9C7AC7, 'FE': 0xE06633, 'CO': 0xF090A0, 'NI': 0x50D050, 'CU': 0xC88033, 'ZN': 0x7D80B0, 'GA': 0xC28F8F, 'GE': 0x668F8F, 'AS': 0xBD80E3, 'SE': 0xFFA100, 'BR': 0xA62929, 'KR': 0x5CB8D1, 'RB': 0x702EB0, 'SR': 0x00FF00, 'Y': 0x94FFFF, 'ZR': 0x94E0E0, 'NB': 0x73C2C9, 'MO': 0x54B5B5, 'TC': 0x3B9E9E, 'RU': 0x248F8F, 'RH': 0x0A7D8C, 'PD': 0x006985, 'AG': 0xC0C0C0, 'CD': 0xFFD98F, 'IN': 0xA67573, 'SN': 0x668080, 'SB': 0x9E63B5, 'TE': 0xD47A00, 'I': 0x940094, 'XE': 0x940094, 'CS': 0x57178F, 'BA': 0x00C900, 'LA': 0x70D4FF, 'CE': 0xFFFFC7, 'PR': 0xD9FFC7, 'ND': 0xC7FFC7, 'PM': 0xA3FFC7, 'SM': 0x8FFFC7, 'EU': 0x61FFC7, 'GD': 0x45FFC7, 'TB': 0x30FFC7, 'DY': 0x1FFFC7, 'HO': 0x00FF9C, 'ER': 0x00E675, 'TM': 0x00D452, 'YB': 0x00BF38, 'LU': 0x00AB24, 'HF': 0x4DC2FF, 'TA': 0x4DA6FF, 'W': 0x2194D6, 'RE': 0x267DAB, 'OS': 0x266696, 'IR': 0x175487, 'PT': 0xD0D0E0, 'AU': 0xFFD123, 'HG': 0xB8B8D0, 'TL': 0xA6544D, 'PB': 0x575961, 'BI': 0x9E4FB5, 'PO': 0xAB5C00, 'AT': 0x754F45, 'RN': 0x428296, 'FR': 0x420066, 'RA': 0x007D00, 'AC': 0x70ABFA, 'TH': 0x00BAFF, 'PA': 0x00A1FF, 'U': 0x008FFF, 'NP': 0x0080FF, 'PU': 0x006BFF, 'AM': 0x545CF2, 'CM': 0x785CE3, 'BK': 0x8A4FE3, 'CF': 0xA136D4, 'ES': 0xB31FD4, 'FM': 0xB31FBA, 'MD': 0xB30DA6, 'NO': 0xBD0D87, 'LR': 0xC70066, 'RF': 0xCC0059, 'DB': 0xD1004F, 'SG': 0xD90045, 'BH': 0xE00038, 'HS': 0xE6002E, 'MT': 0xEB0026, 'DS': 0xFFFFFF, 'RG': 0xFFFFFF, 'CN': 0xFFFFFF, 'UUT': 0xFFFFFF, 'FL': 0xFFFFFF, 'UUP': 0xFFFFFF, 'LV': 0xFFFFFF, 'UUH': 0xFFFFFF, 'D': 0xFFFFC0, 'T': 0xFFFFA0
 }
 
 /**
@@ -1371,4 +1379,107 @@ function getCenterOfPositions(posFrac, pbc) {
       center.setComponent(iComp, centerComp)
   }
   return center
+}
+
+const schemeId = ColormakerRegistry.addScheme(function(params) {
+  this.atomColor = function(atom) {
+    return atom.atomMap.species[atom.element].color
+  }
+})
+
+/**
+ * Creates a palette of distinct colors.
+*/
+function palette(count) {
+  const goldenAngle = 137.508
+  function selectColor(i) {
+    const hue = (i * goldenAngle) % 360
+    return hsl(hue, 0.8, 0.5).hex()
+  }
+  const values = []
+  for (let i = 3; i < count + 3; ++i) {
+    values.push(selectColor(i))
+  }
+  return values
+}
+
+const ELEMENT_COLORS = {
+  'H': 0xFFFFFF, 'HE': 0xD9FFFF, 'LI': 0xCC80FF, 'BE': 0xC2FF00, 'B': 0xFFB5B5, 'C': 0x909090, 'N': 0x3050F8, 'O': 0xFF0D0D, 'F': 0x90E050, 'NE': 0xB3E3F5, 'NA': 0xAB5CF2, 'MG': 0x8AFF00, 'AL': 0xBFA6A6, 'SI': 0xF0C8A0, 'P': 0xFF8000, 'S': 0xFFFF30, 'CL': 0x1FF01F, 'AR': 0x80D1E3, 'K': 0x8F40D4, 'CA': 0x3DFF00, 'SC': 0xE6E6E6, 'TI': 0xBFC2C7, 'V': 0xA6A6AB, 'CR': 0x8A99C7, 'MN': 0x9C7AC7, 'FE': 0xE06633, 'CO': 0xF090A0, 'NI': 0x50D050, 'CU': 0xC88033, 'ZN': 0x7D80B0, 'GA': 0xC28F8F, 'GE': 0x668F8F, 'AS': 0xBD80E3, 'SE': 0xFFA100, 'BR': 0xA62929, 'KR': 0x5CB8D1, 'RB': 0x702EB0, 'SR': 0x00FF00, 'Y': 0x94FFFF, 'ZR': 0x94E0E0, 'NB': 0x73C2C9, 'MO': 0x54B5B5, 'TC': 0x3B9E9E, 'RU': 0x248F8F, 'RH': 0x0A7D8C, 'PD': 0x006985, 'AG': 0xC0C0C0, 'CD': 0xFFD98F, 'IN': 0xA67573, 'SN': 0x668080, 'SB': 0x9E63B5, 'TE': 0xD47A00, 'I': 0x940094, 'XE': 0x940094, 'CS': 0x57178F, 'BA': 0x00C900, 'LA': 0x70D4FF, 'CE': 0xFFFFC7, 'PR': 0xD9FFC7, 'ND': 0xC7FFC7, 'PM': 0xA3FFC7, 'SM': 0x8FFFC7, 'EU': 0x61FFC7, 'GD': 0x45FFC7, 'TB': 0x30FFC7, 'DY': 0x1FFFC7, 'HO': 0x00FF9C, 'ER': 0x00E675, 'TM': 0x00D452, 'YB': 0x00BF38, 'LU': 0x00AB24, 'HF': 0x4DC2FF, 'TA': 0x4DA6FF, 'W': 0x2194D6, 'RE': 0x267DAB, 'OS': 0x266696, 'IR': 0x175487, 'PT': 0xD0D0E0, 'AU': 0xFFD123, 'HG': 0xB8B8D0, 'TL': 0xA6544D, 'PB': 0x575961, 'BI': 0x9E4FB5, 'PO': 0xAB5C00, 'AT': 0x754F45, 'RN': 0x428296, 'FR': 0x420066, 'RA': 0x007D00, 'AC': 0x70ABFA, 'TH': 0x00BAFF, 'PA': 0x00A1FF, 'U': 0x008FFF, 'NP': 0x0080FF, 'PU': 0x006BFF, 'AM': 0x545CF2, 'CM': 0x785CE3, 'BK': 0x8A4FE3, 'CF': 0xA136D4, 'ES': 0xB31FD4, 'FM': 0xB31FBA, 'MD': 0xB30DA6, 'NO': 0xBD0D87, 'LR': 0xC70066, 'RF': 0xCC0059, 'DB': 0xD1004F, 'SG': 0xD90045, 'BH': 0xE00038, 'HS': 0xE6002E, 'MT': 0xEB0026, 'DS': 0xFFFFFF, 'RG': 0xFFFFFF, 'CN': 0xFFFFFF, 'UUT': 0xFFFFFF, 'FL': 0xFFFFFF, 'UUP': 0xFFFFFF, 'LV': 0xFFFFFF, 'UUH': 0xFFFFFF, 'D': 0xFFFFC0, 'T': 0xFFFFA0
+}
+const VDW_RADII = {
+  1: 1.1, 2: 1.4, 3: 1.81, 4: 1.53, 5: 1.92, 6: 1.7, 7: 1.55, 8: 1.52, 9: 1.47, 10: 1.54, 11: 2.27, 12: 1.73, 13: 1.84, 14: 2.1, 15: 1.8, 16: 1.8, 17: 1.75, 18: 1.88, 19: 2.75, 20: 2.31, 21: 2.3, 22: 2.15, 23: 2.05, 24: 2.05, 25: 2.05, 26: 2.05, 27: 2.0, 28: 2.0, 29: 2.0, 30: 2.1, 31: 1.87, 32: 2.11, 33: 1.85, 34: 1.9, 35: 1.83, 36: 2.02, 37: 3.03, 38: 2.49, 39: 2.4, 40: 2.3, 41: 2.15, 42: 2.1, 43: 2.05, 44: 2.05, 45: 2.0, 46: 2.05, 47: 2.1, 48: 2.2, 49: 2.2, 50: 1.93, 51: 2.17, 52: 2.06, 53: 1.98, 54: 2.16, 55: 3.43, 56: 2.68, 57: 2.5, 58: 2.48, 59: 2.47, 60: 2.45, 61: 2.43, 62: 2.42, 63: 2.4, 64: 2.38, 65: 2.37, 66: 2.35, 67: 2.33, 68: 2.32, 69: 2.3, 70: 2.28, 71: 2.27, 72: 2.25, 73: 2.2, 74: 2.1, 75: 2.05, 76: 2.0, 77: 2.0, 78: 2.05, 79: 2.1, 80: 2.05, 81: 1.96, 82: 2.02, 83: 2.07, 84: 1.97, 85: 2.02, 86: 2.2, 87: 3.48, 88: 2.83, 89: 2.0, 90: 2.4, 91: 2.0, 92: 2.3, 93: 2.0, 94: 2.0, 95: 2.0, 96: 2.0, 97: 2.0, 98: 2.0, 99: 2.0, 100: 2.0, 101: 2.0, 102: 2.0, 103: 2.0, 104: 2.0, 105: 2.0, 106: 2.0, 107: 2.0, 108: 2.0, 109: 2.0, 110: 2.0, 111: 2.0, 112: 2.0, 113: 2.0, 114: 2.0, 115: 2.0, 116: 2.0, 117: 2.0, 118: 2.0
+}
+
+/**
+ * Given an atomic number, return a tuple:
+ *   [ speciesId, { label, radius, color } ]
+ */
+function fromAtomicNumber(atomicNumber) {
+  // For example, if you have an external `elementData` array with each element's symbol:
+  const speciesLabel = elementData?.elements[atomicNumber - 1]?.symbol ?? '??'
+  const speciesId = speciesLabel.toUpperCase()
+  const colorHex = ELEMENT_COLORS[speciesId] || 0xFF1493 // fallback color (DeepPink)
+
+  return [
+    speciesId,
+    {
+      label: speciesLabel,
+      radius: VDW_RADII[atomicNumber],
+      color: colorHex
+    }
+  ]
+}
+
+/**
+ * Given atom parameters-section and an atoms-section, return a map of species
+ * ids and the corresponding species config and a list of species IDs for each
+ * atom.
+ */
+function getSpeciesMap(atomParameters, atoms) {
+  const speciesMap = {}
+  const speciesIds = []
+  const customSpeciesList = []
+
+  // We assume `atoms.positions.length` and `atoms.species` are valid.
+  atoms.positions.forEach((_, i) => {
+    // Attempt to get atomicNumber first from `atoms.species`,
+    // then fall back to `atomParameters[i].atom_number`.
+    const atomicNumber = atoms.species?.[i] || atomParameters[i].atom_number
+
+    let speciesId
+    if (atomicNumber) {
+      // Use the standard table-based logic.
+      const [id, speciesObj] = fromAtomicNumber(atomicNumber)
+      speciesId = id
+      // Only set once if it’s not in the map.
+      if (!(speciesId in speciesMap)) {
+        speciesMap[speciesId] = speciesObj
+      }
+    } else {
+      // We have a custom species with no official atomic number.
+      const { label, mass } = atomParameters[i]
+      speciesId = label.toUpperCase()
+      speciesMap[speciesId] = {
+        label,
+        // Radius is set so that the hydrogen "density" (using vdW radiii,
+        // assuming spherical shape) is achieved with the given mass. If no mass
+        // is specified, the hydrogen radius is used as a default.
+        radius: mass ? Math.pow(mass / 1.6735575e-27, 1.0 / 3.0) * VDW_RADII[1] : VDW_RADII[1]
+      }
+      customSpeciesList.push(speciesId)
+    }
+
+    speciesIds.push(speciesId)
+  })
+
+  // Assign distinct palette colors to custom species only.
+  if (customSpeciesList.length > 0) {
+    const colors = palette(customSpeciesList.length)
+    customSpeciesList.forEach((speciesId, i) => {
+      const colorHex = parseInt(colors[i].replace('#', '0x'))
+      speciesMap[speciesId].color = colorHex
+    })
+  }
+
+  return [speciesMap, speciesIds]
 }
