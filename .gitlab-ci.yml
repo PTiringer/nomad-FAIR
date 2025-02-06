@@ -27,6 +27,8 @@ variables:
   DOCKER_TAG: ${CI_COMMIT_REF_SLUG}
   DOCKER_HOST: tcp://docker-dind:2375
   DOCKER_TLS_CERTDIR: ""
+  UV_VERSION: 0.5.26
+  PYTHON_VERSION: 3.12
 
 workflow:
   rules:
@@ -330,11 +332,10 @@ install tests:
 
 python package:
   stage: release
+  image: ghcr.io/astral-sh/uv:$UV_VERSION-python$PYTHON_VERSION-bookworm
   variables:
     GIT_STRATEGY: none
-  before_script:
-    - pip install twine
-  script: twine upload -u gitlab-ci-token -p ${CI_JOB_TOKEN} --repository-url https://gitlab.mpcdf.mpg.de/api/v4/projects/${CI_PROJECT_ID}/packages/pypi dist/nomad-lab-*.tar.gz
+  script: uv publish -u gitlab-ci-token -p ${CI_JOB_TOKEN} --publish-url https://gitlab.mpcdf.mpg.de/api/v4/projects/${CI_PROJECT_ID}/packages/pypi dist/nomad-lab-*.tar.gz
   rules:
     - if: $CI_COMMIT_BRANCH == "develop" && $NIGHTLY
       when: on_success
