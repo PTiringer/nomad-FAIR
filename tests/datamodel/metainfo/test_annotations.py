@@ -63,7 +63,7 @@ def test_eln_validation(quantity, annotation, result, error):
     else:
         annotation_model = ELNAnnotation(**annotation)
         annotation_model.m_definition = quantity
-        assert annotation_model.dict(exclude_none=True) == (result or annotation)
+        assert annotation_model.model_dump(exclude_none=True) == (result or annotation)
 
 
 @pytest.mark.parametrize(

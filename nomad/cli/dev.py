@@ -81,7 +81,44 @@ def gui_qa(skip_tests: bool):
 @dev.command(help='Export an API model in JSON schema.')
 @click.argument('model')
 def api_model(model):
+    import json
     import importlib
+
+    def remove_null_types(data):
+        """
+        Recursively removes dictionary entries with { "type": "null" } from the input dictionary.
+        This is done so that the schemas are compatible with the ones we created using pydantic v1
+
+        Args:
+            data (dict or list): Input dictionary or list to process
+
+        Returns:
+            dict or list: Processed dictionary/list with null type entries removed
+        """
+        if isinstance(data, dict):
+            processed_dict = {}
+            for key, value in data.items():
+                if isinstance(value, (dict, list)):
+                    processed_value = remove_null_types(value)
+
+                    # Only add the key if the processed value is not a "type": "null" dictionary
+                    if not (
+                        isinstance(processed_value, dict)
+                        and processed_value.get('type') == 'null'
+                    ):
+                        processed_dict[key] = processed_value
+                else:
+                    processed_dict[key] = value
+            return processed_dict
+
+        elif isinstance(data, list):
+            return [
+                remove_null_types(item)
+                for item in data
+                if not (isinstance(item, dict) and item.get('type') == 'null')
+            ]
+
+        return data
 
     if model in [
         'nomad.app.v1.models.graph.GraphRequest',
@@ -100,12 +137,15 @@ def api_model(model):
             model = generate_request_model(Graph)
         else:
             model = generate_response_model(Graph)
-        print(model.schema_json(indent=2))
+
+        schema = remove_null_types(model.model_json_schema())
+        print(json.dumps(schema, indent=2))
     else:
         pkg, cls = model.rsplit('.', 1)
         importlib.import_module(pkg)
         model = getattr(sys.modules[pkg], cls)
-        print(model.schema_json(indent=2))
+        schema = remove_null_types(model.model_json_schema())
+        print(json.dumps(schema, indent=2))
 
 
 def get_gui_artifacts_js() -> str:

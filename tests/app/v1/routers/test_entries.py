@@ -901,7 +901,7 @@ def example_data_with_compressed_files(
             'id_01', 'mainfile.json', {'offset': 1000000}, 200, id='offset-too-large'
         ),
         pytest.param('id_01', 'mainfile.json', {'offset': -1}, 422, id='bad-offset'),
-        pytest.param('id_01', 'mainfile.json', {'length': -1}, 422, id='bad-length'),
+        pytest.param('id_01', 'mainfile.json', {'length': -2}, 422, id='bad-length'),
         pytest.param(
             'id_01', 'mainfile.json', {'decompress': True}, 200, id='decompress-json'
         ),

@@ -21,9 +21,16 @@ import functools
 import re
 from enum import Enum
 from hashlib import sha1
-from typing import Optional, Union
+from typing import Annotated, Optional, Union
 
-from pydantic import BaseModel, Extra, Field, ValidationError, validator
+from pydantic import (
+    AfterValidator,
+    field_validator,
+    ConfigDict,
+    BaseModel,
+    Field,
+    ValidationError,
+)
 
 from nomad.app.v1.models import Direction, Metadata, MetadataPagination, Pagination
 from nomad.app.v1.routers.datasets import DatasetPagination
@@ -71,6 +78,12 @@ class MetainfoQuery(BaseModel):
 
 
 class MetainfoPagination(Pagination):
+    @field_validator('order_by')
+    @classmethod
+    def validate_order_by(cls, order_by):
+        # No validation
+        return order_by
+
     def order_result(self, result):
         return list(sorted(result, reverse=self.order == Direction.desc))
 
@@ -124,6 +137,14 @@ class ResolveType(Enum):
         return self.value
 
 
+def check_pattern(data: Optional[frozenset[str]]) -> Optional[frozenset[str]]:
+    if data is not None:
+        for value in data:
+            assert re.match(r'^[*?+a-zA-z_\d./]*$', value) is not None
+        return data
+    return None
+
+
 class RequestConfig(BaseModel):
     """
     A class to represent the query configuration.
@@ -134,7 +155,7 @@ class RequestConfig(BaseModel):
     Each field can be handled differently.
     """
 
-    property_name: str = Field(
+    property_name: Optional[str] = Field(
         None,
         description="""
         The name of the current field, either a quantity or a subsection.
@@ -151,18 +172,17 @@ class RequestConfig(BaseModel):
         The `*` is a shortcut of `plain`.
         """,
     )
-    include: Optional[frozenset[str]] = Field(
+    include: Annotated[Optional[frozenset[str]], AfterValidator(check_pattern)] = Field(
         None,
-        regex=r'^[*?+a-zA-z_\d./]*$',
         description="""
         A list of patterns to match the quantities and subsections of the current section.
         The quantities/sections that match the include patterns AND do not match the include patterns are included.
         Only one of `include` and `exclude` can be set.
         """,
     )
-    exclude: Optional[frozenset[str]] = Field(
+
+    exclude: Annotated[Optional[frozenset[str]], AfterValidator(check_pattern)] = Field(
         None,
-        regex=r'^[*?+a-zA-z_\d./]*$',
         description="""
         A list of patterns to match the quantities and subsections of the current section.
         The quantities/sections that match the include patterns AND do not match the include patterns are included.
@@ -243,7 +263,7 @@ class RequestConfig(BaseModel):
         If `none`, no definition will be included.
         """,
     )
-    index: Union[tuple[int], tuple[Optional[int], Optional[int]]] = Field(
+    index: Optional[Union[tuple[int], tuple[Optional[int], Optional[int]]]] = Field(
         None,
         description="""
         The start and end index of the current field if it is a list.
@@ -259,15 +279,17 @@ class RequestConfig(BaseModel):
         This field only applies to the target section only, i.e., it does not propagate to its children.
         """,
     )
-    pagination: Union[
-        dict,
-        DatasetPagination,
-        EntryProcDataPagination,
-        MetadataPagination,
-        MetainfoPagination,
-        RawDirPagination,
-        UploadProcDataPagination,
-        UserGroupPagination,
+    pagination: Optional[
+        Union[
+            dict,
+            DatasetPagination,
+            EntryProcDataPagination,
+            MetadataPagination,
+            MetainfoPagination,
+            RawDirPagination,
+            UploadProcDataPagination,
+            UserGroupPagination,
+        ]
     ] = Field(
         None,
         description="""
@@ -277,14 +299,16 @@ class RequestConfig(BaseModel):
         Please refer to `DatasetPagination`, `UploadProcDataPagination`, `MetadataPagination` for details.
         """,
     )
-    query: Union[
-        dict,
-        DatasetQuery,
-        EntryQuery,
-        Metadata,
-        MetainfoQuery,
-        UploadProcDataQuery,
-        UserGroupQuery,
+    query: Optional[
+        Union[
+            dict,
+            DatasetQuery,
+            EntryQuery,
+            Metadata,
+            MetainfoQuery,
+            UploadProcDataQuery,
+            UserGroupQuery,
+        ]
     ] = Field(
         None,
         description="""
@@ -297,11 +321,9 @@ class RequestConfig(BaseModel):
         For Token.GROUPS, the query is used in mongo search. It must comply with `UserGroupQuery`.
         """,
     )
-
-    class Config:
-        # do NOT allow extra fields
-        extra = Extra.forbid
-        keep_untouched = (functools.cached_property,)
+    model_config = ConfigDict(
+        extra='forbid', ignored_types=(functools.cached_property,)
+    )
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -312,7 +334,8 @@ class RequestConfig(BaseModel):
         if self.include is None and self.exclude is None:
             self.include = frozenset({'*'})
 
-    @validator('resolve_inplace')
+    @field_validator('resolve_inplace')
+    @classmethod
     def _validate_directive(cls, _v):  # pylint: disable=no-self-argument
         return False
 
@@ -324,7 +347,7 @@ class RequestConfig(BaseModel):
 
         try:
             if query_copy.pop('inherit_from_parent', None) is False:
-                return RequestConfig.parse_obj(query_copy)
+                return RequestConfig.model_validate(query_copy)
 
             if not retain_pattern:
                 # override parent's include pattern
@@ -335,8 +358,11 @@ class RequestConfig(BaseModel):
                 if self.exclude is not None:
                     query_copy.setdefault('exclude', None)
 
-            return RequestConfig.parse_obj(
-                dict(self.dict(exclude_defaults=True, exclude_none=True), **query_copy)
+            return RequestConfig.model_validate(
+                dict(
+                    self.model_dump(exclude_defaults=True, exclude_none=True),
+                    **query_copy,
+                )
             )
         except ValidationError:
             raise ValueError(f'Invalid query config: {query}.')
@@ -360,7 +386,9 @@ class RequestConfig(BaseModel):
     @functools.cached_property
     def hash(self) -> str:
         return sha1(
-            self.json(exclude_defaults=True, exclude_none=True).encode('utf-8')
+            self.model_dump_json(exclude_defaults=True, exclude_none=True).encode(
+                'utf-8'
+            )
         ).hexdigest()
 
     def is_plain(self):

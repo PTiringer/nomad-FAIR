@@ -11,7 +11,7 @@ authors = [
 ]
 dynamic = ["version"]
 license = { text = "Apache-2.0" }
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 
 dependencies = [
     'aniso8601>=7.0.0',
@@ -38,9 +38,9 @@ dependencies = [
     'panedr>=0.2',
     'parmed>=3.0.0',
     'pint==0.17',
-    'py-spy', # for on-server profiling
-    'pydantic>=1.10.8,<2.0.0',
-    'pyinstrument', # for endpoint profiling
+    'py-spy',                    # for on-server profiling
+    'pydantic>=2.0.0',
+    'pyinstrument',              # for endpoint profiling
     'pymatgen>=2023.5.10',
     'python-keycloak>=0.26.1',
     'python-magic==0.4.24',
@@ -77,11 +77,11 @@ infrastructure = [
     'celery>=5.0',
     'dockerspawner==13.0.0',
     'elasticsearch>=7.0,<8',
-    'fastapi<0.100', # later versions pending pydantic v2 upgrade
+    'fastapi>0.100',              # later versions pending pydantic v2 upgrade
     'filelock==3.3.1',
     'gitpython>=3.0',
     'gunicorn>=21.2.0,<22.0.0',
-    'h5grove[fastapi]==1.3.0',
+    'h5grove[fastapi]>1.3.0',
     'html5lib==1.1',
     'inflection==0.5.1',
     'itsdangerous>=2.1.2',
@@ -93,7 +93,7 @@ infrastructure = [
     'msgpack>=1.0',
     'msgspec',
     'oauthenticator==15.1.0',
-    'optimade[mongo]==0.22.1',
+    'optimade[mongo]>=1.1.10',
     'pyjwt[crypto]==2.6.0',
     'python-json-logger==2.0.2',
     'python-logstash==0.4.6',
@@ -120,7 +120,7 @@ dev = [
     'mkdocs-material>=9.0',
     'mkdocs-redirects>=1.0',
     'mkdocs>=1.0',
-    'mypy==1.0.1', # bug: incompatible with derived models of pydantic v1
+    'mypy==1.0.1',                                    # bug: incompatible with derived models of pydantic v1
     'names==0.3.0',
     'uv>=0.2.35',
     'pytest-asyncio>=0.23',
@@ -133,7 +133,7 @@ dev = [
     'rope==0.21.0',
     'ruamel.yaml>=0.1',
     'ruff>=0.6',
-    'setuptools>=70', # py3.12 doesn't bundle in setuptools, but this is required by mongomock lib
+    'setuptools>=70',                                 # py3.12 doesn't bundle in setuptools, but this is required by mongomock lib
 ]
 
 
@@ -150,15 +150,15 @@ indent-width = 4
 
 [tool.ruff.lint]
 select = [
-    "E", # pycodestyle
-    "W", # pycodestyle
+    "E",  # pycodestyle
+    "W",  # pycodestyle
     "PL", # pylint
 ]
 ignore = [
-    "E501", # Line too long ({width} > {limit} characters)
-    "E701", # Multiple statements on one line (colon)
-    "E731", # Do not assign a lambda expression, use a def
-    "E402", # Module level import not at top of file
+    "E501",    # Line too long ({width} > {limit} characters)
+    "E701",    # Multiple statements on one line (colon)
+    "E731",    # Do not assign a lambda expression, use a def
+    "E402",    # Module level import not at top of file
     "PLR0911", # Too many return statements
     "PLR0912", # Too many branches
     "PLR0913", # Too many arguments in function definition
@@ -203,7 +203,7 @@ disable_error_code = "import, annotation-unchecked"
 extra-index-url = [
     "https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple",
 ]
-constraint-dependencies = [# can be removed once pynxtools removes kikuchipy restriction
+constraint-dependencies = [ # can be removed once pynxtools removes kikuchipy restriction
     "hyperspy>=1.7.6",
     "pillow<10.1",
 ]

@@ -18,7 +18,7 @@
 from datetime import datetime
 
 from enum import Enum
-from typing import Optional, Set, Union, Dict, Iterator, Any, List
+from typing import Annotated, Optional, Set, Union, Dict, Iterator, Any, List, Type
 from fastapi import (
     APIRouter,
     Depends,
@@ -31,7 +31,12 @@ from fastapi import (
 )
 from fastapi.responses import StreamingResponse, ORJSONResponse
 from fastapi.exceptions import RequestValidationError
-from pydantic import BaseModel, Field, validator
+from pydantic import (
+    ConfigDict,
+    field_validator,
+    BaseModel,
+    Field,
+)
 import os.path
 import io
 import json
@@ -305,7 +310,8 @@ class EntryMetadataEdit(WithQuery):
         description='Each action specifies a single value (even for multi valued quantities).',
     )
 
-    @validator('owner')
+    @field_validator('owner')
+    @classmethod
     def validate_query(cls, owner):  # pylint: disable=no-self-argument
         return Owner.user
 
@@ -325,18 +331,16 @@ class ArchiveChangeAction(Enum):
     remove = 'remove'
 
 
+def json_schema_extra(schema: dict[str, Any], model: Type['ArchiveChange']):
+    schema['properties']['new_value'] = {}
+
+
 class ArchiveChange(BaseModel):
     path: str
-    new_value: Any
+    new_value: Any = None
     action: ArchiveChangeAction = ArchiveChangeAction.upsert
 
-    class Config:
-        @staticmethod
-        def schema_extra(schema, model) -> None:
-            # Removing the title from the Any typed new_value field
-            # makes this a proper JSON schema "any" instead of a named
-            # empty type.
-            del schema['properties']['new_value']['title']
+    model_config = ConfigDict(json_schema_extra=json_schema_extra)
 
 
 class EntryEdit(BaseModel):
@@ -1322,7 +1326,7 @@ async def get_entry_raw_file(
     ),
     length: Optional[int] = QueryParameter(
         -1,
-        ge=0,
+        ge=-1,
         description=strip(
             """
                 The amounts of contents in bytes to stream. By default, the remainder of

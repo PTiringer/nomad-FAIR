@@ -31,7 +31,7 @@ from nomad.files import UploadFiles, StreamedFile, create_zipstream
 
 
 def parameter_dependency_from_model(
-    name: str, model_cls, exclude: List[str] = []
+    name: str, model_cls: BaseModel, exclude: List[str] = []
 ) -> FunctionType:
     """
     Takes a pydantic model class as input and creates a dependency with corresponding
@@ -48,14 +48,16 @@ def parameter_dependency_from_model(
     names = []
     annotations: Dict[str, type] = {}
     defaults = []
-    for field_model in model_cls.__fields__.values():
-        if field_model.name not in exclude:
-            field_info = field_model.field_info
-            names.append(field_model.name)
-            annotations[field_model.name] = field_model.outer_type_
-            defaults.append(
-                Query(field_model.default, description=field_info.description)
-            )
+    for field_name, field_model in model_cls.model_fields.items():
+        try:
+            if field_name not in exclude:
+                names.append(field_name)
+                annotations[field_name] = field_model.annotation
+                defaults.append(
+                    Query(field_model.default, description=field_model.description)
+                )
+        except Exception:
+            pass
 
     code = inspect.cleandoc(
         """
@@ -72,13 +74,13 @@ def parameter_dependency_from_model(
         % (
             name,
             ', '.join(names),
-            model_cls.__name__,
+            model_cls.__name__,  # type: ignore
             ', '.join(['%s=%s' % (name, name) for name in names]),
         )
     )
 
     compiled = compile(code, 'string', 'exec')
-    env = {model_cls.__name__: model_cls}
+    env = {model_cls.__name__: model_cls}  # type: ignore
     env.update(**globals())
     func = FunctionType(compiled.co_consts[0], env, name)
     func.__annotations__ = annotations
@@ -93,7 +95,7 @@ class DownloadItem(BaseModel):
     upload_id: str
     raw_path: str
     zip_path: str
-    entry_metadata: Optional[Dict[str, Any]]
+    entry_metadata: Optional[Dict[str, Any]] = None
 
 
 async def create_download_stream_zipped(

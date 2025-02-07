@@ -27,6 +27,11 @@ from nomad.app.v1.models.groups import (
 )
 from nomad.app.v1.models.pagination import PaginationResponse
 from nomad.app.v1.utils import parameter_dependency_from_model
+from typing import List, Optional, Set
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import ConfigDict, BaseModel, Field
+
 from nomad.datamodel import User as UserDataModel
 from nomad.groups import MongoUserGroup
 from nomad.groups import create_user_group as create_mongo_user_group
@@ -40,11 +45,13 @@ default_tag = 'groups'
 
 
 user_group_query_parameters = parameter_dependency_from_model(
-    'user_group_query_parameters', UserGroupQuery
+    'user_group_query_parameters',
+    UserGroupQuery,  # type: ignore
 )
 
 user_group_pagination_parameters = parameter_dependency_from_model(
-    'user_group_pagination_parameters', UserGroupPagination
+    'user_group_pagination_parameters',
+    UserGroupPagination,  # type: ignore
 )
 
 

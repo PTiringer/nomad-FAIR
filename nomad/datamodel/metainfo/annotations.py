@@ -18,7 +18,7 @@
 
 from typing import List, Any, Union, Dict, Optional
 from enum import Enum
-from pydantic import Field, validator, root_validator
+from pydantic import field_validator, ConfigDict, Field, validator
 import re
 
 from pydantic.main import BaseModel
@@ -126,7 +126,7 @@ class Filter(BaseModel):
 class DisplayAnnotation(BaseModel):
     """The display settings defined by an include list or an exclude list of the quantities and subsections."""
 
-    visible: Optional[Filter] = Field(
+    visible: Optional[Filter] = Field(  # type: ignore
         1,
         description=strip(
             """
@@ -213,7 +213,7 @@ class SectionDisplayAnnotation(DisplayAnnotation):
 class SectionProperties(BaseModel):
     """The display settings for quantities and subsections. (Deprecated)"""
 
-    visible: Optional[Filter] = Field(
+    visible: Optional[Filter] = Field(  # type: ignore
         1,
         description=strip(
             """
@@ -393,11 +393,10 @@ class ELNAnnotation(AnnotationModel):
         `order`: # To order things, properties listed in that order first, then the rest<br/>
     """,
     )
+    model_config = ConfigDict(validate_assignment=True)
 
-    class Config:
-        validate_assignment = True
-
-    @validator('m_definition')
+    @field_validator('m_definition')
+    @classmethod
     def validate_component(cls, definition, values):  # pylint: disable=no-self-argument
         if not definition:
             return definition
@@ -411,7 +410,7 @@ class ELNAnnotation(AnnotationModel):
                 f'Accepted components: {", ".join(accepted_components)}.'
             )
 
-        component = values.get('component')
+        component = values.data.get('component')
         if not component:
             return definition
 
@@ -754,7 +753,8 @@ class PlotlyGraphObjectAnnotation(BaseModel):
         if not self.data or not isinstance(self.data, dict):
             raise PlotlyError('data should be a dictionary containing plotly data.')
 
-    @validator('data')
+    @field_validator('data')
+    @classmethod
     def validate_data(cls, data):  # pylint: disable=no-self-argument
         assert isinstance(data, dict) and data, strip(
             f"""
@@ -956,9 +956,10 @@ class PlotAnnotation(AnnotationModel):
     """,
     )
 
-    @validator('y')
-    def validate_y(cls, y, values):  # pylint: disable=no-self-argument
-        x = values.get('x', [])
+    @field_validator('y')
+    @classmethod
+    def validate_y(cls, y, values):
+        x = values.data.get('x', [])
         if not isinstance(x, list):
             x = [x]
 
@@ -972,7 +973,8 @@ class PlotAnnotation(AnnotationModel):
 
         return y
 
-    @validator('x', 'y')
+    @field_validator('x', 'y')
+    @classmethod
     def validate_quantity_references(cls, value):  # pylint: disable=no-self-argument
         values = value if isinstance(value, list) else [value]
         for item in values:

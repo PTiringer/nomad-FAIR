@@ -3,6 +3,7 @@ import sys
 import importlib
 import warnings
 
+
 warnings.filterwarnings('ignore', message=r'v0\.17 of the `optimade` package.*')
 
 
@@ -16,6 +17,88 @@ sys.modules['optimade.server.logger'] = importlib.import_module(
     'nomad.app.optimade_logger'
 )
 
+from pydantic import Field, create_model
+from typing import Annotated
+
+
+# optimade v1.0.6 and higher has a custom str pattern validator that fails for the `_nmd` prefix
+# earlier versions fail pydantic validation for the default email field, so we will just patch the
+# models to accept any string.
+
+EntryInfoResource = create_model(
+    'EntryInfoResource',
+    formats=(
+        Annotated[
+            list[str],
+            Field(
+                description='List of output formats available for this type of entry.'
+            ),
+        ]
+    ),
+    description=(Annotated[str, Field(description='Description of the entry.')], ...),
+    properties=(
+        Annotated[
+            dict[str, dict],
+            Field(
+                description='A dictionary describing queryable properties for this entry type.'
+            ),
+        ],
+        ...,
+    ),
+    output_fields_by_format=(
+        Annotated[
+            dict[str, list[str]],
+            Field(description='Dictionary of available output fields.'),
+        ],
+        ...,
+    ),
+)
+
+EntryInfoResource = create_model(
+    'EntryInfoResource',
+    formats=(
+        Annotated[
+            list[str],
+            Field(
+                description='List of output formats available for this type of entry.'
+            ),
+        ]
+    ),
+    description=(Annotated[str, Field(description='Description of the entry.')], ...),
+    properties=(
+        Annotated[
+            dict[str, dict],
+            Field(
+                description='A dictionary describing queryable properties for this entry type.'
+            ),
+        ],
+        ...,
+    ),
+    output_fields_by_format=(
+        Annotated[
+            dict[str, list[str]],
+            Field(description='Dictionary of available output fields.'),
+        ],
+        ...,
+    ),
+)
+from optimade.models.optimade_json import Success
+
+
+class EntryInfoResponse(Success):
+    data: Annotated[  # type: ignore
+        EntryInfoResource,  # type: ignore
+        Field(description='OPTIMADE information for an entry endpoint.'),
+    ]
+
+
+for name, module in list(sys.modules.items()):
+    if 'optimade' in name and hasattr(module, 'EntryInfoResource'):
+        module.EntryInfoResource = EntryInfoResource  # type: ignore
+    if 'optimade' in name and hasattr(module, 'ValidIdentifier'):
+        module.ValidIdentifier = str  # type: ignore
+    if 'optimade' in name and hasattr(module, 'EntryInfoResponse'):
+        module.EntryInfoResponse = EntryInfoResponse  # type: ignore
 # patch optimade base path
 from nomad import utils  # nopep8
 from nomad.config import config

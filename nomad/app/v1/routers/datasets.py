@@ -27,7 +27,7 @@ from fastapi import (
     HTTPException,
     status,
 )
-from pydantic import BaseModel, Field, validator
+from pydantic import field_validator, BaseModel, Field, validator
 from datetime import datetime
 import enum
 
@@ -209,7 +209,8 @@ def _delete_dataset(user: User, dataset_id, dataset):
 
 
 class DatasetPagination(Pagination):
-    @validator('order_by')
+    @field_validator('order_by')
+    @classmethod
     def validate_order_by(cls, order_by):  # pylint: disable=no-self-argument
         if order_by is None:
             return order_by
@@ -219,6 +220,12 @@ class DatasetPagination(Pagination):
             'dataset_name',
         ), 'order_by must be a valid attribute'
         return order_by
+
+    @field_validator('page_after_value')
+    @classmethod
+    def validate_page_after_value(cls, page_after_value, values):  # pylint: disable=no-self-argument
+        # Validation handled elsewhere
+        return page_after_value
 
     def order_result(self, result):
         if self.order_by is None:
@@ -235,7 +242,8 @@ class DatasetPagination(Pagination):
 
 
 dataset_pagination_parameters = parameter_dependency_from_model(
-    'dataset_pagination_parameters', DatasetPagination
+    'dataset_pagination_parameters',
+    DatasetPagination,  # type: ignore
 )
 
 

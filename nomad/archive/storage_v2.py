@@ -638,7 +638,7 @@ class ArchiveReader(ArchiveItem):
         else:
             raise ValueError('not a file or path')
 
-        super().__init__(f, counter=counter)
+        super().__init__(f, counter=counter)  # type: ignore
 
         self._cache: dict = {}
         self._full_cache: dict = None  # type: ignore

@@ -18,12 +18,12 @@
 
 import logging
 from typing import List, Dict, Tuple, Any, Optional, Union, cast, TypeVar
-from pydantic import BaseModel, Field, root_validator, Extra  # pylint: disable=unused-import
+from pydantic import ConfigDict, model_validator, BaseModel, Field  # pylint: disable=unused-import
 
 ConfigBaseModelBound = TypeVar('ConfigBaseModelBound', bound='ConfigBaseModel')
 
 
-class ConfigBaseModel(BaseModel, extra=Extra.ignore):
+class ConfigBaseModel(BaseModel):
     """Customized base class that logs a warning when extra fields are specified."""
 
     def customize(
@@ -41,7 +41,7 @@ class ConfigBaseModel(BaseModel, extra=Extra.ignore):
 
         if custom_settings:
             if isinstance(custom_settings, BaseModel):
-                for field_name in custom_settings.__fields__.keys():
+                for field_name in custom_settings.model_fields.keys():
                     try:
                         setattr(rv, field_name, getattr(custom_settings, field_name))
                     except Exception:
@@ -57,9 +57,10 @@ class ConfigBaseModel(BaseModel, extra=Extra.ignore):
 
         return cast(ConfigBaseModelBound, rv)
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def __print_extra_field__(cls, values):  # pylint: disable=no-self-argument
-        extra_fields = values.keys() - cls.__fields__.keys()
+        extra_fields = values.keys() - cls.model_fields.keys()
 
         def list_items(items):
             return ', '.join([f'"{x}"' for x in items])
@@ -75,20 +76,24 @@ class ConfigBaseModel(BaseModel, extra=Extra.ignore):
 
         return values
 
+    model_config = ConfigDict(extra='ignore', coerce_numbers_to_str=True)
+
 
 class OptionsBase(ConfigBaseModel):
     """The most basic model for defining the availability of different options."""
 
     include: Optional[List[str]] = Field(
+        None,
         description="""
         List of included options. If not explicitly defined, all of the options will
         be included by default.
-    """
+    """,
     )
     exclude: Optional[List[str]] = Field(
+        None,
         description="""
         List of excluded options. Has higher precedence than include.
-    """
+    """,
     )
 
     def filter(self, value: str) -> bool:
@@ -105,14 +110,16 @@ class OptionsGlob(ConfigBaseModel):
     """
 
     include: Optional[List[str]] = Field(
+        None,
         description="""
         List of included options. Supports glob/wildcard syntax.
-    """
+    """,
     )
     exclude: Optional[List[str]] = Field(
+        None,
         description="""
         List of excluded options. Supports glob/wildcard syntax. Has higher precedence than include.
-    """
+    """,
     )
 
 
@@ -121,7 +128,7 @@ class Options(OptionsBase):
     elements and defining the configuration of each element.
     """
 
-    options: Optional[Dict[str, Any]] = Field(
+    options: Optional[Dict[str, Any]] = Field(  # type: ignore
         {}, description='Contains the available options.'
     )
 

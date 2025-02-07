@@ -205,7 +205,7 @@ class StreamedFile(BaseModel):
     file size and an associated path.
     """
 
-    f: Any
+    f: Any = None
     path: str
     size: int
 

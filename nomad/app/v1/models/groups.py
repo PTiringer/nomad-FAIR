@@ -1,6 +1,14 @@
 from typing import List, Optional, Set
 
-from pydantic import BaseModel, Field, root_validator, validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    root_validator,
+    validator,
+)
+from pydantic_core import PydanticCustomError
 
 from .pagination import Direction, Pagination, PaginationResponse
 
@@ -14,7 +22,7 @@ class UserGroupEdit(BaseModel):
         description=group_name_description,
         min_length=3,
         max_length=32,
-        regex=r'^[a-zA-Z0-9][a-zA-Z0-9 ._\-]+[a-zA-Z0-9]$',
+        pattern=r'^[a-zA-Z0-9][a-zA-Z0-9 ._\-]+[a-zA-Z0-9]$',
     )
     members: Optional[Set[str]] = Field(
         default=None, description=group_members_description
@@ -31,8 +39,7 @@ class UserGroup(BaseModel):
         default_factory=list, description=group_members_description
     )
 
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserGroupResponse(BaseModel):
@@ -53,10 +60,14 @@ class UserGroupQuery(BaseModel):
 
 
 class UserGroupPagination(Pagination):
-    @validator('order_by')
+    @field_validator('order_by')
+    @classmethod
     def validate_order_by(cls, order_by):  # pylint: disable=no-self-argument
         valid_fields = (None, 'group_id', 'group_name', 'owner')
-        assert order_by in valid_fields, f'order_by must be one of {valid_fields}'
+        if order_by not in valid_fields:
+            raise PydanticCustomError(
+                'invalid_order_by', f'order_by must be one of {valid_fields}'
+            )
         return order_by
 
     def order_result(self, result):

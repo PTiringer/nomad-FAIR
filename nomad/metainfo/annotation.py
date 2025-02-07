@@ -18,9 +18,9 @@
 
 from __future__ import annotations
 
-from typing import Any, ClassVar, ForwardRef
+from typing import Annotated, Any, ClassVar, ForwardRef, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import ConfigDict, BaseModel, Field
 
 
 class Annotation:
@@ -62,25 +62,24 @@ class AnnotationModel(Annotation, BaseModel):
     """
 
     m_definition: ForwardRef('Definition') = Field(  # type: ignore
-        None, description='The definition that this annotation is annotating.'
+        None,
+        description='The definition that this annotation is annotating.',
+        exclude=True,
     )
 
-    m_error: str = Field(None, description='Holds a potential validation error.')
+    m_error: str = Field(
+        None, description='Holds a potential validation error.', exclude=True
+    )
 
     m_registry: ClassVar[dict[str, type[AnnotationModel]]] = {}
     """ A static member that holds all currently known annotations with pydantic model. """
 
     def m_to_dict(self, *args, **kwargs):
-        return self.dict(exclude_unset=True)
+        return self.model_dump(exclude_unset=True)
 
-    class Config:
-        fields = {
-            'm_definition': {
-                'exclude': True,
-            },
-            'm_error': {'exclude': True},
-        }
-
-        validate_assignment = True
-        arbitrary_types_allowed = True
-        use_enum_values = True
+    model_config = ConfigDict(
+        extra='allow',
+        validate_assignment=True,
+        arbitrary_types_allowed=True,
+        use_enum_values=True,
+    )

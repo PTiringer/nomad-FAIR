@@ -235,6 +235,7 @@ def api_v1(monkeysession, user_molds):
 
     def call_test_client(method, url, *args, **kwargs):
         url = url.replace(f'{config.client.url}/v1/', '')
+        url = url.replace('/api/v1/', '')
         return getattr(test_client, method)(url, *args, **kwargs)
 
     monkeysession.setattr(

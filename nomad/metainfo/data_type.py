@@ -25,7 +25,7 @@ from base64 import b64decode, b64encode
 from datetime import datetime, date
 from functools import reduce
 from inspect import isclass
-from typing import Any as TypingAny
+from typing import Any as TypingAny, Optional
 from urllib.parse import urlparse, urlunparse
 
 import numpy as np
@@ -1278,19 +1278,19 @@ def to_pydantic_type(in_type: Datatype):
     standard_type = in_type.standard_type()
 
     if standard_type.startswith('int'):
-        return int
+        return Optional[int]
     if standard_type.startswith('float'):
-        return float
+        return Optional[float]
     if standard_type.startswith('complex'):
-        return complex
+        return Optional[complex]
     if standard_type == 'bool':
-        return bool
+        return Optional[bool]
     if standard_type in ('str', 'enum'):
-        return str
+        return Optional[str]
     if standard_type == 'datetime':
-        return datetime
+        return Optional[datetime]
     if standard_type == 'dict':
-        return dict
+        return Optional[dict]
 
     raise NotImplementedError(f'Unsupported pydantic data type {in_type}.')
 

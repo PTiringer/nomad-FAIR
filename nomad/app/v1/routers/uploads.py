@@ -21,7 +21,13 @@ import shutil
 from enum import Enum
 from datetime import datetime
 from typing import Tuple, List, Set, Dict, Any, Optional, Union, cast
-from pydantic import BaseModel, Field, validator
+from pydantic import (
+    field_validator,
+    ConfigDict,
+    BaseModel,
+    Field,
+    model_validator,
+)
 from mongoengine.queryset.visitor import Q
 from urllib.parse import unquote
 from fastapi import (
@@ -38,6 +44,7 @@ from fastapi import (
 )
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.exceptions import RequestValidationError
+from pydantic_core import PydanticCustomError
 
 from nomad import utils, files
 from nomad.common import is_safe_relative_path, is_safe_basename
@@ -118,17 +125,18 @@ class UploadRole(str, Enum):
 class ProcData(BaseModel):
     process_running: bool = Field(description='If a process is running')
     current_process: Optional[str] = Field(
-        description='Name of the current or last completed process'
+        None, description='Name of the current or last completed process'
     )
     process_status: str = Field(
         ProcessStatus.READY,
         description='The status of the current or last completed process',
     )
     last_status_message: Optional[str] = Field(
+        None,
         description='A short, human readable message from the current process, with '
         'information about what the current process is doing, or information '
         'about the completion (successful or not) of the last process, if no '
-        'process is currently running.'
+        'process is currently running.',
     )
     errors: List[str] = Field(
         descriptions='A list of error messages that occurred during the last processing'
@@ -137,54 +145,60 @@ class ProcData(BaseModel):
         description='A list of warning messages that occurred during the last processing'
     )
     complete_time: Optional[datetime] = Field(
-        description='Date and time of the completion of the last process'
+        None, description='Date and time of the completion of the last process'
     )
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UploadProcData(ProcData):
-    upload_id: str = Field(None, description='The unique id for the upload.')
+    upload_id: str = Field(description='The unique id for the upload.')
     upload_name: Optional[str] = Field(
+        None,
         description='The name of the upload. This can be provided during upload '
-        'using the `upload_name` query parameter.'
+        'using the `upload_name` query parameter.',
     )
-    upload_create_time: datetime = Field(
+    upload_create_time: Optional[datetime] = Field(
         None, description='Date and time of the creation of the upload.'
     )
-    main_author: str = Field(None, description=strip('The main author of the upload.'))
-    coauthors: List[str] = Field(None, description=strip('A list of upload coauthors.'))
-    coauthor_groups: List[str] = Field(
+    main_author: Optional[str] = Field(
+        None, description=strip('The main author of the upload.')
+    )
+    coauthors: Optional[List[str]] = Field(
+        None, description=strip('A list of upload coauthors.')
+    )
+    coauthor_groups: Optional[List[str]] = Field(
         None, description=strip('A list of upload coauthor groups.')
     )
-    reviewers: List[str] = Field(None, description=strip('A list of upload reviewers.'))
-    reviewer_groups: List[str] = Field(
+    reviewers: Optional[List[str]] = Field(
+        None, description=strip('A list of upload reviewers.')
+    )
+    reviewer_groups: Optional[List[str]] = Field(
         None, description=strip('A list of upload reviewer groups.')
     )
-    writers: List[str] = Field(
+    writers: Optional[List[str]] = Field(
         None, description=strip('All writer users (main author, upload coauthors).')
     )
-    writer_groups: List[str] = Field(
+    writer_groups: Optional[List[str]] = Field(
         None, description=strip('All writer groups (coauthor groups).')
     )
-    viewers: List[str] = Field(
+    viewers: Optional[List[str]] = Field(
         None,
         description=strip(
             'All viewer users (main author, upload coauthors, and reviewers)'
         ),
     )
-    viewer_groups: List[str] = Field(
+    viewer_groups: Optional[List[str]] = Field(
         None,
         description=strip('All viewer groups (coauthor groups, reviewer groups).'),
     )
     published: bool = Field(False, description='If this upload is already published.')
-    published_to: List[str] = Field(
+    published_to: Optional[List[str]] = Field(
         None,
         description='A list of other NOMAD deployments that this upload was uploaded to already.',
     )
     publish_time: Optional[datetime] = Field(
-        'Date and time of publication, if the upload has been published.'
+        None,
+        description='Date and time of publication, if the upload has been published.',
     )
     with_embargo: bool = Field(
         description='If the upload has an embargo set (embargo_length not equal to zero).'
@@ -207,23 +221,42 @@ class EntryProcData(ProcData):
     entry_id: str = Field()
     entry_create_time: datetime = Field()
     mainfile: str = Field()
-    mainfile_key: Optional[str] = Field()
+    mainfile_key: Optional[str] = Field(None)
     upload_id: str = Field()
     parser_name: str = Field()
-    entry_metadata: Optional[dict] = Field()
+    entry_metadata: Optional[dict] = Field(None)
 
 
 class UploadProcDataPagination(Pagination):
-    @validator('order_by', always=True)
-    def validate_order_by(cls, order_by):  # pylint: disable=no-self-argument
-        if order_by is None:
-            return 'upload_create_time'  # Default value
-        assert order_by in (
-            'upload_create_time',
-            'publish_time',
-            'upload_name',
-            'last_status_message',
-        ), 'order_by must be a valid attribute'
+    @model_validator(mode='before')
+    @classmethod
+    def check_order_by(cls, data):
+        if isinstance(data, dict):
+            order_by = data.get('order_by')
+            if order_by is None:
+                order_by = 'upload_create_time'  # Default value
+                data['order_by'] = order_by
+            if order_by not in (
+                'upload_create_time',
+                'publish_time',
+                'upload_name',
+                'last_status_message',
+            ):
+                raise PydanticCustomError(
+                    'invalid_order_by', 'order_by must be a valid attribute'
+                )
+        return data
+
+    @field_validator('page_after_value')
+    @classmethod
+    def validate_page_after_value(cls, page_after_value, values):
+        # Validation handled elsewhere
+        return page_after_value
+
+    @field_validator('order_by')
+    @classmethod
+    def validate_order_by(cls, order_by, values):
+        # Validation handled elsewhere
         return order_by
 
     def order_result(self, result):
@@ -241,25 +274,36 @@ class UploadProcDataPagination(Pagination):
 
 
 upload_proc_data_pagination_parameters = parameter_dependency_from_model(
-    'upload_proc_data_pagination_parameters', UploadProcDataPagination
+    'upload_proc_data_pagination_parameters',
+    UploadProcDataPagination,  # type: ignore
 )
 
 
 class EntryProcDataPagination(Pagination):
-    @validator('order_by')
+    @field_validator('order_by')
+    @classmethod
     def validate_order_by(cls, order_by):  # pylint: disable=no-self-argument
         if order_by == 'mainfile_path':
             return 'mainfile'
         if order_by is None:
             return 'mainfile'  # Default value
-        assert order_by in (
+        if order_by not in (
             'mainfile',
             'parser_name',
             'process_status',
             'current_process',
             'entry_create_time',
-        ), 'order_by must be a valid attribute'
+        ):
+            raise PydanticCustomError(
+                'invalid_order_by', 'order_by must be a valid attribute'
+            )
         return order_by
+
+    @field_validator('page_after_value')
+    @classmethod
+    def validate_page_after_value(cls, page_after_value, values):
+        # Validation handled elsewhere
+        return page_after_value
 
     def order_result(self, result):
         if self.order_by is None:
@@ -272,7 +316,8 @@ class EntryProcDataPagination(Pagination):
 
 
 entry_proc_data_pagination_parameters = parameter_dependency_from_model(
-    'entry_proc_data_pagination_parameters', EntryProcDataPagination
+    'entry_proc_data_pagination_parameters',
+    EntryProcDataPagination,  # type: ignore
 )
 
 
@@ -295,46 +340,53 @@ class UploadProcDataResponse(BaseModel):
 
 class UploadProcDataQuery(BaseModel):
     upload_id: Optional[List[str]] = Field(
-        description='Search for uploads matching the given id. Multiple values can be specified.'
+        None,
+        description='Search for uploads matching the given id. Multiple values can be specified.',
     )
     upload_name: Optional[List[str]] = Field(
-        description='Search for uploads matching the given upload_name. Multiple values can be specified.'
+        None,
+        description='Search for uploads matching the given upload_name. Multiple values can be specified.',
     )
     is_processing: Optional[bool] = Field(
+        None,
         description=strip(
             """
             If True, only include currently processing uploads.
             If False, do not include currently processing uploads.
             If unset, include everything."""
-        )
+        ),
     )
     is_published: Optional[bool] = Field(
+        None,
         description=strip(
             """
             If True: only include published uploads.
             If False: only include unpublished uploads.
             If unset: include everything."""
-        )
+        ),
     )
     process_status: Optional[str] = Field(
-        description=strip('Search by the process status.')
+        None, description=strip('Search by the process status.')
     )
     is_owned: Optional[bool] = Field(
+        None,
         description=strip(
             """
             If True: only include owned uploads.
             If False: only include shared uploads.
             If unset: include everything."""
-        )
+        ),
     )
 
-    @validator('process_status')
+    @field_validator('process_status')
+    @classmethod
     def upper_process_status(cls, process_status: str):  # pylint: disable=no-self-argument
         return process_status.upper() if process_status else None
 
 
 upload_proc_data_query_parameters = parameter_dependency_from_model(
-    'upload_proc_data_query_parameters', UploadProcDataQuery
+    'upload_proc_data_query_parameters',
+    UploadProcDataQuery,  # type: ignore
 )
 
 
@@ -393,13 +445,26 @@ class EntryProcDataQueryResponse(BaseModel):
 
 
 class RawDirPagination(Pagination):
-    @validator('order_by')
+    @field_validator('order_by')
+    @classmethod
     def validate_order_by(cls, order_by):  # pylint: disable=no-self-argument
         assert not order_by, 'Cannot specify `order_by` for rawdir calls'
+        if order_by:
+            raise PydanticCustomError(
+                'invalid_order_by', 'Cannot specify `order_by` for rawdir calls'
+            )
+
+    @field_validator('page_after_value')
+    @classmethod
+    def validate_page_after_value(cls, page_after_value, values):
+        # Validation handled elsewhere
+        return page_after_value
 
 
 rawdir_pagination_parameters = parameter_dependency_from_model(
-    'rawdir_pagination_parameters', RawDirPagination, exclude=['order', 'order_by']
+    'rawdir_pagination_parameters',
+    RawDirPagination,  # type: ignore
+    exclude=['order', 'order_by'],
 )
 
 
@@ -407,18 +472,20 @@ class RawDirFileMetadata(BaseModel):
     """Metadata about a file"""
 
     name: str = Field()
-    size: Optional[int] = Field()
+    size: Optional[int] = Field(None)
     entry_id: Optional[str] = Field(
+        None,
         description=strip(
             """
         If this is a mainfile: the ID of the corresponding entry."""
-        )
+        ),
     )
     parser_name: Optional[str] = Field(
+        None,
         description=strip(
             """
         If this is a mainfile: the name of the matched parser."""
-        )
+        ),
     )
 
 
@@ -432,36 +499,38 @@ class RawDirDirectoryMetadata(BaseModel):
     """Metadata about a directory"""
 
     name: str = Field()
-    size: Optional[int] = Field()
+    size: Optional[int] = Field(None)
     content: List[RawDirElementMetadata] = Field(
-        example=[
-            {'name': 'a_directory', 'is_file': False, 'size': 456},
-            {
-                'name': 'a_file.json',
-                'is_file': True,
-                'size': 123,
-                'entry_id': 'XYZ',
-                'parser_name': 'parsers/vasp',
-            },
+        examples=[
+            [
+                {'name': 'a_directory', 'is_file': False, 'size': 456},
+                {
+                    'name': 'a_file.json',
+                    'is_file': True,
+                    'size': 123,
+                    'entry_id': 'XYZ',
+                    'parser_name': 'parsers/vasp',
+                },
+            ]
         ]
     )
 
 
 class RawDirResponse(BaseModel):
-    path: str = Field(example='The/requested/path')
+    path: str = Field(examples=['The/requested/path'])
     access: str = Field()
-    file_metadata: Optional[RawDirFileMetadata] = Field()
-    directory_metadata: Optional[RawDirDirectoryMetadata] = Field()
-    pagination: Optional[PaginationResponse] = Field()
+    file_metadata: Optional[RawDirFileMetadata] = Field(None)
+    directory_metadata: Optional[RawDirDirectoryMetadata] = Field(None)
+    pagination: Optional[PaginationResponse] = Field(None)
 
 
 class ProcessingData(BaseModel):
     upload_id: str = Field()
     path: str = Field()
-    entry_id: Optional[str] = Field()
-    parser_name: Optional[str] = Field()
-    entry: Optional[EntryProcData] = Field()
-    archive: Optional[Dict[str, Any]] = Field()
+    entry_id: Optional[str] = Field(None)
+    parser_name: Optional[str] = Field(None)
+    entry: Optional[EntryProcData] = Field(None)
+    archive: Optional[Dict[str, Any]] = Field(None)
 
 
 class PutRawFileResponse(BaseModel):

@@ -219,19 +219,22 @@ class ResourceModel(BaseModel):
         """,
     )
     kind: Optional[str] = Field(
+        None,
         description="""
         Kind of the reference data, e.g. journal, online, book.
-        """
+        """,
     )
     comment: Optional[str] = Field(
+        None,
         description="""
         Annotations on the reference.
-        """
+        """,
     )
     database_version: Optional[str] = Field(
+        None,
         description="""
         Version of the database.
-        """
+        """,
     )
     # TODO include homepage, assign version and comment
 

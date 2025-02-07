@@ -32,8 +32,8 @@
 Allows to create pydantic models from section definitions.
 """
 
-from typing import cast, Type
-from pydantic import create_model, Field, BaseConfig, BaseModel
+from typing import Optional, cast, Type
+from pydantic import create_model, Field, BaseModel
 
 from .data_type import to_pydantic_type
 from .metainfo import (
@@ -42,10 +42,6 @@ from .metainfo import (
     Quantity,
 )
 from . import DefinitionAnnotation
-
-
-class _OrmConfig(BaseConfig):
-    orm_mode = True
 
 
 class PydanticModel(DefinitionAnnotation):
@@ -63,7 +59,7 @@ class PydanticModel(DefinitionAnnotation):
 
     def to_pydantic(self, section):
         """Returns the pydantic model instance for the given section."""
-        return self.model.from_orm(section)
+        return self.model(section)
 
     def init_annotation(self, definition: Definition):
         section_definition = cast(Section, definition)
@@ -78,5 +74,6 @@ class PydanticModel(DefinitionAnnotation):
             name: create_field(quantity)
             for name, quantity in section_definition.all_quantities.items()
         }
+        model_config = {'from_attributes': True}
 
-        self.model = create_model(name, __config__=_OrmConfig, **fields)
+        self.model = create_model(name, __config__=model_config, **fields)  # type: ignore

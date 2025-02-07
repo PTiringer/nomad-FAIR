@@ -149,7 +149,7 @@ def load_config() -> Config:
     _plugins = config_final['plugins']
     del config_final['plugins']
 
-    return Config.parse_obj(config_final)
+    return Config.model_validate(config_final)
 
 
 config = load_config()

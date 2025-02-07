@@ -55,8 +55,8 @@ class MyIntEnum(int, Enum):
         pytest.param(Enum, 'Enum', {Enum}, id='class'),
         pytest.param(
             Optional[WidgetHistogram],
-            'WidgetHistogram',
-            {WidgetHistogram},
+            'Optional[WidgetHistogram, NoneType]',
+            {WidgetHistogram, Union, type(None)},
             id='optional-ignored',
         ),
         pytest.param(
@@ -97,7 +97,7 @@ def test_field_type_info(type_, name, classes):
     class Test(BaseModel):
         a: type_ = Field()
 
-    name_found, classes_found = get_field_type_info(Test.__fields__['a'])
+    name_found, classes_found = get_field_type_info(Test.model_fields['a'])
     assert name_found == name
     assert classes_found == classes
 
@@ -113,7 +113,7 @@ def test_field_description(description):
     class Test(BaseModel):
         a: str = Field(description=description)
 
-    description_found = get_field_description(Test.__fields__['a'])
+    description_found = get_field_description(Test.model_fields['a'])
     assert description_found == description
 
 
@@ -134,7 +134,7 @@ def test_field_default(default, default_str):
     class Test(BaseModel):
         a: str = Field(default)
 
-    default_found = get_field_default(Test.__fields__['a'])
+    default_found = get_field_default(Test.model_fields['a'])
     assert default_found == default_str
 
 
@@ -150,7 +150,7 @@ def test_field_options(type_, options):
     class Test(BaseModel):
         a: type_ = Field()
 
-    options_found = get_field_options(Test.__fields__['a'])
+    options_found = get_field_options(Test.model_fields['a'])
     assert len(options_found) == len(options)
     for key in options_found:
         assert options_found[key] == options[key]
@@ -161,5 +161,5 @@ def test_field_deprecated(deprecated):
     class Test(BaseModel):
         a: str = Field(deprecated=deprecated)
 
-    deprecated_found = get_field_deprecated(Test.__fields__['a'])
+    deprecated_found = get_field_deprecated(Test.model_fields['a'])
     assert deprecated_found == deprecated

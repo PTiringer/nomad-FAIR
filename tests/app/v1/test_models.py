@@ -152,7 +152,7 @@ def test_module():
                         upload_name: 'wrong type'
             """,
             [],
-            'uploads.*.upload_name',
+            'uploads.*.GraphUploadRequest.upload_name',
             id='only-*-allowed-str',
         ),
         pytest.param(
@@ -162,14 +162,14 @@ def test_module():
                         n_entries: 'wrong type'
             """,
             [],
-            'uploads.*.n_entries',
+            'uploads.*.GraphUploadRequest.n_entries',
             id='only-*-allowed-other',
         ),
     ],
 )
 def test_validation(request_yaml: str, paths: List[str], error_path: str):
     try:
-        request = GraphRequest.parse_obj(yaml.safe_load(strip(request_yaml)))
+        request = GraphRequest.model_validate(yaml.safe_load(strip(request_yaml)))
     except ValidationError as error:
         assert error_path, str(error)
         assert len(error.errors()) == 1
@@ -202,7 +202,7 @@ def test_mapped(path_ref_prefix):
     assert target.p2 == 2
     assert target.p3 == 'p2'
     assert target.p4 == 'p4'
-    assert MyTarget.__fields__['p3'].field_info.description == 'docs'
+    assert MyTarget.model_fields['p3'].description == 'docs'
 
 
 class Recursive(BaseModel):
@@ -212,14 +212,14 @@ class Recursive(BaseModel):
 def test_recursive_model(path_ref_prefix):
     root_model = generate_request_model(Recursive)
 
-    root_schema = root_model.schema()
-    path_request_schema = root_schema['definitions']['RecursiveRequest']
+    root_schema = root_model.model_json_schema()
+    path_request_schema = root_schema['$defs']['RecursiveRequest']
     assert (
         path_request_schema['additionalProperties']['anyOf'][0]['$ref']
-        == '#/definitions/RecursiveRequest'
+        == '#/$defs/RecursiveRequest'
     )
 
-    root_model.parse_obj({'m_children': {'name': {'m_children': {}}}})
+    root_model.model_validate({'m_children': {'name': {'m_children': {}}}})
 
 
 def test_request_model(path_ref_prefix):
@@ -228,20 +228,20 @@ def test_request_model(path_ref_prefix):
     assert root_model.__module__ == 'nomad.app.v1.models.graph.graph_models'
     assert root_model.__name__ == 'GraphRequest'
 
-    root_schema = root_model.schema()
-    defs = root_schema['definitions']
+    root_schema = root_model.model_json_schema()
+    defs = root_schema['$defs']
     assert 'GraphUploadRequest' in defs
     assert [
         type['$ref']
         for type in defs['GraphUploadsRequest']['additionalProperties']['anyOf']
         if '$ref' in type
     ] == [
-        '#/definitions/GraphUploadRequest',
-        '#/definitions/UploadRequestOptions',
+        '#/$defs/GraphUploadRequest',
+        '#/$defs/UploadRequestOptions',
     ]
     assert 'required' not in defs['GraphUploadsRequest']
 
-    root_model.parse_obj(
+    root_model.model_validate(
         yaml.safe_load(
             strip(
                 """
@@ -263,20 +263,20 @@ def test_response_model(path_ref_prefix):
     assert root_model.__module__ == 'nomad.app.v1.models.graph.graph_models'
     assert root_model.__name__ == 'GraphResponse'
 
-    root_schema = root_model.schema()
-    defs = root_schema['definitions']
+    root_schema = root_model.model_json_schema()
+    defs = root_schema['$defs']
     assert 'GraphUploadResponse' in defs
     assert [
         type['$ref']
         for type in defs['GraphUploadsResponse']['additionalProperties']['anyOf']
         if '$ref' in type
     ] == [
-        f'#/definitions/GraphUploadResponse',
-        f'#/definitions/UploadResponseOptions',
+        f'#/$defs/GraphUploadResponse',
+        f'#/$defs/UploadResponseOptions',
     ]
     # assert defs["UploadsResponse"]["required"] == ["m_response"]
 
-    root_model.parse_obj(
+    root_model.model_validate(
         yaml.safe_load(
             strip(
                 """

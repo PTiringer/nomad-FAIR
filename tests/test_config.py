@@ -17,7 +17,7 @@
 #
 
 import os
-
+import re
 import pytest
 import yaml
 from pydantic import ValidationError
@@ -133,9 +133,10 @@ def test_config_warning(
         pytest.param(
             {'celery': {'timeout': 'not_a_number'}},
             (
-                r'1 validation error for Config\n'
-                r'celery -> timeout\n'
-                r'  value is not a valid integer \(type=type_error\.integer\)'
+                '1 validation error for Config\ncelery.timeout\n  '
+                'Input should be a valid integer, unable to parse string as an '
+                "integer [type=int_parsing, input_value='not_a_number', input_type=str]\n    "
+                'For further information visit https://errors.pydantic.dev/2.10/v/int_parsing'
             ),
             id='invalid type',
         ),
@@ -145,7 +146,7 @@ def test_config_warning(
 def test_config_error(config_dict, format, error, mockopen, monkeypatch):
     """Tests that validation errors raise exceptions."""
     conf_yaml, conf_env = load_format(config_dict, format)
-    with pytest.raises(ValidationError, match=error):
+    with pytest.raises(ValidationError, match=re.escape(error)):
         load_test_config(conf_yaml, conf_env, mockopen, monkeypatch)
 
 
@@ -333,7 +334,7 @@ def test_parser_plugins():
         for entry_point in config.plugins.entry_points.options.values()
         if isinstance(entry_point, (Parser, ParserEntryPoint))
     ]
-    assert len(parsers) == 71
+    assert len(parsers) == 72
 
 
 def test_plugin_polymorphism(mockopen, monkeypatch):
