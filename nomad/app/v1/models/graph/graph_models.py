@@ -18,7 +18,7 @@
 
 from __future__ import annotations
 from typing import Optional, List, Union, Any, Literal
-from pydantic import BaseModel, Field, Extra
+from pydantic import BaseModel, ConfigDict, Field, Extra
 
 from ..groups import UserGroup, UserGroupPagination, UserGroupQuery
 
@@ -76,7 +76,7 @@ class GraphFile(BaseModel):
     m_request: DirectoryRequestOptions
     path: str
     size: int
-    entry: Optional[GraphEntry]
+    entry: Optional[GraphEntry] = None
     # The old API also had those, but they can be grabbed from entry:
     # parser_name, entry_id, archive
     # This is similar to the question for "m_parent" in Directory. At least we need
@@ -89,7 +89,7 @@ class MSection(BaseModel):
     m_errors: List[Error]
     m_request: RecursionOptions
     m_def: MDef
-    m_children: Any
+    m_children: Any = None
 
 
 class MDef(MSection):
@@ -107,11 +107,11 @@ class GraphEntry(mapped(EntryProcData, mainfile='mainfile_path', entry_metadata=
 
 class EntriesRequestOptions(BaseModel):
     # The old API does not support any queries
-    pagination: Optional[EntryProcDataPagination]
+    pagination: Optional[EntryProcDataPagination] = None
 
 
 class EntriesResponseOptions(BaseModel):
-    pagination: Optional[PaginationResponse]
+    pagination: Optional[PaginationResponse] = None
     # The "upload" was only necessary, because in the old API you would not get the upload.
     # In the graph API, the upload would be the parent anyways
     # upload: Upload
@@ -125,7 +125,6 @@ class GraphEntries(BaseModel):
 
 class GraphUser(
     UserModel.m_def.m_get_annotation(PydanticModel).model,  # type: ignore
-    extra=Extra.forbid,
 ):
     # This is more complicated as the user can have different roles in different uploads.
     # This would only refer to uploads with the user as main_author.
@@ -133,6 +132,9 @@ class GraphUser(
     # more generic or only option
     uploads: Optional[GraphUploads]
     datasets: Optional[GraphDatasets]
+    model_config = ConfigDict(
+        extra='forbid',
+    )
 
 
 class GraphUsers(BaseModel):
@@ -150,7 +152,6 @@ class GraphUpload(
         viewers=List[GraphUser],
         writers=List[GraphUser],
     ),
-    extra=Extra.forbid,
 ):
     # The old API includes some extra data here:
     processing_successful: int = Field(
@@ -165,15 +166,19 @@ class GraphUpload(
         description="This upload's root directory for all files (raw data)."
     )
 
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+
 
 class UploadRequestOptions(BaseModel):
-    pagination: Optional[UploadProcDataPagination]
-    query: Optional[UploadProcDataQuery]
+    pagination: Optional[UploadProcDataPagination] = None
+    query: Optional[UploadProcDataQuery] = None
 
 
 class UploadResponseOptions(BaseModel):
-    pagination: Optional[PaginationResponse]
-    query: Optional[UploadProcDataQuery]
+    pagination: Optional[PaginationResponse] = None
+    query: Optional[UploadProcDataQuery] = None
 
 
 class GraphUploads(BaseModel):
@@ -185,15 +190,15 @@ class GraphUploads(BaseModel):
 
 class GraphEntryMetadata(BaseModel, extra=Extra.allow):
     entry: GraphEntry
-    m_children: Any
+    m_children: Any = None
 
 
 class SearchRequestOptions(BaseModel):
-    query: Optional[Metadata]
+    query: Optional[Metadata] = None
 
 
 class SearchResponseOptions(BaseModel):
-    query: Optional[MetadataResponse]
+    query: Optional[MetadataResponse] = None
 
 
 class GraphSearch(BaseModel):
@@ -208,13 +213,13 @@ class GraphDataset(mapped(DatasetV1, query=None, entries=None)):  # type: ignore
 
 
 class DatasetRequestOptions(BaseModel):
-    pagination: Optional[DatasetPagination]
-    query: Optional[DatasetQuery]
+    pagination: Optional[DatasetPagination] = None
+    query: Optional[DatasetQuery] = None
 
 
 class DatasetResponseOptions(BaseModel):
-    pagination: Optional[PaginationResponse]
-    query: Optional[DatasetQuery]
+    pagination: Optional[PaginationResponse] = None
+    query: Optional[DatasetQuery] = None
 
 
 class GraphDatasets(BaseModel):
@@ -225,13 +230,13 @@ class GraphDatasets(BaseModel):
 
 
 class MetainfoRequestOptions(BaseModel):
-    pagination: Optional[MetainfoPagination]
-    query: Optional[MetainfoQuery]
+    pagination: Optional[MetainfoPagination] = None
+    query: Optional[MetainfoQuery] = None
 
 
 class MetainfoResponseOptions(BaseModel):
-    pagination: Optional[PaginationResponse]
-    query: Optional[MetainfoQuery]
+    pagination: Optional[PaginationResponse] = None
+    query: Optional[MetainfoQuery] = None
 
 
 class GraphMetainfo(BaseModel):

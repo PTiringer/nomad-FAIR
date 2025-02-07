@@ -20,6 +20,8 @@ import pytest
 
 from nomad.config.models.ui import (
     App,
+    Axis,
+    AxisQuantity,
     Columns,
     Column,
     Rows,
@@ -107,3 +109,31 @@ def test_row_actions(original, final):
         selection=RowSelection(enabled=True),
     )
     assert rows.actions.items == final
+
+
+@pytest.mark.parametrize(
+    'original, model',
+    [
+        pytest.param(
+            {'unit': 'nm', 'search_quantity': 'some_molecule', 'scale': 'linear'},
+            Axis(title=None, unit='nm', quantity=None, search_quantity='some_molecule'),
+            id='Axis using old model',
+        ),
+        pytest.param(
+            AxisQuantity(
+                title=None,
+                unit='nm',
+                quantity=None,
+                search_quantity='some_molecule',
+                scale='linear',
+            ),
+            Axis(title=None, unit='nm', quantity=None, search_quantity='some_molecule'),
+            id='Axis old model (objects)',
+        ),
+    ],
+)
+def test_axis(original, model):
+    """Test the backwards compatibility of the Axis field."""
+
+    quantity = Axis.model_validate(original)
+    assert quantity == model

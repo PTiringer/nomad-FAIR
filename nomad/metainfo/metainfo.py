@@ -39,7 +39,7 @@ from urllib.parse import urlsplit, urlunsplit
 import docstring_parser
 import jmespath
 import pint
-from pydantic import parse_obj_as, ValidationError
+from pydantic import TypeAdapter, ValidationError
 from typing_extensions import deprecated  # type: ignore
 
 from nomad.config import config
@@ -1154,7 +1154,8 @@ class MSection(metaclass=MObjectMeta):
                     if isinstance(_data, AnnotationModel):
                         _annotation = _data
                     else:
-                        _annotation = parse_obj_as(_model, _data)
+                        adapter = TypeAdapter(_model)
+                        _annotation = adapter.validate_python(_data)
 
                     if isinstance(self, Definition):
                         _annotation.m_definition = self
@@ -4512,5 +4513,5 @@ SubSection.__init_cls__()
 
 is_initializing_proto = False  # noqa
 
-AnnotationModel.update_forward_refs(**locals())
+AnnotationModel.model_rebuild()
 SchemaPackage = Package

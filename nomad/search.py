@@ -54,7 +54,6 @@ from elasticsearch.exceptions import RequestError, TransportError
 from elasticsearch_dsl import A, Q, Search
 from elasticsearch_dsl.query import Query as EsQuery
 from pydantic import ValidationError
-from pydantic.error_wrappers import ErrorWrapper
 
 from nomad import datamodel, infrastructure, utils
 from nomad.app.v1.models import models
@@ -114,6 +113,7 @@ from nomad.metainfo.elasticsearch_extension import (
     update_materials,
     yaml_prefix,
 )
+from nomad.utils.pydantic import CustomErrorWrapper
 
 _metainfo_initialized = False
 
@@ -645,7 +645,7 @@ def _owner_es_query(
 
 class QueryValidationError(Exception):
     def __init__(self, error, loc):
-        self.errors = [ErrorWrapper(Exception(error), loc=loc)]
+        self.errors = [CustomErrorWrapper(Exception(error), loc=loc)]
 
 
 def get_quantity(definition, path, schema, doc_type):

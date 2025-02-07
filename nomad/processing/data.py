@@ -42,6 +42,8 @@ from typing import (
     Sequence,
     Union,
 )
+from pydantic import ValidationError
+from pydantic_core import InitErrorDetails, PydanticCustomError
 import rfc3161ng
 from mongoengine import (
     StringField,
@@ -63,7 +65,6 @@ import hashlib
 from structlog.processors import StackInfoRenderer, format_exc_info, TimeStamper
 import requests
 from fastapi.exceptions import RequestValidationError
-from pydantic.error_wrappers import ErrorWrapper
 import validators
 
 from nomad import (
@@ -127,6 +128,7 @@ from nomad.app.v1.models import (
 from nomad.app.v1.routers.metainfo import store_package_definition
 from nomad.search import update_metadata as es_update_metadata
 from nomad.config.models.config import Reprocess
+from nomad.utils.pydantic import CustomErrorWrapper
 
 section_metadata = datamodel.EntryArchive.metadata.name
 section_workflow = datamodel.EntryArchive.workflow2.name
@@ -219,7 +221,7 @@ def get_rfc3161_token(
         return None
 
     # when server requires authentication, use the provided credentials
-    params = dict(
+    params: dict[str, Any] = dict(
         username=username,
         password=password,
         hashname=hash_algorithm if hash_algorithm else 'sha256',
@@ -317,7 +319,9 @@ class MetadataEditRequestHandler:
         self.edit_request = edit_request
         self.upload_id = upload_id
 
-        self.errors: List[ErrorWrapper] = []  # A list of all encountered errors, if any
+        self.errors: List[
+            CustomErrorWrapper
+        ] = []  # A list of all encountered errors, if any
         self.edit_attempt_locs: List[
             Tuple[str, ...]
         ] = []  # locs where user has attempted to edit something
@@ -515,7 +519,7 @@ class MetadataEditRequestHandler:
 
     def _error(self, msg: str, loc: Union[str, Tuple[str, ...]]):
         """Registers an error associated with a particular location."""
-        self.errors.append(ErrorWrapper(Exception(msg), loc=loc))
+        self.errors.append(CustomErrorWrapper(Exception(msg), loc=loc))
         self.logger.error(msg, loc=loc)
 
     def _verify_metadata(

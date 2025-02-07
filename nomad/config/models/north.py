@@ -17,7 +17,7 @@
 #
 
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -46,17 +46,17 @@ class NORTHExternalMount(BaseModel):
 
 
 class NORTHTool(BaseModel):
-    short_description: str = Field(
+    short_description: Optional[str] = Field(
         None,
         description='A short description of the tool, e.g. shown in the NOMAD GUI.',
     )
-    description: str = Field(
+    description: Optional[str] = Field(
         None, description='A description of the tool, e.g. shown in the NOMAD GUI.'
     )
-    image: str = Field(
+    image: Optional[str] = Field(
         None, description='The docker image (incl. tags) to use for the tool.'
     )
-    cmd: str = Field(
+    cmd: Optional[str] = Field(
         None, description='The container cmd that is passed to the spawner.'
     )
     image_pull_policy: str = Field(
@@ -65,14 +65,14 @@ class NORTHTool(BaseModel):
     privileged: bool = Field(
         False, description='Whether the tool needs to run in privileged mode.'
     )
-    default_url: str = Field(
+    default_url: Optional[str] = Field(
         None,
         description=(
             'An optional path prefix that is added to the container URL to '
             'reach the tool, e.g. "/lab" for jupyterlab.'
         ),
     )
-    path_prefix: str = Field(
+    path_prefix: Optional[str] = Field(
         None,
         description=(
             'An optional path prefix that is added to the container URL to '
@@ -90,7 +90,7 @@ class NORTHTool(BaseModel):
         [],
         description='The file extensions of files that this tool should be launchable for.',
     )
-    mount_path: str = Field(
+    mount_path: Optional[str] = Field(
         None,
         description=(
             'The path in the container where uploads and work directories will be mounted, '
@@ -136,15 +136,15 @@ class NORTH(ConfigBaseModel):
     """,
     )
     hub_connect_url: str = Field(None, description=_jupyterhub_config_description)
-    hub_ip = Field('0.0.0.0', description=_jupyterhub_config_description)
+    hub_ip: str = Field('0.0.0.0', description=_jupyterhub_config_description)
     docker_network: str = Field(None, description=_jupyterhub_config_description)
-    hub_host = Field(
+    hub_host: str = Field(
         'localhost',
         description="""
         The internal host name that NOMAD services use to connect to the jupyterhub API.
     """,
     )
-    hub_port = Field(
+    hub_port: Union[int, str] = Field(
         9000,
         description="""
         The internal port that NOMAD services use to connect to the jupyterhub API.
@@ -155,7 +155,7 @@ class NORTH(ConfigBaseModel):
     nomad_host: str = Field(
         None, description='The NOMAD app host name that spawned containers use.'
     )
-    windows = Field(True, description='Enable windows OS hacks.')
+    windows: bool = Field(True, description='Enable windows OS hacks.')
     nomad_access_token_expiry_time: int = Field(
         24 * 3600,
         description=(

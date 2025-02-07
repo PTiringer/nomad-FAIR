@@ -26,16 +26,18 @@ import pydantic
 from fastapi import Body, HTTPException, Request
 from fastapi import Query as FastApiQuery
 from pydantic import (  # pylint: disable=unused-import
+    field_validator,
+    model_validator,
+    StringConstraints,
+    ConfigDict,
     BaseModel,
-    Extra,
     Field,
     StrictBool,
     StrictFloat,
     StrictInt,
-    root_validator,
-    validator,
 )
 from pydantic.main import create_model
+from pydantic_core import PydanticCustomError
 
 from nomad import datamodel, metainfo  # pylint: disable=unused-import
 from nomad.app.v1.utils import parameter_dependency_from_model
@@ -47,6 +49,8 @@ from nomad.metainfo.elasticsearch_extension import (
 from nomad.utils import strip
 
 from .pagination import Pagination, PaginationResponse
+from typing_extensions import Annotated
+
 
 User: Any = datamodel.User.m_def.a_pydantic.model
 # It is important that datetime.datetime comes last. Otherwise, number valued strings
@@ -96,54 +100,72 @@ class HTTPExceptionModel(BaseModel):
 
 
 class NoneEmptyBaseModel(BaseModel):
-    @root_validator
-    def check_exists(cls, values):  # pylint: disable=no-self-argument
-        assert any(value is not None for value in values.values())
-        return values
+    @model_validator(mode='before')
+    def check_exists(cls, data):
+        if isinstance(data, dict):
+            values = data.values()
+        else:
+            # Convert object attributes to dictionary, excluding private attributes
+            values = {
+                k: getattr(data, k) for k in dir(data) if not k.startswith('_')
+            }.values()
+
+        if not any(value is not None for value in values):
+            raise PydanticCustomError(
+                'no_values', 'At least one value must be provided'
+            )
+        return data
 
 
-class All(NoneEmptyBaseModel, extra=Extra.forbid):
+class All(NoneEmptyBaseModel):
     op: List[Value] = Field(None, alias='all')
 
+    model_config = ConfigDict(extra='forbid')
 
-class None_(NoneEmptyBaseModel, extra=Extra.forbid):
+
+class None_(NoneEmptyBaseModel):
     op: List[Value] = Field(None, alias='none')
 
+    model_config = ConfigDict(extra='forbid')
 
-class Any_(NoneEmptyBaseModel, extra=Extra.forbid):
+
+class Any_(NoneEmptyBaseModel):
     op: List[Value] = Field(None, alias='any')
 
+    model_config = ConfigDict(extra='forbid')
 
-class Range(BaseModel, extra=Extra.forbid):
+
+class Range(BaseModel):
     """
     Represents a finite range which can have open or closed ends. Supports
     several datatypes that have a well-defined comparison operator.
     """
 
-    @root_validator
-    def check_range_is_valid(cls, values):  # pylint: disable=no-self-argument
-        lt = values.get('lt')
-        lte = values.get('lte')
-        gt = values.get('gt')
-        gte = values.get('gte')
+    @model_validator(mode='after')  # type: ignore
+    @classmethod
+    def check_range_is_valid(cls, values, info):
+        lt = values.lt
+        lte = values.lte
+        gt = values.gt
+        gte = values.gte
 
-        # At least one value needs to be defined
-        assert (
-            (lt is not None)
-            or (lte is not None)
-            or (gt is not None)
-            or (gte is not None)
-        )
+        if not any([lt, lte, gt, gte]):
+            raise PydanticCustomError(
+                'range_undefined', 'At least one range boundary must be defined'
+            )
 
-        # The start/end can only be either open or closed, not both
-        if lt is not None:
-            assert lte is None
-        if lte is not None:
-            assert lt is None
-        if gt is not None:
-            assert gte is None
-        if gte is not None:
-            assert gt is None
+        # Check for conflicting open/closed bounds
+        if lt is not None and lte is not None:
+            raise PydanticCustomError(
+                'conflicting_bounds',
+                'Cannot specify both lt and lte for the same boundary',
+            )
+
+        if gt is not None and gte is not None:
+            raise PydanticCustomError(
+                'conflicting_bounds',
+                'Cannot specify both gt and gte for the same boundary',
+            )
 
         return values
 
@@ -151,6 +173,8 @@ class Range(BaseModel, extra=Extra.forbid):
     lte: Optional[ComparableValue] = Field(None)
     gt: Optional[ComparableValue] = Field(None)
     gte: Optional[ComparableValue] = Field(None)
+
+    model_config = ConfigDict(extra='forbid')
 
 
 ops = {
@@ -167,7 +191,8 @@ CriteriaValue = Union[Value, List[Value], Range, Any_, All, None_, Dict[str, Any
 
 
 class LogicalOperator(NoneEmptyBaseModel):
-    @validator('op', check_fields=False)
+    @field_validator('op', check_fields=False)
+    @classmethod
     def validate_query(cls, query):  # pylint: disable=no-self-argument
         if isinstance(query, list):
             return [_validate_query(item) for item in query]
@@ -178,46 +203,76 @@ class LogicalOperator(NoneEmptyBaseModel):
 class And(LogicalOperator):
     op: List['Query'] = Field(None, alias='and')
 
+    @model_validator(mode='before')
+    @classmethod
+    def validate(cls, data):
+        if 'and' in data:
+            return data
+        else:
+            return False
+
 
 class Or(LogicalOperator):
     op: List['Query'] = Field(None, alias='or')
 
+    @model_validator(mode='before')
+    @classmethod
+    def validate(cls, data):
+        if 'or' in data:
+            return data
+        else:
+            return False
+
 
 class Not(LogicalOperator):
     op: 'Query' = Field(None, alias='not')
+
+    @model_validator(mode='before')
+    @classmethod
+    def validate(cls, data):
+        if 'not' in data:
+            return data
+        else:
+            return False
 
 
 class Nested(BaseModel):
     prefix: str
     query: 'Query'
 
-    @validator('query')
+    @field_validator('query')
+    @classmethod
     def validate_query(cls, query):  # pylint: disable=no-self-argument
         return _validate_query(query)
 
 
-class Criteria(BaseModel, extra=Extra.forbid):
+class Criteria(BaseModel):
     name: str
     value: CriteriaValue
 
-    @validator('value')
-    def validate_query(cls, value, values):  # pylint: disable=no-self-argument
-        name, value = _validate_criteria_value(values['name'], value)
-        values['name'] = name
+    @field_validator('value', mode='before')
+    @classmethod
+    def validate_query(cls, field_value, info):
+        data = info.data
+        name, value = _validate_criteria_value(data['name'], field_value)
+        data['name'] = name
         return value
 
+    model_config = ConfigDict(extra='forbid')
 
-class Empty(BaseModel, extra=Extra.forbid):
+
+class Empty(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     pass
 
 
 Query = Union[And, Or, Not, Nested, Criteria, Empty, Mapping[str, CriteriaValue]]
 
 
-And.update_forward_refs()
-Or.update_forward_refs()
-Not.update_forward_refs()
-Nested.update_forward_refs()
+And.model_rebuild()
+Or.model_rebuild()
+Not.model_rebuild()
+Nested.model_rebuild()
 
 
 query_documentation = strip(
@@ -340,12 +395,12 @@ class WithQuery(BaseModel):
         },
     )
 
-    @validator('query')
+    @field_validator('query')
+    @classmethod
     def validate_query(cls, query):  # pylint: disable=no-self-argument
         return _validate_query(query)
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 def _validate_criteria_value(name: str, value: CriteriaValue):
@@ -369,9 +424,11 @@ def _validate_query(query: Query):
         for key, value in list(query.items()):
             quantity, value = _validate_criteria_value(key, value)
             if quantity != key:
-                assert quantity not in query, (
-                    'a quantity can only appear once in a query'
-                )
+                if quantity in query:
+                    raise PydanticCustomError(
+                        'duplicate_quantity',
+                        'A quantity can only appear once in a query',
+                    )
                 del query[key]
             query[quantity] = value
 
@@ -547,8 +604,9 @@ class MetadataRequired(BaseModel):
     )
 
 
-metadata_required_parameters = parameter_dependency_from_model(
-    'metadata_required_parameters', MetadataRequired
+metadata_required_parameters = parameter_dependency_from_model(  # type: ignore
+    'metadata_required_parameters',
+    MetadataRequired,  # type: ignore
 )
 
 
@@ -568,12 +626,19 @@ class MetadataBasedPagination(Pagination):
         ),
     )
 
-    @validator('order_by')
+    @field_validator('order_by')
+    @classmethod
     def validate_order_by(cls, order_by):  # pylint: disable=no-self-argument
         # No validation here – validation is done during search
         if order_by == 'mainfile_path':
             return 'mainfile'
         return order_by
+
+    @field_validator('page_after_value')
+    @classmethod
+    def validate_page_after_value(cls, page_after_value, values):  # pylint: disable=no-self-argument
+        # No validation here – validation is done during search
+        return page_after_value
 
 
 class MetadataPagination(MetadataBasedPagination):
@@ -604,24 +669,31 @@ class MetadataPagination(MetadataBasedPagination):
         ),
     )
 
-    @validator('page')
+    @field_validator('page')
+    @classmethod
     def validate_page(cls, page, values):  # pylint: disable=no-self-argument
         if page is not None:
-            assert page > 0, 'Page has to be larger than 1.'
-            assert page * values.get('page_size', 10) < 10000, (
-                'Pagination by `page` is limited to 10.000 entries.'
-            )
-
+            if page <= 0:
+                raise PydanticCustomError('bad_page', 'Page has to be larger than 1')
+            if page * values.data.get('page_size', 10) >= 10000:
+                raise PydanticCustomError(
+                    'bad_page', 'Pagination by `page` is limited to 10.000 entries.'
+                )
         return page
 
-    @validator('page_offset')
+    @field_validator('page_offset')
+    @classmethod
     def validate_page_offset(cls, page_offset, values):  # pylint: disable=no-self-argument
         if page_offset is not None:
-            assert page_offset >= 0, 'Page offset has to be larger than 0.'
-            assert page_offset + values.get('page_size', 10) < 10000, (
-                'Page offset plus page size has to be smaller thant 10.0000.'
-            )
-
+            if page_offset < 0:
+                raise PydanticCustomError(
+                    'bad_page_offset', 'Page offset has to be larger than 0'
+                )
+            if page_offset + values.data.get('page_size', 10) >= 10000:
+                raise PydanticCustomError(
+                    'bad_page_offset',
+                    'Page offset plus page size has to be smaller than 10,000',
+                )
         return page_offset
 
     def order_result(self, result):
@@ -629,7 +701,8 @@ class MetadataPagination(MetadataBasedPagination):
 
 
 metadata_pagination_parameters = parameter_dependency_from_model(
-    'metadata_pagination_parameters', MetadataPagination
+    'metadata_pagination_parameters',
+    MetadataPagination,  # type: ignore
 )
 
 
@@ -654,23 +727,29 @@ class AggregationPagination(MetadataBasedPagination):
         ),
     )
 
-    @validator('page')
-    def validate_page(cls, page, values):  # pylint: disable=no-self-argument
-        assert page is None, (
-            'Pagination by `page` is not possible for aggregations, use `page_after_value`'
-        )
+    @field_validator('page')
+    @classmethod
+    def validate_page(cls, page, values):
+        if page is not None:
+            raise PydanticCustomError(
+                'invalid_page',
+                'Pagination by `page` is not possible for aggregations, use `page_after_value`',
+            )
         return page
 
-    @validator('page_size')
-    def validate_page_size(cls, page_size, values):  # pylint: disable=no-self-argument
-        assert page_size > 0, (
-            '0 or smaller page sizes are not allowed for aggregations.'
-        )
+    @field_validator('page_size')
+    @classmethod
+    def validate_page_size(cls, page_size, values):
+        if page_size <= 0:
+            raise PydanticCustomError(
+                'invalid_page_size',
+                '0 or smaller page sizes are not allowed for aggregations.',
+            )
         return page_size
 
 
 class AggregatedEntities(BaseModel):
-    size: Optional[pydantic.conint(gt=0)] = Field(  # type: ignore
+    size: Optional[Annotated[int, Field(gt=0)]] = Field(  # type: ignore
         1,
         description=strip(
             """
@@ -722,7 +801,7 @@ class QuantityAggregation(AggregationBase):
 
 
 class BucketAggregation(QuantityAggregation):
-    metrics: Optional[List[str]] = Field(
+    metrics: Optional[List[str]] = Field(  # type: ignore
         [],
         description=strip(
             """
@@ -750,7 +829,7 @@ class TermsAggregation(BucketAggregation):
         """
         ),
     )
-    size: Optional[pydantic.conint(gt=0)] = Field(  # type: ignore
+    size: Optional[Annotated[int, Field(gt=0)]] = Field(  # type: ignore
         None,
         description=strip(
             """
@@ -761,7 +840,9 @@ class TermsAggregation(BucketAggregation):
         ),
     )
     include: Optional[  # type: ignore
-        Union[List[str], pydantic.constr(regex=r'^[a-zA-Z0-9_\-\s]+$')]
+        Union[
+            List[str], Annotated[str, StringConstraints(pattern=r'^[a-zA-Z0-9_\-\s]+$')]
+        ]
     ] = Field(
         None,
         description=strip(
@@ -787,21 +868,23 @@ class TermsAggregation(BucketAggregation):
 
 class Bounds(BaseModel):
     min: Optional[float] = Field(
+        None,
         description=strip(
             """
         Start value for the histogram.
         """
-        )
+        ),
     )
     max: Optional[float] = Field(
+        None,
         description=strip(
             """
         Ending value for the histogram.
         """
-        )
+        ),
     )
 
-    @root_validator
+    @model_validator(mode='before')
     def check_order(cls, values):  # pylint: disable=no-self-argument
         min = values.get('min')
         max = values.get('max')
@@ -814,7 +897,7 @@ class Bounds(BaseModel):
 
 
 class HistogramAggregation(BucketAggregation):
-    interval: float = Field(
+    interval: Optional[float] = Field(
         None,
         gt=0,
         description=strip(
@@ -824,7 +907,7 @@ class HistogramAggregation(BucketAggregation):
         """
         ),
     )
-    buckets: int = Field(
+    buckets: Optional[int] = Field(
         None,
         gt=0,
         description=strip(
@@ -838,10 +921,10 @@ class HistogramAggregation(BucketAggregation):
         """
         ),
     )
-    offset: float = Field(None, gte=0)
-    extended_bounds: Optional[Bounds]
+    offset: Optional[float] = Field(None, gte=0)
+    extended_bounds: Optional[Bounds] = None
 
-    @root_validator
+    @model_validator(mode='before')
     def check_bucketing(cls, values):  # pylint: disable=no-self-argument
         interval = values.get('interval')
         buckets = values.get('buckets')
@@ -872,7 +955,7 @@ class MinMaxAggregation(QuantityAggregation):
 
 
 class StatisticsAggregation(AggregationBase):
-    metrics: Optional[List[str]] = Field(
+    metrics: Optional[List[str]] = Field(  # type: ignore
         [],
         description=strip(
             """
@@ -1118,24 +1201,27 @@ class MetadataEditListAction(BaseModel):
     """
 
     set: Optional[Union[str, List[str]]] = Field(
+        None,
         description=strip(
             """
         Value(s) to set. Note, a set-operation overwrites the old list with the provided list.
         If a set-operation is specified, it is therefore not possible to also specify an
         add- or remove-operation."""
-        )
+        ),
     )
     add: Optional[Union[str, List[str]]] = Field(
+        None,
         description=strip(
             """
         Value(s) to add to the list"""
-        )
+        ),
     )
     remove: Optional[Union[str, List[str]]] = Field(
+        None,
         description=strip(
             """
         Value(s) to remove from the list"""
-        )
+        ),
     )
 
 
@@ -1154,11 +1240,13 @@ for quantity in datamodel.EditableUserMetadata.m_def.definitions:
         description = None
     _metadata_edit_actions_fields[quantity.name] = (
         Optional[pydantic_type],
-        Field(description=description),
+        Field(None, description=description),
     )
 
 MetadataEditActions = create_model(
-    'MetadataEditActions', **_metadata_edit_actions_fields
+    'MetadataEditActions',
+    **_metadata_edit_actions_fields,
+    __config__={'coerce_numbers_to_str': True},
 )  # type: ignore
 
 
@@ -1166,18 +1254,20 @@ class MetadataEditRequest(WithQuery):
     """Defines a request to edit metadata."""
 
     metadata: Optional[MetadataEditActions] = Field(  # type: ignore
+        None,
         description=strip(
             """
             Metadata to set, on the upload and/or selected entries."""
-        )
+        ),
     )
     entries: Optional[Dict[str, MetadataEditActions]] = Field(  # type: ignore
+        None,
         description=strip(
             """
             An optional dictionary, specifying metadata to set on individual entries. The field
             `entries_metadata_key` defines which type of key is used in the dictionary to identify
             the entries. Note, only quantities defined on the entry level can be set using this method."""
-        )
+        ),
     )
     entries_key: Optional[str] = Field(
         default='entry_id',
@@ -1240,7 +1330,8 @@ class Files(BaseModel):
         ),
     )
 
-    @validator('glob_pattern')
+    @field_validator('glob_pattern')
+    @classmethod
     def validate_glob_pattern(cls, glob_pattern):  # pylint: disable=no-self-argument
         # compile the glob pattern into re
         if glob_pattern is None:
@@ -1248,7 +1339,8 @@ class Files(BaseModel):
 
         return re.compile(fnmatch.translate(glob_pattern) + r'$')
 
-    @validator('re_pattern')
+    @field_validator('re_pattern')
+    @classmethod
     def validate_re_pattern(cls, re_pattern):  # pylint: disable=no-self-argument
         # compile an re
         if re_pattern is None:
@@ -1256,24 +1348,27 @@ class Files(BaseModel):
         try:
             return re.compile(re_pattern)
         except re.error as e:
-            assert False, 'could not parse the re pattern: %s' % e
+            raise PydanticCustomError(
+                'invalid_pattern', 'could not parse the re pattern: %s' % e
+            )
 
-    @root_validator()
+    @model_validator(mode='after')
+    @classmethod
     def vaildate(cls, values):  # pylint: disable=no-self-argument
         # use the compiled glob pattern as re
-        if values.get('re_pattern') is None:
-            values['re_pattern'] = values.get('glob_pattern')
+        if values.re_pattern is None:
+            values.re_pattern = values.glob_pattern
 
-        if values.get('include_files') is not None:
-            files = values['include_files']
-            values['re_pattern'] = re.compile(
+        if values.include_files is not None:
+            files = values.include_files
+            values.re_pattern = re.compile(
                 f'({"|".join([re.escape(f) for f in files])})$'
             )
 
         return values
 
 
-files_parameters = parameter_dependency_from_model('files_parameters', Files)
+files_parameters = parameter_dependency_from_model('files_parameters', Files)  # type: ignore
 
 
 class Bucket(BaseModel):
@@ -1291,7 +1386,7 @@ class Bucket(BaseModel):
             aggregations on non nested quantities."""
         ),
     )
-    metrics: Optional[Dict[str, int]]
+    metrics: Optional[Dict[str, int]] = None
 
     value: Union[StrictBool, float, str]
 
@@ -1303,7 +1398,7 @@ class BucketAggregationResponse(BaseModel):
 
 
 class TermsAggregationResponse(BucketAggregationResponse, TermsAggregation):
-    pagination: Optional[PaginationResponse]  # type: ignore
+    pagination: Optional[PaginationResponse] = None  # type: ignore
 
 
 class HistogramAggregationResponse(BucketAggregationResponse, HistogramAggregation):
@@ -1329,27 +1424,27 @@ class MinMaxAggregationResponse(MinMaxAggregation):
 
 
 class StatisticsAggregationResponse(StatisticsAggregation):
-    data: Optional[Dict[str, int]]
+    data: Optional[Dict[str, int]] = None
 
 
 class AggregationResponse(Aggregation):
-    terms: Optional[TermsAggregationResponse]
-    histogram: Optional[HistogramAggregationResponse]
-    date_histogram: Optional[DateHistogramAggregationResponse]
-    auto_date_histogram: Optional[AutoDateHistogramAggregationResponse]
-    min_max: Optional[MinMaxAggregationResponse]
-    statistics: Optional[StatisticsAggregationResponse]
+    terms: Optional[TermsAggregationResponse] = None
+    histogram: Optional[HistogramAggregationResponse] = None
+    date_histogram: Optional[DateHistogramAggregationResponse] = None
+    auto_date_histogram: Optional[AutoDateHistogramAggregationResponse] = None
+    min_max: Optional[MinMaxAggregationResponse] = None
+    statistics: Optional[StatisticsAggregationResponse] = None
 
 
 class CodeResponse(BaseModel):
     curl: str
     requests: str
-    nomad_lab: Optional[str]
+    nomad_lab: Optional[str] = None
 
 
 class MetadataResponse(Metadata):
     pagination: PaginationResponse = None  # type: ignore
-    aggregations: Optional[Dict[str, AggregationResponse]]  # type: ignore
+    aggregations: Optional[Dict[str, AggregationResponse]] = None  # type: ignore
 
     data: List[Dict[str, Any]] = Field(
         None,
@@ -1360,7 +1455,7 @@ class MetadataResponse(Metadata):
         ),
     )
 
-    code: Optional[CodeResponse]
+    code: Optional[CodeResponse] = None
     es_query: Any = Field(
         None,
         description=strip(

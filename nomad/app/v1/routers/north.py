@@ -54,13 +54,13 @@ class ToolStateEnum(str, Enum):
 
 class ToolModel(NORTHTool):
     name: str
-    state: Optional[ToolStateEnum]
+    state: Optional[ToolStateEnum] = None
 
 
 class ToolResponseModel(BaseModel):
     tool: str
     username: str
-    upload_mount_dir: Optional[str]
+    upload_mount_dir: Optional[str] = None
     data: ToolModel
 
 

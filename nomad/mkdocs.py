@@ -24,7 +24,6 @@ import yaml
 import json
 from enum import Enum
 from pydantic import BaseModel
-from pydantic.fields import ModelField
 import os.path
 from typing import List, Set, Tuple, Any, Optional, Dict
 from typing_extensions import Literal, _AnnotatedAlias  # type: ignore
@@ -49,7 +48,7 @@ doc_snippets = {
 }
 
 
-def get_field_type_info(field: ModelField) -> Tuple[str, Set[Any]]:
+def get_field_type_info(field) -> Tuple[str, Set[Any]]:
     """Used to recursively walk through a type definition, building up a cleaned
     up type name and returning all of the classes that were used.
 
@@ -62,7 +61,7 @@ def get_field_type_info(field: ModelField) -> Tuple[str, Set[Any]]:
     """
     # Notice that pydantic does not store the full type in field.type_, but instead in
     # field.outer_type_
-    type_ = field.outer_type_
+    type_ = field.annotation
     type_name: List[str] = []
     models = set()
 
@@ -130,7 +129,7 @@ def get_field_type_info(field: ModelField) -> Tuple[str, Set[Any]]:
     return ''.join(type_name), models
 
 
-def get_field_description(field: ModelField) -> Optional[str]:
+def get_field_description(field) -> Optional[str]:
     """Retrieves the description for a pydantic field as a markdown string.
 
     Args:
@@ -139,7 +138,7 @@ def get_field_description(field: ModelField) -> Optional[str]:
     Returns:
         Markdown string for the description.
     """
-    value = field.field_info.description
+    value = field.description
     if value:
         value = utils.strip(value)
         value = value.replace('\n\n', '<br/>').replace('\n', ' ')
@@ -147,7 +146,7 @@ def get_field_description(field: ModelField) -> Optional[str]:
     return value
 
 
-def get_field_default(field: ModelField) -> Optional[str]:
+def get_field_default(field) -> Optional[str]:
     """Retrieves the default value from a pydantic field as a markdown string.
 
     Args:
@@ -167,7 +166,7 @@ def get_field_default(field: ModelField) -> Optional[str]:
     return default_value
 
 
-def get_field_options(field: ModelField) -> Dict[str, Optional[str]]:
+def get_field_options(field) -> Dict[str, Optional[str]]:
     """Retrieves a dictionary of value-description pairs from a pydantic field.
 
     Args:
@@ -178,13 +177,13 @@ def get_field_options(field: ModelField) -> Dict[str, Optional[str]]:
         this field. The description may be None indicating that it does not exist.
     """
     options: Dict[str, Optional[str]] = {}
-    if isclass(field.type_) and issubclass(field.type_, Enum):
-        for x in field.type_:
+    if isclass(field.annotation) and issubclass(field.annotation, Enum):
+        for x in field.annotation:
             options[str(x.value)] = None
     return options
 
 
-def get_field_deprecated(field: ModelField) -> bool:
+def get_field_deprecated(field) -> bool:
     """Returns whether the given pydantic field is deprecated or not.
 
     Args:
@@ -193,7 +192,7 @@ def get_field_deprecated(field: ModelField) -> bool:
     Returns:
         Whether the field is deprecated.
     """
-    return field.field_info.extra.get('deprecated', False)
+    return field.deprecated
 
 
 class MyYamlDumper(yaml.Dumper):
@@ -286,20 +285,20 @@ def define_env(env):
         from nomad.config.models.config import Config
 
         results = ''
-        for field in Config.__fields__.values():
-            if models and field.name not in models:
+        for field in Config.model_fields.values():
+            if models and field.title not in models:
                 continue
 
-            if not models and field.name in exported_config_models:
+            if not models and field.title in exported_config_models:
                 continue
 
-            results += pydantic_model_from_model(field.type_, field.name)
+            results += pydantic_model_from_model(field.annotation, field.title)
             results += '\n\n'
 
         return results
 
     def pydantic_model_from_model(model, name=None, heading=None, hide=[]):
-        fields = model.__fields__
+        fields = model.model_fields
         required_models = set()
         if not name:
             exported_config_models.add(model.__name__)

@@ -73,9 +73,6 @@ def test_upload_and_download(
     monkeypatch.setattr('nomad.config.process.add_definition_id_to_reference', True)
     monkeypatch.setattr('nomad.config.process.write_definition_id_to_archive', True)
 
-    monkeypatch.setattr('requests.get', getattr(client, 'get'))
-    monkeypatch.setattr('requests.post', getattr(client, 'post'))
-
     m_def = '../upload/raw/schema.archive.json#/definitions/section_definitions/1'
 
     def client_context():

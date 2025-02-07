@@ -35,17 +35,14 @@ from typing import (
 from datetime import datetime
 from pydantic import (
     BaseModel,
-    BaseConfig,
+    ConfigDict,
+    TypeAdapter,
     create_model,
-    Extra,
     Field,
-    root_validator,
+    model_validator,
     ValidationError,
-    parse_obj_as,
 )
-from pydantic.error_wrappers import ErrorWrapper
-from pydantic.typing import evaluate_forwardref
-from pydantic.config import inherit_config
+from pydantic.config import ConfigDict as BaseConfigDict
 import sys
 
 
@@ -55,83 +52,115 @@ response_suffix = 'Response'
 graph_model_export = False
 
 
+def json_schema_extra(schema: dict[str, Any], model: Type[_DictModel]) -> None:
+    if 'm_children' not in model.__annotations__:
+        raise TypeError(
+            f'No m_children field defined for dict model {model.__name__}. '
+        )
+    children_annotation = model.__annotations__['m_children']
+    value_type = get_args(get_args(children_annotation)[0])[1]
+    if value_type is None:
+        raise TypeError(
+            f"Could not determine m_children's type. Did you miss to call update_forward_refs()?"
+        )
+
+    if get_origin(value_type) == Union:
+        value_types = get_args(value_type)
+    else:
+        value_types = (value_type,)
+
+    types = []
+    hasAny = False
+    for value_type in value_types:
+        if value_type == Any:
+            hasAny = True
+            break
+
+        if isinstance(value_type, ForwardRef):
+            value_type = value_type.__forward_value__
+
+        if value_type == Literal['*']:
+            types.append({'enum': ['*'], 'type': 'string'})
+        else:
+            # This forces all model names to be unique. Pydandic
+            # replaces non unique model names with qualified names.
+            # We are just using the plain name here. Unfortunately,
+            # there is no way to get the "long_model_name" map from pydantic
+            # to put the right names here. Therefore, in the presence
+            # of non-unique names, we are using the wrong referenes.
+            # Things depending on the openapi schema will cause issues.
+            # i.e. https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/issues/1958
+            module_name = value_type.__module__
+            full_class_name = f'{module_name}.{value_type.__qualname__}'.replace(
+                '.', '__'
+            )
+            types.append({'$ref': f'#/$defs/{full_class_name}-Input__1'})
+
+    if 'properties' in schema:
+        for property in schema['properties'].values():
+            # Collect $ref if present
+            if '$ref' in property:
+                types.append(property)
+
+            # Check for nested references inside anyOf
+            types.extend(ref for ref in property.get('anyOf', []) if '$ref' in ref)
+
+        schema['properties'].pop('m_children')
+
+    if hasAny:
+        schema['additionalProperties'] = True
+    else:
+        schema['additionalProperties'] = {'anyOf': types}
+
+
 class _DictModel(BaseModel):
     @classmethod
     def process_extra(cls, values):
+        if not isinstance(values, dict):
+            return values
         m_children = values.setdefault('m_children', {})
-        type_ = cls.__fields__['m_children'].type_
+        type_ = cls.model_fields['m_children'].annotation
         for name in list(values):
-            if name not in cls.__fields__:
+            if name not in cls.model_fields:
                 value = values[name]
                 values.pop(name)
                 try:
-                    m_children[name] = parse_obj_as(type_, value)
+                    value = TypeAdapter(type_).validate_python({name: value})[name]
+                    m_children[name] = value
                 except ValidationError as exc:
                     # m_children is always a Union and the last possible type is
                     # Literal['*']. Respectively the last validation errors comes from
                     # this type. It is usually confusing and not helpful to the user.
                     # Therefore, we pop it.
-                    if len(exc.raw_errors) > 1:
-                        exc.raw_errors.pop()  # pylint: disable=no-member
-                    raise ValidationError([ErrorWrapper(exc, loc=name)], cls)
+                    errors = exc.errors()
+                    if len(errors) > 1:
+                        errors.pop()
+                    raise ValidationError.from_exception_data(
+                        title=name, line_errors=errors
+                    )
 
         return values
 
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(
+        extra='allow',
+        json_schema_extra=json_schema_extra,
+    )
 
-        @staticmethod
-        def schema_extra(schema: dict[str, Any], model: Type[_DictModel]) -> None:
-            if 'm_children' not in model.__annotations__:
-                raise TypeError(
-                    f'No m_children field defined for dict model {model.__name__}. '
-                )
-            children_annotation = model.__annotations__['m_children']
-            value_type = get_args(get_args(children_annotation)[0])[1]
-            if value_type is None:
-                raise TypeError(
-                    f"Could not determine m_children's type. Did you miss to call update_forward_refs()?"
-                )
 
-            if get_origin(value_type) == Union:
-                value_types = get_args(value_type)
-            else:
-                value_types = (value_type,)
+class _NoChildrenDictModel(BaseModel):
+    @classmethod
+    def process_extra(cls, values):
+        """
+        Processes extra values by handling nested BaseModel instances
+        and merging 'm_children' into the main dictionary.
+        """
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
+        if not isinstance(values, dict):
+            return values
 
-            types = []
-            hasAny = False
-            for value_type in value_types:
-                if value_type == Any:
-                    hasAny = True
-                    break
-
-                if isinstance(value_type, ForwardRef):
-                    value_type = value_type.__forward_value__
-
-                if value_type == Literal['*']:
-                    types.append({'enum': ['*'], 'type': 'string'})
-                else:
-                    # This forces all model names to be unique. Pydandic
-                    # replaces non unique model names with qualified names.
-                    # We are just using the plain name here. Unfortunately,
-                    # there is no way to get the "long_model_name" map from pydantic
-                    # to put the right names here. Therefore, in the presence
-                    # of non-unique names, we are using the wrong referenes.
-                    # Things depending on the openapi schema will cause issues.
-                    # i.e. https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/issues/1958
-                    types.append({'$ref': f'{ref_prefix}/{value_type.__name__}'})
-
-            if 'properties' in schema:
-                for property in schema['properties'].values():
-                    if '$ref' in property:
-                        types.append(property)
-
-                schema['properties'].pop('m_children')
-
-            if hasAny:
-                schema['additionalProperties'] = True
-            else:
-                schema['additionalProperties'] = {'anyOf': types}
+        m_children = values.pop('m_children', {})
+        return {**m_children, **values}
 
 
 def _get_request_type(type_hint: Any, ns: ModelNamespace) -> Any:
@@ -274,28 +303,35 @@ def _generate_model(
 
         fields[field_name] = (Optional[generate_type(type_hint, ns)], None)
 
-    config = source_model.__config__
-    if config.extra == Extra.ignore and 'm_children' not in fields:
-        config = inherit_config(
-            type('Config', (BaseConfig,), dict(extra=Extra.forbid)), config
-        )
+    config = source_model.model_config
+    if config.get('extra', 'ignore') == 'ignore' and 'm_children' not in fields:
+        config = ConfigDict(**{**BaseConfigDict(extra='forbid'), **config})  # type: ignore
 
     validators = {}
     if 'm_children' in fields:
-        config = inherit_config(_DictModel.__config__, config)
+        config = ConfigDict(  # type: ignore
+            **{
+                **_DictModel.model_config,
+                **config,
+            }
+        )
         if suffix == request_suffix:
             validators = {
-                'process_extra': root_validator(  # type: ignore
-                    _DictModel.process_extra.__func__,  # type: ignore
-                    pre=True,
-                    allow_reuse=True,
+                'process_extra': model_validator(mode='before')(
+                    _DictModel.process_extra.__func__  # type: ignore
                 )
             }
+    else:
+        validators = {
+            'process_extra': model_validator(mode='before')(
+                _NoChildrenDictModel.process_extra.__func__  # type: ignore
+            ),
+        }
 
     result_model = create_model(
         result_model_name,
         __module__=source_model.__module__,
-        __validators__=validators,
+        __validators__=validators,  # type: ignore
         __config__=config,
         **fields,
     )
@@ -306,20 +342,21 @@ def _generate_model(
     if is_ns_origin:
         for model in ns.values():
             if isinstance(model, type):
-                model.update_forward_refs(**ns)
+                model.model_rebuild()
                 # There is a bug in pydantics BaseModel.update_forward_refs and it does not
                 # recognize forward refs in Union types. Therefore we do our own impl.
                 # https://github.com/pydantic/pydantic/issues/3345
-                for field in model.__fields__.values():
-                    if get_origin(field.type_) is Union:
-                        union_types = tuple(
-                            evaluate_forwardref(type_, {}, ns)
-                            if type_.__class__ == ForwardRef
-                            else type_
-                            for type_ in get_args(field.type_)
-                        )
-                        field.type_ = Union[union_types]  # type: ignore
+                # from typing import Union, get_origin, get_args, ForwardRef
+                # from pydantic import TypeAdapter
 
+                # for field in model.model_fields.values():
+                #     if get_origin(field.annotation) is Union:
+                #         union_types = [
+                #             TypeAdapter.eval_type_lenient(type_, globals_=globals(), locals_=ns)
+                #             if isinstance(type_, ForwardRef) else type_
+                #             for type_ in get_args(field.type_)
+                #         ]
+                #         field.annotation = Union[tuple(union_types)]
     assert (
         getattr(sys.modules[source_model.__module__], result_model_name, result_model)
         == result_model
@@ -354,25 +391,25 @@ def mapped(model: Type[BaseModel], **mapping: Union[str, type]) -> Type[BaseMode
         )
 
     fields = {}
-    for name, field in model.__fields__.items():
+    for name, field in model.model_fields.items():
         if name not in mapping:
-            fields[name] = (field.type_, create_field(field.field_info))
+            fields[name] = (field.annotation, create_field(field))
             continue
 
-        new_name_or_type_ = mapping[name]
-        old_field = model.__fields__[name]
+        new_name_or_annotation = mapping[name]
+        old_field = model.model_fields[name]
 
-        if new_name_or_type_ is None:
+        if new_name_or_annotation is None:
             continue
 
-        if isinstance(new_name_or_type_, str):
-            new_name = new_name_or_type_
-            type_ = old_field.type_
+        if isinstance(new_name_or_annotation, str):
+            new_name = new_name_or_annotation
+            annotation = old_field.annotation
         else:
             new_name = name
-            type_ = new_name_or_type_
+            annotation = new_name_or_annotation
 
-        fields[new_name] = (type_, create_field(old_field.field_info))
+        fields[new_name] = (annotation, create_field(old_field))
 
     return create_model(  # type: ignore
         model.__name__, **fields, __module__=model.__module__, __base__=model.__base__

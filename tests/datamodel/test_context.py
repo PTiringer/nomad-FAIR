@@ -563,10 +563,9 @@ def test_client_external_schema(
         with upload2_files.raw_file(file_name, 'wt') as f:
             json.dump(content, f, indent=2)
 
-    installation_url = 'http://testserver'
     context2 = ClientContext(
         upload_id='upload2_id',
-        installation_url=installation_url,
+        installation_url='',
         username=user1.username,
         password='password',
     )

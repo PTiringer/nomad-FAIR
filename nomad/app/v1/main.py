@@ -85,16 +85,16 @@ app = FastAPI(
     ),
     default_response_class=ORJSONResponse,
     middleware=[
-        Middleware(
-            CORSMiddleware,
+        Middleware(  # type: ignore
+            CORSMiddleware,  # type: ignore
             allow_origins=['*'],
             allow_credentials=True,
             allow_methods=['*'],
             allow_headers=['*'],
             expose_headers=['Content-Disposition'],
         ),
-        Middleware(LoggingMiddleware),
-        Middleware(BaseHTTPMiddleware, dispatch=profile_request),
+        Middleware(LoggingMiddleware),  # type: ignore
+        Middleware(BaseHTTPMiddleware, dispatch=profile_request),  # type: ignore
     ],
 )
 

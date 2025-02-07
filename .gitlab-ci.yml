@@ -124,9 +124,7 @@ python package clean up:
 
 check python dependencies:
   stage: test
-  image: python:3.9
-  before_script:
-    - pip install --upgrade uv
+  image: ghcr.io/astral-sh/uv:$UV_VERSION-python$PYTHON_VERSION-bookworm
   script:
     - scripts/check_python_dependencies.sh
   rules:
@@ -313,7 +311,7 @@ install tests:
   stage: test
   parallel:
     matrix:
-      - PYTHON_VERSION: ["3.9", "3.10", "3.11"]
+      - PYTHON_VERSION: ["3.10", "3.11", "3.12"]
   image: python:${PYTHON_VERSION}
   needs: ["build python package"]
   variables:
@@ -321,7 +319,7 @@ install tests:
     GIT_STRATEGY: none
   before_script:
     - pip install --upgrade pip
-    - pip install uv==0.5
+    - pip install uv==${UV_VERSION}
   script:
     - pip install dist/nomad-*.tar.gz
     - python -c 'import nomad.cli'

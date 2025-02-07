@@ -19,7 +19,7 @@
 from enum import Enum
 from typing import List, Dict, Union, Optional
 from typing_extensions import Literal, Annotated
-from pydantic import Field, root_validator
+from pydantic import BaseModel, ConfigDict, model_validator, Field
 
 from .common import (
     ConfigBaseModel,
@@ -99,16 +99,20 @@ class UnitSystem(ConfigBaseModel):
         description='Short, descriptive label used for this unit system.'
     )
     units: Optional[Dict[str, UnitSystemUnit]] = Field(
+        None,
         description=f"""
         Contains a mapping from each dimension to a unit. If a unit is not
         specified for a dimension, the SI equivalent will be used by default.
         The following dimensions are available:
         {dimension_list}
-    """
+    """,
     )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def _validate(cls, values):  # pylint: disable=no-self-argument
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
         """Adds SI defaults for dimensions that are missing a unit."""
         units = values.get('units', {})
         from nomad.units import ureg
@@ -174,8 +178,10 @@ class UnitSystems(OptionsSingle):
     """Controls the available unit systems."""
 
     options: Optional[Dict[str, UnitSystem]] = Field(
-        description='Contains the available unit systems.'
+        None, description='Contains the available unit systems.'
     )
+
+    model_config = ConfigDict(strict=False)
 
 
 class Theme(ConfigBaseModel):
@@ -208,8 +214,10 @@ class Cards(Options):
     """Contains the overview page card definitions and controls their visibility."""
 
     options: Optional[Dict[str, Card]] = Field(
-        description='Contains the available card options.'
+        None, description='Contains the available card options.'
     )
+
+    model_config = ConfigDict(strict=False)
 
 
 class Entry(ConfigBaseModel):
@@ -260,36 +268,42 @@ class Column(ConfigBaseModel):
     """
 
     search_quantity: Optional[str] = Field(
+        None,
         description="""
         Path of the targeted quantity. Note that you can most of the features
         JMESPath syntax here to further specify a selection of values. This
         becomes especially useful when dealing with repeated sections or
         statistical values.
-        """
+        """,
     )
     quantity: Optional[str] = Field(
-        deprecated='The "quantity" field is deprecated, use "search_quantity" instead.'
+        None,
+        deprecated='The "quantity" field is deprecated, use "search_quantity" instead.',
     )
     selected: bool = Field(
         False, description="""Is this column initially selected to be shown."""
     )
     title: Optional[str] = Field(
-        description='Label shown in the header. Defaults to the quantity name.'
+        None, description='Label shown in the header. Defaults to the quantity name.'
     )
-    label: Optional[str] = Field(description='Alias for title.')
+    label: Optional[str] = Field(None, description='Alias for title.')
     align: AlignEnum = Field(AlignEnum.LEFT, description='Alignment in the table.')
     unit: Optional[str] = Field(
+        None,
         description="""
         Unit to convert to when displaying. If not given will be displayed in
         using the default unit in the active unit system.
-    """
+    """,
     )
     format: Optional[Format] = Field(
-        description='Controls the formatting of the values.'
+        None, description='Controls the formatting of the values.'
     )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def _validate(cls, values):
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
         # Backwards compatibility for quantity.
         quantity = values.get('quantity')
         search_quantity = values.get('search_quantity')
@@ -312,10 +326,11 @@ class Columns(OptionsMulti):
     """
 
     options: Optional[Dict[str, Column]] = Field(
+        None,
         description="""
         All available column options. Note here that the key must correspond to a
         quantity path that exists in the metadata. The key
-    """
+    """,
     )
 
 
@@ -323,7 +338,7 @@ class RowAction(ConfigBaseModel):
     """Common configuration for all row actions."""
 
     description: Optional[str] = Field(
-        description="""Description of the action shown to the user."""
+        None, description="""Description of the action shown to the user."""
     )
     type: str = Field(description='Used to identify the action type.')
     icon: str = Field(
@@ -349,8 +364,11 @@ class RowActionURL(RowAction):
         'url', description='Set as `url` to get this widget type.'
     )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def _validate(cls, values):
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
         values['type'] = 'url'
         return values
 
@@ -360,14 +378,19 @@ class RowActions(Options):
 
     enabled: bool = Field(True, description='Whether to enable row actions.')
     options: Optional[Dict[str, RowActionURL]] = Field(
-        deprecated="""Deprecated, use 'items' instead."""
+        None, deprecated="""Deprecated, use 'items' instead."""
     )
     items: Optional[List[RowActionURL]] = Field(
-        descpription='List of actions to show for each row.'
+        None, description='List of actions to show for each row.'
     )
 
-    @root_validator(pre=True)
+    model_config = ConfigDict(strict=False)
+
+    @model_validator(mode='before')
+    @classmethod
     def _validate(cls, values):
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
         # Backwards compatibility for options
         items = values.get('items')
         if not items:
@@ -435,8 +458,10 @@ class FilterMenuActions(Options):
     """Contains filter menu action definitions and controls their availability."""
 
     options: Optional[Dict[str, FilterMenuActionCheckbox]] = Field(
-        description='Contains options for filter menu actions.'
+        None, description='Contains options for filter menu actions.'
     )
+
+    model_config = ConfigDict(strict=False)
 
 
 # Deprecated
@@ -451,12 +476,12 @@ class FilterMenuSizeEnum(str, Enum):
 class FilterMenu(ConfigBaseModel):
     """Defines the layout and functionality for a filter menu."""
 
-    label: Optional[str] = Field(description='Menu label to show in the UI.')
+    label: Optional[str] = Field(None, description='Menu label to show in the UI.')
     level: Optional[int] = Field(0, description='Indentation level of the menu.')
     size: Optional[FilterMenuSizeEnum] = Field(
         FilterMenuSizeEnum.S, description='Width of the menu.'
     )
-    actions: Optional[FilterMenuActions]
+    actions: Optional[FilterMenuActions] = None
 
 
 # Deprecated
@@ -464,8 +489,10 @@ class FilterMenus(Options):
     """Contains filter menu definitions and controls their availability."""
 
     options: Optional[Dict[str, FilterMenu]] = Field(
-        description='Contains the available filter menu options.'
+        None, description='Contains the available filter menu options.'
     )
+
+    model_config = ConfigDict(strict=False)
 
 
 # NOTE: Once the old power scaling options (1/2, 1/4, 1/8) are deprecated, the
@@ -482,12 +509,15 @@ class AxisScale(ConfigBaseModel):
 class AxisQuantity(ConfigBaseModel):
     """Configuration for a plot axis."""
 
-    title: Optional[str] = Field(description="""Custom title to show for the axis.""")
+    title: Optional[str] = Field(
+        None, description="""Custom title to show for the axis."""
+    )
     unit: Optional[str] = Field(
-        description="""Custom unit used for displaying the values."""
+        None, description="""Custom unit used for displaying the values."""
     )
     quantity: Optional[str] = Field(
-        deprecated='The "quantity" field is deprecated, use "search_quantity" instead.'
+        None,
+        deprecated='The "quantity" field is deprecated, use "search_quantity" instead.',
     )
     search_quantity: str = Field(
         description="""
@@ -498,8 +528,11 @@ class AxisQuantity(ConfigBaseModel):
         """
     )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def _validate(cls, values):
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
         # Backwards compatibility for quantity.
         quantity = values.get('quantity')
         search_quantity = values.get('search_quantity')
@@ -518,7 +551,8 @@ class TermsBase(ConfigBaseModel):
     """Base model for configuring terms components."""
 
     quantity: Optional[str] = Field(
-        deprecated='The "quantity" field is deprecated, use "search_quantity" instead.'
+        None,
+        deprecated='The "quantity" field is deprecated, use "search_quantity" instead.',
     )
     search_quantity: str = Field(description='The targeted search quantity.')
     type: Literal['terms'] = Field(
@@ -527,11 +561,15 @@ class TermsBase(ConfigBaseModel):
     scale: ScaleEnum = Field(ScaleEnum.LINEAR, description='Statistics scaling.')
     show_input: bool = Field(True, description='Whether to show text input field.')
     showinput: Optional[bool] = Field(
-        deprecated='The "showinput" field is deprecated, use "show_input" instead.'
+        None,
+        deprecated='The "showinput" field is deprecated, use "show_input" instead.',
     )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def _validate(cls, values):
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
         values['type'] = 'terms'
 
         # Backwards compatibility for showinput.
@@ -556,14 +594,16 @@ class HistogramBase(ConfigBaseModel):
         description='Set as `histogram` to get this widget type.'
     )
     quantity: Optional[str] = Field(
-        deprecated='The "quantity" field is deprecated, use "x.search_quantity" instead.'
+        None,
+        deprecated='The "quantity" field is deprecated, use "x.search_quantity" instead.',
     )
     scale: Optional[ScaleEnum] = Field(
-        deprecated='The "scale" field is deprecated, use "y.scale" instead.'
+        None, deprecated='The "scale" field is deprecated, use "y.scale" instead.'
     )
     show_input: bool = Field(True, description='Whether to show text input field.')
     showinput: Optional[bool] = Field(
-        deprecated='The "showinput" field is deprecated, use "show_input" instead.'
+        None,
+        deprecated='The "showinput" field is deprecated, use "show_input" instead.',
     )
 
     x: Union[Axis, str] = Field(
@@ -577,17 +617,21 @@ class HistogramBase(ConfigBaseModel):
         description='Whether to automatically set the range according to the data limits.',
     )
     n_bins: Optional[int] = Field(
+        None,
         description="""
         Maximum number of histogram bins. Notice that the actual number of bins
         may be smaller if there are fewer data items available.
-        """
+        """,
     )
     nbins: Optional[int] = Field(
-        deprecated='The "nbins" field is deprecated, use "n_bins" instead.'
+        None, deprecated='The "nbins" field is deprecated, use "n_bins" instead.'
     )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def _validate(cls, values):
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
         values['type'] = 'histogram'
 
         # Backwards compatibility for nbins."""
@@ -630,15 +674,19 @@ class PeriodicTableBase(ConfigBaseModel):
         description='Set as `periodic_table` to get this widget type.'
     )
     quantity: Optional[str] = Field(
-        deprecated='The "quantity" field is deprecated, use "search_quantity" instead.'
+        None,
+        deprecated='The "quantity" field is deprecated, use "search_quantity" instead.',
     )
     search_quantity: str = Field(description='The targeted search quantity.')
     scale: Optional[ScaleEnum] = Field(
         ScaleEnum.LINEAR, description='Statistics scaling.'
     )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def _validate(cls, values):
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
         values['type'] = 'periodic_table'
 
         # Backwards compatibility for quantity.
@@ -666,15 +714,15 @@ class MenuItem(ConfigBaseModel):
         description='Width of the item, 12 means maximum width. Note that the menu size can be changed.',
     )
     show_header: bool = Field(True, description='Whether to show the header.')
-    title: Optional[str] = Field(description='Custom item title.')
+    title: Optional[str] = Field(None, description='Custom item title.')
 
 
 class MenuItemOption(ConfigBaseModel):
     """Represents an option shown for a filter."""
 
-    label: Optional[str] = Field(description='The label to show for this option.')
+    label: Optional[str] = Field(None, description='The label to show for this option.')
     description: Optional[str] = Field(
-        description='Detailed description for this option.'
+        None, description='Detailed description for this option.'
     )
 
 
@@ -683,7 +731,8 @@ class MenuItemTerms(MenuItem, TermsBase):
     quantities.
     """
 
-    options: Optional[Union[int, Dict[str, MenuItemOption]]] = Field(
+    options: Optional[Union[int | bool, Dict[str, MenuItemOption]]] = Field(
+        None,
         description="""
         Used to control the displayed options:
 
@@ -696,7 +745,7 @@ class MenuItemTerms(MenuItem, TermsBase):
 
          - If a dictionary of str + MenuItemOption pairs is given, only these
            options will be shown.
-        """
+        """,
     )
     n_columns: int = Field(
         1,
@@ -713,6 +762,8 @@ class MenuItemTerms(MenuItem, TermsBase):
     show_statistics: bool = Field(
         True, description='Whether to show statistics for the options.'
     )
+
+    model_config = ConfigDict(strict=False)
 
 
 class MenuItemHistogram(MenuItem, HistogramBase):
@@ -740,8 +791,11 @@ class MenuItemVisibility(MenuItem):
         description='Set as `visibility` to get this menu item type.',
     )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def _validate(cls, values):
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
         values['type'] = 'visibility'
         return values
 
@@ -753,8 +807,11 @@ class MenuItemDefinitions(MenuItem):
         description='Set as `definitions` to get this menu item type.',
     )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def _validate(cls, values):
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
         values['type'] = 'definitions'
         return values
 
@@ -766,8 +823,11 @@ class MenuItemOptimade(MenuItem):
         description='Set as `optimade` to get this menu item type.',
     )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def _validate(cls, values):
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
         values['type'] = 'optimade'
         return values
 
@@ -782,8 +842,11 @@ class MenuItemCustomQuantities(MenuItem):
         description='Set as `custom_quantities` to get this menu item type.',
     )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def _validate(cls, values):
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
         values['type'] = 'custom_quantities'
         return values
 
@@ -820,11 +883,14 @@ class MenuItemNestedObject(MenuItem):
         description='Path of the nested object. Typically a section name.'
     )
     items: Optional[List[MenuItemTypeNested]] = Field(
-        description='Items that are grouped by this nested object.'
+        None, description='Items that are grouped by this nested object.'
     )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def _validate(cls, values):
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
         values['type'] = 'nested_object'
         return values
 
@@ -866,11 +932,14 @@ class Menu(MenuItem):
     )
     indentation: Optional[int] = Field(0, description='Indentation level for the menu.')
     items: Optional[List[MenuItemType]] = Field(
-        description='List of items in the menu.'
+        None, description='List of items in the menu.'
     )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def _validate(cls, values):
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
         values['type'] = 'menu'
         return values
 
@@ -887,14 +956,16 @@ class SearchQuantities(OptionsGlob):
     """
 
     include: Optional[List[str]] = Field(
+        None,
         description="""
         List of included options. Supports glob/wildcard syntax.
-    """
+    """,
     )
     exclude: Optional[List[str]] = Field(
+        None,
         description="""
         List of excluded options. Supports glob/wildcard syntax. Has higher precedence than include.
-    """
+    """,
     )
 
 
@@ -918,9 +989,10 @@ class SearchSyntaxes(ConfigBaseModel):
     """
 
     exclude: Optional[List[str]] = Field(
+        None,
         description="""
         List of excluded options.
-    """
+    """,
     )
 
 
@@ -956,7 +1028,8 @@ class Markers(ConfigBaseModel):
     """Configuration for plot markers."""
 
     color: Optional[Axis] = Field(
-        description='Configures the information source and display options for the marker colors.'
+        None,
+        description='Configures the information source and display options for the marker colors.',
     )
 
 
@@ -964,7 +1037,8 @@ class Widget(ConfigBaseModel):
     """Common configuration for all widgets."""
 
     title: Optional[str] = Field(
-        description='Custom widget title. If not specified, a widget-specific default title is used.'
+        None,
+        description='Custom widget title. If not specified, a widget-specific default title is used.',
     )
     type: str = Field(description='Used to identify the widget type.')
     layout: Dict[BreakpointEnum, Layout] = Field(
@@ -1006,8 +1080,11 @@ class WidgetPeriodicTableDeprecated(WidgetPeriodicTable):
         description='Set as `periodictable` to get this widget type.'
     )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def _validate(cls, values):
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
         values['type'] = 'periodictable'
 
         # Backwards compatibility for quantity.
@@ -1039,13 +1116,15 @@ class WidgetScatterPlot(Widget):
         description='Configures the information source and display options for the y-axis.'
     )
     markers: Optional[Markers] = Field(
-        description='Configures the information source and display options for the markers.'
+        None,
+        description='Configures the information source and display options for the markers.',
     )
     color: Optional[str] = Field(
+        None,
         description="""
         Quantity used for coloring points. Note that this field is deprecated
         and `markers` should be used instead.
-        """
+        """,
     )
     size: int = Field(
         1000,
@@ -1064,8 +1143,11 @@ class WidgetScatterPlot(Widget):
         description='Whether to automatically set the range according to the data limits.',
     )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def _validate(cls, values):
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
         values['type'] = 'scatter_plot'
 
         # color backwards compatibility
@@ -1093,9 +1175,25 @@ class WidgetScatterPlotDeprecated(WidgetScatterPlot):
         description='Set as `scatterplot` to get this widget type.'
     )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def _validate(cls, values):
         values['type'] = 'scatterplot'
+        # color backwards compatibility
+        color = values.get('color')
+        if color is not None:
+            values['markers'] = {'color': {'search_quantity': color}}
+            del values['color']
+
+        # x backwards compatibility
+        x = values.get('x')
+        if isinstance(x, str):
+            values['x'] = {'search_quantity': x}
+
+        # y backwards compatibility
+        y = values.get('y')
+        if isinstance(y, str):
+            values['y'] = {'search_quantity': y}
         return values
 
 
@@ -1132,58 +1230,68 @@ class App(ConfigBaseModel):
 
     label: str = Field(description='Name of the App.')
     path: str = Field(description='Path used in the browser address bar.')
-    resource: ResourceEnum = Field('entries', description='Targeted resource.')
+    resource: ResourceEnum = Field('entries', description='Targeted resource.')  # type: ignore
     breadcrumb: Optional[str] = Field(
-        description='Name displayed in the breadcrumb, by default the label will be used.'
+        None,
+        description='Name displayed in the breadcrumb, by default the label will be used.',
     )
     category: str = Field(
         description='Category used to organize Apps in the explore menu.'
     )
-    description: Optional[str] = Field(description='Short description of the App.')
+    description: Optional[str] = Field(
+        None, description='Short description of the App.'
+    )
     readme: Optional[str] = Field(
-        description='Longer description of the App that can also use markdown.'
+        None, description='Longer description of the App that can also use markdown.'
     )
     pagination: Pagination = Field(
         Pagination(), description='Default result pagination.'
     )
     columns: Optional[List[Column]] = Field(
-        description='List of columns for the results table.'
+        None, description='List of columns for the results table.'
     )
     rows: Optional[Rows] = Field(
         Rows(),
         description='Controls the display of entry rows in the results table.',
     )
     menu: Optional[Menu] = Field(
-        description='Filter menu displayed on the left side of the screen.'
+        None, description='Filter menu displayed on the left side of the screen.'
     )
     filter_menus: Optional[FilterMenus] = Field(
-        deprecated='The "filter_menus" field is deprecated, use "menu" instead.'
+        None, deprecated='The "filter_menus" field is deprecated, use "menu" instead.'
     )
     filters: Optional[Filters] = Field(
-        deprecated='The "filters" field is deprecated, use "search_quantities" instead.'
+        None,
+        deprecated='The "filters" field is deprecated, use "search_quantities" instead.',
     )
     search_quantities: Optional[SearchQuantities] = Field(
         SearchQuantities(exclude=['mainfile', 'entry_name', 'combine']),
         description='Controls the quantities that are available for search in this app.',
     )
-    dashboard: Optional[Dashboard] = Field(description='Default dashboard layout.')
+    dashboard: Optional[Dashboard] = Field(
+        None, description='Default dashboard layout.'
+    )
     filters_locked: Optional[dict] = Field(
+        None,
         description="""
         Fixed query object that is applied for this search context. This filter
         will always be active for this context and will not be displayed to the
         user by default.
-        """
+        """,
     )
     search_syntaxes: Optional[SearchSyntaxes] = Field(
-        description='Controls which types of search syntax are available.'
+        None, description='Controls which types of search syntax are available.'
     )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def _validate(cls, values):
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
         # Backwards compatibility for columns
         columns = values.get('columns')
         if isinstance(columns, Columns):
-            columns = columns.dict()
+            columns = columns.model_dump()
         if isinstance(columns, dict):
             options = columns.get('options') or {}
             keys = list(options.keys())
@@ -1209,7 +1317,7 @@ class App(ConfigBaseModel):
         # Backwards compatibility for FilterMenus
         filter_menus = values.get('filter_menus')
         if isinstance(filter_menus, FilterMenus):
-            filter_menus = filter_menus.dict()
+            filter_menus = filter_menus.model_dump()
         options = filter_menus.get('options') if filter_menus else None
         menus = values.get('menus')
         if options and not menus:
@@ -1852,7 +1960,7 @@ class App(ConfigBaseModel):
                     'combine': MenuItemTerms(
                         search_quantity='combine',
                         options={
-                            True: MenuItemOption(
+                            'true': MenuItemOption(
                                 label='Combine results from several entries',
                                 description='If selected, your filters may be matched from several entries that contain the same material. When unchecked, the material has to have a single entry that matches all your filters.',
                             )
@@ -1883,13 +1991,17 @@ class App(ConfigBaseModel):
 
         return values
 
+    model_config = ConfigDict(strict=False)
+
 
 class Apps(Options):
     """Contains App definitions and controls their availability."""
 
     options: Optional[Dict[str, App]] = Field(
-        description='Contains the available app options.'
+        None, description='Contains the available app options.'
     )
+
+    model_config = ConfigDict(strict=False)
 
 
 class ExampleUploads(OptionsBase):

@@ -1,7 +1,15 @@
 import enum
 from typing import Optional
 from fastapi import HTTPException, Request
-from pydantic import BaseModel, Field, root_validator, validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+    validator,
+)
+from pydantic_core import PydanticCustomError
 
 from nomad.app.v1.utils import update_url_query_arguments
 from nomad.utils import strip
@@ -88,15 +96,17 @@ class Pagination(BaseModel):
         """),
     )
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
-    @validator('page_size')
+    @field_validator('page_size')
+    @classmethod
     def validate_page_size(cls, page_size):  # pylint: disable=no-self-argument
-        assert page_size >= 0, 'page_size must be >= 0'
+        if page_size < 0:
+            raise PydanticCustomError('invalid_page_size', 'page_size must be >= 0')
         return page_size
 
-    @validator('order_by')
+    @field_validator('order_by')
+    @classmethod
     def validate_order_by(cls, order_by):  # pylint: disable=no-self-argument
         """
         Override this in your Pagination class to ensure that a valid attribute is selected.
@@ -104,19 +114,22 @@ class Pagination(BaseModel):
         """
         raise NotImplementedError('Validation of `order_by` not implemented!')
 
-    @validator('page')
+    @field_validator('page')
+    @classmethod
     def validate_page(cls, page, values):  # pylint: disable=no-self-argument
-        if page is not None:
-            assert page >= 1, 'page must be >= 1'
+        if page is not None and page < 1:
+            raise PydanticCustomError('invalid_page', 'page must be >= 1')
         return page
 
-    @validator('page_offset')
+    @field_validator('page_offset')
+    @classmethod
     def validate_page_offset(cls, page_offset, values):  # pylint: disable=no-self-argument
-        if page_offset is not None:
-            assert page_offset >= 0, 'page_offset must be >= 1'
+        if page_offset is not None and page_offset < 0:
+            raise PydanticCustomError('invalid_page_offset', 'page_offset must be >= 0')
         return page_offset
 
-    @root_validator(skip_on_failure=True)
+    @model_validator(mode='after')
+    @classmethod
     def validate_values(cls, values):  # pylint: disable=no-self-argument
         # Because of a bug in pydantic (#2670), root validators can't be overridden, so
         # we invoke a class method, which *can* be overridden.
@@ -124,28 +137,38 @@ class Pagination(BaseModel):
 
     @classmethod
     def _root_validation(cls, values):
-        page_offset = values.get('page_offset')
-        page = values.get('page')
-        page_after_value = values.get('page_after_value')
-        page_size = values.get('page_size')
+        page_offset = values.page_offset
+        page = values.page
+        page_after_value = values.page_after_value
+        page_size = values.page_size
 
         n_offset_criteria = (
             (1 if page_offset else 0)
             + (1 if page else 0)
             + (1 if page_after_value else 0)
         )
-        assert n_offset_criteria <= 1, (
-            'Can only specify one `page_offset`, `page`, or `page_after_value'
-        )
+        if n_offset_criteria > 1:
+            raise PydanticCustomError(
+                'multiple_pagination_criteria',
+                'Can only specify one of: page_offset, page, or page_after_value',
+            )
 
         if page_size == 0:
-            assert page_offset is None, (
-                'Cannot specify `page_offset` when `page_size` is set to 0'
-            )
-            assert page is None, 'Cannot specify `page` when `page_size` is set to 0'
-            assert page_after_value is None, (
-                'Cannot specify `page_after_value` when `page_size` is set to 0'
-            )
+            if page_offset is not None:
+                raise PydanticCustomError(
+                    'invalid_pagination',
+                    'Cannot specify page_offset when page_size is set to 0',
+                )
+            if page is not None:
+                raise PydanticCustomError(
+                    'invalid_pagination',
+                    'Cannot specify page when page_size is set to 0',
+                )
+            if page_after_value is not None:
+                raise PydanticCustomError(
+                    'invalid_pagination',
+                    'Cannot specify page_after_value when page_size is set to 0',
+                )
 
         return values
 
@@ -253,7 +276,8 @@ class PaginationResponse(Pagination):
         ),
     )
 
-    @validator('order_by')
+    @field_validator('order_by')
+    @classmethod
     def validate_order_by(cls, order_by):  # pylint: disable=no-self-argument
         # No validation - behaviour of this field depends on api method
         return order_by

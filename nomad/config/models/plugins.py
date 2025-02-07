@@ -22,7 +22,7 @@ import shutil
 from abc import ABCMeta, abstractmethod
 import importlib
 from typing import Optional, Dict, Union, List, Literal, cast, TYPE_CHECKING
-from pydantic import BaseModel, Field, root_validator
+from pydantic import model_validator, BaseModel, Field
 
 from nomad.common import get_package_path, download_file, is_url, is_safe_relative_path
 
@@ -42,22 +42,25 @@ class EntryPoint(BaseModel):
     """Base model for a NOMAD plugin entry points."""
 
     id: Optional[str] = Field(
-        description='Unique identifier corresponding to the entry point name. Automatically set to the plugin entry point name in pyproject.toml.'
+        None,
+        description='Unique identifier corresponding to the entry point name. Automatically set to the plugin entry point name in pyproject.toml.',
     )
     entry_point_type: str = Field(description='Determines the entry point type.')
-    name: Optional[str] = Field(description='Name of the plugin entry point.')
+    name: Optional[str] = Field(None, description='Name of the plugin entry point.')
     description: Optional[str] = Field(
-        description='A human readable description of the plugin entry point.'
+        None, description='A human readable description of the plugin entry point.'
     )
     plugin_package: Optional[str] = Field(
-        description='The plugin package from which this entry points comes from.'
+        None, description='The plugin package from which this entry points comes from.'
     )
 
     def dict_safe(self):
         """Used to serialize the non-confidential parts of a plugin model. This
         function can be overridden in subclasses to expose more information.
         """
-        return self.dict(include=EntryPoint.__fields__.keys(), exclude_none=True)
+        return self.model_dump(
+            include=EntryPoint.model_fields.keys(), exclude_none=True
+        )
 
 
 class AppEntryPoint(EntryPoint):
@@ -69,7 +72,9 @@ class AppEntryPoint(EntryPoint):
     app: App = Field(description='The app configuration.')
 
     def dict_safe(self):
-        return self.dict(include=AppEntryPoint.__fields__.keys(), exclude_none=True)
+        return self.model_dump(
+            include=AppEntryPoint.model_fields.keys(), exclude_none=True
+        )
 
 
 class SchemaPackageEntryPoint(EntryPoint, metaclass=ABCMeta):
@@ -124,11 +129,12 @@ class ParserEntryPoint(EntryPoint, metaclass=ABCMeta):
     )
     aliases: List[str] = Field([], description="""List of alternative parser names.""")
     mainfile_contents_re: Optional[str] = Field(
+        None,
         description="""
         A regular expression that is applied the content of a potential mainfile.
         If this expression is given, the parser is only considered for a file, if the
         expression matches.
-    """
+    """,
     )
     mainfile_name_re: str = Field(
         r'.*',
@@ -147,11 +153,13 @@ class ParserEntryPoint(EntryPoint, metaclass=ABCMeta):
     """,
     )
     mainfile_binary_header: Optional[bytes] = Field(
+        None,
         description="""
         Matches a binary file if the given bytes are included in the file.
     """,
     )
     mainfile_binary_header_re: Optional[bytes] = Field(
+        None,
         description="""
         Matches a binary file if the given binary regular expression bytes matches the
         file contents.
@@ -165,9 +173,10 @@ class ParserEntryPoint(EntryPoint, metaclass=ABCMeta):
     """,
     )
     mainfile_contents_dict: Optional[dict] = Field(
+        None,
         description="""
         Is used to match structured data files like JSON or HDF5.
-    """
+    """,
     )
     supported_compressions: List[str] = Field(
         [],
@@ -187,11 +196,11 @@ class ParserEntryPoint(EntryPoint, metaclass=ABCMeta):
     def dict_safe(self):
         # The binary data types are removed from the safe serialization: binary
         # data is not JSON serializable.
-        keys = set(list(ParserEntryPoint.__fields__.keys()))
+        keys = set(list(ParserEntryPoint.model_fields.keys()))
         keys.remove('mainfile_binary_header_re')
         keys.remove('mainfile_binary_header')
 
-        return self.dict(include=keys, exclude_none=True)
+        return self.model_dump(include=keys, exclude_none=True)
 
 
 class UploadResource(BaseModel):
@@ -217,9 +226,11 @@ class ExampleUploadEntryPoint(EntryPoint):
     entry_point_type: Literal['example_upload'] = Field(
         'example_upload', description='Determines the entry point type.'
     )
-    category: str = Field(description='Category for the example upload.')
-    title: str = Field(description='Title of the example upload.')
-    description: str = Field(description='Longer description of the example upload.')
+    category: Optional[str] = Field(description='Category for the example upload.')
+    title: Optional[str] = Field(description='Title of the example upload.')
+    description: Optional[str] = Field(
+        description='Longer description of the example upload.'
+    )
     resources: Optional[
         # Note that the order here matters: pydantic may interpret a dictionary
         # as a list of strings instead of an UploadResource object if the order
@@ -229,11 +240,13 @@ class ExampleUploadEntryPoint(EntryPoint):
             UploadResource,
             str,
         ]
-    ] = Field(description='List of data resources for this example upload.')
+    ] = Field(None, description='List of data resources for this example upload.')
     path: Optional[str] = Field(
+        None,
         deprecated='"path" is deprecated, use "resources" instead.',
     )
     url: Optional[str] = Field(
+        None,
         deprecated='"url" is deprecated, use "resources" instead.',
     )
     from_examples_directory: bool = Field(
@@ -357,11 +370,14 @@ class ExampleUploadEntryPoint(EntryPoint):
             include=ExampleUploadEntryPoint.__fields__.keys(), exclude_none=True
         )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def _validate(cls, values):
         # Normalize all different forms of input to a list of
         # ExampleUploadResource objects.
-        resources = values.get('resources')
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
+        resources = values.get('resources', None)
         resource_objects = []
         if resources:
             if not isinstance(resources, list):
@@ -403,7 +419,8 @@ class APIEntryPoint(EntryPoint, metaclass=ABCMeta):
         ),
     )
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
+    @classmethod
     def prefix_must_be_defined_and_valid(cls, v):
         import urllib.parse
 
@@ -436,25 +453,29 @@ class PluginBase(BaseModel):
     plugin_type: str = Field(
         description='The type of the plugin.',
     )
-    id: Optional[str] = Field(description='The unique identifier for this plugin.')
+    id: Optional[str] = Field(
+        None, description='The unique identifier for this plugin.'
+    )
     name: str = Field(
         description='A short descriptive human readable name for the plugin.'
     )
     description: Optional[str] = Field(
-        description='A human readable description of the plugin.'
+        None, description='A human readable description of the plugin.'
     )
     plugin_documentation_url: Optional[str] = Field(
-        description='The URL to the plugins main documentation page.'
+        None, description='The URL to the plugins main documentation page.'
     )
     plugin_source_code_url: Optional[str] = Field(
-        description='The URL of the plugins main source code repository.'
+        None, description='The URL of the plugins main source code repository.'
     )
 
     def dict_safe(self):
         """Used to serialize the non-confidential parts of a plugin model. This
         function can be overridden in subclasses to expose more information.
         """
-        return self.dict(include=PluginBase.__fields__.keys(), exclude_none=True)
+        return self.model_dump(
+            include=PluginBase.model_fields.keys(), exclude_none=True
+        )
 
 
 class PythonPluginBase(PluginBase):
@@ -481,9 +502,10 @@ class Schema(PythonPluginBase):
     """
 
     package_path: Optional[str] = Field(
-        description='Path of the plugin package. Will be determined using python_package if not explicitly defined.'
+        None,
+        description='Path of the plugin package. Will be determined using python_package if not explicitly defined.',
     )
-    key: Optional[str] = Field(description='Key used to identify this plugin.')
+    key: Optional[str] = Field(None, description='Key used to identify this plugin.')
     plugin_type: Literal['schema'] = Field(
         'schema',
         description="""
@@ -556,11 +578,12 @@ class Parser(PythonPluginBase):
         """,
     )
     mainfile_contents_re: Optional[str] = Field(
+        None,
         description="""
         A regular expression that is applied the content of a potential mainfile.
         If this expression is given, the parser is only considered for a file, if the
         expression matches.
-        """
+        """,
     )
     mainfile_name_re: str = Field(
         r'.*',
@@ -579,15 +602,17 @@ class Parser(PythonPluginBase):
         """,
     )
     mainfile_binary_header: Optional[bytes] = Field(
+        None,
         description="""
         Matches a binary file if the given bytes are included in the file.
-        """
+        """,
     )
     mainfile_binary_header_re: Optional[bytes] = Field(
+        None,
         description="""
         Matches a binary file if the given binary regular expression bytes matches the
         file contents.
-        """
+        """,
     )
     mainfile_alternative: bool = Field(
         False,
@@ -597,6 +622,7 @@ class Parser(PythonPluginBase):
         """,
     )
     mainfile_contents_dict: Optional[dict] = Field(
+        None,
         description="""
         Is used to match structured data files like JSON, HDF5 or csv/excel files. In case of a csv/excel file
         for example, in order to check if certain columns exist in a given sheet, one can set this attribute to
@@ -610,7 +636,7 @@ class Parser(PythonPluginBase):
         <i>__has_all_keys: List[str]<i>
         <i>__has_only_keys: List[str]<i>
         <i>__has_comment: str<i> (only for csv/xlsx files)
-        """
+        """,
     )
     supported_compressions: List[str] = Field(
         [],
@@ -631,12 +657,13 @@ class Parser(PythonPluginBase):
         The order by which the parser is executed with respect to other parsers.
         """,
     )
-    code_name: Optional[str]
-    code_homepage: Optional[str]
-    code_category: Optional[str]
+    code_name: Optional[str] = None
+    code_homepage: Optional[str] = None
+    code_category: Optional[str] = None
     metadata: Optional[dict] = Field(
+        None,
         description="""
-        Metadata passed to the UI. Deprecated."""
+        Metadata passed to the UI. Deprecated.""",
     )
 
     def create_matching_parser_interface(self):
@@ -648,7 +675,7 @@ class Parser(PythonPluginBase):
 
         from nomad.parsing.parser import MatchingParserInterface
 
-        data = self.dict()
+        data = self.model_dump()
         del data['id']
         del data['description']
         del data['python_package']
@@ -684,19 +711,22 @@ class PluginPackage(BaseModel):
         description='Name of the plugin Python package, read from pyproject.toml.'
     )
     description: Optional[str] = Field(
-        description='Package description, read from pyproject.toml.'
+        None, description='Package description, read from pyproject.toml.'
     )
     version: Optional[str] = Field(
-        description='Plugin package version, read from pyproject.toml.'
+        None, description='Plugin package version, read from pyproject.toml.'
     )
     homepage: Optional[str] = Field(
-        description='Link to the plugin package homepage, read from pyproject.toml.'
+        None,
+        description='Link to the plugin package homepage, read from pyproject.toml.',
     )
     documentation: Optional[str] = Field(
-        description='Link to the plugin package documentation page, read from pyproject.toml.'
+        None,
+        description='Link to the plugin package documentation page, read from pyproject.toml.',
     )
     repository: Optional[str] = Field(
-        description='Link to the plugin package source code repository, read from pyproject.toml.'
+        None,
+        description='Link to the plugin package source code repository, read from pyproject.toml.',
     )
     entry_points: List[str] = Field(
         description='List of entry point ids contained in this package, read form pyproject.toml'

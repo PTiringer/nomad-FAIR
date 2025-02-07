@@ -21,10 +21,17 @@ import os
 import sys
 import warnings
 from importlib.metadata import version
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import yaml
-from pydantic import Field, root_validator, validator
+from pydantic import (
+    BaseModel,
+    field_validator,
+    model_validator,
+    Field,
+    validator,
+    ConfigDict,
+)
 
 try:
     __version__ = version('nomad-lab')
@@ -69,38 +76,38 @@ class Services(ConfigBaseModel):
     Contains basic configuration of the NOMAD services (app, worker, north).
     """
 
-    api_host = Field(
+    api_host: str = Field(
         'localhost',
         description="""
         The external hostname that clients can use to reach this NOMAD installation.
     """,
     )
-    api_port = Field(
+    api_port: str | int = Field(
         8000,
         description="""
         The port used to expose the NOMAD app and api to clients.
     """,
     )
-    api_base_path = Field(
+    api_base_path: str = Field(
         '/fairdi/nomad/latest',
         description="""
         The base path prefix for the NOMAD app and api.
     """,
     )
-    api_secret = Field(
+    api_secret: str = Field(
         'defaultApiSecret',
         description="""
         A secret that is used to issue download and other tokens.
     """,
     )
-    api_timeout = Field(
+    api_timeout: int = Field(
         600,
         description="""
         If the NOMAD app is run with gunicorn as process manager, this timeout (in s) is passed
         and worker processes will be restarted, if they do not respond in time.
     """,
     )
-    https = Field(
+    https: bool = Field(
         False,
         description="""
         Set to `True`, if external clients are using *SSL* to connect to this installation.
@@ -108,7 +115,7 @@ class Services(ConfigBaseModel):
         based installation) that handles the *SSL* encryption.
     """,
     )
-    https_upload = Field(
+    https_upload: bool = Field(
         False,
         description="""
         Set to `True`, if upload curl commands should suggest the use of SSL for file
@@ -116,7 +123,7 @@ class Services(ConfigBaseModel):
         via regular HTTP.
     """,
     )
-    admin_user_id = Field(
+    admin_user_id: str = Field(
         '00000000-0000-0000-0000-000000000000',
         description="""
         The admin user `user_id`. All users are treated the same; there are no
@@ -126,19 +133,19 @@ class Services(ConfigBaseModel):
     """,
     )
 
-    encyclopedia_base = Field(
+    encyclopedia_base: str = Field(
         'https://nomad-lab.eu/prod/rae/encyclopedia/#',
         description="""
             This enables links to the given *encyclopedia* installation in the UI.
         """,
     )
-    optimade_enabled = Field(
+    optimade_enabled: bool = Field(
         True, description="""If true, the app will serve the optimade API."""
     )
-    dcat_enabled = Field(
+    dcat_enabled: bool = Field(
         True, description="""If true the app will serve the DCAT API."""
     )
-    h5grove_enabled = Field(
+    h5grove_enabled: bool = Field(
         True, description="""If true the app will serve the h5grove API."""
     )
 
@@ -150,14 +157,14 @@ class Services(ConfigBaseModel):
     """,
     )
 
-    upload_limit = Field(
+    upload_limit: int = Field(
         10,
         description="""
         The maximum allowed unpublished uploads per user. If a user exceeds this
         amount, the user cannot add more uploads.
     """,
     )
-    force_raw_file_decoding = Field(
+    force_raw_file_decoding: bool = Field(
         False,
         description="""
         By default, text raw-files are interpreted with utf-8 encoding. If this fails,
@@ -165,7 +172,7 @@ class Services(ConfigBaseModel):
         encoding, if a file is not decodable with utf-8.
     """,
     )
-    max_entry_download = Field(
+    max_entry_download: int = Field(
         50000,
         description="""
         There is an inherent limit in page-based pagination with Elasticsearch. If you
@@ -176,44 +183,44 @@ class Services(ConfigBaseModel):
         Page-after-value-based pagination is independent and can be used without limitations.
     """,
     )
-    unavailable_value = Field(
+    unavailable_value: str = Field(
         'unavailable',
         description="""
         Value that is used in `results` section Enum fields (e.g. system type, spacegroup, etc.)
         to indicate that the value could not be determined.
     """,
     )
-    app_token_max_expires_in = Field(
+    app_token_max_expires_in: int = Field(
         30 * 24 * 60 * 60,
         description="""
         Maximum expiration time for an app token in seconds. Requests with a higher value
         will be declined.
     """,
     )
-    html_resource_http_max_age = Field(
+    html_resource_http_max_age: int = Field(
         60,
         description="""
         Used for the max_age cache-control directive on statically served html, js, css
         resources.
     """,
     )
-    image_resource_http_max_age = Field(
+    image_resource_http_max_age: int = Field(
         30 * 24 * 60 * 60,
         description="""
         Used for the max_age cache-control directive on statically served image
         resources.
     """,
     )
-    upload_members_group_search_enabled = Field(
+    upload_members_group_search_enabled: bool = Field(
         False,
         description='If true, the GUI will show a search for groups as upload members.',
     )
-    log_api_queries = Field(
+    log_api_queries: bool = Field(
         True,
         description='If true, all queries to the /entries/query API endpoint will be logged.',
     )
     # Validators
-    _console_log_level = validator('console_log_level', allow_reuse=True)(
+    _console_log_level = field_validator('console_log_level', mode='before')(
         normalize_loglevel
     )
 
@@ -229,7 +236,7 @@ class Services(ConfigBaseModel):
         This is not the NOMAD url to use as a client, use `nomad.config.client.url` instead.
         """
         if api_port is None:
-            api_port = self.api_port
+            api_port = self.api_port  # type: ignore
         if api_host is None:
             api_host = self.api_host
         protocol = 'https' if self.https and ssl else 'http'
@@ -245,12 +252,12 @@ class Meta(ConfigBaseModel):
     Metadata about the deployment and how it is presented to clients.
     """
 
-    version = Field(__version__, description='The NOMAD version string.')
-    commit = Field(
+    version: str = Field(__version__, description='The NOMAD version string.')
+    commit: str = Field(
         '',
         description="The source-code commit that this installation's NOMAD version is build from.",
     )
-    deployment = Field(
+    deployment: str = Field(
         'devel', description='Human-friendly name of this nomad deployment.'
     )
     deployment_url: str = Field(
@@ -264,7 +271,7 @@ class Meta(ConfigBaseModel):
         to differentiate deployments when analyzing logs.
     """,
     )
-    service = Field(
+    service: str = Field(
         'unknown nomad service',
         description="""
         Name for the service that is added to all logs. Depending on how NOMAD is
@@ -272,19 +279,19 @@ class Meta(ConfigBaseModel):
     """,
     )
 
-    name = Field(
+    name: str = Field(
         'NOMAD', description='Web-site title for the NOMAD UI.', deprecated=True
     )
-    homepage = Field(
+    homepage: str = Field(
         'https://nomad-lab.eu', description='Provider homepage.', deprecated=True
     )
-    source_url = Field(
+    source_url: str = Field(
         'https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR',
         description='URL of the NOMAD source-code repository.',
         deprecated=True,
     )
 
-    maintainer_email = Field(
+    maintainer_email: str = Field(
         'markus.scheidgen@physik.hu-berlin.de',
         description='Email of the NOMAD deployment maintainer.',
     )
@@ -301,7 +308,7 @@ class Oasis(ConfigBaseModel):
     Settings related to the configuration of a NOMAD Oasis deployment.
     """
 
-    is_oasis = Field(
+    is_oasis: bool = Field(
         False,
         description='Set to `True` to indicate that this deployment is a NOMAD Oasis.',
     )
@@ -313,7 +320,7 @@ class Oasis(ConfigBaseModel):
         listed users might use this deployment. All API requests must have authentication
         information as well.""",
     )
-    uses_central_user_management = Field(
+    uses_central_user_management: bool = Field(
         False,
         description="""
         Set to True to use the central user-management. Typically the NOMAD backend is
@@ -321,7 +328,7 @@ class Oasis(ConfigBaseModel):
         use the API of the central NOMAD (`central_nomad_deployment_url`) instead.
     """,
     )
-    central_nomad_deployment_url = Field(
+    central_nomad_deployment_url: str = Field(
         'https://nomad-lab.eu/prod/v1/api',
         description="""
         The URL of the API of the NOMAD deployment that is considered the *central* NOMAD.
@@ -334,9 +341,15 @@ class RabbitMQ(ConfigBaseModel):
     Configures how NOMAD is connecting to RabbitMQ.
     """
 
-    host = Field('localhost', description='The name of the host that runs RabbitMQ.')
-    user = Field('rabbitmq', description='The RabbitMQ user that is used to connect.')
-    password = Field('rabbitmq', description='The password that is used to connect.')
+    host: str = Field(
+        'localhost', description='The name of the host that runs RabbitMQ.'
+    )
+    user: str = Field(
+        'rabbitmq', description='The RabbitMQ user that is used to connect.'
+    )
+    password: str = Field(
+        'rabbitmq', description='The password that is used to connect.'
+    )
 
 
 CELERY_WORKER_ROUTING = 'worker'
@@ -344,11 +357,11 @@ CELERY_QUEUE_ROUTING = 'queue'
 
 
 class Celery(ConfigBaseModel):
-    max_memory = 64e6  # 64 GB
-    timeout = 1800  # 1/2 h
-    acks_late = False
-    routing = CELERY_QUEUE_ROUTING
-    priorities = {
+    max_memory: float = 64e6  # 64 GB
+    timeout: int = 1800  # 1/2hr
+    acks_late: bool = False
+    routing: str = CELERY_QUEUE_ROUTING
+    priorities: Dict[str, int] = {
         'Upload.process_upload': 5,
         'Upload.delete_upload': 9,
         'Upload.publish_upload': 10,
@@ -356,15 +369,15 @@ class Celery(ConfigBaseModel):
 
 
 class FS(ConfigBaseModel):
-    tmp = '.volumes/fs/tmp'
-    staging = '.volumes/fs/staging'
+    tmp: str = '.volumes/fs/tmp'
+    staging: str = '.volumes/fs/staging'
     staging_external: str = None
-    public = '.volumes/fs/public'
+    public: str = '.volumes/fs/public'
     public_external: str = None
-    north_home = '.volumes/fs/north/users'
+    north_home: str = '.volumes/fs/north/users'
     north_home_external: str = None
-    local_tmp = '/tmp'
-    prefix_size = 2
+    local_tmp: str = '/tmp'
+    prefix_size: int = 2
     archive_version_suffix: Union[str, List[str]] = Field(
         ['v1.2', 'v1'],
         description="""
@@ -377,56 +390,58 @@ class FS(ConfigBaseModel):
         next string, etc.
     """,
     )
-    working_directory = os.getcwd()
+    working_directory: str = os.getcwd()
     external_working_directory: str = None
 
-    @root_validator()
+    @model_validator(mode='after')
+    @classmethod
     def __validate(cls, values):  # pylint: disable=no-self-argument
         def get_external_path(path):
             if os.path.isabs(path):
                 return path
-            external_work_dir = values.get('external_working_directory')
-            work_dir = external_work_dir or values.get('working_directory')
+            external_work_dir = values.external_working_directory
+            work_dir = external_work_dir or values.working_directory
             return os.path.join(work_dir, path)
 
-        if values.get('staging_external') is None:
-            values['staging_external'] = get_external_path(values.get('staging'))
+        if values.staging_external is None:
+            values.staging_external = get_external_path(values.staging)
 
-        if values.get('public_external') is None:
-            values['public_external'] = get_external_path(values.get('public'))
+        if values.public_external is None:
+            values.public_external = get_external_path(values.public)
 
-        if values.get('north_home_external') is None:
-            values['north_home_external'] = get_external_path(values.get('north_home'))
+        if values.north_home_external is None:
+            values.north_home_external = get_external_path(values.north_home)
 
         return values
 
 
 class Elastic(ConfigBaseModel):
-    host = 'localhost'
-    port = 9200
-    timeout = 60
-    bulk_timeout = 600
-    bulk_size = 1000
-    entries_per_material_cap = 1000
-    entries_index = 'nomad_entries_v1'
-    materials_index = 'nomad_materials_v1'
-    username: Optional[str]
-    password: Optional[str]
+    username: str = ''
+    password: str = ''
+    host: str = 'localhost'
+    port: int = 9200
+    timeout: int = 60
+    bulk_timeout: int = 600
+    bulk_size: int = 1000
+    entries_per_material_cap: int = 1000
+    entries_index: str = 'nomad_entries_v1'
+    materials_index: str = 'nomad_materials_v1'
 
 
 class Keycloak(ConfigBaseModel):
-    server_url = 'https://nomad-lab.eu/fairdi/keycloak/auth/'
+    server_url: str = 'https://nomad-lab.eu/fairdi/keycloak/auth/'
     public_server_url: str = None
-    realm_name = 'fairdi_nomad_prod'
-    username = 'admin'
-    password = 'password'
-    client_id = 'nomad_public'
+    realm_name: str = 'fairdi_nomad_prod'
+    username: str = 'admin'
+    password: str = 'password'
+    client_id: str = 'nomad_public'
     client_secret: str = None
 
-    @root_validator()
+    @model_validator(mode='after')
+    @classmethod
     def __validate(cls, values):  # pylint: disable=no-self-argument
-        if values.get('public_server_url') is None:
-            values['public_server_url'] = values.get('server_url')
+        if values.public_server_url is None:
+            values.public_server_url = values.server_url
         return values
 
 
@@ -438,18 +453,20 @@ class Mongo(ConfigBaseModel):
     )
     port: int = Field(27017, description='The port to connect with mongodb.')
     db_name: str = Field('nomad_v1', description='The used mongodb database name.')
-    username: Optional[str]
-    password: Optional[str]
+    username: Optional[str] = None
+    password: Optional[str] = None
 
 
 class Logstash(ConfigBaseModel):
-    enabled = False
-    host = 'localhost'
-    tcp_port = '5000'
+    enabled: bool = False
+    host: str = 'localhost'
+    tcp_port: str = '5000'
     level: Union[int, str] = logging.DEBUG
 
     # Validators
-    _level = validator('level', allow_reuse=True)(normalize_loglevel)
+    _level = field_validator('level', mode='before')(normalize_loglevel)
+
+    model_config = ConfigDict(coerce_numbers_to_str=True)
 
 
 class Logtransfer(ConfigBaseModel):
@@ -500,7 +517,7 @@ class Logtransfer(ConfigBaseModel):
 
 
 class Tests(ConfigBaseModel):
-    default_timeout = 60
+    default_timeout: int = 60
     assume_auth_for_username: str = Field(
         None,
         description=(
@@ -511,14 +528,14 @@ class Tests(ConfigBaseModel):
 
 
 class Mail(ConfigBaseModel):
-    enabled = False
-    with_login = False
-    host = ''
-    port = 8995
-    user = ''
-    password = ''
-    from_address = 'support@nomad-lab.eu'
-    cc_address: Optional[str]
+    enabled: bool = False
+    with_login: bool = False
+    host: str = ''
+    port: int = 8995
+    user: str = ''
+    password: str = ''
+    from_address: str = 'support@nomad-lab.eu'
+    cc_address: Optional[str] = None
 
 
 class Normalize(ConfigBaseModel):
@@ -537,21 +554,21 @@ class Normalize(ConfigBaseModel):
             ),
         )
     )
-    system_classification_with_clusters_threshold = Field(
+    system_classification_with_clusters_threshold: float = Field(
         64,
         description="""
             The system size limit for running the dimensionality analysis. For very
             large systems the dimensionality analysis will get too expensive.
         """,
     )
-    clustering_size_limit = Field(
+    clustering_size_limit: float = Field(
         600,
         description="""
             The system size limit for running the system clustering. For very
             large systems the clustering will get too expensive.
         """,
     )
-    symmetry_tolerance = Field(
+    symmetry_tolerance: float = Field(
         0.1,
         description="""
             Symmetry tolerance controls the precision used by spglib in order to
@@ -562,34 +579,34 @@ class Normalize(ConfigBaseModel):
             https://pymatgen.org/pymatgen.symmetry.html#pymatgen.symmetry.analyzer.SpacegroupAnalyzer
         """,
     )
-    prototype_symmetry_tolerance = Field(
+    prototype_symmetry_tolerance: float = Field(
         0.1,
         description="""
             The symmetry tolerance used in aflow prototype matching. Should only be
             changed before re-running the prototype detection.
         """,
     )
-    max_2d_single_cell_size = Field(
+    max_2d_single_cell_size: float = Field(
         7,
         description="""
             Maximum number of atoms in the single cell of a 2D material for it to be
             considered valid.
         """,
     )
-    cluster_threshold = Field(
+    cluster_threshold: float = Field(
         2.5,
         description="""
             The distance tolerance between atoms for grouping them into the same
             cluster. Used in detecting system type.
         """,
     )
-    angle_rounding = Field(
+    angle_rounding: float = Field(
         float(10.0),
         description="""
             Defines the "bin size" for rounding cell angles for the material hash in degree.
         """,
     )
-    flat_dim_threshold = Field(
+    flat_dim_threshold: float = Field(
         0.1,
         description="""
             The threshold for a system to be considered "flat". Used e.g. when
@@ -597,13 +614,13 @@ class Normalize(ConfigBaseModel):
             transformations that are improper in 3D but proper in 2D.
         """,
     )
-    k_space_precision = Field(
+    k_space_precision: float = Field(
         150e6,
         description="""
             The threshold for point equality in k-space. Unit: 1/m.
         """,
     )
-    band_structure_energy_tolerance = Field(
+    band_structure_energy_tolerance: float = Field(
         8.01088e-21,
         description="""
             The energy threshold for how much a band can be on top or below the fermi
@@ -616,10 +633,11 @@ class Normalize(ConfigBaseModel):
         )
     )
 
-    @root_validator()
+    @model_validator(mode='after')
+    @classmethod
     def __validate(cls, values):  # pylint: disable=no-self-argument
-        proto_symmetry_tolerance = values.get('prototype_symmetry_tolerance')
-        symmetry_tolerance = values.get('symmetry_tolerance')
+        proto_symmetry_tolerance = values.prototype_symmetry_tolerance
+        symmetry_tolerance = values.symmetry_tolerance
         if proto_symmetry_tolerance != symmetry_tolerance:
             raise AssertionError(
                 'The AFLOW prototype information is outdated due to changed tolerance '
@@ -627,27 +645,27 @@ class Normalize(ConfigBaseModel):
                 "by running the CLI command 'nomad admin ops prototypes-update --matches-only'"
             )
 
-        springer_db_path = values.get('springer_db_path')
+        springer_db_path = values.springer_db_path
         if springer_db_path and not os.path.exists(springer_db_path):
-            values['springer_db_path'] = None
+            values.springer_db_path = None
 
         return values
 
 
 class Resources(ConfigBaseModel):
-    enabled = False
-    db_name = 'nomad_v1_resources'
-    max_time_in_mongo = Field(
+    enabled: bool = False
+    db_name: str = 'nomad_v1_resources'
+    max_time_in_mongo: float = Field(
         60 * 60 * 24 * 365.0,
-        description="""
-            Maxmimum time a resource is stored in mongodb before being updated.
-        """,
+        description='Maximum time a resource is stored in mongodb before being updated.',
     )
-    download_retries = Field(
+    download_retries: int = Field(
         2, description='Number of retries when downloading resources.'
     )
-    download_retry_delay = Field(10, description='Delay between retries in seconds')
-    max_connections = Field(
+    download_retry_delay: int = Field(
+        10, description='Delay between retries in seconds.'
+    )
+    max_connections: int = Field(
         10, description='Maximum simultaneous connections used to download resources.'
     )
 
@@ -656,44 +674,33 @@ class Client(ConfigBaseModel):
     user: str = None
     password: str = None
     access_token: str = None
-    url = 'http://nomad-lab.eu/prod/v1/api'
+    url: str = 'http://nomad-lab.eu/prod/v1/api'
 
 
 class DataCite(ConfigBaseModel):
-    mds_host = 'https://mds.datacite.org'
-    enabled = False
-    prefix = '10.17172'
-    user = '*'
-    password = '*'
+    mds_host: str = 'https://mds.datacite.org'
+    enabled: bool = False
+    prefix: str = '10.17172'
+    user: str = '*'
+    password: str = '*'
 
 
 class GitLab(ConfigBaseModel):
-    private_token = 'not set'
+    private_token: str = 'not set'
 
 
 class Process(ConfigBaseModel):
-    store_package_definition_in_mongo = Field(
-        False,
-        description='Configures whether to store the corresponding package definition in mongodb.',
-    )
-    add_definition_id_to_reference = Field(
-        False,
-        description="""
-        Configures whether to attach definition id to `m_def`, note it is different from `m_def_id`.
-        The `m_def_id` will be exported with the `with_def_id=True` via `m_to_dict`.
-    """,
-    )
-    write_definition_id_to_archive = Field(
-        False, description='Write `m_def_id` to the archive.'
-    )
-    index_materials = True
-    reuse_parser = True
-    metadata_file_name = 'nomad'
-    metadata_file_extensions = ('json', 'yaml', 'yml')
-    auxfile_cutoff = 100
-    parser_matching_size = 150 * 80  # 150 lines of 80 ASCII characters per line
-    max_upload_size = 32 * (1024**3)
-    use_empty_parsers = False
+    store_package_definition_in_mongo: bool = False
+    add_definition_id_to_reference: bool = False
+    write_definition_id_to_archive: bool = False
+    index_materials: bool = True
+    reuse_parser: bool = True
+    metadata_file_name: str = 'nomad'
+    metadata_file_extensions: Tuple[str, ...] = ('json', 'yaml', 'yml')
+    auxfile_cutoff: int = 100
+    parser_matching_size: int = 150 * 80
+    max_upload_size: int = 32 * (1024**3)
+    use_empty_parsers: bool = False
     redirect_stdouts: bool = Field(
         False,
         description="""
@@ -701,33 +708,27 @@ class Process(ConfigBaseModel):
         processing (e.g. created by parsers or normalizers) as log entries.
     """,
     )
-    rfc3161_skip_published = False  # skip published entries, regardless of timestamp
+    rfc3161_skip_published: bool = False
 
 
 class Reprocess(ConfigBaseModel):
-    """
-    Configures standard behaviour when reprocessing.
-    Note, the settings only matter for published uploads and entries. For uploads in
-    staging, we always reparse, add newfound entries, and delete unmatched entries.
-    """
-
-    rematch_published = True
-    reprocess_existing_entries = True
-    use_original_parser = False
-    add_matched_entries_to_published = True
-    delete_unmatched_published_entries = False
-    index_individual_entries = False
+    rematch_published: bool = True
+    reprocess_existing_entries: bool = True
+    use_original_parser: bool = False
+    add_matched_entries_to_published: bool = True
+    delete_unmatched_published_entries: bool = False
+    index_individual_entries: bool = False
 
 
 class RFC3161Timestamp(ConfigBaseModel):
-    server = Field(
+    server: str = Field(
         'http://zeitstempel.dfn.de', description='The rfc3161ng timestamping host.'
     )
     cert: str = Field(
         None,
         description='Path to the optional rfc3161ng timestamping server certificate.',
     )
-    hash_algorithm = Field(
+    hash_algorithm: str = Field(
         'sha256',
         description='Hash algorithm used by the rfc3161ng timestamping server.',
     )
@@ -869,15 +870,15 @@ class BundleImport(ConfigBaseModel):
 
 
 class Archive(ConfigBaseModel):
-    block_size = Field(
+    block_size: int = Field(
         1 * 2**20,
         description='In case of using blocked TOC, this is the size of each block.',
     )
-    read_buffer_size = Field(
+    read_buffer_size: int = Field(
         1 * 2**20,
         description='GPFS needs at least 256K to achieve decent performance.',
     )
-    copy_chunk_size = Field(
+    copy_chunk_size: int = Field(
         16 * 2**20,
         description="""
         The chunk size of every read of binary data.
@@ -885,13 +886,15 @@ class Archive(ConfigBaseModel):
         A small value will result in more syscalls, a large value will result in higher peak memory usage.
         """,
     )
-    toc_depth = Field(10, description='Depths of table of contents in the archive.')
-    small_obj_optimization_threshold = Field(
+    toc_depth: int = Field(
+        10, description='Depths of table of contents in the archive.'
+    )
+    small_obj_optimization_threshold: int = Field(
         1 * 2**20,
         description="""
         For any child of lists/dicts whose encoded size is smaller than this value, no TOC will be generated.""",
     )
-    fast_loading = Field(
+    fast_loading: bool = Field(
         True,
         description="""
         When enabled, this flag determines whether to read the whole dict/list at once
@@ -900,13 +903,13 @@ class Archive(ConfigBaseModel):
         Otherwise, always read children one by one. This may slow down the loading as more syscalls are needed.
         """,
     )
-    fast_loading_threshold = Field(
+    fast_loading_threshold: float = Field(
         0.6,
         description="""
         If the fraction of children that have been visited is less than this threshold, fast loading will be used.
         """,
     )
-    trivial_size = Field(
+    trivial_size: int = Field(
         20,
         description="""
         To identify numerical lists.
@@ -943,7 +946,7 @@ class Config(ConfigBaseModel):
     bundle_import: BundleImport = BundleImport()
     archive: Archive = Archive()
     ui: UI = UI()
-    plugins: Optional[Plugins]
+    plugins: Optional[Plugins] = None
 
     def api_url(
         self,
@@ -980,31 +983,28 @@ class Config(ConfigBaseModel):
             ssl=ssl,
             api='north',
             api_host=self.north.hub_host,
-            api_port=self.north.hub_port,
+            api_port=self.north.hub_port,  # type: ignore
         )
 
     def hub_url(self):
         return f'http://{self.north.hub_host}:{self.north.hub_port}{self.services.api_base_path}/north/hub'
 
-    @root_validator()
+    @model_validator(mode='after')
+    @classmethod
     def __validate(cls, values):  # pylint: disable=no-self-argument
-        services = values.get('services')
-        deployment_url = values.get('meta').deployment_url
+        services = values.services
+        deployment_url = values.meta.deployment_url
         if not deployment_url:
-            values.get('meta').deployment_url = services.api_url()
-        north = values.get('north')
-        ui = values.get('ui')
+            values.meta.deployment_url = services.api_url()
+        north = values.north
+        ui = values.ui
         if ui:
             if north:
-                values['ui'].north.enabled = north.enabled
+                values.ui.north.enabled = north.enabled
             if services:
-                values[
-                    'ui'
-                ].app_base = f'{"https" if services.https else "http"}://{services.api_host}:{services.api_port}{values["services"].api_base_path.rstrip("/")}'
+                values.ui.app_base = f'{"https" if services.https else "http"}://{services.api_host}:{services.api_port}{values.services.api_base_path.rstrip("/")}'
             if services and north:
-                values[
-                    'ui'
-                ].north_base = f'{"https" if services.https else "http"}://{north.hub_host}:{north.hub_port}{services.api_base_path.rstrip("/")}/north'
+                values.ui.north_base = f'{"https" if services.https else "http"}://{north.hub_host}:{north.hub_port}{services.api_base_path.rstrip("/")}/north'
 
         return values
 
@@ -1085,6 +1085,8 @@ class Config(ConfigBaseModel):
                 config_override = (
                     _plugins.get('entry_points', {}).get('options', {}).get(key, {})
                 )
+                if isinstance(config_override, BaseModel):
+                    config_override = config_override.model_dump(exclude_none=True)
                 config_override['id'] = key
                 config_instance = entry_point.load()
                 package_metadata = entry_point.dist.metadata
@@ -1161,7 +1163,7 @@ class Config(ConfigBaseModel):
                             'schema': Schema,
                         }.get(plugin_config['plugin_type'])
                         _plugins['entry_points']['options'][key] = (
-                            plugin_class.parse_obj(plugin_config)
+                            plugin_class.model_validate(plugin_config)
                         )
 
-            self.plugins = Plugins.parse_obj(_plugins)
+            self.plugins = Plugins.model_validate(_plugins)

@@ -93,8 +93,8 @@ async def check_user_access(
 
 app = FastAPI(dependencies=[Depends(check_user_access)])
 
-app.add_middleware(
-    CORSMiddleware,
+app.add_middleware(  # type: ignore
+    CORSMiddleware,  # type: ignore
     allow_origins=['*'],
     allow_credentials=True,
     allow_methods=['*'],

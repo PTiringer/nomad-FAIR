@@ -221,4 +221,4 @@ async def invite_user(
             detail='Could not invite user: %s' % str(error),
         )
 
-    return datamodel.User.get(username=user.username), 200
+    return datamodel.User.get(username=user.username)

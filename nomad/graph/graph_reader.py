@@ -733,7 +733,7 @@ def _parse_required(
             global_dict['resolve_inplace'] = resolve_inplace
 
         # normalise the query by replacing '-' with '_'
-        global_config = RequestConfig.parse_obj(global_dict)
+        global_config = RequestConfig.model_validate(global_dict)
         # extract query config for each field
         return _normalise_required(
             required_copy, global_config, reader_type=reader_type
@@ -741,12 +741,12 @@ def _parse_required(
 
     if required_query in ('*', 'include'):
         # for backward compatibility
-        global_config = RequestConfig.parse_obj({'directive': 'plain'})
+        global_config = RequestConfig.model_validate({'directive': 'plain'})
         return global_config, global_config
 
     if required_query == 'include-resolved':
         # for backward compatibility
-        global_config = RequestConfig.parse_obj({'directive': 'resolved'})
+        global_config = RequestConfig.model_validate({'directive': 'resolved'})
         return global_config, global_config
 
     raise ConfigError(f'Invalid required config: {required_query}.')
@@ -1984,9 +1984,9 @@ class UploadReader(MongoReader):
     def validate_config(cls, key: str, config: RequestConfig):
         try:
             if config.query is not None:
-                config.query = UploadProcDataQuery.parse_obj(config.query)
+                config.query = UploadProcDataQuery.model_validate(config.query)
             if config.pagination is not None:
-                config.pagination = UploadProcDataPagination.parse_obj(
+                config.pagination = UploadProcDataPagination.model_validate(
                     config.pagination
                 )
         except Exception as e:
@@ -2043,9 +2043,9 @@ class DatasetReader(MongoReader):
     def validate_config(cls, key: str, config: RequestConfig):
         try:
             if config.query is not None:
-                config.query = DatasetQuery.parse_obj(config.query)
+                config.query = DatasetQuery.model_validate(config.query)
             if config.pagination is not None:
-                config.pagination = DatasetPagination.parse_obj(config.pagination)
+                config.pagination = DatasetPagination.model_validate(config.pagination)
         except Exception as e:
             raise ConfigError(str(e))
 
@@ -2092,9 +2092,11 @@ class EntryReader(MongoReader):
     def validate_config(cls, key: str, config: RequestConfig):
         try:
             if config.query is not None:
-                config.query = EntryQuery.parse_obj(config.query)
+                config.query = EntryQuery.model_validate(config.query)
             if config.pagination is not None:
-                config.pagination = EntryProcDataPagination.parse_obj(config.pagination)
+                config.pagination = EntryProcDataPagination.model_validate(
+                    config.pagination
+                )
         except Exception as e:
             raise ConfigError(str(e))
 
@@ -2124,9 +2126,9 @@ class ElasticSearchReader(EntryReader):
     def validate_config(cls, key: str, config: RequestConfig):
         try:
             if config.query is not None:
-                config.query = Metadata.parse_obj(config.query)
+                config.query = Metadata.model_validate(config.query)
             if config.pagination is not None:
-                config.pagination = MetadataPagination.parse_obj(config.pagination)
+                config.pagination = MetadataPagination.model_validate(config.pagination)
         except Exception as e:
             raise ConfigError(str(e))
 
@@ -2260,9 +2262,11 @@ class UserGroupReader(MongoReader):
     def validate_config(cls, key: str, config: RequestConfig):
         try:
             if config.query is not None:
-                config.query = UserGroupQuery.parse_obj(config.query)
+                config.query = UserGroupQuery.model_validate(config.query)
             if config.pagination is not None:
-                config.pagination = UserGroupPagination.parse_obj(config.pagination)
+                config.pagination = UserGroupPagination.model_validate(
+                    config.pagination
+                )
         except Exception as e:
             raise ConfigError(str(e))
 
@@ -2477,7 +2481,7 @@ class FileSystemReader(GeneralReader):
     def validate_config(cls, key: str, config: RequestConfig):
         try:
             if config.pagination is not None:
-                config.pagination = RawDirPagination.parse_obj(config.pagination)
+                config.pagination = RawDirPagination.model_validate(config.pagination)
         except Exception as e:
             raise ConfigError(str(e))
 
@@ -3522,9 +3526,9 @@ class MetainfoBrowser(DefinitionReader):
     def validate_config(cls, key: str, config: RequestConfig):
         try:
             if config.query is not None:
-                config.query = MetainfoQuery.parse_obj(config.query)
+                config.query = MetainfoQuery.model_validate(config.query)
             if config.pagination is not None:
-                config.pagination = MetainfoPagination.parse_obj(config.pagination)
+                config.pagination = MetainfoPagination.model_validate(config.pagination)
         except Exception as e:
             raise ConfigError(str(e))
 
