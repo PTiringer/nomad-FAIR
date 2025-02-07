@@ -36,7 +36,7 @@ import elementData from '../../elementData.json'
 import { withErrorHandler } from '../ErrorHandler'
 import { useAsyncError } from '../../hooks'
 import { useApi } from '../api'
-import { download, scale } from '../../utils'
+import { download, scale, parseNomadUrl } from '../../utils'
 import { hsl } from 'chroma-js'
 
 const useStyles = makeStyles((theme) => ({
@@ -254,7 +254,7 @@ const StructureNGL = React.memo(({
    * later in the event queue allows the component to perform state updates
    * (e.g. loading placeholder) while the viewer is loading.
    */
-  const loadComponent = useCallback(async (system, entryId, path, componentKey, topologyMap) => {
+  const loadComponent = useCallback(async (system, entryId, componentKey, topologyMap) => {
     // Load the structure if not already cached
     let component = componentsRef.current[componentKey]
     let root
@@ -262,15 +262,16 @@ const StructureNGL = React.memo(({
       // Create the required archive API query to get the full system section.
       let atoms, atomParameters
       if (system?.atoms_ref) {
+        // The reference might point to some other entry. Here the final entry
+        // id is resolved.
+        const parsedInfo = parseNomadUrl(system.atoms_ref)
+        const finalEntryId = parsedInfo.entryId || entryId
+
+        // Build the required dictionary for the archive query
         const required = {}
         let current = required
-        let systemPath = system.atoms_ref
-        const prefix = '#/'
-        if (systemPath.startsWith(prefix)) {
-          systemPath = systemPath.slice(prefix.length)
-        }
-        const parts = systemPath?.split('/') || []
-        for (let i = 0; i < parts.length; i++) {
+        const parts = parsedInfo.path?.split('/') || []
+        for (let i = 1; i < parts.length; i++) {
           let part = parts[i]
           if (!isNaN(parts[i + 1])) {
             part = `${part}[${parts[i + 1]}]`
@@ -279,14 +280,17 @@ const StructureNGL = React.memo(({
           current[part] = i === parts.length - 1 ? '*' : {}
           current = current[part]
         }
+
         // Also request the atom parameters. TODO: It is assumed that there is
         // only one set of atom parameters. A better solution would be to store
         // a reference to the atom parameters in the system.
-        required['run[0]']['method[0]'] = {'atom_parameters': '*'}
+        if (required[['run[0]']]) {
+          required['run[0]']['method[0]'] = {'atom_parameters': '*'}
+        }
 
         // Get the full section from the archive
         const systemSection = await api.post(
-          `entries/${entryId}/archive/query`,
+          `entries/${finalEntryId}/archive/query`,
           {required}
         )
 
@@ -499,7 +503,7 @@ const StructureNGL = React.memo(({
 
     // Remember to catch since react error boundaries do not automatically catch
     // from async calls.
-    loadComponent(system, entryId, path, componentKey, topologyMap)
+    loadComponent(system, entryId, componentKey, topologyMap)
       .catch(asyncError)
       .finally(() => {
         // Hide other components that have been loaded
@@ -529,7 +533,7 @@ const StructureNGL = React.memo(({
     const isMonomerGroup = isGroup && isEqual(child_types, new Set(['monomer']))
 
     // Determine the selection to center on.
-    setSpecies(representationMap.current[selected].species)
+    setSpecies(representationMap.current[selected]?.species)
     const representation = representationMap.current[independent ? selected : topParent]
     if (representation) {
       representationRef.current = representation
