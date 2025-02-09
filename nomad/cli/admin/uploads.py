@@ -47,7 +47,7 @@ def _run_parallel(
         )  # copy the whole mongo query set to avoid cursor timeouts
 
     cv = threading.Condition()
-    threads: typing.List[threading.Thread] = []
+    threads: list[threading.Thread] = []
 
     state = dict(completed_count=0, skipped_count=0, available_threads_count=parallel)
 
@@ -259,7 +259,7 @@ def _query_uploads(
     if entries_mongo_query:
         entries_mongo_query_q = Q(**json.loads(entries_mongo_query))
 
-    entries_query_uploads: Set[str] = None
+    entries_query_uploads: set[str] = None
 
     if entries_es_query is not None:
         entries_es_query_dict = json.loads(entries_es_query)
@@ -278,12 +278,10 @@ def _query_uploads(
             },
         )
 
-        entries_query_uploads = set(
-            [
-                cast(str, bucket.value)
-                for bucket in results.aggregations['uploads'].terms.data
-            ]
-        )  # pylint: disable=no-member
+        entries_query_uploads = {
+            cast(str, bucket.value)
+            for bucket in results.aggregations['uploads'].terms.data
+        }  # pylint: disable=no-member
 
     if outdated:
         entries_mongo_query_q &= Q(nomad_version={'$ne': config.meta.version})
@@ -710,11 +708,11 @@ def process(
     uploads,
     parallel: int,
     process_running: bool,
-    setting: typing.List[str],
+    setting: list[str],
     print_progress: int,
 ):
     _, uploads = _query_uploads(uploads, **ctx.obj.uploads_kwargs)
-    settings: typing.Dict[str, bool] = {}
+    settings: dict[str, bool] = {}
     for settings_str in setting:
         key, value = settings_str.split('=')
         settings[key] = bool(value)

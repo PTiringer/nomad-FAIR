@@ -94,7 +94,7 @@ class EntryData(ArchiveSection):
     """
 
     def normalize(self, archive, logger):
-        super(EntryData, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         from nomad.datamodel.results import Results
         from nomad.datamodel import EntryArchive
@@ -119,7 +119,7 @@ class Author(MSection):
 
     name = Quantity(
         type=str,
-        derived=lambda user: ('%s %s' % (user.first_name, user.last_name)).strip(),
+        derived=lambda user: (f'{user.first_name} {user.last_name}').strip(),
         a_elasticsearch=[
             Elasticsearch(material_entry_type, _es_field='keyword'),
             Elasticsearch(
@@ -265,7 +265,7 @@ class Query(JSON):
         from nomad.app.v1.models import MetadataResponse
 
         class QueryResult(MetadataResponse):
-            filters: Optional[Dict[str, Any]] = Field(None)
+            filters: dict[str, Any] | None = Field(None)
 
         return QueryResult().parse_obj(value).dict()
 

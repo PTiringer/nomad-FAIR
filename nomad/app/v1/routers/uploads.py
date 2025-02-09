@@ -124,27 +124,27 @@ class UploadRole(str, Enum):
 
 class ProcData(BaseModel):
     process_running: bool = Field(description='If a process is running')
-    current_process: Optional[str] = Field(
+    current_process: str | None = Field(
         None, description='Name of the current or last completed process'
     )
     process_status: str = Field(
         ProcessStatus.READY,
         description='The status of the current or last completed process',
     )
-    last_status_message: Optional[str] = Field(
+    last_status_message: str | None = Field(
         None,
         description='A short, human readable message from the current process, with '
         'information about what the current process is doing, or information '
         'about the completion (successful or not) of the last process, if no '
         'process is currently running.',
     )
-    errors: List[str] = Field(
+    errors: list[str] = Field(
         descriptions='A list of error messages that occurred during the last processing'
     )
-    warnings: List[str] = Field(
+    warnings: list[str] = Field(
         description='A list of warning messages that occurred during the last processing'
     )
-    complete_time: Optional[datetime] = Field(
+    complete_time: datetime | None = Field(
         None, description='Date and time of the completion of the last process'
     )
     model_config = ConfigDict(from_attributes=True)
@@ -152,51 +152,51 @@ class ProcData(BaseModel):
 
 class UploadProcData(ProcData):
     upload_id: str = Field(description='The unique id for the upload.')
-    upload_name: Optional[str] = Field(
+    upload_name: str | None = Field(
         None,
         description='The name of the upload. This can be provided during upload '
         'using the `upload_name` query parameter.',
     )
-    upload_create_time: Optional[datetime] = Field(
+    upload_create_time: datetime | None = Field(
         None, description='Date and time of the creation of the upload.'
     )
-    main_author: Optional[str] = Field(
+    main_author: str | None = Field(
         None, description=strip('The main author of the upload.')
     )
-    coauthors: Optional[List[str]] = Field(
+    coauthors: list[str] | None = Field(
         None, description=strip('A list of upload coauthors.')
     )
-    coauthor_groups: Optional[List[str]] = Field(
+    coauthor_groups: list[str] | None = Field(
         None, description=strip('A list of upload coauthor groups.')
     )
-    reviewers: Optional[List[str]] = Field(
+    reviewers: list[str] | None = Field(
         None, description=strip('A list of upload reviewers.')
     )
-    reviewer_groups: Optional[List[str]] = Field(
+    reviewer_groups: list[str] | None = Field(
         None, description=strip('A list of upload reviewer groups.')
     )
-    writers: Optional[List[str]] = Field(
+    writers: list[str] | None = Field(
         None, description=strip('All writer users (main author, upload coauthors).')
     )
-    writer_groups: Optional[List[str]] = Field(
+    writer_groups: list[str] | None = Field(
         None, description=strip('All writer groups (coauthor groups).')
     )
-    viewers: Optional[List[str]] = Field(
+    viewers: list[str] | None = Field(
         None,
         description=strip(
             'All viewer users (main author, upload coauthors, and reviewers)'
         ),
     )
-    viewer_groups: Optional[List[str]] = Field(
+    viewer_groups: list[str] | None = Field(
         None,
         description=strip('All viewer groups (coauthor groups, reviewer groups).'),
     )
     published: bool = Field(False, description='If this upload is already published.')
-    published_to: Optional[List[str]] = Field(
+    published_to: list[str] | None = Field(
         None,
         description='A list of other NOMAD deployments that this upload was uploaded to already.',
     )
-    publish_time: Optional[datetime] = Field(
+    publish_time: datetime | None = Field(
         None,
         description='Date and time of publication, if the upload has been published.',
     )
@@ -212,7 +212,7 @@ class UploadProcData(ProcData):
     entries: int = Field(
         0, description='The number of identified entries in this upload.'
     )
-    upload_files_server_path: Optional[str] = Field(
+    upload_files_server_path: str | None = Field(
         None, description='The path to the uploads files on the server.'
     )
 
@@ -221,10 +221,10 @@ class EntryProcData(ProcData):
     entry_id: str = Field()
     entry_create_time: datetime = Field()
     mainfile: str = Field()
-    mainfile_key: Optional[str] = Field(None)
+    mainfile_key: str | None = Field(None)
     upload_id: str = Field()
     parser_name: str = Field()
-    entry_metadata: Optional[dict] = Field(None)
+    entry_metadata: dict | None = Field(None)
 
 
 class UploadProcDataPagination(Pagination):
@@ -339,15 +339,15 @@ class UploadProcDataResponse(BaseModel):
 
 
 class UploadProcDataQuery(BaseModel):
-    upload_id: Optional[List[str]] = Field(
+    upload_id: list[str] | None = Field(
         None,
         description='Search for uploads matching the given id. Multiple values can be specified.',
     )
-    upload_name: Optional[List[str]] = Field(
+    upload_name: list[str] | None = Field(
         None,
         description='Search for uploads matching the given upload_name. Multiple values can be specified.',
     )
-    is_processing: Optional[bool] = Field(
+    is_processing: bool | None = Field(
         None,
         description=strip(
             """
@@ -356,7 +356,7 @@ class UploadProcDataQuery(BaseModel):
             If unset, include everything."""
         ),
     )
-    is_published: Optional[bool] = Field(
+    is_published: bool | None = Field(
         None,
         description=strip(
             """
@@ -365,10 +365,10 @@ class UploadProcDataQuery(BaseModel):
             If unset: include everything."""
         ),
     )
-    process_status: Optional[str] = Field(
+    process_status: str | None = Field(
         None, description=strip('Search by the process status.')
     )
-    is_owned: Optional[bool] = Field(
+    is_owned: bool | None = Field(
         None,
         description=strip(
             """
@@ -393,7 +393,7 @@ upload_proc_data_query_parameters = parameter_dependency_from_model(
 class UploadProcDataQueryResponse(BaseModel):
     query: UploadProcDataQuery = Field()
     pagination: PaginationResponse = Field()
-    data: List[UploadProcData] = Field(
+    data: list[UploadProcData] = Field(
         None,
         description=strip(
             """
@@ -434,7 +434,7 @@ class EntryProcDataQueryResponse(BaseModel):
         """
         ),
     )
-    data: List[EntryProcData] = Field(
+    data: list[EntryProcData] = Field(
         None,
         description=strip(
             """
@@ -472,15 +472,15 @@ class RawDirFileMetadata(BaseModel):
     """Metadata about a file"""
 
     name: str = Field()
-    size: Optional[int] = Field(None)
-    entry_id: Optional[str] = Field(
+    size: int | None = Field(None)
+    entry_id: str | None = Field(
         None,
         description=strip(
             """
         If this is a mainfile: the ID of the corresponding entry."""
         ),
     )
-    parser_name: Optional[str] = Field(
+    parser_name: str | None = Field(
         None,
         description=strip(
             """
@@ -499,8 +499,8 @@ class RawDirDirectoryMetadata(BaseModel):
     """Metadata about a directory"""
 
     name: str = Field()
-    size: Optional[int] = Field(None)
-    content: List[RawDirElementMetadata] = Field(
+    size: int | None = Field(None)
+    content: list[RawDirElementMetadata] = Field(
         examples=[
             [
                 {'name': 'a_directory', 'is_file': False, 'size': 456},
@@ -519,18 +519,18 @@ class RawDirDirectoryMetadata(BaseModel):
 class RawDirResponse(BaseModel):
     path: str = Field(examples=['The/requested/path'])
     access: str = Field()
-    file_metadata: Optional[RawDirFileMetadata] = Field(None)
-    directory_metadata: Optional[RawDirDirectoryMetadata] = Field(None)
-    pagination: Optional[PaginationResponse] = Field(None)
+    file_metadata: RawDirFileMetadata | None = Field(None)
+    directory_metadata: RawDirDirectoryMetadata | None = Field(None)
+    pagination: PaginationResponse | None = Field(None)
 
 
 class ProcessingData(BaseModel):
     upload_id: str = Field()
     path: str = Field()
-    entry_id: Optional[str] = Field(None)
-    parser_name: Optional[str] = Field(None)
-    entry: Optional[EntryProcData] = Field(None)
-    archive: Optional[Dict[str, Any]] = Field(None)
+    entry_id: str | None = Field(None)
+    parser_name: str | None = Field(None)
+    entry: EntryProcData | None = Field(None)
+    archive: dict[str, Any] | None = Field(None)
 
 
 class PutRawFileResponse(BaseModel):
@@ -548,7 +548,7 @@ class PutRawFileResponse(BaseModel):
         The upload data as a dictionary."""
         ),
     )
-    processing: Optional[ProcessingData] = Field(
+    processing: ProcessingData | None = Field(
         None,
         description=strip(
             """
@@ -561,8 +561,8 @@ class PutRawFileResponse(BaseModel):
 class DeleteEntryFilesRequest(WithQuery):
     """Defines a request to delete entry files."""
 
-    owner: Optional[Owner] = Body('all')
-    include_parent_folders: Optional[bool] = Field(
+    owner: Owner | None = Body('all')
+    include_parent_folders: bool | None = Field(
         False,
         description=strip(
             """
@@ -777,7 +777,7 @@ async def get_command_examples(
 )
 async def get_uploads(
     request: Request,
-    roles: List[UploadRole] = FastApiQuery(
+    roles: list[UploadRole] = FastApiQuery(
         None,
         description='Only return uploads where the user has one of the given roles.',
     ),
@@ -1042,7 +1042,7 @@ async def get_upload_rawdir_path(
             directory_list = upload_files.raw_directory_list(path)
             upload_files.close()
             content = []
-            path_to_element: Dict[str, RawDirElementMetadata] = {}
+            path_to_element: dict[str, RawDirElementMetadata] = {}
             total = 0
             total_size = 0
             for i, path_info in enumerate(directory_list):
@@ -1149,7 +1149,7 @@ async def get_upload_raw_path(
     upload_id: str = Path(..., description='The unique id of the upload.'),
     path: str = Path(..., description='The path within the upload raw files.'),
     files_params: Files = Depends(files_parameters),
-    offset: Optional[int] = FastApiQuery(
+    offset: int | None = FastApiQuery(
         0,
         description=strip(
             """
@@ -1158,7 +1158,7 @@ async def get_upload_raw_path(
                 is 0, i.e. the start of the file."""
         ),
     ),
-    length: Optional[int] = FastApiQuery(
+    length: int | None = FastApiQuery(
         -1,
         description=strip(
             """
@@ -1324,7 +1324,7 @@ async def put_upload_raw_path(
     request: Request,
     upload_id: str = Path(..., description='The unique id of the upload.'),
     path: str = Path(..., description='The path within the upload raw files.'),
-    file: List[UploadFile] = File(None),
+    file: list[UploadFile] = File(None),
     local_path: str = FastApiQuery(
         None,
         description=strip("""Internal/Admin use only."""),
@@ -1733,7 +1733,7 @@ async def get_upload_entry_archive_mainfile(
     mainfile: str = Path(
         ..., description="The mainfile path within the upload's raw files."
     ),
-    mainfile_key: Optional[str] = FastApiQuery(
+    mainfile_key: str | None = FastApiQuery(
         None, description='The mainfile_key, for accessing child entries.'
     ),
     user: User = Depends(create_user_dependency(required=False)),
@@ -1784,7 +1784,7 @@ async def get_upload_entry_archive(
 )
 async def post_upload(
     request: Request,
-    file: List[UploadFile] = File(None),
+    file: list[UploadFile] = File(None),
     local_path: str = FastApiQuery(
         None,
         description=strip(
@@ -1792,7 +1792,7 @@ async def post_upload(
             Internal/Admin use only."""
         ),
     ),
-    example_upload_id: Optional[str] = FastApiQuery(
+    example_upload_id: str | None = FastApiQuery(
         None,
         description=strip(
             """
@@ -2231,7 +2231,7 @@ async def post_upload_action_delete_entry_files(
 
     # Determine paths to delete
     try:
-        paths_to_delete: Set[str] = set()
+        paths_to_delete: set[str] = set()
         for es_entry in es_entries:
             mainfile = es_entry['mainfile']
             path_to_delete = (
@@ -2328,14 +2328,14 @@ async def post_upload_action_lift_embargo(
 )
 async def get_upload_bundle(
     upload_id: str = Path(..., description='The unique id of the upload.'),
-    include_raw_files: Optional[bool] = FastApiQuery(
+    include_raw_files: bool | None = FastApiQuery(
         True,
         description=strip(
             """
                 If raw files should be included in the bundle (true by default)."""
         ),
     ),
-    include_archive_files: Optional[bool] = FastApiQuery(
+    include_archive_files: bool | None = FastApiQuery(
         True,
         description=strip(
             """
@@ -2343,7 +2343,7 @@ async def get_upload_bundle(
                 (true by default)."""
         ),
     ),
-    include_datasets: Optional[bool] = FastApiQuery(
+    include_datasets: bool | None = FastApiQuery(
         True,
         description=strip(
             """
@@ -2397,7 +2397,7 @@ async def get_upload_bundle(
 )
 async def post_upload_bundle(
     request: Request,
-    file: List[UploadFile] = File(None),
+    file: list[UploadFile] = File(None),
     local_path: str = FastApiQuery(
         None,
         description=strip(
@@ -2405,7 +2405,7 @@ async def post_upload_bundle(
             Internal/Admin use only."""
         ),
     ),
-    embargo_length: Optional[int] = FastApiQuery(
+    embargo_length: int | None = FastApiQuery(
         None,
         description=strip(
             """
@@ -2414,7 +2414,7 @@ async def post_upload_bundle(
                 embargo."""
         ),
     ),
-    include_raw_files: Optional[bool] = FastApiQuery(
+    include_raw_files: bool | None = FastApiQuery(
         None,
         description=strip(
             """
@@ -2422,7 +2422,7 @@ async def post_upload_bundle(
                 *(only admins can change this setting)*."""
         ),
     ),
-    include_archive_files: Optional[bool] = FastApiQuery(
+    include_archive_files: bool | None = FastApiQuery(
         None,
         description=strip(
             """
@@ -2430,7 +2430,7 @@ async def post_upload_bundle(
                 *(only admins can change this setting)*."""
         ),
     ),
-    include_datasets: Optional[bool] = FastApiQuery(
+    include_datasets: bool | None = FastApiQuery(
         None,
         description=strip(
             """
@@ -2438,7 +2438,7 @@ async def post_upload_bundle(
                 *(only admins can change this setting)*."""
         ),
     ),
-    include_bundle_info: Optional[bool] = FastApiQuery(
+    include_bundle_info: bool | None = FastApiQuery(
         None,
         description=strip(
             """
@@ -2446,7 +2446,7 @@ async def post_upload_bundle(
                 *(only admins can change this setting)*."""
         ),
     ),
-    keep_original_timestamps: Optional[bool] = FastApiQuery(
+    keep_original_timestamps: bool | None = FastApiQuery(
         None,
         description=strip(
             """
@@ -2455,7 +2455,7 @@ async def post_upload_bundle(
                 *(only admins can change this setting)*."""
         ),
     ),
-    set_from_oasis: Optional[bool] = FastApiQuery(
+    set_from_oasis: bool | None = FastApiQuery(
         None,
         description=strip(
             """
@@ -2463,7 +2463,7 @@ async def post_upload_bundle(
                 *(only admins can change this setting)*."""
         ),
     ),
-    trigger_processing: Optional[bool] = FastApiQuery(
+    trigger_processing: bool | None = FastApiQuery(
         None,
         description=strip(
             """
@@ -2565,11 +2565,11 @@ async def post_upload_bundle(
 async def _get_files_if_provided(
     tmp_dir_prefix: str,
     request: Request,
-    file: List[UploadFile],
+    file: list[UploadFile],
     local_path: str,
     file_name: str,
     user: User,
-) -> Tuple[List[str], List[str], Union[None, int]]:
+) -> tuple[list[str], list[str], None | int]:
     """
     If the user provides one or more files with the api call, load and save them to a temporary
     folder (or, if method 0 is used, just "forward" the file path). The method thus needs to identify
@@ -2579,7 +2579,7 @@ async def _get_files_if_provided(
     data was provided with the api call.
     """
     # Determine the source data stream
-    sources: List[Tuple[Any, str]] = []  # List of tuples (source, filename)
+    sources: list[tuple[Any, str]] = []  # List of tuples (source, filename)
     if local_path:
         # Method 0: Local file - only for admin use.
         if not user.is_admin:
@@ -2713,7 +2713,7 @@ def _query_mongodb(**kwargs):
     return Upload.objects(**kwargs)
 
 
-def get_role_query(roles: List[UploadRole], user: User, include_all=False) -> Q:
+def get_role_query(roles: list[UploadRole], user: User, include_all=False) -> Q:
     """
     Create MongoDB filter query for user with given roles (default: all roles)
     """
@@ -2733,7 +2733,7 @@ def get_role_query(roles: List[UploadRole], user: User, include_all=False) -> Q:
     return role_query
 
 
-def is_user_upload_viewer(upload: Upload, user: Optional[User]):
+def is_user_upload_viewer(upload: Upload, user: User | None):
     if 'all' in upload.reviewer_groups:
         return True
 
@@ -2768,7 +2768,7 @@ def is_user_upload_writer(upload: Upload, user: User):
 
 
 def get_upload_with_read_access(
-    upload_id: str, user: Optional[User], include_others: bool = False
+    upload_id: str, user: User | None, include_others: bool = False
 ) -> Upload:
     """
     Determines if the user has read access to the upload. If so, the corresponding Upload

@@ -76,7 +76,7 @@ response_types = [
 
 
 def rdf_response(
-    format: Optional[Formats] = Query(None), accept: Optional[str] = Header(None)
+    format: Formats | None = Query(None), accept: str | None = Header(None)
 ):
     format_ = format.value if format else None
     if format_ is None:

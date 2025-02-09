@@ -23,7 +23,7 @@ from nomad.metainfo.metainfo import Quantity, Reference
 from nomad.metainfo.elasticsearch_extension import SearchQuantity, entry_type
 
 
-_provider_specific_fields: Dict[str, SearchQuantity] = None
+_provider_specific_fields: dict[str, SearchQuantity] = None
 
 
 def create_provider_field(name, definition):
@@ -43,7 +43,7 @@ def create_provider_field(name, definition):
     return dict(name=name, description=description, type=optimade_type, sortable=False)
 
 
-def provider_specific_fields() -> Dict[str, SearchQuantity]:
+def provider_specific_fields() -> dict[str, SearchQuantity]:
     global _provider_specific_fields
 
     if _provider_specific_fields is not None:

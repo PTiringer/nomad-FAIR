@@ -29,12 +29,12 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Dict,
-    Iterable,
     List,
     Tuple,
     Union,
     cast,
 )
+from collections.abc import Iterable
 
 import ase.data
 import ase.geometry
@@ -94,7 +94,7 @@ def get_summed_mass(atomic_numbers=None, masses=None, indices=None, atom_labels=
 
 def get_masses_from_computational_model(
     archive, repr_system: System = None, method_index: int = -1
-) -> Union[List[float], Dict[str, float]]:
+) -> list[float] | dict[str, float]:
     """
     Gets the masses based on the masses provided in atom parameters
     of the computational model. Only returns the mass list in case
@@ -205,7 +205,7 @@ def is_valid_basis(basis: NDArray[Any]) -> bool:
 
 
 def translate_pretty(
-    fractional: NDArray[Any], pbc: Union[bool, NDArray[Any]]
+    fractional: NDArray[Any], pbc: bool | NDArray[Any]
 ) -> NDArray[Any]:
     """Translates atoms such that fractional positions are minimized."""
     pbc = pbc2pbc(pbc)
@@ -226,7 +226,7 @@ def translate_pretty(
 def get_center_of_positions(
     positions: NDArray[Any],
     cell: NDArray[Any] = None,
-    pbc: Union[bool, NDArray[Any]] = True,
+    pbc: bool | NDArray[Any] = True,
     weights=None,
     relative=False,
 ) -> NDArray[Any]:
@@ -281,7 +281,7 @@ def get_center_of_positions(
 def wrap_positions(
     positions: NDArray[Any],
     cell: NDArray[Any] = None,
-    pbc: Union[bool, NDArray[Any]] = True,
+    pbc: bool | NDArray[Any] = True,
     center: NDArray[Any] = [0.5, 0.5, 0.5],
     pretty_translation=False,
     eps: float = 1e-12,
@@ -329,7 +329,7 @@ def wrap_positions(
 def unwrap_positions(
     positions: NDArray[Any],
     cell: NDArray[Any],
-    pbc: Union[bool, NDArray[Any]],
+    pbc: bool | NDArray[Any],
     relative=False,
 ) -> NDArray[Any]:
     """
@@ -363,7 +363,7 @@ def unwrap_positions(
     )
 
 
-def chemical_symbols(atomic_numbers: Iterable[int]) -> List[str]:
+def chemical_symbols(atomic_numbers: Iterable[int]) -> list[str]:
     """
     Converts atomic numbers to chemical_symbols.
 
@@ -435,9 +435,7 @@ def reciprocal_cell(cell: NDArray[Any]) -> NDArray[Any]:
     return np.linalg.pinv(cell).transpose()
 
 
-def find_match(
-    pos: NDArray[Any], positions: NDArray[Any], eps: float
-) -> Union[int, None]:
+def find_match(pos: NDArray[Any], positions: NDArray[Any], eps: float) -> int | None:
     """
     Attempts to find a position within a larger list of positions.
 
@@ -537,7 +535,7 @@ def cell_to_cellpar(cell: NDArray[Any], degrees=False) -> NDArray[Any]:
 
 
 def get_symmetry_string(
-    space_group: int, wyckoff_sets: List[Any], is_2d: bool = False
+    space_group: int, wyckoff_sets: list[Any], is_2d: bool = False
 ) -> str:
     """
     Used to serialize symmetry information into a string. The Wyckoff
@@ -566,20 +564,20 @@ def get_symmetry_string(
         element = group.element
         wyckoff_letter = group.wyckoff_letter
         n_atoms = len(group.indices)
-        i_string = '{} {} {}'.format(element, wyckoff_letter, n_atoms)
+        i_string = f'{element} {wyckoff_letter} {n_atoms}'
         wyckoff_strings.append(i_string)
     wyckoff_string = ', '.join(sorted(wyckoff_strings))
     if is_2d:
-        string = '2D {} {}'.format(space_group, wyckoff_string)
+        string = f'2D {space_group} {wyckoff_string}'
     else:
-        string = '{} {}'.format(space_group, wyckoff_string)
+        string = f'{space_group} {wyckoff_string}'
 
     return string
 
 
 def get_hill_decomposition(
     atom_labels: NDArray[Any], reduced: bool = False
-) -> Tuple[List[str], List[int]]:
+) -> tuple[list[str], list[int]]:
     """
     Given a list of atomic labels, returns the chemical formula using the
     Hill system (https://en.wikipedia.org/wiki/Hill_system) with an exception
@@ -694,7 +692,7 @@ def get_formula_string(symbols: Iterable[str], counts: Iterable[int]) -> str:
 
 def get_normalized_wyckoff(
     atomic_numbers: NDArray[Any], wyckoff_letters: NDArray[Any]
-) -> Dict[str, Dict[str, int]]:
+) -> dict[str, dict[str, int]]:
     """
     Returns a normalized Wyckoff sequence for the given atomic numbers and
     corresponding wyckoff letters. In a normalized sequence the chemical
@@ -711,7 +709,7 @@ def get_normalized_wyckoff(
         'X_<index>'.
     """
     # Count the occurrence of each chemical species
-    atom_count: Dict[int, int] = {}
+    atom_count: dict[int, int] = {}
     for atomic_number in atomic_numbers:
         atom_count[atomic_number] = atom_count.get(atomic_number, 0) + 1
 
@@ -960,7 +958,7 @@ class Formula:
             )
         self._original_formula = formula
 
-    def count(self) -> Dict[str, int]:
+    def count(self) -> dict[str, int]:
         """Return dictionary that maps chemical symbol to number of atoms."""
         return self._count.copy()
 
@@ -990,11 +988,11 @@ class Formula:
         else:
             raise ValueError(f'Invalid format option "{fmt}"')
 
-    def elements(self) -> List[str]:
+    def elements(self) -> list[str]:
         """Returns the list of chemical elements present in the formula."""
         return sorted(self.count().keys())
 
-    def atomic_fractions(self) -> Dict[str, float]:
+    def atomic_fractions(self) -> dict[str, float]:
         """
         Returns dictionary that maps chemical symbol to atomic fraction.
 
@@ -1007,7 +1005,7 @@ class Formula:
         atomic_fractions = {key: value / total_count for key, value in count.items()}
         return atomic_fractions
 
-    def mass_fractions(self) -> Dict[str, float]:
+    def mass_fractions(self) -> dict[str, float]:
         """
         Returns a dictionary that maps chemical symbol to mass fraction.
 
@@ -1026,7 +1024,7 @@ class Formula:
         }
         return mass_fractions
 
-    def elemental_composition(self) -> List[ElementalComposition]:
+    def elemental_composition(self) -> list[ElementalComposition]:
         """
         Returns the atomic and mass fractions as a list of
         `ElementalComposition` objects. Any unknown elements are ignored.
@@ -1052,8 +1050,8 @@ class Formula:
 
     def populate(
         self,
-        section: Union[Material, System],
-        descriptive_format: Union[str, None] = 'original',
+        section: Material | System,
+        descriptive_format: str | None = 'original',
         overwrite: bool = False,
     ) -> None:
         """
@@ -1115,9 +1113,7 @@ class Formula:
             n_matched_chars = sum([len(match[0]) for match in matches])
             n_formula = len(formula.strip())
             if n_matched_chars == n_formula:
-                formula = ''.join(
-                    ['{}{}'.format(match[1], match[2]) for match in matches]
-                )
+                formula = ''.join([f'{match[1]}{match[2]}' for match in matches])
         return formula
 
     def _formula_hill(self) -> str:
@@ -1250,7 +1246,7 @@ class Formula:
         }
         return self._dict2str(count_anonymous)
 
-    def _dict2str(self, dct: Dict[str, int]) -> str:
+    def _dict2str(self, dct: dict[str, int]) -> str:
         """Convert symbol-to-count dict to a string. Omits the chemical
         proportion number 1.
 

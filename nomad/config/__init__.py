@@ -44,15 +44,15 @@ from nomad.config.models.config import Config
 logger = logging.getLogger(__name__)
 
 
-def _load_config_yaml() -> Dict[str, Any]:
+def _load_config_yaml() -> dict[str, Any]:
     """
     Loads the configuration from a YAML file.
     """
     config_file = os.environ.get('NOMAD_CONFIG', 'nomad.yaml')
-    config_data: Dict[str, Any] = {}
+    config_data: dict[str, Any] = {}
 
     if os.path.exists(config_file):
-        with open(config_file, 'r') as stream:
+        with open(config_file) as stream:
             try:
                 config_data = yaml.load(stream, Loader=yaml.SafeLoader)
             except yaml.YAMLError as e:
@@ -61,7 +61,7 @@ def _load_config_yaml() -> Dict[str, Any]:
     return config_data
 
 
-def _load_config_env() -> Dict[str, Any]:
+def _load_config_env() -> dict[str, Any]:
     """
     Loads the configuration from environment variables.
 
@@ -84,7 +84,7 @@ def _load_config_env() -> Dict[str, Any]:
                 root[part] = new
                 root = new
 
-    config_data: Dict[str, Any] = {}
+    config_data: dict[str, Any] = {}
     prefix = 'NOMAD_'
     for key, value in os.environ.items():
         if key == 'NOMAD_CONFIG' or not key.startswith(prefix):
@@ -102,7 +102,7 @@ def _load_config_env() -> Dict[str, Any]:
     return config_data
 
 
-def _merge(*args) -> Dict[str, Any]:
+def _merge(*args) -> dict[str, Any]:
     """
     Recursively merge the given dictionaries one by one.
 
@@ -138,7 +138,7 @@ def load_config() -> Config:
     """Custom config loader. Used instead of Pydantic BaseSettings because of
     custom merging logic and custom loading of environment variables.
     """
-    with open(os.path.join(os.path.dirname(__file__), 'defaults.yaml'), 'r') as stream:
+    with open(os.path.join(os.path.dirname(__file__), 'defaults.yaml')) as stream:
         config_default = yaml.load(stream, Loader=yaml.SafeLoader)
     config_yaml = _load_config_yaml()
     config_env = _load_config_env()

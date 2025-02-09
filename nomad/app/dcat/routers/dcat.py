@@ -89,7 +89,7 @@ async def get_dataset(
 )
 async def get_catalog(
     after: str = Query(None, description='return entries after the given entry_id'),
-    modified_since: Union[datetime, date] = Query(
+    modified_since: datetime | date = Query(
         None, description='maximum entry time (e.g. upload time)'
     ),
     rdf_respose=Depends(rdf_response),

@@ -54,18 +54,18 @@ class ToolStateEnum(str, Enum):
 
 class ToolModel(NORTHTool):
     name: str
-    state: Optional[ToolStateEnum] = None
+    state: ToolStateEnum | None = None
 
 
 class ToolResponseModel(BaseModel):
     tool: str
     username: str
-    upload_mount_dir: Optional[str] = None
+    upload_mount_dir: str | None = None
     data: ToolModel
 
 
 class ToolsResponseModel(BaseModel):
-    data: List[ToolModel] = []
+    data: list[ToolModel] = []
 
 
 _bad_tool_response = (
@@ -162,7 +162,7 @@ async def get_tool(
 async def start_tool(
     tool: ToolModel = Depends(tool),
     user: User = Depends(create_user_dependency(required=True)),
-    upload_id: Optional[str] = None,
+    upload_id: str | None = None,
 ):
     tool.state = ToolStateEnum.stopped
 
@@ -198,7 +198,7 @@ async def start_tool(
     )
     upload_query &= Q(publish_time=None)
 
-    uploads: List[Dict] = []
+    uploads: list[dict] = []
     for upload in Upload.objects.filter(upload_query):
         if not hasattr(upload.upload_files, 'external_os_path'):
             # In case the files are missing for one reason or another
@@ -224,7 +224,7 @@ async def start_tool(
             }
         )
 
-    external_mounts: List[Dict[str, str]] = []
+    external_mounts: list[dict[str, str]] = []
     for ext_mount in tool.external_mounts:
         external_mounts.append(
             {

@@ -57,7 +57,7 @@ _bad_invite_response = (
 
 
 class Users(BaseModel):
-    data: List[User]
+    data: list[User]
 
 
 @router.get(
@@ -91,7 +91,7 @@ async def read_users_me(
     response_model=Users,
 )
 async def get_users(
-    prefix: Optional[str] = Query(
+    prefix: str | None = Query(
         None,
         description=strip(
             """
@@ -99,7 +99,7 @@ async def get_users(
         """
         ),
     ),
-    user_id: Union[List[str], None] = Query(
+    user_id: list[str] | None = Query(
         None,
         description=strip(
             """
@@ -107,7 +107,7 @@ async def get_users(
         """
         ),
     ),
-    username: Union[List[str], None] = Query(
+    username: list[str] | None = Query(
         None,
         description=strip(
             """
@@ -115,7 +115,7 @@ async def get_users(
         """
         ),
     ),
-    email: Union[List[str], None] = Query(
+    email: list[str] | None = Query(
         None,
         description=strip(
             """
@@ -124,7 +124,7 @@ async def get_users(
         ),
     ),
 ):
-    users: List[User] = []
+    users: list[User] = []
     for key, values in dict(user_id=user_id, username=username, email=email).items():
         if not values:
             continue

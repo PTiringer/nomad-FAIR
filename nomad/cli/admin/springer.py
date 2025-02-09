@@ -49,7 +49,7 @@ search_re = re.compile(' href="(/isp/[^"]+)')
 formula_re = re.compile(r'([A-Z][a-z]?)([0-9.]*)|\[(.*?)\]([0-9]+)')
 
 
-def _update_dict(dict0: Dict[str, float], dict1: Dict[str, float]):
+def _update_dict(dict0: dict[str, float], dict1: dict[str, float]):
     for key, val in dict1.items():
         if key in dict0:
             dict0[key] += val
@@ -57,11 +57,11 @@ def _update_dict(dict0: Dict[str, float], dict1: Dict[str, float]):
             dict0[key] = val
 
 
-def _components(formula_str: str, multiplier: float = 1.0) -> Dict[str, float]:
+def _components(formula_str: str, multiplier: float = 1.0) -> dict[str, float]:
     # match atoms and molecules (in brackets)
     components = formula_re.findall(formula_str)
 
-    symbol_amount: Dict[str, float] = {}
+    symbol_amount: dict[str, float] = {}
     for component in components:
         element, amount_e, molecule, amount_m = component
         if element:
@@ -93,7 +93,7 @@ def normalize_formula(formula_str: str) -> str:
     return ''.join(formula_sorted)
 
 
-def parse(htmltext: str) -> Dict[str, str]:
+def parse(htmltext: str) -> dict[str, str]:
     """
     Parser the quantities in required_items from an html text.
     """
@@ -143,7 +143,7 @@ def parse(htmltext: str) -> Dict[str, str]:
     return results
 
 
-def _merge_dict(dict0: Dict[str, Any], dict1: Dict[str, Any]) -> Dict[str, Any]:
+def _merge_dict(dict0: dict[str, Any], dict1: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(dict1, dict) or not isinstance(dict0, dict):
         return dict1
 
@@ -188,7 +188,7 @@ def update_springer(max_n_query: int = 10, retry_time: int = 120):
         config.normalize.springer_db_path, {spg: '*' for spg in archive_keys}
     )
 
-    sp_ids: List[str] = []
+    sp_ids: list[str] = []
     for spg in sp_data:
         if not isinstance(sp_data[spg], dict):
             continue

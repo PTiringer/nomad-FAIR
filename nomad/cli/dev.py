@@ -362,7 +362,7 @@ def update_parser_readmes(parser):
     parser_path = './dependencies/parsers/'
 
     # Open general template
-    with open(generic_fn, 'r') as generic:  # read only
+    with open(generic_fn) as generic:  # read only
         generic_contents = generic.read()
 
     # Replace the comment at the top of the gereral template
@@ -376,7 +376,7 @@ def update_parser_readmes(parser):
 
     def open_metadata(path):
         # read local yaml metadata file
-        with open(path, 'r') as metadata_f:
+        with open(path) as metadata_f:
             try:
                 metadata = yaml.load(metadata_f, Loader=yaml.SafeLoader)
             except Exception as e:
@@ -489,7 +489,7 @@ def example_data(username: str):
     return data
 
 
-def _generate_units_json() -> Tuple[Any, Any]:
+def _generate_units_json() -> tuple[Any, Any]:
     from pint.converters import ScaleConverter
     from collections import defaultdict
     from nomad.units import ureg

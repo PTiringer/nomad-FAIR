@@ -17,7 +17,8 @@
 #
 from __future__ import annotations
 
-from typing import Any, Tuple, Dict, Union, cast, Generator
+from typing import Any, Tuple, Dict, Union, cast
+from collections.abc import Generator
 from io import BytesIO, BufferedReader
 from collections.abc import Mapping, Sequence
 
@@ -38,13 +39,13 @@ def unpackb(o):
     return msgspec.msgpack.decode(o)
 
 
-def _decode(position: bytes) -> Tuple[int, int]:
+def _decode(position: bytes) -> tuple[int, int]:
     return int.from_bytes(
         position[:5], byteorder='little', signed=False
     ), int.from_bytes(position[5:], byteorder='little', signed=False)
 
 
-def _unpack_entry(data: bytes) -> Tuple[Any, Tuple[Any, Any]]:
+def _unpack_entry(data: bytes) -> tuple[Any, tuple[Any, Any]]:
     entry_uuid = unpackb(data[:_toc_uuid_size])
     positions_encoded = unpackb(data[_toc_uuid_size:])
     return entry_uuid, (_decode(positions_encoded[0]), _decode(positions_encoded[1]))
@@ -73,7 +74,7 @@ class ArchiveItem:
         self._f.seek(offset)
         return self._f.read(size)
 
-    def _read(self, position: Tuple[int, int]):
+    def _read(self, position: tuple[int, int]):
         start, end = position
         raw_data = self._direct_read(end - start, start + self._offset)
         return unpackb(raw_data)
@@ -140,7 +141,7 @@ class ArchiveDict(ArchiveItem, Mapping):
 
 
 class ArchiveReader(ArchiveDict):
-    def __init__(self, file_or_path: Union[str, BytesIO], use_blocked_toc=True):
+    def __init__(self, file_or_path: str | BytesIO, use_blocked_toc=True):
         self._file_or_path = file_or_path
 
         if isinstance(self._file_or_path, str):
@@ -189,7 +190,7 @@ class ArchiveReader(ArchiveDict):
                 'Archive top-level TOC is not a msgpack map (dictionary).'
             )
 
-        self._toc: Dict[str, Any] = {}
+        self._toc: dict[str, Any] = {}
         self._toc_block_info = [None] * (self._toc_number // _entries_per_block + 1)
 
     def __enter__(self):
@@ -313,7 +314,7 @@ class ArchiveReader(ArchiveDict):
         return self._f.closed if isinstance(self._file_or_path, str) else True
 
 
-def read_archive(file_or_path: Union[str, BytesIO], **kwargs) -> ArchiveReader:
+def read_archive(file_or_path: str | BytesIO, **kwargs) -> ArchiveReader:
     """
     Allows to read a msgpack-based archive.
 

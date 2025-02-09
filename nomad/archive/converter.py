@@ -23,7 +23,8 @@ import os.path
 import signal
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import Manager
-from typing import Iterable, Callable
+from collections.abc import Callable
+from collections.abc import Iterable
 
 from nomad.config import config
 from nomad.archive import to_json, read_archive

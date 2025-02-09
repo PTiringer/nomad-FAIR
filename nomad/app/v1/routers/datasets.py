@@ -249,7 +249,7 @@ dataset_pagination_parameters = parameter_dependency_from_model(
 
 class DatasetsResponse(BaseModel):
     pagination: PaginationResponse = Field(None)
-    data: List[Dataset] = Field(None)  # type: ignore
+    data: list[Dataset] = Field(None)  # type: ignore
 
 
 class DatasetResponse(BaseModel):
@@ -263,12 +263,10 @@ class DatasetType(str, enum.Enum):
 
 
 class DatasetCreate(BaseModel):  # type: ignore
-    dataset_name: Optional[str] = Field(
-        None, description='The new name for the dataset.'
-    )
-    dataset_type: Optional[DatasetType] = Field(None)
-    query: Optional[Query] = Field(None)
-    entries: Optional[List[str]] = Field(None)
+    dataset_name: str | None = Field(None, description='The new name for the dataset.')
+    dataset_type: DatasetType | None = Field(None)
+    query: Query | None = Field(None)
+    entries: list[str] | None = Field(None)
 
 
 @router.get(
@@ -283,7 +281,7 @@ async def get_datasets(
     request: Request,
     dataset_id: str = FastApiQuery(None),
     dataset_name: str = FastApiQuery(None),
-    user_id: List[str] = FastApiQuery(None),
+    user_id: list[str] = FastApiQuery(None),
     dataset_type: str = FastApiQuery(None),
     doi: str = FastApiQuery(None),
     prefix: str = FastApiQuery(None),

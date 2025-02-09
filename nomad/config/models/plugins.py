@@ -41,16 +41,16 @@ if TYPE_CHECKING:
 class EntryPoint(BaseModel):
     """Base model for a NOMAD plugin entry points."""
 
-    id: Optional[str] = Field(
+    id: str | None = Field(
         None,
         description='Unique identifier corresponding to the entry point name. Automatically set to the plugin entry point name in pyproject.toml.',
     )
     entry_point_type: str = Field(description='Determines the entry point type.')
-    name: Optional[str] = Field(None, description='Name of the plugin entry point.')
-    description: Optional[str] = Field(
+    name: str | None = Field(None, description='Name of the plugin entry point.')
+    description: str | None = Field(
         None, description='A human readable description of the plugin entry point.'
     )
-    plugin_package: Optional[str] = Field(
+    plugin_package: str | None = Field(
         None, description='The plugin package from which this entry points comes from.'
     )
 
@@ -127,8 +127,8 @@ class ParserEntryPoint(EntryPoint, metaclass=ABCMeta):
         level will attempt to match raw files first.
     """,
     )
-    aliases: List[str] = Field([], description="""List of alternative parser names.""")
-    mainfile_contents_re: Optional[str] = Field(
+    aliases: list[str] = Field([], description="""List of alternative parser names.""")
+    mainfile_contents_re: str | None = Field(
         None,
         description="""
         A regular expression that is applied the content of a potential mainfile.
@@ -152,13 +152,13 @@ class ParserEntryPoint(EntryPoint, metaclass=ABCMeta):
         for a file, if the expression matches.
     """,
     )
-    mainfile_binary_header: Optional[bytes] = Field(
+    mainfile_binary_header: bytes | None = Field(
         None,
         description="""
         Matches a binary file if the given bytes are included in the file.
     """,
     )
-    mainfile_binary_header_re: Optional[bytes] = Field(
+    mainfile_binary_header_re: bytes | None = Field(
         None,
         description="""
         Matches a binary file if the given binary regular expression bytes matches the
@@ -172,13 +172,13 @@ class ParserEntryPoint(EntryPoint, metaclass=ABCMeta):
         matches a parser.
     """,
     )
-    mainfile_contents_dict: Optional[dict] = Field(
+    mainfile_contents_dict: dict | None = Field(
         None,
         description="""
         Is used to match structured data files like JSON or HDF5.
     """,
     )
-    supported_compressions: List[str] = Field(
+    supported_compressions: list[str] = Field(
         [],
         description="""
         Files compressed with the given formats (e.g. xz, gz) are uncompressed and
@@ -226,26 +226,22 @@ class ExampleUploadEntryPoint(EntryPoint):
     entry_point_type: Literal['example_upload'] = Field(
         'example_upload', description='Determines the entry point type.'
     )
-    category: Optional[str] = Field(description='Category for the example upload.')
-    title: Optional[str] = Field(description='Title of the example upload.')
-    description: Optional[str] = Field(
+    category: str | None = Field(description='Category for the example upload.')
+    title: str | None = Field(description='Title of the example upload.')
+    description: str | None = Field(
         description='Longer description of the example upload.'
     )
-    resources: Optional[
+    resources: None | (
         # Note that the order here matters: pydantic may interpret a dictionary
         # as a list of strings instead of an UploadResource object if the order
         # is wrong here.
-        Union[
-            List[Union[UploadResource, str]],
-            UploadResource,
-            str,
-        ]
-    ] = Field(None, description='List of data resources for this example upload.')
-    path: Optional[str] = Field(
+        list[UploadResource | str] | UploadResource | str
+    ) = Field(None, description='List of data resources for this example upload.')
+    path: str | None = Field(
         None,
         deprecated='"path" is deprecated, use "resources" instead.',
     )
-    url: Optional[str] = Field(
+    url: str | None = Field(
         None,
         deprecated='"url" is deprecated, use "resources" instead.',
     )
@@ -453,19 +449,17 @@ class PluginBase(BaseModel):
     plugin_type: str = Field(
         description='The type of the plugin.',
     )
-    id: Optional[str] = Field(
-        None, description='The unique identifier for this plugin.'
-    )
+    id: str | None = Field(None, description='The unique identifier for this plugin.')
     name: str = Field(
         description='A short descriptive human readable name for the plugin.'
     )
-    description: Optional[str] = Field(
+    description: str | None = Field(
         None, description='A human readable description of the plugin.'
     )
-    plugin_documentation_url: Optional[str] = Field(
+    plugin_documentation_url: str | None = Field(
         None, description='The URL to the plugins main documentation page.'
     )
-    plugin_source_code_url: Optional[str] = Field(
+    plugin_source_code_url: str | None = Field(
         None, description='The URL of the plugins main source code repository.'
     )
 
@@ -501,11 +495,11 @@ class Schema(PythonPluginBase):
     A Schema describes a NOMAD Python schema that can be loaded as a plugin.
     """
 
-    package_path: Optional[str] = Field(
+    package_path: str | None = Field(
         None,
         description='Path of the plugin package. Will be determined using python_package if not explicitly defined.',
     )
-    key: Optional[str] = Field(None, description='Key used to identify this plugin.')
+    key: str | None = Field(None, description='Key used to identify this plugin.')
     plugin_type: Literal['schema'] = Field(
         'schema',
         description="""
@@ -577,7 +571,7 @@ class Parser(PythonPluginBase):
         parser class directly for parsing and matching.
         """,
     )
-    mainfile_contents_re: Optional[str] = Field(
+    mainfile_contents_re: str | None = Field(
         None,
         description="""
         A regular expression that is applied the content of a potential mainfile.
@@ -601,13 +595,13 @@ class Parser(PythonPluginBase):
         expression matches.
         """,
     )
-    mainfile_binary_header: Optional[bytes] = Field(
+    mainfile_binary_header: bytes | None = Field(
         None,
         description="""
         Matches a binary file if the given bytes are included in the file.
         """,
     )
-    mainfile_binary_header_re: Optional[bytes] = Field(
+    mainfile_binary_header_re: bytes | None = Field(
         None,
         description="""
         Matches a binary file if the given binary regular expression bytes matches the
@@ -621,7 +615,7 @@ class Parser(PythonPluginBase):
         matches a parser.
         """,
     )
-    mainfile_contents_dict: Optional[dict] = Field(
+    mainfile_contents_dict: dict | None = Field(
         None,
         description="""
         Is used to match structured data files like JSON, HDF5 or csv/excel files. In case of a csv/excel file
@@ -638,7 +632,7 @@ class Parser(PythonPluginBase):
         <i>__has_comment: str<i> (only for csv/xlsx files)
         """,
     )
-    supported_compressions: List[str] = Field(
+    supported_compressions: list[str] = Field(
         [],
         description="""
         Files compressed with the given formats (e.g. xz, gz) are uncompressed and
@@ -657,10 +651,10 @@ class Parser(PythonPluginBase):
         The order by which the parser is executed with respect to other parsers.
         """,
     )
-    code_name: Optional[str] = None
-    code_homepage: Optional[str] = None
-    code_category: Optional[str] = None
-    metadata: Optional[dict] = Field(
+    code_name: str | None = None
+    code_homepage: str | None = None
+    code_category: str | None = None
+    metadata: dict | None = Field(
         None,
         description="""
         Metadata passed to the UI. Deprecated.""",
@@ -701,7 +695,7 @@ EntryPointType = Union[
 
 
 class EntryPoints(Options):
-    options: Dict[str, EntryPointType] = Field(
+    options: dict[str, EntryPointType] = Field(
         dict(), description='The available plugin entry points.'
     )
 
@@ -710,25 +704,25 @@ class PluginPackage(BaseModel):
     name: str = Field(
         description='Name of the plugin Python package, read from pyproject.toml.'
     )
-    description: Optional[str] = Field(
+    description: str | None = Field(
         None, description='Package description, read from pyproject.toml.'
     )
-    version: Optional[str] = Field(
+    version: str | None = Field(
         None, description='Plugin package version, read from pyproject.toml.'
     )
-    homepage: Optional[str] = Field(
+    homepage: str | None = Field(
         None,
         description='Link to the plugin package homepage, read from pyproject.toml.',
     )
-    documentation: Optional[str] = Field(
+    documentation: str | None = Field(
         None,
         description='Link to the plugin package documentation page, read from pyproject.toml.',
     )
-    repository: Optional[str] = Field(
+    repository: str | None = Field(
         None,
         description='Link to the plugin package source code repository, read from pyproject.toml.',
     )
-    entry_points: List[str] = Field(
+    entry_points: list[str] = Field(
         description='List of entry point ids contained in this package, read form pyproject.toml'
     )
 
@@ -737,7 +731,7 @@ class Plugins(BaseModel):
     entry_points: EntryPoints = Field(
         description='Used to control plugin entry points.'
     )
-    plugin_packages: Dict[str, PluginPackage] = Field(
+    plugin_packages: dict[str, PluginPackage] = Field(
         description="""
         Contains the installed installed plugin packages with the package name
         used as a key. This is autogenerated and should not be modified.

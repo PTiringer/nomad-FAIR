@@ -56,7 +56,7 @@ class RequiredValidationError(Exception):
 
 
 @functools.lru_cache(maxsize=1024)
-def _parse_required_key(key: str) -> Tuple[str, Union[Tuple[int, int], int]]:
+def _parse_required_key(key: str) -> tuple[str, tuple[int, int] | int]:
     key = key.strip()
     match = _query_archive_key_pattern.match(key)
 
@@ -66,7 +66,7 @@ def _parse_required_key(key: str) -> Tuple[str, Union[Tuple[int, int], int]]:
     return _extract_key_and_index(match)
 
 
-def _setdefault(target: Union[dict, list], key, value_type: type):
+def _setdefault(target: dict | list, key, value_type: type):
     if isinstance(target, list):
         if target[key] is None:
             target[key] = value_type()
@@ -141,7 +141,7 @@ class RequiredReader:
 
     def __init__(
         self,
-        required: Union[dict, str],
+        required: dict | str,
         root_section_def: Section = None,
         resolve_inplace: bool = False,
         user=None,
@@ -453,9 +453,9 @@ class RequiredReader:
             return resolved_result
 
         path_stack.reverse()
-        target_container: Union[dict, list] = dataset.result_root
+        target_container: dict | list = dataset.result_root
         # noinspection PyTypeChecker
-        prop_or_index: Union[str, int] = None
+        prop_or_index: str | int = None
         while len(path_stack) > 0:
             if prop_or_index is not None:
                 target_container = _setdefault(target_container, prop_or_index, dict)
@@ -540,9 +540,9 @@ class RequiredReader:
     def _apply_required(
         self,
         required: dict | str,
-        archive_item: Union[dict, str],
+        archive_item: dict | str,
         dataset: RequiredReferencedArchive,
-    ) -> Union[Dict, str]:
+    ) -> dict | str:
         if archive_item is None:
             return None  # type: ignore
 

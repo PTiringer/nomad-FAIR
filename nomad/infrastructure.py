@@ -336,7 +336,7 @@ class KeycloakUserManagement(UserManagement):
 
     def __create_username(self, user):
         if user.first_name is not None and user.last_name is not None:
-            user.username = '%s%s' % (user.first_name[:1], user.last_name)
+            user.username = f'{user.first_name[:1]}{user.last_name}'
         elif user.last_name is not None:
             user.username = user.last_name
         elif '@' in user.username:

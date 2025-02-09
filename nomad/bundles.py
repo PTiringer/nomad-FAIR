@@ -8,7 +8,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from typing import cast, Any, Tuple, List, Set, Dict, Iterable
+from typing import cast, Any, Tuple, List, Set, Dict
+from collections.abc import Iterable
 import os
 import json
 from datetime import datetime, timedelta
@@ -133,14 +134,11 @@ class BundleExporter:
         )
 
         # 2. Files from the upload dir
-        for file_source in self.upload.upload_files.files_to_bundle(
-            self.export_settings
-        ):
-            yield file_source
+        yield from self.upload.upload_files.files_to_bundle(self.export_settings)
 
     def _create_bundle_info(self):
         """Create the bundle_info.json data"""
-        bundle_info: Dict[str, Any] = dict(
+        bundle_info: dict[str, Any] = dict(
             upload_id=self.upload.upload_id,
             source=config.meta.dict(),  # Information about the source system, i.e. this NOMAD installation
             export_settings=self.export_settings.dict(),
@@ -150,7 +148,7 @@ class BundleExporter:
             ],
         )
         # Handle datasets
-        dataset_ids: Set[str] = set()
+        dataset_ids: set[str] = set()
         for entry_dict in bundle_info['entries']:
             entry_datasets = entry_dict.get('datasets')
             if entry_datasets:
@@ -198,7 +196,7 @@ class BundleImporter:
         self.bundle: BrowsableFileSource = None
         self.upload: Upload = None
         self.upload_files: UploadFiles = None
-        self._bundle_info: Dict[str, Any] = None
+        self._bundle_info: dict[str, Any] = None
 
     @classmethod
     def looks_like_a_bundle(cls, path):
@@ -301,9 +299,9 @@ class BundleImporter:
         self.upload = upload
         logger = self.upload.get_logger(bundle_path=self.bundle_path)
         current_time = datetime.utcnow()
-        new_datasets: List[datamodel.Dataset] = []
-        dataset_id_mapping: Dict[str, str] = {}
-        entry_data_to_index: List[datamodel.EntryArchive] = []  # Data to index in ES
+        new_datasets: list[datamodel.Dataset] = []
+        dataset_id_mapping: dict[str, str] = {}
+        entry_data_to_index: list[datamodel.EntryArchive] = []  # Data to index in ES
         try:
             self._check_bundle_and_settings(running_locally)
             self._import_upload_mongo_data(current_time)
@@ -490,7 +488,7 @@ class BundleImporter:
             and 0 <= self.upload.embargo_length <= 36
         ), 'Invalid embargo_length, must be between 0 and 36 months'
 
-    def _import_datasets(self) -> Tuple[List[datamodel.Dataset], Dict[str, str]]:
+    def _import_datasets(self) -> tuple[list[datamodel.Dataset], dict[str, str]]:
         """Creates datasets from the bundle."""
         required_keys_datasets = ('dataset_id', 'dataset_name', 'user_id')
 
@@ -498,8 +496,8 @@ class BundleImporter:
             'Missing datasets definition in bundle_info.json'
         )
         datasets = self.bundle_info['datasets']
-        new_datasets: List[datamodel.Dataset] = []
-        dataset_id_mapping: Dict[
+        new_datasets: list[datamodel.Dataset] = []
+        dataset_id_mapping: dict[
             str, str
         ] = {}  # Map from old to new id (usually the same)
         for dataset_dict in datasets:
@@ -537,7 +535,7 @@ class BundleImporter:
 
     def _import_entries_mongo_data(
         self, current_time, dataset_id_mapping
-    ) -> List[Entry]:
+    ) -> list[Entry]:
         """Creates mongo entries from the data in the bundle_info"""
         required_keys_entry_level = (
             '_id',
@@ -640,8 +638,8 @@ class BundleImporter:
             raise
 
     def _get_entry_data_to_index(
-        self, entries: List[Entry]
-    ) -> List[datamodel.EntryArchive]:
+        self, entries: list[Entry]
+    ) -> list[datamodel.EntryArchive]:
         entry_data_to_index = []
         if self.import_settings.include_archive_files:
             for entry in entries:
@@ -655,7 +653,7 @@ class BundleImporter:
             self.upload_files.close()  # Because full_entry_metadata reads the archive files.
         return entry_data_to_index
 
-    def _index_search(self, entry_data_to_index: List[datamodel.EntryArchive]):
+    def _index_search(self, entry_data_to_index: list[datamodel.EntryArchive]):
         # Index in elastic search
         if entry_data_to_index:
             search.index(
@@ -670,7 +668,7 @@ class BundleImporter:
         )
 
 
-def keys_exist(data: Dict[str, Any], required_keys: Iterable[str], error_message: str):
+def keys_exist(data: dict[str, Any], required_keys: Iterable[str], error_message: str):
     """
     Checks if the specified keys exist in the provided dictionary structure `data`.
     Supports dot-notation to access subkeys.

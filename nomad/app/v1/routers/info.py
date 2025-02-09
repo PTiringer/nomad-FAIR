@@ -76,24 +76,22 @@ class StatisticsModel(BaseModel):
 
 
 class CodeInfoModel(BaseModel):
-    code_name: Optional[str] = Field(
-        None, description='Name of the code or input format'
-    )
-    code_homepage: Optional[str] = Field(
+    code_name: str | None = Field(None, description='Name of the code or input format')
+    code_homepage: str | None = Field(
         None, description='Homepage of the code or input format'
     )
 
 
 class InfoModel(BaseModel):
-    parsers: List[str]
-    metainfo_packages: List[str]
-    codes: List[CodeInfoModel]
-    normalizers: List[str]
-    plugin_entry_points: List[dict] = Field(
+    parsers: list[str]
+    metainfo_packages: list[str]
+    codes: list[CodeInfoModel]
+    normalizers: list[str]
+    plugin_entry_points: list[dict] = Field(
         None,
         desciption='List of plugin entry points that are activated in this deployment.',
     )
-    plugin_packages: List[dict] = Field(
+    plugin_packages: list[dict] = Field(
         None,
         desciption='List of plugin packages that are installed in this deployment.',
     )
@@ -115,7 +113,7 @@ class InfoModel(BaseModel):
     )
 
 
-_statistics: Dict[str, Any] = None
+_statistics: dict[str, Any] = None
 
 
 def statistics():

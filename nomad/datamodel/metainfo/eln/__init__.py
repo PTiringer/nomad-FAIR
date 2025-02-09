@@ -167,7 +167,7 @@ class ElnBaseSection(ArchiveSection):
     )
 
     def normalize(self, archive, logger):
-        super(ElnBaseSection, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         if isinstance(self, EntryData):
             if archive.data == self and self.name:
@@ -562,7 +562,7 @@ class SampleID(ArchiveSection):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(SampleID, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         if self.sample_owner is None or self.institute is None:
             author = archive.metadata.main_author
@@ -917,7 +917,7 @@ class Substance(System):
             archive (EntryArchive): The archive that is being normalized.
             logger (Any): A structlog logger.
         """
-        super(Substance, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         if logger is None:
             logger = utils.get_logger(__name__)
         logger.warn(
@@ -956,7 +956,7 @@ class Substance(System):
             except Exception as e:
                 logger.warn('Could not analyse chemical formula.', exc_info=e)
 
-        super(Substance, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
 
 class ElnWithFormulaBaseSection(ElnBaseSection):
@@ -976,7 +976,7 @@ class ElnWithFormulaBaseSection(ElnBaseSection):
     )
 
     def normalize(self, archive, logger):
-        super(ElnWithFormulaBaseSection, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         if logger is None:
             logger = utils.get_logger(__name__)
@@ -1026,7 +1026,7 @@ class ElnWithStructureFile(ArchiveSection):
     )
 
     def normalize(self, archive, logger):
-        super(ElnWithStructureFile, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         if self.structure_file:
             from ase.io import read
@@ -1145,7 +1145,7 @@ class SolarCellDefinition(ArchiveSection):
     )
 
     def normalize(self, archive, logger):
-        super(SolarCellDefinition, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         add_solar_cell(archive)
         if self.stack_sequence:
             if '/' in self.stack_sequence:
@@ -1219,7 +1219,7 @@ class SolarCellLayer(ArchiveSection):
     )
 
     def normalize(self, archive, logger):
-        super(SolarCellLayer, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         add_solar_cell(archive)
         if self.layer_name:
             if self.solar_cell_layer_type == 'Absorber':
@@ -1256,9 +1256,7 @@ class SolarCellBaseSectionWithOptoelectronicProperties(ArchiveSection):
     )
 
     def normalize(self, archive, logger):
-        super(SolarCellBaseSectionWithOptoelectronicProperties, self).normalize(
-            archive, logger
-        )
+        super().normalize(archive, logger)
         add_solar_cell(archive)
         add_band_gap(archive, self.bandgap)
 
@@ -1446,7 +1444,7 @@ class SolarCellJV(PlotSection):
             archive.results.properties.optoelectronic.solar_cell.illumination_intensity = self.light_intensity
 
     def normalize(self, archive, logger):
-        super(SolarCellJV, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         add_solar_cell(archive)
         self.update_results(archive)
@@ -1503,7 +1501,7 @@ class SolarCellJVCurve(SolarCellJV):
     )
 
     def normalize(self, archive, logger):
-        super(SolarCellJVCurve, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         if self.current_density is not None:
             if self.voltage is not None:
                 (
@@ -1677,7 +1675,7 @@ class SolarCellEQE(PlotSection):
     )
 
     def normalize(self, archive, logger):
-        super(SolarCellEQE, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         if self.eqe_data_file:
             with archive.m_context.raw_file(self.eqe_data_file) as f:

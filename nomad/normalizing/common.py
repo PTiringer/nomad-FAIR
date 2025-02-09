@@ -38,7 +38,7 @@ from nomad.datamodel.results import (
 )
 
 
-def wyckoff_sets_from_matid(wyckoff_sets: List[WyckoffSetMatID]) -> List[WyckoffSet]:
+def wyckoff_sets_from_matid(wyckoff_sets: list[WyckoffSetMatID]) -> list[WyckoffSet]:
     """Given a dictionary of wyckoff sets, returns the metainfo equivalent.
 
     Args:
@@ -65,8 +65,8 @@ def wyckoff_sets_from_matid(wyckoff_sets: List[WyckoffSetMatID]) -> List[Wyckoff
 
 
 def species(
-    labels: List[str], atomic_numbers: List[int], logger=None
-) -> Optional[List[Species]]:
+    labels: list[str], atomic_numbers: list[int], logger=None
+) -> list[Species] | None:
     """Given a list of atomic labels and atomic numbers, returns the
     corresponding list of Species objects.
 
@@ -81,7 +81,7 @@ def species(
     """
     if labels is None or atomic_numbers is None:
         return None
-    species: Set[str] = set()
+    species: set[str] = set()
     species_list = []
     for label, atomic_number in zip(labels, atomic_numbers):
         if label not in species:
@@ -130,8 +130,8 @@ def lattice_parameters_from_array(lattice_vectors: NDArray[Any]) -> LatticeParam
 
 def cell_from_ase_atoms(
     atoms: Atoms,
-    masses: Union[List[float], Dict[Any, Any]] = None,
-    atom_labels: List[str] = None,
+    masses: list[float] | dict[Any, Any] = None,
+    atom_labels: list[str] = None,
 ) -> Cell:
     """Extracts Cell metainfo from the given ASE Atoms.
     Undefined angle values are not stored.
@@ -169,7 +169,7 @@ def cell_from_ase_atoms(
 
 
 def structure_from_ase_atoms(
-    system: Atoms, wyckoff_sets: List[WyckoffSetMatID] = None, logger=None
+    system: Atoms, wyckoff_sets: list[WyckoffSetMatID] = None, logger=None
 ) -> Structure:
     """Returns a populated NOMAD Structure instance from an ase.Atoms-object.
 

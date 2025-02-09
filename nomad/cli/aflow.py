@@ -66,7 +66,7 @@ class DbUpdater:
         self.parallel = 2
         self.max_depth = None
         self.target_file = None
-        self.uids: List[str] = []
+        self.uids: list[str] = []
         self._set(**kwargs)
         self.auth = auth
 
@@ -103,7 +103,7 @@ class DbUpdater:
 
         self._session = requests.Session()
 
-    def _get_paths(self, root: str) -> typing.List[str]:
+    def _get_paths(self, root: str) -> list[str]:
         response = self._session.get(root, verify=False)
         if not response.ok:
             response.raise_for_status()
@@ -143,13 +143,13 @@ class DbUpdater:
                 line = f.readline()
         return data
 
-    def _write_to_file(self, data: typing.List, filename: str):
+    def _write_to_file(self, data: list, filename: str):
         with open(filename, 'w') as f:
             for i in range(len(data)):
                 if isinstance(data[i], str):
                     f.write('%s\n' % data[i])
                 else:
-                    f.write('%s %s \n' % (data[i][0], data[i][1]))
+                    f.write(f'{data[i][0]} {data[i][1]} \n')
 
     def get_db_list(self):
         if self.dbfile is not None and os.path.isfile(self.dbfile):
@@ -237,7 +237,7 @@ class DbUpdater:
         Identify the difference between the nomad list and db list
         """
 
-        def reduce_list(ilist: typing.List[str]):
+        def reduce_list(ilist: list[str]):
             olist = []
             for e in ilist:
                 p = urllib_parse.urlparse(e).path.strip('/')
@@ -264,7 +264,7 @@ class DbUpdater:
         # add the root back
         u = urllib_parse.urlparse(self.root_url)
         up = u.path.strip('/').split('/')[0]
-        root = '%s://%s/%s' % (u.scheme, u.netloc, up)
+        root = f'{u.scheme}://{u.netloc}/{up}'
         self.update_list = [os.path.join(root, e) for e in self.update_list]
         self.is_updated_list = [False] * len(self.update_list)
         print('Found %d entries to be added in NOMAD' % len(self.update_list))
@@ -273,7 +273,7 @@ class DbUpdater:
             data = [self.update_list[i] for i in range(len(self.update_list))]
             self._write_to_file(data, self.outfile)
 
-    def _get_files(self, path: str) -> typing.Tuple[str, float]:
+    def _get_files(self, path: str) -> tuple[str, float]:
         def is_dir(path: str) -> bool:
             path = path.strip()
             if path[-1] == '/' and self.root_url in path:
@@ -338,18 +338,18 @@ class DbUpdater:
 
         return dirname, size
 
-    def _make_name(self, dirs: typing.List[str]) -> typing.Tuple[str, str]:
+    def _make_name(self, dirs: list[str]) -> tuple[str, str]:
         # name will be first and last entries
         d1 = self._to_namesafe(dirs[0].lstrip(self._local_path))
         d2 = self._to_namesafe(dirs[-1].lstrip(self._local_path))
 
-        tarname = '%s-%s' % (d1, d2)
-        uploadname = '%s_%s' % (self.db_name.upper(), tarname)
+        tarname = f'{d1}-{d2}'
+        uploadname = f'{self.db_name.upper()}_{tarname}'
         tarname = os.path.join(self._local_path, '%s.tar' % tarname)
 
         return tarname, uploadname
 
-    def _cleanup(self, ilist: typing.Union[str, typing.List[str]]):
+    def _cleanup(self, ilist: str | list[str]):
         if isinstance(ilist, str):
             ilist = [ilist]
         for name in ilist:
@@ -412,8 +412,8 @@ class DbUpdater:
         assert uid is not None
         return uid
 
-    def _download_proc(self, plist: typing.List[str]):
-        def tar_files(dirs: typing.List[str], tarname: str):
+    def _download_proc(self, plist: list[str]):
+        def tar_files(dirs: list[str], tarname: str):
             if os.path.isfile(tarname):
                 return
 
@@ -426,9 +426,9 @@ class DbUpdater:
 
             except Exception as e:
                 os.remove(tarname)
-                print('Error writing tar file %s. %s' % (tarname, e))
+                print(f'Error writing tar file {tarname}. {e}')
 
-        def get_status_upload(uploadname: str) -> typing.Tuple[str, str]:
+        def get_status_upload(uploadname: str) -> tuple[str, str]:
             response = api.get(f'uploads', params=dict(name=uploadname), auth=self.auth)
             assert response.status_code == 200
             response_json = response.json()
@@ -541,7 +541,7 @@ def write_prototype_data_file(aflow_prototypes: dict, filepath) -> None:
         aflow_prototypes
     """
 
-    class NoIndent(object):
+    class NoIndent:
         def __init__(self, value):
             self.value = value
 
@@ -551,7 +551,7 @@ def write_prototype_data_file(aflow_prototypes: dict, filepath) -> None:
         """
 
         def __init__(self, *args, **kwargs):
-            super(NoIndentEncoder, self).__init__(*args, **kwargs)
+            super().__init__(*args, **kwargs)
             self.kwargs = dict(kwargs)
             del self.kwargs['indent']
             self._replacement_map = {}
@@ -560,14 +560,14 @@ def write_prototype_data_file(aflow_prototypes: dict, filepath) -> None:
             if isinstance(o, NoIndent):
                 key = uuid.uuid4().hex
                 self._replacement_map[key] = json.dumps(o.value, **self.kwargs)
-                return '@@%s@@' % (key,)
+                return f'@@{key}@@'
             else:
-                return super(NoIndentEncoder, self).default(o)
+                return super().default(o)
 
         def encode(self, o):
-            result = super(NoIndentEncoder, self).encode(o)
+            result = super().encode(o)
             for k, v in self._replacement_map.items():
-                result = result.replace('"@@%s@@"' % (k,), v)
+                result = result.replace(f'"@@{k}@@"', v)
             return result
 
     prototype_dict = aflow_prototypes['prototypes_by_spacegroup']
@@ -585,7 +585,7 @@ def write_prototype_data_file(aflow_prototypes: dict, filepath) -> None:
                 pass
 
     # Save the updated data
-    with io.open(filepath, 'w', encoding='utf8') as f:
+    with open(filepath, 'w', encoding='utf8') as f:
         json_dump = json.dumps(
             aflow_prototypes,
             ensure_ascii=False,
@@ -596,7 +596,7 @@ def write_prototype_data_file(aflow_prototypes: dict, filepath) -> None:
         json_dump = re.sub(
             r'\"(-?\d+(?:[\.,]\d+)?)\"', r'\1', json_dump
         )  # Removes quotes around numbers
-        f.write('aflow_prototypes = {}\n'.format(json_dump))
+        f.write(f'aflow_prototypes = {json_dump}\n')
 
 
 def update_prototypes(ctx, filepath, matches_only):
@@ -690,7 +690,7 @@ def update_prototypes(ctx, filepath, matches_only):
             newdict['atom_labels'] = atom_labels
             newdictarray.append(newdict)
 
-            print('Processed: {}'.format(len(newdictarray)))
+            print(f'Processed: {len(newdictarray)}')
 
         # Sort prototype dictionaries by spacegroup and make dictionary
         structure_types_by_spacegroup = {}

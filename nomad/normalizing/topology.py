@@ -63,7 +63,7 @@ from nomad.normalizing.common import (
 conventional_description = 'The conventional cell of the material from which the subsystem is constructed from.'
 subsystem_description = 'Automatically detected subsystem.'
 chemical_symbols = np.array(chemical_symbols)
-with open(pathlib.Path(__file__).parent / 'data/top_50k_material_ids.json', 'r') as fin:
+with open(pathlib.Path(__file__).parent / 'data/top_50k_material_ids.json') as fin:
     top_50k_material_ids = json.load(fin)
 
 
@@ -115,8 +115,8 @@ def get_topology_original(atoms=None, archive: EntryArchive = None) -> System:
 
 def add_system_info(
     system: System,
-    topologies: Dict[str, System],
-    masses: Union[List[float], Dict[str, float]] = None,
+    topologies: dict[str, System],
+    masses: list[float] | dict[str, float] = None,
 ) -> None:
     """Given a system with minimal information, attempts to add all values than
     can be derived.
@@ -175,7 +175,7 @@ def add_system_info(
 
 
 def add_system(
-    system: System, topologies: Dict[str, System], parent: Optional[System] = None
+    system: System, topologies: dict[str, System], parent: System | None = None
 ) -> None:
     """Adds the given system to the topology."""
     index = len(topologies)
@@ -203,7 +203,7 @@ class TopologyNormalizer:
             entry_archive, repr_system=repr_system
         )
 
-    def topology(self, material) -> Optional[List[System]]:
+    def topology(self, material) -> list[System] | None:
         """Returns a dictionary that contains all of the topologies mapped by id."""
         # If topology already exists (e.g. written by another normalizer), do
         # not overwrite it.
@@ -222,7 +222,7 @@ class TopologyNormalizer:
 
         return None
 
-    def topology_calculation(self) -> Optional[List[System]]:
+    def topology_calculation(self) -> list[System] | None:
         """Extracts the system topology as defined in the original calculation.
         This topology typically comes from e.g. classical force fields that
         define a topology for the system.
@@ -246,11 +246,11 @@ class TopologyNormalizer:
         ):
             return None
 
-        topology: Dict[str, System] = {}
+        topology: dict[str, System] = {}
         original = get_topology_original(atoms, self.entry_archive)
         original.atoms_ref = atoms
         add_system(original, topology)
-        label_to_indices: Dict[str, list] = defaultdict(list)
+        label_to_indices: dict[str, list] = defaultdict(list)
 
         def add_group(groups, parent=None):
             if not groups:
@@ -302,10 +302,8 @@ class TopologyNormalizer:
                         old_labels.append(instance_indices)
                     else:
                         self.logger.warn(
-                            (
-                                'the topology contains entries with the same label but with '
-                                'different number of atoms'
-                            )
+                            'the topology contains entries with the same label but with '
+                            'different number of atoms'
                         )
 
         add_group(groups, original)
@@ -328,7 +326,7 @@ class TopologyNormalizer:
 
         return list(topology.values())
 
-    def topology_matid(self, material: Material) -> Optional[List[System]]:
+    def topology_matid(self, material: Material) -> list[System] | None:
         """
         Returns a list of systems that have been identified with MatID.
         """
@@ -342,7 +340,7 @@ class TopologyNormalizer:
             return None
 
         # Create topology for the original system
-        topology: Dict[str, System] = {}
+        topology: dict[str, System] = {}
         original = get_topology_original(nomad_atoms, self.entry_archive)
         original.atoms_ref = nomad_atoms
         add_system(original, topology)
@@ -413,7 +411,7 @@ class TopologyNormalizer:
                             conventional_cell,
                             topology,
                             masses=self.masses
-                            if isinstance(self.masses, Dict)
+                            if isinstance(self.masses, dict)
                             else None,
                         )
                     else:
@@ -510,7 +508,7 @@ class TopologyNormalizer:
         add_system(conv_system, topology, subsystem)
         add_system_info(conv_system, topology, masses=self.masses)
 
-    def _create_subsystem(self, cluster: Cluster) -> Optional[System]:
+    def _create_subsystem(self, cluster: Cluster) -> System | None:
         """
         Creates a new subsystem as detected by MatID.
         """

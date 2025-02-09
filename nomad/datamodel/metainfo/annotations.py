@@ -105,7 +105,7 @@ valid_eln_components = {
 class Filter(BaseModel):
     """A filter defined by an include list or and exclude list of the quantities or subsections."""
 
-    include: Optional[List[str]] = Field(
+    include: list[str] | None = Field(
         None,
         description=strip(
             """
@@ -113,7 +113,7 @@ class Filter(BaseModel):
         """
         ),
     )
-    exclude: Optional[List[str]] = Field(
+    exclude: list[str] | None = Field(
         None,
         description=strip(
             """
@@ -126,7 +126,7 @@ class Filter(BaseModel):
 class DisplayAnnotation(BaseModel):
     """The display settings defined by an include list or an exclude list of the quantities and subsections."""
 
-    visible: Optional[Filter] = Field(  # type: ignore
+    visible: Filter | None = Field(  # type: ignore
         1,
         description=strip(
             """
@@ -134,7 +134,7 @@ class DisplayAnnotation(BaseModel):
         """
         ),
     )
-    editable: Optional[Filter] = Field(
+    editable: Filter | None = Field(
         None,
         description=strip(
             """
@@ -167,7 +167,7 @@ class QuantityDisplayAnnotation(DisplayAnnotation):
     ```
     """
 
-    unit: Optional[str] = Field(
+    unit: str | None = Field(
         None,
         description=strip(
             """
@@ -200,7 +200,7 @@ class SectionDisplayAnnotation(DisplayAnnotation):
     ```
     """
 
-    order: Optional[List[str]] = Field(
+    order: list[str] | None = Field(
         None,
         description=strip(
             """
@@ -213,7 +213,7 @@ class SectionDisplayAnnotation(DisplayAnnotation):
 class SectionProperties(BaseModel):
     """The display settings for quantities and subsections. (Deprecated)"""
 
-    visible: Optional[Filter] = Field(  # type: ignore
+    visible: Filter | None = Field(  # type: ignore
         1,
         description=strip(
             """
@@ -221,7 +221,7 @@ class SectionProperties(BaseModel):
         """
         ),
     )
-    editable: Optional[Filter] = Field(
+    editable: Filter | None = Field(
         None,
         description=strip(
             """
@@ -229,7 +229,7 @@ class SectionProperties(BaseModel):
         """
         ),
     )
-    order: Optional[List[str]] = Field(
+    order: list[str] | None = Field(
         None,
         description=strip(
             """
@@ -303,7 +303,7 @@ class ELNAnnotation(AnnotationModel):
     """,
     )
 
-    props: Dict[str, Any] = Field(
+    props: dict[str, Any] = Field(
         None,
         description="""
         A dictionary with additional props that are passed to the edit component.
@@ -331,7 +331,7 @@ class ELNAnnotation(AnnotationModel):
         deprecated=True,
     )
 
-    minValue: Union[int, float] = Field(
+    minValue: int | float = Field(
         None,
         description="""
         Allows to specify a minimum value for quantity annotations with number type.
@@ -340,7 +340,7 @@ class ELNAnnotation(AnnotationModel):
     """,
     )
 
-    maxValue: Union[int, float] = Field(
+    maxValue: int | float = Field(
         None,
         description="""
         Allows to specify a maximum value for quantity annotations with number type.
@@ -357,7 +357,7 @@ class ELNAnnotation(AnnotationModel):
         """,
     )
 
-    hide: List[str] = Field(
+    hide: list[str] = Field(
         None,
         description="""
         This attribute is deprecated. Use `visible` attribute of `display` annotation instead.
@@ -375,7 +375,7 @@ class ELNAnnotation(AnnotationModel):
         section annotations.""",
     )
 
-    lane_width: Union[str, int] = Field(
+    lane_width: str | int = Field(
         None,
         description="""
         Value to overwrite the css width of the lane used to render the annotation
@@ -561,7 +561,7 @@ class TabularMode(str, Enum):
 
 
 class TabularParsingOptions(BaseModel):
-    skiprows: Union[List[int], int] = Field(None, description='Number of rows to skip')
+    skiprows: list[int] | int = Field(None, description='Number of rows to skip')
     sep: str = Field(None, description='Character identifier of a separator')
     comment: str = Field(None, description='Character identifier of a commented line')
     separator: str = Field(None, description='Alias for `sep`')
@@ -612,7 +612,7 @@ class TabularMappingOptions(BaseModel):
     `multiple_new_entries`: Creating many new entries and processing the data into these new NOMAD entries.<br/>
     """,
     )
-    sections: List[str] = Field(
+    sections: list[str] = Field(
         None,
         description="""
     A `list` of paths to the (sub)sections where the tabular quantities are to be filled from the data
@@ -642,7 +642,7 @@ class TabularParserAnnotation(AnnotationModel):
         `separator`: An alias for `sep`.<br/>
     """,
     )
-    mapping_options: List[TabularMappingOptions] = Field(
+    mapping_options: list[TabularMappingOptions] = Field(
         [],
         description="""
         A list of directives on how to map the extracted data from the csv/xlsx file to NOMAD. Each directive
@@ -667,12 +667,12 @@ class PlotlyExpressTraceAnnotation(BaseModel):
     """
 
     method: str = Field(None, description='Plotly express plot method')
-    layout: Dict = Field(None, description='Plotly layout')
+    layout: dict = Field(None, description='Plotly layout')
 
-    x: Union[List[float], List[str], str] = Field(None, description='Plotly express x')
-    y: Union[List[float], List[str], str] = Field(None, description='Plotly express y')
-    z: Union[List[float], List[str], str] = Field(None, description='Plotly express z')
-    color: Union[List[float], List[str], str] = Field(
+    x: list[float] | list[str] | str = Field(None, description='Plotly express x')
+    y: list[float] | list[str] | str = Field(None, description='Plotly express y')
+    z: list[float] | list[str] | str = Field(None, description='Plotly express z')
+    color: list[float] | list[str] | str = Field(
         None, description='Plotly express color'
     )
     symbol: str = Field(None, description='Plotly express symbol')
@@ -713,7 +713,7 @@ class PlotlyExpressAnnotation(PlotlyExpressTraceAnnotation):
     """
 
     label: str = Field(None, description='Figure label')
-    traces: List[PlotlyExpressTraceAnnotation] = Field(
+    traces: list[PlotlyExpressTraceAnnotation] = Field(
         [],
         description="""
             List of traces added to the main trace defined by plotly_express method
@@ -744,12 +744,12 @@ class PlotlyGraphObjectAnnotation(BaseModel):
     """
 
     label: str = Field(None, description='Figure label')
-    data: Dict = Field(None, description='Plotly data')
-    layout: Dict = Field(None, description='Plotly layout')
-    config: Dict = Field(None, description='Plotly config')
+    data: dict = Field(None, description='Plotly data')
+    layout: dict = Field(None, description='Plotly layout')
+    config: dict = Field(None, description='Plotly config')
 
     def __init__(self, *args, **kwargs):
-        super(PlotlyGraphObjectAnnotation, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         if not self.data or not isinstance(self.data, dict):
             raise PlotlyError('data should be a dictionary containing plotly data.')
 
@@ -802,15 +802,15 @@ class PlotlySubplotsAnnotation(BaseModel):
     """
 
     label: str = Field(None, description='Figure label')
-    layout: Dict = Field(None, description='Plotly layout')
-    parameters: Dict = Field(
+    layout: dict = Field(None, description='Plotly layout')
+    parameters: dict = Field(
         None,
         description="""
         plotly.subplots.make_subplots parameters i.e. rows, cols, shared_xaxes, shared_xaxes, horizontal_spacing , ...
         See [plotly make_subplots documentation](https://plotly.com/python-api-reference/generated/plotly.subplots.make_subplots.html) for more information.
     """,
     )
-    plotly_express: List[PlotlyExpressAnnotation] = Field(
+    plotly_express: list[PlotlyExpressAnnotation] = Field(
         [],
         description="""
         List of subplots defined by plotly_express method
@@ -903,7 +903,7 @@ class PlotAnnotation(AnnotationModel):
 
     def __init__(self, *args, **kwargs):
         # pydantic does not seem to support multiple aliases per field
-        super(PlotAnnotation, self).__init__(
+        super().__init__(
             *args,
             x=kwargs.pop('x', None)
             or kwargs.pop('xAxis', None)
@@ -917,7 +917,7 @@ class PlotAnnotation(AnnotationModel):
     label: str = Field(
         None, description='Is passed to plotly to define the label of the plot.'
     )
-    x: Union[List[str], str] = Field(
+    x: list[str] | str = Field(
         ...,
         description="""
         A path or list of paths to the x-axes values. Each path is a `/` separated
@@ -926,7 +926,7 @@ class PlotAnnotation(AnnotationModel):
         integer or a slice `start:stop`.
     """,
     )
-    y: Union[List[str], str] = Field(
+    y: list[str] | str = Field(
         ...,
         description="""
         A path or list of paths to the y-axes values. list of sub-section and quantity
@@ -934,7 +934,7 @@ class PlotAnnotation(AnnotationModel):
         sections are indexed between two `/`s with an integer or a slice `start:stop`.
     """,
     )
-    lines: List[dict] = Field(
+    lines: list[dict] = Field(
         None,
         description="""
         A list of dicts passed as `traces` to plotly to configure the lines of the plot.
@@ -986,7 +986,7 @@ class PlotAnnotation(AnnotationModel):
 
 
 class RegexCondition(BaseModel):
-    regex_path: Optional[str] = Field(
+    regex_path: str | None = Field(
         None,
         description="""
         The JMESPath to the target key in the dictionary. If not set, the path is assumed to be the same as
@@ -1003,19 +1003,19 @@ class Condition(BaseModel):
 
 
 class Rule(BaseModel):
-    source: Optional[str] = Field(
+    source: str | None = Field(
         None, description='JMESPath to the source value in the source dictionary.'
     )
     target: str = Field(
         ..., description='JMESPath to the target value in the target dictionary.'
     )
-    conditions: Optional[list[Condition]] = Field(
+    conditions: list[Condition] | None = Field(
         None, description='Conditions to check prior to applying the transformation.'
     )
-    default_value: Optional[Any] = Field(
+    default_value: Any | None = Field(
         None, description='Default value to set if source is not found.'
     )
-    use_rule: Optional[str] = Field(
+    use_rule: str | None = Field(
         None, description='Reference to another rule using #mapping_name.rule_name.'
     )
 
@@ -1041,10 +1041,10 @@ Rule.update_forward_refs()
 
 
 class Rules(BaseModel):
-    name: Optional[str] = Field(
+    name: str | None = Field(
         None, description='Name for the rule set, for identification.'
     )
-    other_metadata: Optional[str] = Field(
+    other_metadata: str | None = Field(
         None, description='Placeholder for other metadata.'
     )
     rules: dict[str, Rule] = Field(..., description='Dictionary of named rules.')
@@ -1060,7 +1060,7 @@ class H5WebAnnotation(AnnotationModel):
     of the annotation fields.
     """
 
-    axes: Union[str, List[str]] = Field(
+    axes: str | list[str] = Field(
         None,
         description="""
         Names of the HDF5Dataset quantities to plot on the independent axes.
@@ -1078,7 +1078,7 @@ class H5WebAnnotation(AnnotationModel):
         Label for the hdf5 dataset. Note: this attribute will overwrite also the unit.
         """,
     )
-    auxiliary_signals: List[str] = Field(
+    auxiliary_signals: list[str] = Field(
         None,
         description="""
         Additional datasets to include in plot as signal.
@@ -1090,7 +1090,7 @@ class H5WebAnnotation(AnnotationModel):
         Title of the plot
         """,
     )
-    paths: List[str] = Field([], description="""List of section paths to visualize.""")
+    paths: list[str] = Field([], description="""List of section paths to visualize.""")
 
 
 class SchemaAnnotation(AnnotationModel):

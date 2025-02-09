@@ -46,17 +46,17 @@ class NORTHExternalMount(BaseModel):
 
 
 class NORTHTool(BaseModel):
-    short_description: Optional[str] = Field(
+    short_description: str | None = Field(
         None,
         description='A short description of the tool, e.g. shown in the NOMAD GUI.',
     )
-    description: Optional[str] = Field(
+    description: str | None = Field(
         None, description='A description of the tool, e.g. shown in the NOMAD GUI.'
     )
-    image: Optional[str] = Field(
+    image: str | None = Field(
         None, description='The docker image (incl. tags) to use for the tool.'
     )
-    cmd: Optional[str] = Field(
+    cmd: str | None = Field(
         None, description='The container cmd that is passed to the spawner.'
     )
     image_pull_policy: str = Field(
@@ -65,14 +65,14 @@ class NORTHTool(BaseModel):
     privileged: bool = Field(
         False, description='Whether the tool needs to run in privileged mode.'
     )
-    default_url: Optional[str] = Field(
+    default_url: str | None = Field(
         None,
         description=(
             'An optional path prefix that is added to the container URL to '
             'reach the tool, e.g. "/lab" for jupyterlab.'
         ),
     )
-    path_prefix: Optional[str] = Field(
+    path_prefix: str | None = Field(
         None,
         description=(
             'An optional path prefix that is added to the container URL to '
@@ -86,11 +86,11 @@ class NORTHTool(BaseModel):
             'This also enables tools to be launched from files in the NOMAD UI.'
         ),
     )
-    file_extensions: List[str] = Field(
+    file_extensions: list[str] = Field(
         [],
         description='The file extensions of files that this tool should be launchable for.',
     )
-    mount_path: Optional[str] = Field(
+    mount_path: str | None = Field(
         None,
         description=(
             'The path in the container where uploads and work directories will be mounted, '
@@ -101,16 +101,16 @@ class NORTHTool(BaseModel):
         None,
         description='A URL to an icon that is used to represent the tool in the NOMAD UI.',
     )
-    maintainer: List[NORTHToolMaintainer] = Field(
+    maintainer: list[NORTHToolMaintainer] = Field(
         [], description='The maintainers of the tool.'
     )
-    external_mounts: List[NORTHExternalMount] = Field(
+    external_mounts: list[NORTHExternalMount] = Field(
         [], description='Additional mounts to be added to tool containers.'
     )
 
 
 class NORTHTools(Options):
-    options: Dict[str, NORTHTool] = Field(dict(), description='The available plugin.')
+    options: dict[str, NORTHTool] = Field(dict(), description='The available plugin.')
 
 
 class NORTH(ConfigBaseModel):
@@ -118,7 +118,7 @@ class NORTH(ConfigBaseModel):
     Settings related to the operation of the NOMAD remote tools hub service *north*.
     """
 
-    enabled: Optional[bool] = Field(
+    enabled: bool | None = Field(
         True,
         description="""
         Enables or disables the NORTH API and UI views. This is independent of
@@ -144,7 +144,7 @@ class NORTH(ConfigBaseModel):
         The internal host name that NOMAD services use to connect to the jupyterhub API.
     """,
     )
-    hub_port: Union[int, str] = Field(
+    hub_port: int | str = Field(
         9000,
         description="""
         The internal port that NOMAD services use to connect to the jupyterhub API.

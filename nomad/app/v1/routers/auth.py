@@ -20,7 +20,8 @@ import hmac
 import hashlib
 import uuid
 import requests
-from typing import Callable, cast, Union
+from typing import cast, Union
+from collections.abc import Callable
 from inspect import Parameter, signature
 from functools import wraps
 from fastapi import (
@@ -228,7 +229,7 @@ def _get_user_bearer_token_auth(bearer_token: str) -> User:
         unverified_payload = jwt.decode(
             bearer_token, options={'verify_signature': False}
         )
-        if unverified_payload.keys() == set(['user', 'exp']):
+        if unverified_payload.keys() == {'user', 'exp'}:
             user = _get_user_from_simple_token(bearer_token)
             return user
     except jwt.exceptions.DecodeError:
@@ -410,7 +411,7 @@ async def get_token_via_query(username: str, password: str):
     response_model=SignatureToken,
 )
 async def get_signature_token(
-    user: Union[User, None] = Depends(create_user_dependency(required=True)),
+    user: User | None = Depends(create_user_dependency(required=True)),
 ):
     """
     Generates and returns a signature token for the authenticated user. Authentication
@@ -462,7 +463,7 @@ def generate_upload_token(user):
         bytes(config.services.api_secret, 'utf-8'), msg=payload, digestmod=hashlib.sha1
     )
 
-    return '%s.%s' % (
+    return '{}.{}'.format(
         utils.base64_encode(payload),
         utils.base64_encode(signature.digest()),
     )

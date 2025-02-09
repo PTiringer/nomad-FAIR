@@ -142,7 +142,7 @@ class OptimadeNormalizer(SystemBasedNormalizer):
         # elements
         atoms = normalized_atom_labels(nomad_species)
         atom_count = len(atoms)
-        atom_counts: Dict[str, int] = {}
+        atom_counts: dict[str, int] = {}
         for atom in atoms:
             current = atom_counts.setdefault(atom, 0)
             current += 1

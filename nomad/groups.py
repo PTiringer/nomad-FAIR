@@ -18,7 +18,8 @@
 
 from __future__ import annotations
 
-from typing import Iterable, Optional, Union
+from typing import Optional, Union
+from collections.abc import Iterable
 
 from mongoengine import Document, ListField, Q, QuerySet, StringField
 
@@ -41,7 +42,7 @@ class MongoUserGroup(Document):
     meta = {'indexes': ['group_name', 'owner', 'members']}
 
     @classmethod
-    def q_by_ids(cls, group_ids: Union[str, Iterable[str]]) -> Q:
+    def q_by_ids(cls, group_ids: str | Iterable[str]) -> Q:
         """
         Returns UserGroup Q for group_ids.
         """
@@ -51,7 +52,7 @@ class MongoUserGroup(Document):
             return Q(group_id__in=group_ids)
 
     @classmethod
-    def q_by_user_id(cls, user_id: Optional[str]) -> Q:
+    def q_by_user_id(cls, user_id: str | None) -> Q:
         """
         Returns UserGroup Q where user_id is owner or member, or None.
 
@@ -88,7 +89,7 @@ class MongoUserGroup(Document):
         return cls.objects(q)
 
     @classmethod
-    def get_ids_by_user_id(cls, user_id: Optional[str], include_all=True) -> list[str]:
+    def get_ids_by_user_id(cls, user_id: str | None, include_all=True) -> list[str]:
         """
         Returns ids of all user groups where user_id is owner or member.
 
@@ -105,10 +106,10 @@ class MongoUserGroup(Document):
 
 def create_user_group(
     *,
-    group_id: Optional[str] = None,
-    group_name: Optional[str] = None,
-    owner: Optional[str] = None,
-    members: Optional[Iterable[str]] = None,
+    group_id: str | None = None,
+    group_name: str | None = None,
+    owner: str | None = None,
+    members: Iterable[str] | None = None,
 ) -> MongoUserGroup:
     user_group = MongoUserGroup(
         group_id=group_id, group_name=group_name, owner=owner, members=members
@@ -134,7 +135,7 @@ def get_user_ids_by_group_ids(group_ids: list[str]) -> set[str]:
     return user_ids
 
 
-def get_user_group(group_id: str) -> Optional[MongoUserGroup]:
+def get_user_group(group_id: str) -> MongoUserGroup | None:
     q = MongoUserGroup.q_by_ids(group_id)
     return MongoUserGroup.objects(q).first()
 

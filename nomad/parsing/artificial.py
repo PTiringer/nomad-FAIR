@@ -78,7 +78,7 @@ class TemplateParser(Parser):
         if logger is not None:
             logger.debug('received logger')
 
-        template_json = json.load(open(mainfile, 'r'))
+        template_json = json.load(open(mainfile))
         loaded_archive = EntryArchive.m_from_dict(template_json)
         archive.m_add_sub_section(EntryArchive.run, loaded_archive.run[0])
         archive.m_add_sub_section(EntryArchive.workflow2, loaded_archive.workflow2)
@@ -116,7 +116,7 @@ class ChaosParser(Parser):
     def parse(
         self, mainfile: str, archive: EntryArchive, logger=None, child_archives=None
     ) -> None:
-        chaos_json = json.load(open(mainfile, 'r'))
+        chaos_json = json.load(open(mainfile))
         if isinstance(chaos_json, str):
             chaos = chaos_json
         elif isinstance(chaos_json, dict):

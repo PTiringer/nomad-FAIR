@@ -58,8 +58,8 @@ except ImportError:
 
 
 def match_parser(
-    mainfile_path: str, strict=True, parser_name: Optional[str] = None
-) -> Tuple[Parser, List[str]]:
+    mainfile_path: str, strict=True, parser_name: str | None = None
+) -> tuple[Parser, list[str]]:
     """
     Performs parser matching. This means it take the given mainfile and potentially
     opens it with the given callback and tries to identify a parser that can parse
@@ -141,7 +141,7 @@ def match_parser(
                 except Exception:
                     pass
                 else:
-                    with open(mainfile_path, 'wt') as text_file:
+                    with open(mainfile_path, 'w') as text_file:
                         text_file.write(content)
 
             # TODO: deal with multiple possible parser specs
@@ -167,12 +167,12 @@ class ParserContext(Context):
 def run_parser(
     mainfile_path: str,
     parser: Parser,
-    mainfile_keys: List[str] = None,
+    mainfile_keys: list[str] = None,
     logger=None,
     server_context: bool = False,
     username: str = None,
     password: str = None,
-) -> List[EntryArchive]:
+) -> list[EntryArchive]:
     """
     Parses a file, given the path, the parser, and mainfile_keys, as returned by
     :func:`match_parser`, and returns the resulting EntryArchive objects. Parsers that have
@@ -288,7 +288,7 @@ if config.process.use_empty_parsers:
 parsers.append(BrokenParser())
 
 """ A dict to access parsers by name. Usually 'parsers/<...>', e.g. 'parsers/vasp'. """
-parser_dict: Dict[str, Parser] = {
+parser_dict: dict[str, Parser] = {
     parser.name: parser for parser in parsers + empty_parsers
 }
 # Register also aliases

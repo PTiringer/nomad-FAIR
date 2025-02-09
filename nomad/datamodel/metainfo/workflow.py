@@ -45,7 +45,7 @@ class Link(ArchiveSection):
     )
 
     def normalize(self, archive, logger):
-        super(Link, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         if not self.name and self.section:
             self.name = getattr(self.section, 'name', None)
 
@@ -97,7 +97,7 @@ class TaskReference(Task):
     )
 
     def normalize(self, archive, logger):
-        super(TaskReference, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         if not self.name and self.task:
             self.name = self.task.name
 
@@ -123,7 +123,7 @@ class Workflow(Task, EntryData):
     )
 
     def normalize(self, archive, logger):
-        super(Workflow, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         from nomad.datamodel import EntryArchive
 

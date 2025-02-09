@@ -160,9 +160,9 @@ class SimulationWorkflow(Workflow):
     def normalize(self, archive, logger):
         super().normalize(archive, logger)
 
-        self._calculations: List[Calculation] = []
-        self._systems: List[System] = []
-        self._methods: List[Method] = []
+        self._calculations: list[Calculation] = []
+        self._systems: list[System] = []
+        self._methods: list[Method] = []
         try:
             self._calculations = archive.run[-1].calculation
             self._systems = archive.run[-1].system

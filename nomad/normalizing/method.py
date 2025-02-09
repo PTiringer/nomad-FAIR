@@ -481,8 +481,8 @@ class MethodNormalizer:  # TODO: add normalizer for atom_parameters.label
             return eos_dict.hash()
 
     def calc_k_line_density(
-        self, k_lattices: List[List[float]], nks: List[int]
-    ) -> Optional[float]:
+        self, k_lattices: list[list[float]], nks: list[int]
+    ) -> float | None:
         """
         Compute the lowest k_line_density value:
         k_line_density (for a uniformly spaced grid) is the number of k-points per reciprocal length unit
@@ -514,7 +514,7 @@ class ElectronicMethod(ABC):
         self,
         logger,
         entry_archive: EntryArchive = None,
-        methods: List[ArchiveSection] = [None],
+        methods: list[ArchiveSection] = [None],
         repr_method: ArchiveSection = None,
         repr_system: MSection = None,
         method: Method = None,
@@ -591,7 +591,7 @@ class DFTMethod(ElectronicMethod):
         )
         return simulation
 
-    def basis_set_type(self, repr_method: ArchiveSection) -> Optional[str]:
+    def basis_set_type(self, repr_method: ArchiveSection) -> str | None:
         name = None
         for em in repr_method.electrons_representation or []:
             if em.scope:
@@ -640,7 +640,7 @@ class DFTMethod(ElectronicMethod):
                 name = '(L)APW+lo'
         return name
 
-    def basis_set_name(self) -> Optional[str]:
+    def basis_set_name(self) -> str | None:
         try:
             name = self._repr_method.basis_set[0].name
         except Exception:
@@ -648,8 +648,8 @@ class DFTMethod(ElectronicMethod):
         return name
 
     def hubbard_kanamori_model(
-        self, methods: List[ArchiveSection]
-    ) -> List[HubbardKanamoriModel]:
+        self, methods: list[ArchiveSection]
+    ) -> list[HubbardKanamoriModel]:
         """Generate a list of normalized HubbardKanamoriModel for `results.method`"""
         hubbard_kanamori_models = []
         for sec_method in methods:
@@ -845,7 +845,7 @@ class DFTMethod(ElectronicMethod):
             )
         return treatment
 
-    def xc_functional_names(self, method_xc_functional: Section) -> Optional[List[str]]:
+    def xc_functional_names(self, method_xc_functional: Section) -> list[str] | None:
         if self._repr_method:
             functionals = set()
             try:
@@ -866,7 +866,7 @@ class DFTMethod(ElectronicMethod):
 
     def xc_functional_type(
         self,
-        xc_functionals: Optional[list[str]],
+        xc_functionals: list[str] | None,
         abbrev_mapping: dict[str, str] = xc_treatments,
     ) -> str:
         """Assign the rung on Jacob\'s Ladder based on a set of libxc names.
@@ -893,7 +893,7 @@ class DFTMethod(ElectronicMethod):
             return config.services.unavailable_value
         return abbrev_mapping[highest_rung_abbrev]
 
-    def exact_exchange_mixing_factor(self, xc_functional_names: List[str]):
+    def exact_exchange_mixing_factor(self, xc_functional_names: list[str]):
         """Assign the exact exchange mixing factor to `results` section when explicitly stated.
         Else, fall back on XC functional default."""
 
@@ -931,7 +931,7 @@ class ExcitedStateMethod(ElectronicMethod):
     """ExcitedState (GW, BSE, or DFT+GW, DFT+BSE) Method normalized into results.simulation"""
 
     def simulation(self) -> Simulation:
-        xs: Union[None, GW, BSE] = None
+        xs: None | GW | BSE = None
         simulation = Simulation()
         if 'GW' in self._method_name:
             self._method.method_name = 'GW'
@@ -1053,7 +1053,7 @@ class MethodNormalizerBasisSet(ABC):
         pass
 
     @abstractmethod
-    def setup(self) -> Tuple:
+    def setup(self) -> tuple:
         """Used to define a list of mandatory and optional settings for a
         subclass.
 
@@ -1061,15 +1061,15 @@ class MethodNormalizerBasisSet(ABC):
             Should return a tuple of two lists: the first one defining
             mandatory keys and the second one defining optional keys.
         """
-        mandatory: List = []
-        optional: List = []
+        mandatory: list = []
+        optional: list = []
         return mandatory, optional
 
 
 class BasisSetFHIAims(MethodNormalizerBasisSet):
     """Basis set settings for FHI-Aims (code-dependent)."""
 
-    def setup(self) -> Tuple:
+    def setup(self) -> tuple:
         # Get previously defined values from superclass
         mandatory, optional = super().setup()
 
@@ -1141,7 +1141,7 @@ class BasisSetFHIAims(MethodNormalizerBasisSet):
 class BasisSetExciting(MethodNormalizerBasisSet):
     """Basis set settings for Exciting (code-dependent)."""
 
-    def setup(self) -> Tuple:
+    def setup(self) -> tuple:
         # Get previously defined values from superclass
         mandatory, optional = super().setup()
 
@@ -1170,22 +1170,17 @@ class BasisSetExciting(MethodNormalizerBasisSet):
             for group in groups:
                 label = group.x_exciting_geometry_atom_labels
                 try:
-                    muffin_tin_settings['{}_muffin_tin_radius'.format(label)] = (
-                        '%.6f'
-                        % (
-                            group.x_exciting_muffin_tin_radius.to(
-                                ureg.angstrom
-                            ).magnitude
-                        )
+                    muffin_tin_settings[f'{label}_muffin_tin_radius'] = '%.6f' % (
+                        group.x_exciting_muffin_tin_radius.to(ureg.angstrom).magnitude
                     )
                 except Exception:
-                    muffin_tin_settings['{}_muffin_tin_radius'.format(label)] = None
+                    muffin_tin_settings[f'{label}_muffin_tin_radius'] = None
                 try:
-                    muffin_tin_settings['{}_muffin_tin_points'.format(label)] = (
+                    muffin_tin_settings[f'{label}_muffin_tin_points'] = (
                         '%d' % group.x_exciting_muffin_tin_points
                     )
                 except Exception:
-                    muffin_tin_settings['{}_muffin_tin_points'.format(label)] = None
+                    muffin_tin_settings[f'{label}_muffin_tin_points'] = None
             self.settings['muffin_tin_settings'] = muffin_tin_settings
         except Exception:
             pass

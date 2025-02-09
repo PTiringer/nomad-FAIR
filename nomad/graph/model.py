@@ -137,7 +137,7 @@ class ResolveType(Enum):
         return self.value
 
 
-def check_pattern(data: Optional[frozenset[str]]) -> Optional[frozenset[str]]:
+def check_pattern(data: frozenset[str] | None) -> frozenset[str] | None:
     if data is not None:
         for value in data:
             assert re.match(r'^[*?+a-zA-z_\d./]*$', value) is not None
@@ -155,7 +155,7 @@ class RequestConfig(BaseModel):
     Each field can be handled differently.
     """
 
-    property_name: Optional[str] = Field(
+    property_name: str | None = Field(
         None,
         description="""
         The name of the current field, either a quantity or a subsection.
@@ -172,7 +172,7 @@ class RequestConfig(BaseModel):
         The `*` is a shortcut of `plain`.
         """,
     )
-    include: Annotated[Optional[frozenset[str]], AfterValidator(check_pattern)] = Field(
+    include: Annotated[frozenset[str] | None, AfterValidator(check_pattern)] = Field(
         None,
         description="""
         A list of patterns to match the quantities and subsections of the current section.
@@ -181,7 +181,7 @@ class RequestConfig(BaseModel):
         """,
     )
 
-    exclude: Annotated[Optional[frozenset[str]], AfterValidator(check_pattern)] = Field(
+    exclude: Annotated[frozenset[str] | None, AfterValidator(check_pattern)] = Field(
         None,
         description="""
         A list of patterns to match the quantities and subsections of the current section.
@@ -263,7 +263,7 @@ class RequestConfig(BaseModel):
         If `none`, no definition will be included.
         """,
     )
-    index: Optional[Union[tuple[int], tuple[Optional[int], Optional[int]]]] = Field(
+    index: tuple[int] | tuple[int | None, int | None] | None = Field(
         None,
         description="""
         The start and end index of the current field if it is a list.
@@ -279,18 +279,16 @@ class RequestConfig(BaseModel):
         This field only applies to the target section only, i.e., it does not propagate to its children.
         """,
     )
-    pagination: Optional[
-        Union[
-            dict,
-            DatasetPagination,
-            EntryProcDataPagination,
-            MetadataPagination,
-            MetainfoPagination,
-            RawDirPagination,
-            UploadProcDataPagination,
-            UserGroupPagination,
-        ]
-    ] = Field(
+    pagination: None | (
+        dict
+        | DatasetPagination
+        | EntryProcDataPagination
+        | MetadataPagination
+        | MetainfoPagination
+        | RawDirPagination
+        | UploadProcDataPagination
+        | UserGroupPagination
+    ) = Field(
         None,
         description="""
         The pagination configuration used for MongoDB search.
@@ -299,17 +297,15 @@ class RequestConfig(BaseModel):
         Please refer to `DatasetPagination`, `UploadProcDataPagination`, `MetadataPagination` for details.
         """,
     )
-    query: Optional[
-        Union[
-            dict,
-            DatasetQuery,
-            EntryQuery,
-            Metadata,
-            MetainfoQuery,
-            UploadProcDataQuery,
-            UserGroupQuery,
-        ]
-    ] = Field(
+    query: None | (
+        dict
+        | DatasetQuery
+        | EntryQuery
+        | Metadata
+        | MetainfoQuery
+        | UploadProcDataQuery
+        | UserGroupQuery
+    ) = Field(
         None,
         description="""
         The query configuration used for either mongo or elastic search.

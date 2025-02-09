@@ -108,8 +108,8 @@ class MongoDocument(SectionAnnotation):
                 raise NotImplementedError
 
         def create_model_recursive(section, level):
-            indexes: List[str] = []
-            dct: Dict[str, Any] = {}
+            indexes: list[str] = []
+            dct: dict[str, Any] = {}
 
             # Add quantities to model
             for quantity in section.all_quantities.values():

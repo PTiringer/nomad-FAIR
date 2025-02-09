@@ -34,7 +34,7 @@ router = APIRouter()
 
 # This is a dynamically create enum class for enumerating all allowed
 # quantities. FastAPI uses python enums to validate and document options.
-suggestable_quantities: Set[str] = None
+suggestable_quantities: set[str] = None
 
 
 class SuggestionError(Exception):
@@ -43,7 +43,7 @@ class SuggestionError(Exception):
 
 class Suggestion(BaseModel):
     value: str = Field(None, description='The returned suggestion.')
-    weight: Optional[float] = Field(None, description='The suggestion weight.')
+    weight: float | None = Field(None, description='The suggestion weight.')
 
 
 class Quantity(BaseModel):
@@ -55,7 +55,7 @@ class Quantity(BaseModel):
 
 
 class SuggestionsRequest(BaseModel):
-    quantities: List[Quantity] = Field(  # type: ignore
+    quantities: list[Quantity] = Field(  # type: ignore
         None, description='List of quantities for which the suggestions are retrieved.'
     )
     input: str = Field(
@@ -68,7 +68,7 @@ class SuggestionsRequest(BaseModel):
     '',
     tags=['suggestions'],
     summary='Get a list of suggestions for the given quantity names and input.',
-    response_model=Dict[str, List[Suggestion]],
+    response_model=dict[str, list[Suggestion]],
     response_model_exclude_unset=True,
     response_model_exclude_none=True,
 )
@@ -123,8 +123,8 @@ async def get_suggestions(
         raise SuggestionError from e
 
     # We return the original field in the source document.
-    response: Dict[str, List[Suggestion]] = defaultdict(list)
-    suggestions: Dict[str, Dict[str, float]] = defaultdict(dict)
+    response: dict[str, list[Suggestion]] = defaultdict(list)
+    suggestions: dict[str, dict[str, float]] = defaultdict(dict)
 
     def add_suggestion(name, value, weight):
         values = suggestions[name]
@@ -168,7 +168,7 @@ async def get_suggestions(
                     for item in original:
                         options.append(item)
 
-            options: List[str] = []
+            options: list[str] = []
             parts = quantity_path.split('.')
             gather_options(option._source, parts, options)
 

@@ -18,7 +18,8 @@
 from datetime import datetime
 
 from enum import Enum
-from typing import Annotated, Optional, Set, Union, Dict, Iterator, Any, List, Type
+from typing import Annotated, Optional, Set, Union, Dict, Any, List, Type
+from collections.abc import Iterator
 from fastapi import (
     APIRouter,
     Depends,
@@ -196,7 +197,7 @@ replace the references:
 )
 
 
-ArchiveRequired = Union[str, Dict[str, Any]]
+ArchiveRequired = Union[str, dict[str, Any]]
 
 _archive_required_field = Body(
     '*',
@@ -210,23 +211,23 @@ _archive_required_field = Body(
 
 
 class EntriesArchive(WithQueryAndPagination):
-    required: Optional[ArchiveRequired] = _archive_required_field
+    required: ArchiveRequired | None = _archive_required_field
 
 
 class EntryArchiveRequest(BaseModel):
-    required: Optional[ArchiveRequired] = _archive_required_field
+    required: ArchiveRequired | None = _archive_required_field
 
 
 class EntriesArchiveDownload(WithQuery, EntryArchiveRequest):
-    files: Optional[Files] = Body(None)
+    files: Files | None = Body(None)
 
 
 class EntriesRawDir(WithQuery):
-    pagination: Optional[MetadataPagination] = Body(None)
+    pagination: MetadataPagination | None = Body(None)
 
 
 class EntriesRaw(WithQuery):
-    files: Optional[Files] = Body(None, example={'glob_pattern': 'vasp*.xml*'})
+    files: Files | None = Body(None, example={'glob_pattern': 'vasp*.xml*'})
 
 
 class EntryRawDirFile(BaseModel):
@@ -238,13 +239,13 @@ class EntryRawDir(BaseModel):
     entry_id: str = Field(None)
     upload_id: str = Field(None)
     mainfile: str = Field(None)
-    mainfile_key: Optional[str] = Field(None)
-    files: List[EntryRawDirFile] = Field(None)
+    mainfile_key: str | None = Field(None)
+    files: list[EntryRawDirFile] = Field(None)
 
 
 class EntriesRawDirResponse(EntriesRawDir):
     pagination: PaginationResponse = Field(None)  # type: ignore
-    data: List[EntryRawDir] = Field(None)
+    data: list[EntryRawDir] = Field(None)
 
 
 class EntryRawDirResponse(BaseModel):
@@ -256,12 +257,12 @@ class EntryArchive(BaseModel):
     entry_id: str = Field(None)
     upload_id: str = Field(None)
     parser_name: str = Field(None)
-    archive: Dict[str, Any] = Field(None)
+    archive: dict[str, Any] = Field(None)
 
 
 class EntriesArchiveResponse(EntriesArchive):
     pagination: PaginationResponse = Field(None)  # type: ignore
-    data: List[EntryArchive] = Field(None)
+    data: list[EntryArchive] = Field(None)
 
 
 class EntryArchiveResponse(EntryArchiveRequest):
@@ -277,10 +278,10 @@ class EntryMetadataResponse(BaseModel):
 
 class EntryMetadataEditActionField(BaseModel):
     value: str = Field(None, description='The value/values that is set as a string.')
-    success: Optional[bool] = Field(
+    success: bool | None = Field(
         None, description='If this can/could be done. Only in API response.'
     )
-    message: Optional[str] = Field(
+    message: str | None = Field(
         None,
         descriptin='A message that details the action result. Only in API response.',
     )
@@ -292,7 +293,7 @@ EntryMetadataEditActions = create_model(
         quantity.name: (
             Optional[EntryMetadataEditActionField]
             if quantity.is_scalar
-            else Optional[List[EntryMetadataEditActionField]],
+            else Optional[list[EntryMetadataEditActionField]],
             None,
         )
         for quantity in EditableUserMetadata.m_def.definitions
@@ -302,9 +303,7 @@ EntryMetadataEditActions = create_model(
 
 
 class EntryMetadataEdit(WithQuery):
-    verify: Optional[bool] = Field(
-        False, description='If true, no action is performed.'
-    )
+    verify: bool | None = Field(False, description='If true, no action is performed.')
     actions: EntryMetadataEditActions = Field(  # type: ignore
         None,
         description='Each action specifies a single value (even for multi valued quantities).',
@@ -331,7 +330,7 @@ class ArchiveChangeAction(Enum):
     remove = 'remove'
 
 
-def json_schema_extra(schema: dict[str, Any], model: Type['ArchiveChange']):
+def json_schema_extra(schema: dict[str, Any], model: type['ArchiveChange']):
     schema['properties']['new_value'] = {}
 
 
@@ -344,7 +343,7 @@ class ArchiveChange(BaseModel):
 
 
 class EntryEdit(BaseModel):
-    changes: List[ArchiveChange]
+    changes: list[ArchiveChange]
 
 
 class EntryEditResponse(EntryEdit):
@@ -575,8 +574,8 @@ async def get_entries_metadata(
 
 
 def _do_exhaustive_search(
-    owner: Owner, query: Query, include: List[str], user: User
-) -> Iterator[Dict[str, Any]]:
+    owner: Owner, query: Query, include: list[str], user: User
+) -> Iterator[dict[str, Any]]:
     page_after_value = None
     while True:
         response = perform_search(
@@ -591,8 +590,7 @@ def _do_exhaustive_search(
 
         page_after_value = response.pagination.next_page_after_value
 
-        for result in response.data:
-            yield result
+        yield from response.data
 
         if page_after_value is None or len(response.data) == 0:
             break
@@ -626,7 +624,7 @@ class _Uploads:
             self._upload_files.close()
 
 
-def _create_entry_rawdir(entry_metadata: Dict[str, Any], uploads: _Uploads):
+def _create_entry_rawdir(entry_metadata: dict[str, Any], uploads: _Uploads):
     entry_id = entry_metadata['entry_id']
     upload_id = entry_metadata['upload_id']
     mainfile = entry_metadata['mainfile']
@@ -1315,7 +1313,7 @@ async def get_entry_raw_file(
         ...,
         description="A relative path to a file based on the directory of the entry's mainfile.",
     ),
-    offset: Optional[int] = QueryParameter(
+    offset: int | None = QueryParameter(
         0,
         ge=0,
         description=strip(
@@ -1324,7 +1322,7 @@ async def get_entry_raw_file(
                 is the start of the file."""
         ),
     ),
-    length: Optional[int] = QueryParameter(
+    length: int | None = QueryParameter(
         -1,
         ge=-1,
         description=strip(
@@ -1333,7 +1331,7 @@ async def get_entry_raw_file(
                 the file is streamed."""
         ),
     ),
-    decompress: Optional[bool] = QueryParameter(
+    decompress: bool | None = QueryParameter(
         False,
         description=strip(
             """
@@ -1521,7 +1519,7 @@ async def post_entry_edit(
             key = to_key(path_segment)
             repeated_sub_section = isinstance(next_key, int)
 
-            next_value: Union[list, dict] = [] if repeated_sub_section else {}
+            next_value: list | dict = [] if repeated_sub_section else {}
 
             if isinstance(section_data, list):
                 if section_data[key] is None:
@@ -1634,11 +1632,11 @@ async def post_entry_archive_query(
 
 
 def edit(
-    query: Query, user: User, mongo_update: Dict[str, Any] = None, re_index=True
-) -> List[str]:
+    query: Query, user: User, mongo_update: dict[str, Any] = None, re_index=True
+) -> list[str]:
     # get all entries that have to change
-    entry_ids: List[str] = []
-    upload_ids: Set[str] = set()
+    entry_ids: list[str] = []
+    upload_ids: set[str] = set()
     with utils.timer(logger, 'edit query executed'):
         all_entries = _do_exhaustive_search(
             owner=Owner.user, query=query, include=['entry_id', 'upload_id'], user=user
@@ -1662,7 +1660,7 @@ def edit(
     # re-index the affected entries in elastic search
     with utils.timer(logger, 'edit elastic update executed', size=len(entry_ids)):
         if re_index:
-            updated_metadata: List[datamodel.EntryMetadata] = []
+            updated_metadata: list[datamodel.EntryMetadata] = []
             for entry in proc.Entry.objects(entry_id__in=entry_ids):
                 entry_metadata = entry.mongo_metadata(entry.upload)
                 # Ensure that updated fields are marked as "set", even if they are cleared

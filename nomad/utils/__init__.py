@@ -38,7 +38,8 @@ Depending on the configuration all logs will also be send to a central logstash.
 .. autofunc::nomad.utils.strip
 """
 
-from typing import List, Iterable, Union, Any, Dict, Optional
+from typing import List, Union, Any, Dict, Optional
+from collections.abc import Iterable
 from collections import OrderedDict
 from functools import reduce
 from itertools import takewhile
@@ -123,10 +124,10 @@ class ClassicLogger:
         all_kwargs = dict(self.kwargs)
         all_kwargs.update(**kwargs)
 
-        message = '%s (%s)' % (
+        message = '{} ({})'.format(
             event,
             ', '.join(
-                ['%s=%s' % (str(key), str(value)) for key, value in all_kwargs.items()]
+                [f'{str(key)}={str(value)}' for key, value in all_kwargs.items()]
             ),
         )
         method(message)
@@ -322,10 +323,10 @@ def timer(
 class archive:
     @staticmethod
     def create(upload_id: str, entry_id: str) -> str:
-        return '%s/%s' % (upload_id, entry_id)
+        return f'{upload_id}/{entry_id}'
 
     @staticmethod
-    def items(archive_id: str) -> List[str]:
+    def items(archive_id: str) -> list[str]:
         return archive_id.split('/')
 
     @staticmethod
@@ -486,7 +487,7 @@ class RestrictedDict(OrderedDict):
         if not self._lazy:
             # Check that only the defined keys are used
             if key not in self._mandatory_keys and key not in self._optional_keys:
-                raise KeyError("The key '{}' is not allowed.".format(key))
+                raise KeyError(f"The key '{key}' is not allowed.")
 
             # Check that forbidden values are not used.
             try:
@@ -495,7 +496,7 @@ class RestrictedDict(OrderedDict):
                 pass  # Unhashable value will not match
             else:
                 if match:
-                    raise ValueError("The value '{}' is not allowed.".format(key))
+                    raise ValueError(f"The value '{key}' is not allowed.")
 
         super().__setitem__(key, value)
 
@@ -503,12 +504,12 @@ class RestrictedDict(OrderedDict):
         # Check that only the defined keys are used
         for key in self.keys():
             if key not in self._mandatory_keys and key not in self._optional_keys:
-                raise KeyError("The key '{}' is not allowed.".format(key))
+                raise KeyError(f"The key '{key}' is not allowed.")
 
         # Check that all mandatory values are all defined
         for key in self._mandatory_keys:
             if key not in self:
-                raise KeyError("The mandatory key '{}' is not present.".format(key))
+                raise KeyError(f"The mandatory key '{key}' is not present.")
 
         # Check that forbidden values are not used.
         for key, value in self.items():
@@ -695,7 +696,7 @@ def rebuild_dict(src: dict, separator: str = '.'):
                     result[index],
                 )
 
-    ret: Dict[str, Any] = {}
+    ret: dict[str, Any] = {}
     for key, value in src.items():
         helper_dict(key, value, ret)
 
@@ -835,7 +836,7 @@ def slugify(value):
     return re.sub(r'[-\s]+', '-', value).strip('-_')
 
 
-def query_list_to_dict(path_list: List[Union[str, int]], value: Any) -> Dict[str, Any]:
+def query_list_to_dict(path_list: list[str | int], value: Any) -> dict[str, Any]:
     """Transforms a list of path fragments into a dictionary query. E.g. the list
 
     ['run', 0, 'system', 2, 'atoms']
@@ -858,7 +859,7 @@ def query_list_to_dict(path_list: List[Union[str, int]], value: Any) -> Dict[str
         A nested dictionary representing the query path.
 
     """
-    returned: Dict[str, Any] = {}
+    returned: dict[str, Any] = {}
     current = returned
     n_items = len(path_list)
     i = 0
@@ -876,7 +877,7 @@ def query_list_to_dict(path_list: List[Union[str, int]], value: Any) -> Dict[str
     return returned
 
 
-def traverse_reversed(archive: Any, path: List[str]) -> Any:
+def traverse_reversed(archive: Any, path: list[str]) -> Any:
     """Traverses the given metainfo path in reverse order. Useful in finding the
     latest reported section or value.
 
@@ -898,21 +899,19 @@ def traverse_reversed(archive: Any, path: List[str]) -> Any:
                 if i == len(path) - 1:
                     yield section
                 else:
-                    for s in traverse(section, path, i + 1):
-                        yield s
+                    yield from traverse(section, path, i + 1)
         else:
             if i == len(path) - 1:
                 yield sections
             else:
-                for s in traverse(sections, path, i + 1):
-                    yield s
+                yield from traverse(sections, path, i + 1)
 
     for t in traverse(archive, path, 0):
         if t is not None:
             yield t
 
 
-def extract_section(root: Any, path: List[str], full_list: bool = False):
+def extract_section(root: Any, path: list[str], full_list: bool = False):
     """Extracts a section from source following the path and the last elements of the section
     lists. If full_list is True, the resolved section gives the full list instead of the
     last element.

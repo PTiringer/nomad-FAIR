@@ -16,7 +16,8 @@
 # limitations under the License.
 #
 
-from typing import List, Iterable, Dict, Union, Any, IO
+from typing import List, Dict, Union, Any, IO
+from collections.abc import Iterable
 from abc import ABCMeta, abstractmethod
 import re
 import os
@@ -44,7 +45,7 @@ class Parser(metaclass=ABCMeta):
     name = 'parsers/parser'
     level = 0
     creates_children = False
-    aliases: List[str] = []
+    aliases: list[str] = []
     """
     Level 0 parsers are run first, then level 1, and so on. Normally the value should be 0,
     use higher values only when a parser depends on other parsers.
@@ -62,7 +63,7 @@ class Parser(metaclass=ABCMeta):
         buffer: bytes,
         decoded_buffer: str,
         compression: str = None,
-    ) -> Union[bool, Iterable[str]]:
+    ) -> bool | Iterable[str]:
         """
         Checks if a file is a mainfile for the parser. Should return True or a set of
         *keys* (non-empty strings) if it is a mainfile, otherwise a falsey value.
@@ -95,7 +96,7 @@ class Parser(metaclass=ABCMeta):
         mainfile: str,
         archive: EntryArchive,
         logger=None,
-        child_archives: Dict[str, EntryArchive] = None,
+        child_archives: dict[str, EntryArchive] = None,
     ) -> None:
         """
         Runs the parser on the given mainfile and populates the result in the given
@@ -124,7 +125,7 @@ class Parser(metaclass=ABCMeta):
         pass
 
     @classmethod
-    def main(cls, mainfile, mainfile_keys: List[str] = None):
+    def main(cls, mainfile, mainfile_keys: list[str] = None):
         archive = EntryArchive()
         archive.m_create(EntryMetadata)
         if mainfile_keys:
@@ -216,7 +217,7 @@ class MatchingParser(Parser):
         level: int = 0,
         domain='dft',
         metadata: dict = None,
-        supported_compressions: List[str] = [],
+        supported_compressions: list[str] = [],
         **kwargs,
     ) -> None:
         super().__init__()
@@ -248,13 +249,13 @@ class MatchingParser(Parser):
 
         self._ls = lru_cache(maxsize=16)(lambda directory: os.listdir(directory))
 
-    def read_metadata_file(self, metadata_file: str) -> Dict[str, Any]:
+    def read_metadata_file(self, metadata_file: str) -> dict[str, Any]:
         """
         Read parser metadata from a yaml file.
         """
         logger = utils.get_logger(__name__)
         try:
-            with open(metadata_file, 'r', encoding='UTF-8') as f:
+            with open(metadata_file, encoding='UTF-8') as f:
                 parser_metadata = yaml.load(f, Loader=yaml.SafeLoader)
         except Exception as e:
             logger.warning('failed to read parser metadata', exc_info=e)
@@ -269,7 +270,7 @@ class MatchingParser(Parser):
         buffer: bytes,
         decoded_buffer: str,
         compression: str = None,
-    ) -> Union[bool, Iterable[str]]:
+    ) -> bool | Iterable[str]:
         if self._mainfile_binary_header is not None:
             if self._mainfile_binary_header not in buffer:
                 return False
@@ -392,7 +393,7 @@ class MatchingParser(Parser):
 
 
 # TODO remove this after merging hdf5 reference, only for parser compatibility
-def to_hdf5(value: Any, f: Union[str, IO], path: str):
+def to_hdf5(value: Any, f: str | IO, path: str):
     with h5py.File(f, 'a') as root:
         segments = path.rsplit('/', 1)
         group = root.require_group(segments[0]) if len(segments) == 2 else root
@@ -469,7 +470,7 @@ class MatchingParserInterface(MatchingParser):
         buffer: bytes,
         decoded_buffer: str,
         compression: str = None,
-    ) -> Union[bool, Iterable[str]]:
+    ) -> bool | Iterable[str]:
         is_mainfile = super().is_mainfile(
             filename=filename,
             mime=mime,
@@ -556,7 +557,7 @@ class ArchiveParser(MatchingParser):
     def parse(
         self, mainfile: str, archive: EntryArchive, logger=None, child_archives=None
     ):
-        with open(mainfile, 'rt') as f:
+        with open(mainfile) as f:
             self.parse_file(mainfile, f, archive, logger)
 
         self.validate_defintions(archive, logger)

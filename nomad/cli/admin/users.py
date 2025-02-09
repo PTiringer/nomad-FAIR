@@ -34,7 +34,7 @@ def import_command(path_to_users_file):
 
     from nomad import infrastructure, datamodel, utils
 
-    with open(path_to_users_file, 'rt') as f:
+    with open(path_to_users_file) as f:
         users = json.load(f)
 
     logger = utils.get_logger(__name__)

@@ -63,20 +63,20 @@ class DirectoryResponseOptions(BaseModel):
 
 
 class GraphDirectory(BaseModel):
-    m_errors: List[Error]
+    m_errors: list[Error]
     m_is: Literal['Directory']
     m_request: DirectoryRequestOptions
     m_response: DirectoryResponseOptions
-    m_children: Union[GraphDirectory, GraphFile]
+    m_children: GraphDirectory | GraphFile
 
 
 class GraphFile(BaseModel):
-    m_errors: List[Error]
+    m_errors: list[Error]
     m_is: Literal['File']
     m_request: DirectoryRequestOptions
     path: str
     size: int
-    entry: Optional[GraphEntry] = None
+    entry: GraphEntry | None = None
     # The old API also had those, but they can be grabbed from entry:
     # parser_name, entry_id, archive
     # This is similar to the question for "m_parent" in Directory. At least we need
@@ -86,7 +86,7 @@ class GraphFile(BaseModel):
 
 
 class MSection(BaseModel):
-    m_errors: List[Error]
+    m_errors: list[Error]
     m_request: RecursionOptions
     m_def: MDef
     m_children: Any = None
@@ -98,7 +98,7 @@ class MDef(MSection):
 
 
 class GraphEntry(mapped(EntryProcData, mainfile='mainfile_path', entry_metadata=None)):  # type: ignore
-    m_errors: List[Error]
+    m_errors: list[Error]
     mainfile: GraphFile
     upload: GraphUpload
     archive: MSection
@@ -107,11 +107,11 @@ class GraphEntry(mapped(EntryProcData, mainfile='mainfile_path', entry_metadata=
 
 class EntriesRequestOptions(BaseModel):
     # The old API does not support any queries
-    pagination: Optional[EntryProcDataPagination] = None
+    pagination: EntryProcDataPagination | None = None
 
 
 class EntriesResponseOptions(BaseModel):
-    pagination: Optional[PaginationResponse] = None
+    pagination: PaginationResponse | None = None
     # The "upload" was only necessary, because in the old API you would not get the upload.
     # In the graph API, the upload would be the parent anyways
     # upload: Upload
@@ -130,15 +130,15 @@ class GraphUser(
     # This would only refer to uploads with the user as main_author.
     # For many clients and use-cases uploads.m_request.query will be the
     # more generic or only option
-    uploads: Optional[GraphUploads]
-    datasets: Optional[GraphDatasets]
+    uploads: GraphUploads | None
+    datasets: GraphDatasets | None
     model_config = ConfigDict(
         extra='forbid',
     )
 
 
 class GraphUsers(BaseModel):
-    m_errors: List[Error]
+    m_errors: list[Error]
     m_children: GraphUser
 
 
@@ -147,10 +147,10 @@ class GraphUpload(
         UploadProcData,
         entries='n_entries',
         main_author=GraphUser,
-        coauthors=List[GraphUser],
-        reviewers=List[GraphUser],
-        viewers=List[GraphUser],
-        writers=List[GraphUser],
+        coauthors=list[GraphUser],
+        reviewers=list[GraphUser],
+        viewers=list[GraphUser],
+        writers=list[GraphUser],
     ),
 ):
     # The old API includes some extra data here:
@@ -172,19 +172,19 @@ class GraphUpload(
 
 
 class UploadRequestOptions(BaseModel):
-    pagination: Optional[UploadProcDataPagination] = None
-    query: Optional[UploadProcDataQuery] = None
+    pagination: UploadProcDataPagination | None = None
+    query: UploadProcDataQuery | None = None
 
 
 class UploadResponseOptions(BaseModel):
-    pagination: Optional[PaginationResponse] = None
-    query: Optional[UploadProcDataQuery] = None
+    pagination: PaginationResponse | None = None
+    query: UploadProcDataQuery | None = None
 
 
 class GraphUploads(BaseModel):
     m_request: UploadRequestOptions
     m_response: UploadResponseOptions
-    m_errors: List[Error]
+    m_errors: list[Error]
     m_children: GraphUpload
 
 
@@ -194,17 +194,17 @@ class GraphEntryMetadata(BaseModel, extra=Extra.allow):
 
 
 class SearchRequestOptions(BaseModel):
-    query: Optional[Metadata] = None
+    query: Metadata | None = None
 
 
 class SearchResponseOptions(BaseModel):
-    query: Optional[MetadataResponse] = None
+    query: MetadataResponse | None = None
 
 
 class GraphSearch(BaseModel):
     m_request: SearchRequestOptions
     m_response: SearchResponseOptions
-    m_errors: List[Error]
+    m_errors: list[Error]
     m_children: GraphEntryMetadata
 
 
@@ -213,55 +213,55 @@ class GraphDataset(mapped(DatasetV1, query=None, entries=None)):  # type: ignore
 
 
 class DatasetRequestOptions(BaseModel):
-    pagination: Optional[DatasetPagination] = None
-    query: Optional[DatasetQuery] = None
+    pagination: DatasetPagination | None = None
+    query: DatasetQuery | None = None
 
 
 class DatasetResponseOptions(BaseModel):
-    pagination: Optional[PaginationResponse] = None
-    query: Optional[DatasetQuery] = None
+    pagination: PaginationResponse | None = None
+    query: DatasetQuery | None = None
 
 
 class GraphDatasets(BaseModel):
     m_request: DatasetRequestOptions
     m_response: DatasetResponseOptions
-    m_errors: List[Error]
+    m_errors: list[Error]
     m_children: GraphDataset
 
 
 class MetainfoRequestOptions(BaseModel):
-    pagination: Optional[MetainfoPagination] = None
-    query: Optional[MetainfoQuery] = None
+    pagination: MetainfoPagination | None = None
+    query: MetainfoQuery | None = None
 
 
 class MetainfoResponseOptions(BaseModel):
-    pagination: Optional[PaginationResponse] = None
-    query: Optional[MetainfoQuery] = None
+    pagination: PaginationResponse | None = None
+    query: MetainfoQuery | None = None
 
 
 class GraphMetainfo(BaseModel):
     m_request: MetainfoRequestOptions
     m_response: MetainfoResponseOptions
-    m_errors: List[Error]
+    m_errors: list[Error]
     m_children: MSection
 
 
-class GraphGroup(mapped(UserGroup, owner=GraphUser, members=List[GraphUser])):  # type: ignore
-    m_errors: List[Error]
+class GraphGroup(mapped(UserGroup, owner=GraphUser, members=list[GraphUser])):  # type: ignore
+    m_errors: list[Error]
 
 
 class GroupRequestOptions(BaseModel):
-    pagination: Optional[UserGroupPagination]
-    query: Optional[UserGroupQuery]
+    pagination: UserGroupPagination | None
+    query: UserGroupQuery | None
 
 
 class GroupResponseOptions(BaseModel):
-    pagination: Optional[PaginationResponse]
-    query: Optional[UserGroupQuery]
+    pagination: PaginationResponse | None
+    query: UserGroupQuery | None
 
 
 class GraphGroups(BaseModel):
-    m_errors: List[Error]
+    m_errors: list[Error]
     m_children: GraphGroup
     m_request: GroupRequestOptions
     m_response: GroupResponseOptions

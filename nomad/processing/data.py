@@ -36,12 +36,10 @@ from typing import (
     List,
     Tuple,
     Set,
-    Iterator,
     Dict,
-    Iterable,
-    Sequence,
     Union,
 )
+from collections.abc import Iterator, Iterable, Sequence
 from pydantic import ValidationError
 from pydantic_core import InitErrorDetails, PydanticCustomError
 import rfc3161ng
@@ -149,7 +147,7 @@ mongo_entry_metadata_except_system_fields = tuple(
     for quantity_name in mongo_entry_metadata
     if quantity_name not in mongo_system_metadata
 )
-editable_metadata: Dict[str, metainfo.Definition] = {
+editable_metadata: dict[str, metainfo.Definition] = {
     quantity.name: quantity
     for quantity in EditableUserMetadata.m_def.definitions
     if isinstance(quantity, metainfo.Quantity)
@@ -196,12 +194,12 @@ _log_processors = [
 
 def get_rfc3161_token(
     hash_string: str,
-    server: Optional[str] = None,
-    cert: Optional[str] = None,
-    username: Optional[str] = None,
-    password: Optional[str] = None,
-    hash_algorithm: Optional[str] = None,
-) -> Optional[bytes]:
+    server: str | None = None,
+    cert: str | None = None,
+    username: str | None = None,
+    password: str | None = None,
+    hash_algorithm: str | None = None,
+) -> bytes | None:
     """
     Get RFC3161 compliant time stamp as a list of int.
     """
@@ -252,8 +250,8 @@ class MetadataEditRequestHandler:
 
     @classmethod
     def edit_metadata(
-        cls, edit_request_json: Dict[str, Any], upload_id: str, user: datamodel.User
-    ) -> Dict[str, Any]:
+        cls, edit_request_json: dict[str, Any], upload_id: str, user: datamodel.User
+    ) -> dict[str, Any]:
         """
         Method to verify and execute a generic request to edit metadata from a certain user.
         The request is specified as a json dictionary (requests defined by metadata files
@@ -306,7 +304,7 @@ class MetadataEditRequestHandler:
         self,
         logger,
         user: datamodel.User,
-        edit_request: Union[StagingUploadFiles, Dict[str, Any]],
+        edit_request: StagingUploadFiles | dict[str, Any],
         upload_id: str = None,
     ):
         # Initialization
@@ -319,40 +317,40 @@ class MetadataEditRequestHandler:
         self.edit_request = edit_request
         self.upload_id = upload_id
 
-        self.errors: List[
+        self.errors: list[
             CustomErrorWrapper
         ] = []  # A list of all encountered errors, if any
-        self.edit_attempt_locs: List[
-            Tuple[str, ...]
+        self.edit_attempt_locs: list[
+            tuple[str, ...]
         ] = []  # locs where user has attempted to edit something
         self.required_auth_level = (
             AuthLevel.none
         )  # Maximum required auth level for the edit
-        self.required_auth_level_locs: List[
-            Tuple[str, ...]
+        self.required_auth_level_locs: list[
+            tuple[str, ...]
         ] = []  # locs where maximal auth level is needed
-        self.encountered_users: Dict[
+        self.encountered_users: dict[
             str, str
         ] = {}  # { ref: user_id | None }, ref = user_id | username | email
-        self.encountered_datasets: Dict[
+        self.encountered_datasets: dict[
             str, datamodel.Dataset
         ] = {}  # { ref : dataset | None }, ref = dataset_id | dataset_name
 
         # Used when edit_request = json dict
         self.edit_request_obj: MetadataEditRequest = None
-        self.verified_metadata: Dict[
+        self.verified_metadata: dict[
             str, Any
         ] = {}  # The metadata specified at the top/root level
-        self.verified_entries: Dict[
-            str, Dict[str, Any]
+        self.verified_entries: dict[
+            str, dict[str, Any]
         ] = {}  # Metadata specified for individual entries
-        self.affected_uploads: List['Upload'] = (
+        self.affected_uploads: list['Upload'] = (
             None  # A MetadataEditRequest may involve multiple uploads
         )
 
         # Used when edit_request = files
-        self.verified_file_metadata_cache: Dict[str, Dict[str, Any]] = {}
-        self.root_file_entries: Dict[str, Dict[str, Any]] = (
+        self.verified_file_metadata_cache: dict[str, dict[str, Any]] = {}
+        self.root_file_entries: dict[str, dict[str, Any]] = (
             None  # `entries` defined in the root metadata file
         )
 
@@ -448,7 +446,7 @@ class MetadataEditRequestHandler:
             if self.errors:
                 raise RequestValidationError(errors=self.errors)
 
-    def get_upload_mongo_metadata(self, upload: 'Upload') -> Dict[str, Any]:
+    def get_upload_mongo_metadata(self, upload: 'Upload') -> dict[str, Any]:
         """
         Returns a dictionary with metadata to set on the mongo Upload object. If the provided
         `edit_request` is a json dictionary the :func: `validate_json_request`) is assumed
@@ -467,13 +465,13 @@ class MetadataEditRequestHandler:
 
     def get_entry_mongo_metadata(
         self, upload: 'Upload', entry: 'Entry'
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Returns a dictionary with metadata to set on the mongo entry object. If the provided
         `edit_request` is a json dictionary the :func: `validate_json_request`) is assumed
         to have been run first.
         """
-        verified_metadata: Dict[str, Any] = {}
+        verified_metadata: dict[str, Any] = {}
         if isinstance(self.edit_request, dict):
             # edit_request = json dict
             if self.verified_metadata:
@@ -517,18 +515,18 @@ class MetadataEditRequestHandler:
                         verified_metadata.update(verified_entry_metadata)
         return self._mongo_metadata(entry, verified_metadata)
 
-    def _error(self, msg: str, loc: Union[str, Tuple[str, ...]]):
+    def _error(self, msg: str, loc: str | tuple[str, ...]):
         """Registers an error associated with a particular location."""
         self.errors.append(CustomErrorWrapper(Exception(msg), loc=loc))
         self.logger.error(msg, loc=loc)
 
     def _verify_metadata(
         self,
-        raw_metadata: Dict[str, Any],
-        loc: Tuple[str, ...],
+        raw_metadata: dict[str, Any],
+        loc: tuple[str, ...],
         can_edit_upload_quantities: bool,
         auth_level: AuthLevel = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Performs basic validation of a dictionary with *raw* metadata (i.e. metadata with
         key-value pairs as defined in the request json dictionary or metadata files), and
@@ -561,10 +559,10 @@ class MetadataEditRequestHandler:
         self,
         quantity_name: str,
         raw_value: Any,
-        loc: Tuple[str, ...],
+        loc: tuple[str, ...],
         can_edit_upload_quantities: bool,
         auth_level: AuthLevel,
-    ) -> Tuple[bool, Any]:
+    ) -> tuple[bool, Any]:
         """
         Performs validation of a single value. Returns (success, verified_value).
         """
@@ -716,14 +714,14 @@ class MetadataEditRequestHandler:
             assert False, 'Unhandled value type'  # Should not happen
 
     def _mongo_metadata(
-        self, mongo_doc: Union['Upload', 'Entry'], verified_metadata: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, mongo_doc: Union['Upload', 'Entry'], verified_metadata: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Calculates the upload or entry level *mongo* metadata, given a `mongo_doc` and a
         dictionary with *verified* metadata. The mongo metadata are the key-value pairs
         to set on `mongo_doc` in order to carry out the edit request.
         """
-        rv: Dict[str, Any] = {}
+        rv: dict[str, Any] = {}
         for quantity_name, verified_value in verified_metadata.items():
             if (
                 isinstance(mongo_doc, Entry)
@@ -807,7 +805,7 @@ class MetadataEditRequestHandler:
             return restrict_query_to_upload(query, upload_id)
         return query
 
-    def _find_request_uploads(self) -> List['Upload']:
+    def _find_request_uploads(self) -> list['Upload']:
         """Returns a list of :class:`Upload`s matching the edit request."""
         query = self._restricted_request_query(self.upload_id)
         if query:
@@ -846,10 +844,9 @@ class MetadataEditRequestHandler:
                 yield Entry.get(result['entry_id'])
         else:
             # We have no query. Return all entries for the upload
-            for entry in Entry.objects(upload_id=upload.upload_id):
-                yield entry
+            yield from Entry.objects(upload_id=upload.upload_id)
 
-    def _verified_file_metadata(self, path_dir: str) -> Dict[str, Any]:
+    def _verified_file_metadata(self, path_dir: str) -> dict[str, Any]:
         """
         Gets the verified metadata defined in a metadata file in the provided directory.
         The `path_dir` should be relative to the `raw` folder. Empty string gives the "root"
@@ -865,7 +862,7 @@ class MetadataEditRequestHandler:
             ).metadata_file_cached(path_dir)
             if path_dir == '':
                 can_edit_upload_quantities = True
-                loc: Tuple[str, ...] = ('/',)
+                loc: tuple[str, ...] = ('/',)
                 if 'entries' in file_metadata:
                     self.root_file_entries = file_metadata.pop('entries')
                     if not isinstance(self.root_file_entries, dict):
@@ -971,8 +968,8 @@ class Entry(Proc):
         self._is_initial_processing: bool = False
         self._upload: Upload = None
         self._upload_files: StagingUploadFiles = None
-        self._proc_logs: List[Any] = []
-        self._child_entries: List['Entry'] = []
+        self._proc_logs: list[Any] = []
+        self._child_entries: list['Entry'] = []
 
         self._entry_metadata: EntryMetadata = None
         self._perform_index = True
@@ -1384,8 +1381,7 @@ class Entry(Proc):
 
     def _main_and_child_entries(self) -> Iterable['Entry']:
         yield self
-        for child_entry in self._child_entries:
-            yield child_entry
+        yield from self._child_entries
 
     def on_success(self):
         # Mark any child entries as successfully completed (necessary because the child entries
@@ -1665,7 +1661,7 @@ class Entry(Proc):
         return self._proc_logs
 
     def __str__(self):
-        return 'entry %s entry_id=%s upload_id%s' % (
+        return 'entry {} entry_id={} upload_id{}'.format(
             super().__str__(),
             self.entry_id,
             self.upload_id,
@@ -1785,7 +1781,7 @@ class Upload(Proc):
     def get_logger(self, **kwargs):
         logger = super().get_logger()
         main_author_user = self.main_author_user
-        main_author_name = '%s %s' % (
+        main_author_name = '{} {}'.format(
             main_author_user.first_name,
             main_author_user.last_name,
         )
@@ -1938,7 +1934,7 @@ class Upload(Proc):
             upload_auth = client.Auth(
                 user=config.keycloak.username, password=config.keycloak.password
             )
-            upload_parameters: Dict[str, Any] = {}
+            upload_parameters: dict[str, Any] = {}
             if embargo_length is not None:
                 upload_parameters.update(embargo_length=embargo_length)
             upload_url = (
@@ -1966,7 +1962,7 @@ class Upload(Proc):
 
     @process()
     def process_example_upload(
-        self, entry_point_id: str, file_operations: List[Dict[str, Any]] = None
+        self, entry_point_id: str, file_operations: list[dict[str, Any]] = None
     ):
         """Used to initiate the processing of an example upload entry point.
         This process is only triggered once per example upload, and any further
@@ -2012,8 +2008,8 @@ class Upload(Proc):
     @process()
     def process_upload(
         self,
-        file_operations: List[Dict[str, Any]] = None,
-        reprocess_settings: Dict[str, Any] = None,
+        file_operations: list[dict[str, Any]] = None,
+        reprocess_settings: dict[str, Any] = None,
         path_filter: str = None,
         only_updated_files: bool = False,
     ):
@@ -2049,8 +2045,8 @@ class Upload(Proc):
 
     def _process_upload_local(
         self,
-        file_operations: List[Dict[str, Any]] = None,
-        reprocess_settings: Dict[str, Any] = None,
+        file_operations: list[dict[str, Any]] = None,
+        reprocess_settings: dict[str, Any] = None,
         path_filter: str = None,
         only_updated_files: bool = False,
     ):
@@ -2123,7 +2119,7 @@ class Upload(Proc):
         )
 
         # Process entries, if matched; remove existing entries if unmatched.
-        old_entries_dict: Dict[str, Entry] = {
+        old_entries_dict: dict[str, Entry] = {
             e.entry_id: e
             for e in Entry.objects(upload_id=self.upload_id, mainfile=target_path)
         }
@@ -2137,7 +2133,7 @@ class Upload(Proc):
                 self.upload_id,
             )
 
-            mainfile_keys_including_main_entry: List[str] = [None] + (
+            mainfile_keys_including_main_entry: list[str] = [None] + (
                 mainfile_keys or []
             )  # type: ignore
             for mainfile_key in mainfile_keys_including_main_entry:
@@ -2206,7 +2202,7 @@ class Upload(Proc):
 
     @classmethod
     def _passes_process_filter(
-        cls, mainfile: str, path_filter: str, updated_files: Set[str]
+        cls, mainfile: str, path_filter: str, updated_files: set[str]
     ) -> bool:
         if path_filter:
             # Filter by path_filter
@@ -2222,8 +2218,8 @@ class Upload(Proc):
         return True
 
     def update_files(
-        self, file_operations: List[Dict[str, Any]], only_updated_files: bool
-    ) -> Set[str]:
+        self, file_operations: list[dict[str, Any]], only_updated_files: bool
+    ) -> set[str]:
         """
         Performed before the actual parsing/normalizing. It first ensures that there is a
         folder for the upload in the staging area (if the upload is published, the files
@@ -2247,7 +2243,7 @@ class Upload(Proc):
             StagingUploadFiles(self.upload_id, create=True)
 
         staging_upload_files = self.staging_upload_files
-        updated_files: Set[str] = set() if only_updated_files else None
+        updated_files: set[str] = set() if only_updated_files else None
 
         # Execute the requested file_operations, if any
         if file_operations:
@@ -2307,7 +2303,7 @@ class Upload(Proc):
             # created stripped POTCAR
             stripped_path = path + '.stripped'
             with open(
-                self.staging_upload_files.raw_file_object(stripped_path).os_path, 'wt'
+                self.staging_upload_files.raw_file_object(stripped_path).os_path, 'w'
             ) as stripped_f:
                 stripped_f.write(
                     'Stripped POTCAR file. Checksum of original file (sha224): %s\n'
@@ -2328,8 +2324,8 @@ class Upload(Proc):
             )
 
     def match_mainfiles(
-        self, path_filter: str, updated_files: Set[str]
-    ) -> Iterator[Tuple[str, str, Parser]]:
+        self, path_filter: str, updated_files: set[str]
+    ) -> Iterator[tuple[str, str, Parser]]:
         """
         Generator function that matches all files in the upload to all parsers to
         determine the upload's mainfiles.
@@ -2345,7 +2341,7 @@ class Upload(Proc):
 
         if path_filter:
             # path_filter provided, just scan this path
-            scan: List[Tuple[str, bool]] = [(path_filter, True)]
+            scan: list[tuple[str, bool]] = [(path_filter, True)]
         elif updated_files is not None:
             # Set with updated_files provided, only scan these
             scan = [(path, False) for path in updated_files]
@@ -2373,7 +2369,7 @@ class Upload(Proc):
                         staging_upload_files.raw_file_object(path_info.path).os_path
                     )
                     if parser is not None:
-                        mainfile_keys_including_main_entry: List[str] = [None] + (
+                        mainfile_keys_including_main_entry: list[str] = [None] + (
                             mainfile_keys or []
                         )  # type: ignore
                         for mainfile_key in mainfile_keys_including_main_entry:
@@ -2389,7 +2385,7 @@ class Upload(Proc):
         self,
         reprocess_settings: Reprocess,
         path_filter: str = None,
-        updated_files: Set[str] = None,
+        updated_files: set[str] = None,
     ):
         """
         The process step used to identify mainfile/parser combinations among the upload's files,
@@ -2468,7 +2464,7 @@ class Upload(Proc):
                             not self.published
                             or reprocess_settings.delete_unmatched_published_entries
                         ):
-                            entries_to_delete: List[str] = list(old_entries)
+                            entries_to_delete: list[str] = list(old_entries)
                             delete_partial_archives_from_mongo(entries_to_delete)
                             for entry_id in entries_to_delete:
                                 search.delete_entry(
@@ -2510,7 +2506,7 @@ class Upload(Proc):
         can_create: bool,
         metadata_handler: MetadataEditRequestHandler,
         logger,
-    ) -> Tuple[Entry, bool, MetadataEditRequestHandler]:
+    ) -> tuple[Entry, bool, MetadataEditRequestHandler]:
         entry_id = utils.generate_entry_id(self.upload_id, mainfile, mainfile_key)
         entry = None
         was_created = False
@@ -2550,7 +2546,7 @@ class Upload(Proc):
         return entry, was_created, metadata_handler
 
     def parse_next_level(
-        self, min_level: int, path_filter: str = None, updated_files: Set[str] = None
+        self, min_level: int, path_filter: str = None, updated_files: set[str] = None
     ) -> bool:
         """
         Triggers processing on the next level of parsers (parsers with level >= min_level).
@@ -2559,7 +2555,7 @@ class Upload(Proc):
         try:
             logger = self.get_logger()
             next_level: int = None
-            next_entries: List[Entry] = None
+            next_entries: list[Entry] = None
             with utils.timer(logger, 'entries processing called'):
                 # Determine what the next level is and which entries belongs to this level
                 for entry in Entry.objects(upload_id=self.upload_id, mainfile_key=None):
@@ -2859,7 +2855,7 @@ class Upload(Proc):
         )
 
     @contextmanager
-    def entries_metadata(self) -> Iterator[List[EntryMetadata]]:
+    def entries_metadata(self) -> Iterator[list[EntryMetadata]]:
         """
         This is the :py:mod:`nomad.datamodel` transformation method to transform
         processing upload's entries into list of :class:`EntryMetadata` objects.
@@ -2874,7 +2870,7 @@ class Upload(Proc):
         finally:
             self.upload_files.close()  # Because full_entry_metadata reads the archive files.
 
-    def entries_mongo_metadata(self) -> List[EntryMetadata]:
+    def entries_mongo_metadata(self) -> list[EntryMetadata]:
         """
         Returns a list of :class:`EntryMetadata` containing the mongo metadata
         only, for all entries of this upload.
@@ -2885,7 +2881,7 @@ class Upload(Proc):
         ]
 
     @process()
-    def edit_upload_metadata(self, edit_request_json: Dict[str, Any], user_id: str):
+    def edit_upload_metadata(self, edit_request_json: dict[str, Any], user_id: str):
         """
         A @process that executes a metadata edit request, restricted to a specific upload,
         on behalf of the provided user. The `edit_request_json` should be a json dict of the
@@ -2918,7 +2914,7 @@ class Upload(Proc):
         # Entry level metadata
         last_edit_time = datetime.utcnow()
         entry_mongo_writes = []
-        updated_metadata: List[datamodel.EntryMetadata] = []
+        updated_metadata: list[datamodel.EntryMetadata] = []
         for entry in handler.find_request_entries(self):
             entry_updates = handler.get_entry_mongo_metadata(self, entry)
             entry_updates['last_edit_time'] = last_edit_time
@@ -2953,14 +2949,14 @@ class Upload(Proc):
                     f'Failed to update ES, there were {failed_es} fails'
                 )
 
-    def entry_ids(self) -> List[str]:
+    def entry_ids(self) -> list[str]:
         return [entry.entry_id for entry in Entry.objects(upload_id=self.upload_id)]
 
     @process(is_blocking=True)
     def import_bundle(
         self,
         bundle_path: str,
-        import_settings: Dict[str, Any],
+        import_settings: dict[str, Any],
         embargo_length: int = None,
     ):
         """
@@ -2994,4 +2990,4 @@ class Upload(Proc):
             bundle_importer.close()
 
     def __str__(self):
-        return 'upload %s upload_id%s' % (super().__str__(), self.upload_id)
+        return f'upload {super().__str__()} upload_id{self.upload_id}'

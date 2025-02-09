@@ -281,7 +281,7 @@ class Run(ArchiveSection):
     calculation = SubSection(sub_section=Calculation.m_def, repeats=True)
 
     def normalize(self, archive, logger):
-        super(Run, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
 
 m_package.__init_metainfo__()

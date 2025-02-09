@@ -106,12 +106,12 @@ def run_app(
                 os.path.join(run_gui_folder, source_file_glob), recursive=True
             )
             for source_file in source_files:
-                with open(source_file, 'rt') as f:
+                with open(source_file) as f:
                     file_data = f.read()
                 file_data = file_data.replace(
                     '/fairdi/nomad/latest', config.services.api_base_path
                 )
-                with open(source_file, 'wt') as f:
+                with open(source_file, 'w') as f:
                     f.write(file_data)
 
         # App and gui are served from the same server, same port. Replace the base urls with

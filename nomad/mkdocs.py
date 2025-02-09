@@ -26,7 +26,8 @@ from enum import Enum
 from pydantic import BaseModel
 import os.path
 from typing import List, Set, Tuple, Any, Optional, Dict
-from typing_extensions import Literal, _AnnotatedAlias  # type: ignore
+from typing_extensions import _AnnotatedAlias  # type: ignore
+from typing import Literal
 from inspect import isclass
 from markdown.extensions.toc import slugify
 
@@ -48,7 +49,7 @@ doc_snippets = {
 }
 
 
-def get_field_type_info(field) -> Tuple[str, Set[Any]]:
+def get_field_type_info(field) -> tuple[str, set[Any]]:
     """Used to recursively walk through a type definition, building up a cleaned
     up type name and returning all of the classes that were used.
 
@@ -62,7 +63,7 @@ def get_field_type_info(field) -> Tuple[str, Set[Any]]:
     # Notice that pydantic does not store the full type in field.type_, but instead in
     # field.outer_type_
     type_ = field.annotation
-    type_name: List[str] = []
+    type_name: list[str] = []
     models = set()
 
     def fetch_models(type_, type_name):
@@ -129,7 +130,7 @@ def get_field_type_info(field) -> Tuple[str, Set[Any]]:
     return ''.join(type_name), models
 
 
-def get_field_description(field) -> Optional[str]:
+def get_field_description(field) -> str | None:
     """Retrieves the description for a pydantic field as a markdown string.
 
     Args:
@@ -146,7 +147,7 @@ def get_field_description(field) -> Optional[str]:
     return value
 
 
-def get_field_default(field) -> Optional[str]:
+def get_field_default(field) -> str | None:
     """Retrieves the default value from a pydantic field as a markdown string.
 
     Args:
@@ -166,7 +167,7 @@ def get_field_default(field) -> Optional[str]:
     return default_value
 
 
-def get_field_options(field) -> Dict[str, Optional[str]]:
+def get_field_options(field) -> dict[str, str | None]:
     """Retrieves a dictionary of value-description pairs from a pydantic field.
 
     Args:
@@ -176,7 +177,7 @@ def get_field_options(field) -> Dict[str, Optional[str]]:
         Dictionary containing the possible options and their description for
         this field. The description may be None indicating that it does not exist.
     """
-    options: Dict[str, Optional[str]] = {}
+    options: dict[str, str | None] = {}
     if isclass(field.annotation) and issubclass(field.annotation, Enum):
         for x in field.annotation:
             options[str(x.value)] = None
@@ -202,7 +203,7 @@ class MyYamlDumper(yaml.Dumper):
     """
 
     def represent_mapping(self, *args, **kwargs):
-        node = super(MyYamlDumper, self).represent_mapping(*args, **kwargs)
+        node = super().represent_mapping(*args, **kwargs)
         node.flow_style = False
         return node
 
@@ -227,7 +228,7 @@ def define_env(env):
 
     @env.macro
     def file_contents(path):  # pylint: disable=unused-variable
-        with open(path, 'r') as f:
+        with open(path) as f:
             return f.read()
 
     @env.macro
@@ -249,7 +250,7 @@ def define_env(env):
         file_path, json_path = path.split(':')
         file_path = os.path.join(os.path.dirname(__file__), '..', file_path)
 
-        with open(file_path, 'rt') as f:
+        with open(file_path) as f:
             if file_path.endswith('.yaml'):
                 data = yaml.load(f, Loader=yaml.SafeLoader)
             elif file_path.endswith('.json'):
@@ -267,7 +268,7 @@ def define_env(env):
             data = data[segment]
 
         if filter is not None:
-            filter = set([item.strip() for item in filter.split(',')])
+            filter = {item.strip() for item in filter.split(',')}
             to_remove = []
             for key in data.keys():
                 if key in filter:
@@ -418,13 +419,13 @@ def define_env(env):
 
             return metadata
 
-        categories: Dict[str, List[ParserEntryPoint]] = {}
+        categories: dict[str, list[ParserEntryPoint]] = {}
         for parser in parsers:
             category_name = getattr(parser, 'code_category', None)
             category = categories.setdefault(category_name, [])
             category.append(parser)
 
-        def render_category(name: str, category: List[ParserEntryPoint]) -> str:
+        def render_category(name: str, category: list[ParserEntryPoint]) -> str:
             return f'## {name}s\n\n' + '\n\n'.join(
                 [render_parser(parser) for parser in category]
             )
