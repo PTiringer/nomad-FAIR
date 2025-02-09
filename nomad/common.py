@@ -27,7 +27,7 @@ import shutil
 import zipfile
 import tarfile
 from typing import Optional
-from typing_extensions import Literal
+from typing import Literal
 from tempfile import TemporaryDirectory
 import httpx
 
@@ -61,7 +61,7 @@ def get_package_path(package_name: str) -> str:
     return package_path
 
 
-def download_file(url: str, filepath: str) -> Optional[str]:
+def download_file(url: str, filepath: str) -> str | None:
     """Used to download a file from the given URL to the given directory.
 
     Arg:
@@ -117,7 +117,7 @@ decompress_file_extensions = {
 }
 
 
-def get_compression_format(path: str) -> Optional[Literal['zip', 'tar', 'error']]:
+def get_compression_format(path: str) -> Literal['zip', 'tar', 'error'] | None:
     """
     Returns the decompression format ('zip', 'tar' or 'error') if `path` specifies a file
     which should be automatically decompressed before adding it to an upload. If `path`

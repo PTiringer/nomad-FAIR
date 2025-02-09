@@ -119,7 +119,7 @@ class FormatFeature(str, Enum):
     PBC = 'Periodic boundary conditions (PBC)'
 
 
-format_map: Dict[str, dict] = OrderedDict(
+format_map: dict[str, dict] = OrderedDict(
     {
         'cif': {
             'label': 'cif',
@@ -204,7 +204,7 @@ FormatEnum = TempFormatEnum(
 )  # type: ignore
 
 
-wrap_mode_map: Dict[str, dict] = OrderedDict(
+wrap_mode_map: dict[str, dict] = OrderedDict(
     {
         'original': {'description': 'The original positions as set in the data'},
         'wrap': {
@@ -351,7 +351,7 @@ Here is a brief rundown of the different features each format supports:
             path = path[len(prefix) :]
 
     # Add indexing
-    query_list: List[Union[str, int]] = []
+    query_list: list[str | int] = []
     paths = [x for x in path.split('/') if x != '']
     i = 0
     while i < len(paths):

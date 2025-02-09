@@ -58,8 +58,8 @@ class Context(MetainfoContext):
                 '/v1' if self.installation_url.endswith('/api') else '/api/v1'
             )
 
-        self.archives: Dict[str, MSection] = {}
-        self.urls: Dict[MSection, str] = {}
+        self.archives: dict[str, MSection] = {}
+        self.urls: dict[MSection, str] = {}
 
     @property
     def upload_id(self):
@@ -495,7 +495,7 @@ class ClientContext(Context):
             if os.path.exists(file_path):
                 from nomad.parsing.parser import ArchiveParser
 
-                with open(file_path, 'rt') as f:
+                with open(file_path) as f:
                     archive = EntryArchive(m_context=self)
                     ArchiveParser().parse_file(file_path, f, archive)
                     return archive

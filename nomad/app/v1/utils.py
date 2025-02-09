@@ -16,7 +16,8 @@
 # limitations under the License.
 #
 
-from typing import List, Dict, Set, Iterator, Any, Optional, Union
+from typing import List, Dict, Set, Any, Optional, Union
+from collections.abc import Iterator
 from types import FunctionType
 import urllib
 import io
@@ -31,7 +32,7 @@ from nomad.files import UploadFiles, StreamedFile, create_zipstream
 
 
 def parameter_dependency_from_model(
-    name: str, model_cls: BaseModel, exclude: List[str] = []
+    name: str, model_cls: BaseModel, exclude: list[str] = []
 ) -> FunctionType:
     """
     Takes a pydantic model class as input and creates a dependency with corresponding
@@ -46,7 +47,7 @@ def parameter_dependency_from_model(
         model_cls: A ``BaseModel`` inheriting model class as input.
     """
     names = []
-    annotations: Dict[str, type] = {}
+    annotations: dict[str, type] = {}
     defaults = []
     for field_name, field_model in model_cls.model_fields.items():
         try:
@@ -75,7 +76,7 @@ def parameter_dependency_from_model(
             name,
             ', '.join(names),
             model_cls.__name__,  # type: ignore
-            ', '.join(['%s=%s' % (name, name) for name in names]),
+            ', '.join([f'{name}={name}' for name in names]),
         )
     )
 
@@ -95,11 +96,11 @@ class DownloadItem(BaseModel):
     upload_id: str
     raw_path: str
     zip_path: str
-    entry_metadata: Optional[Dict[str, Any]] = None
+    entry_metadata: dict[str, Any] | None = None
 
 
 async def create_download_stream_zipped(
-    download_items: Union[DownloadItem, Iterator[DownloadItem]],
+    download_items: DownloadItem | Iterator[DownloadItem],
     upload_files: UploadFiles = None,
     re_pattern: Any = None,
     recursive: bool = False,
@@ -126,7 +127,7 @@ async def create_download_stream_zipped(
                 if isinstance(download_items, DownloadItem)
                 else download_items
             )
-            streamed_paths: Set[str] = set()
+            streamed_paths: set[str] = set()
 
             for download_item in items:
                 if upload_files and upload_files.upload_id != download_item.upload_id:
@@ -249,7 +250,7 @@ def create_responses(*args):
 
 def browser_download_headers(
     filename: str, media_type: str = 'application/octet-stream'
-) -> Dict[str, str]:
+) -> dict[str, str]:
     """
     Creates standardized headers which tells browsers that they should download the
     data to a file with the specified filename. Note, the `media_type` should normally be
@@ -282,7 +283,7 @@ def update_url_query_arguments(original_url: str, **kwargs) -> str:
     return urllib.parse.urlunparse((scheme, netloc, path, params, query, fragment))
 
 
-def convert_data_to_dict(data: Any) -> Dict[str, Any]:
+def convert_data_to_dict(data: Any) -> dict[str, Any]:
     """
     Converts a pydantic model or a dictionary containing pydantic models to a dictionary.
 

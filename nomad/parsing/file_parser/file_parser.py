@@ -15,7 +15,8 @@
 from abc import ABC, abstractmethod
 import os
 import pint
-from typing import Any, Dict, Callable, IO, Union, List
+from typing import Any, Dict, IO, Union, List
+from collections.abc import Callable
 import gzip
 import bz2
 import lzma
@@ -39,9 +40,7 @@ class FileParser(ABC):
         open: function to open file
     """
 
-    def __init__(
-        self, mainfile: Union[str, IO] = None, logger=None, open: Callable = None
-    ):
+    def __init__(self, mainfile: str | IO = None, logger=None, open: Callable = None):
         self._mainfile: str = None
         self._mainfile_obj: IO = None
         if isinstance(mainfile, str):
@@ -54,8 +53,8 @@ class FileParser(ABC):
         self.logger = logger if logger is not None else get_logger(__name__)
         # a key is necessary for xml parsers, where parsing is done dynamically
         self._key: str = None
-        self._kwargs: Dict[str, Any] = {}
-        self._results: Dict[str, Any] = None
+        self._kwargs: dict[str, Any] = {}
+        self._results: dict[str, Any] = None
         self._file_handler: Any = None
 
     def reset(self):
@@ -164,7 +163,7 @@ class FileParser(ABC):
         self,
         key: str,
         default: Any = None,
-        unit: Union[pint.Unit, pint.Quantity] = None,
+        unit: pint.Unit | pint.Quantity = None,
         **kwargs,
     ):
         """
@@ -265,9 +264,7 @@ class Parser(ABC):
     logger = None
     child_archives = None
 
-    def get_mainfile_keys(
-        self, filename: str, decoded_buffer: str
-    ) -> Union[bool, List[str]]:
+    def get_mainfile_keys(self, filename: str, decoded_buffer: str) -> bool | list[str]:
         """
         If child archives are necessary for the entry, a list of keys for the archives are
         returned.
@@ -275,7 +272,7 @@ class Parser(ABC):
         return True
 
     # TODO replace with MSection.m_update_from_dict once it takes in type Quantity?
-    def parse_section(self, data: Dict[str, Any], root: MSection) -> None:
+    def parse_section(self, data: dict[str, Any], root: MSection) -> None:
         """
         Write the quantities in data into an archive section.
         """
@@ -293,7 +290,7 @@ class Parser(ABC):
 
             root.m_set(root.m_get_quantity_definition(key), val)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Converts the parsed metadata into a dictionary following the nomad archive schema.
         """

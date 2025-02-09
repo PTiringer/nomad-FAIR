@@ -28,7 +28,7 @@ class ConfigBaseModel(BaseModel):
 
     def customize(
         self: ConfigBaseModelBound,
-        custom_settings: Union[ConfigBaseModelBound, Dict[str, Any]],
+        custom_settings: ConfigBaseModelBound | dict[str, Any],
     ) -> ConfigBaseModelBound:
         """
         Returns a new config object, created by taking a copy of the current config and
@@ -82,14 +82,14 @@ class ConfigBaseModel(BaseModel):
 class OptionsBase(ConfigBaseModel):
     """The most basic model for defining the availability of different options."""
 
-    include: Optional[List[str]] = Field(
+    include: list[str] | None = Field(
         None,
         description="""
         List of included options. If not explicitly defined, all of the options will
         be included by default.
     """,
     )
-    exclude: Optional[List[str]] = Field(
+    exclude: list[str] | None = Field(
         None,
         description="""
         List of excluded options. Has higher precedence than include.
@@ -109,13 +109,13 @@ class OptionsGlob(ConfigBaseModel):
     using glob/wildcard syntax.
     """
 
-    include: Optional[List[str]] = Field(
+    include: list[str] | None = Field(
         None,
         description="""
         List of included options. Supports glob/wildcard syntax.
     """,
     )
-    exclude: Optional[List[str]] = Field(
+    exclude: list[str] | None = Field(
         None,
         description="""
         List of excluded options. Supports glob/wildcard syntax. Has higher precedence than include.
@@ -128,11 +128,11 @@ class Options(OptionsBase):
     elements and defining the configuration of each element.
     """
 
-    options: Optional[Dict[str, Any]] = Field(  # type: ignore
+    options: dict[str, Any] | None = Field(  # type: ignore
         {}, description='Contains the available options.'
     )
 
-    def filtered_keys(self) -> List[str]:
+    def filtered_keys(self) -> list[str]:
         """Returns a list of keys that fullfill the include/exclude
         requirements.
         """
@@ -146,7 +146,7 @@ class Options(OptionsBase):
             exclude = self.exclude or []
         return [key for key in include if key not in exclude]
 
-    def filtered_values(self) -> List[Any]:
+    def filtered_values(self) -> list[Any]:
         """Returns a list of values that fullfill the include/exclude
         requirements.
         """
@@ -154,7 +154,7 @@ class Options(OptionsBase):
             self.options[key] for key in self.filtered_keys() if key in self.options
         ]
 
-    def filtered_items(self) -> List[Tuple[str, Any]]:
+    def filtered_items(self) -> list[tuple[str, Any]]:
         """Returns a list of key/value pairs that fullfill the include/exclude
         requirements.
         """
@@ -174,4 +174,4 @@ class OptionsSingle(Options):
 class OptionsMulti(Options):
     """Represents options where multiple values can be selected."""
 
-    selected: List[str] = Field(description='Selected options.')
+    selected: list[str] = Field(description='Selected options.')

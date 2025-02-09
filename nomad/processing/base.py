@@ -351,7 +351,7 @@ class Proc(Document):
         force: bool = False,
         worker_hostname: str = None,
         process_status: str = ProcessStatus.READY,
-        errors: List[str] = [],
+        errors: list[str] = [],
         clear_queue: bool = True,
     ):
         """
@@ -374,7 +374,7 @@ class Proc(Document):
         cls,
         worker_hostname: str = None,
         process_status=ProcessStatus.READY,
-        errors: List[str] = [],
+        errors: list[str] = [],
         clear_queue: bool = True,
     ):
         """
@@ -403,7 +403,7 @@ class Proc(Document):
             raise e
 
         if obj is None:
-            raise KeyError('%s with id %s does not exist' % (cls.__name__, id))
+            raise KeyError(f'{cls.__name__} with id {id} does not exist')
 
         return obj
 
@@ -447,7 +447,7 @@ class Proc(Document):
         for error in errors:
             if isinstance(error, Exception):
                 failed_with_exception = True
-                self.errors.append('%s: %s' % (error.__class__.__name__, str(error)))
+                self.errors.append(f'{error.__class__.__name__}: {str(error)}')
                 Proc.log(
                     logger,
                     log_level,
@@ -542,7 +542,7 @@ class Proc(Document):
         ):
             queue = worker_direct(self.worker_hostname).name
 
-        priority = config.celery.priorities.get('%s.%s' % (cls_name, func_name), 1)
+        priority = config.celery.priorities.get(f'{cls_name}.{func_name}', 1)
 
         logger = utils.get_logger(__name__, cls=cls_name, id=self_id, func=func_name)
         logger.info(
@@ -559,7 +559,7 @@ class Proc(Document):
         )
 
     def __str__(self):
-        return 'proc celery_task_id=%s worker_hostname=%s' % (
+        return 'proc celery_task_id={} worker_hostname={}'.format(
             self.celery_task_id,
             self.worker_hostname,
         )
@@ -766,7 +766,7 @@ class Proc(Document):
 
     def _sync_complete_process(
         self, force_clear_queue_on_failure=False
-    ) -> Tuple[str, List[Any], Dict[str, Any]]:
+    ) -> tuple[str, list[Any], dict[str, Any]]:
         """
         Used to complete a process (when done, successful or not). Returns a triple
         containing information about the next process to run (if any), of the
@@ -851,7 +851,7 @@ def all_subclasses(cls):
 all_proc_cls = {cls.__name__: cls for cls in all_subclasses(Proc)}
 """ Name dictionary for all Proc classes. """
 
-process_flags: Dict[str, Dict[str, ProcessFlags]] = defaultdict(dict)
+process_flags: dict[str, dict[str, ProcessFlags]] = defaultdict(dict)
 """ { <Proc class name>: { <process func name>: ProcessFlags } } """
 
 

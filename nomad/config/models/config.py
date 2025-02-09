@@ -39,10 +39,7 @@ except Exception:  # noqa
     # package is not installed
     pass
 
-if sys.version_info < (3, 10):
-    from importlib_metadata import entry_points
-else:
-    from importlib.metadata import entry_points
+from importlib.metadata import entry_points
 
 
 from .common import (
@@ -149,7 +146,7 @@ class Services(ConfigBaseModel):
         True, description="""If true the app will serve the h5grove API."""
     )
 
-    console_log_level: Union[int, str] = Field(
+    console_log_level: int | str = Field(
         logging.WARNING,
         description="""
         The log level that controls console logging for all NOMAD services (app, worker, north).
@@ -312,7 +309,7 @@ class Oasis(ConfigBaseModel):
         False,
         description='Set to `True` to indicate that this deployment is a NOMAD Oasis.',
     )
-    allowed_users: List[str] = Field(
+    allowed_users: list[str] = Field(
         None,
         description="""
         A list of usernames or user account emails. These represent a white-list of
@@ -361,7 +358,7 @@ class Celery(ConfigBaseModel):
     timeout: int = 1800  # 1/2hr
     acks_late: bool = False
     routing: str = CELERY_QUEUE_ROUTING
-    priorities: Dict[str, int] = {
+    priorities: dict[str, int] = {
         'Upload.process_upload': 5,
         'Upload.delete_upload': 9,
         'Upload.publish_upload': 10,
@@ -378,7 +375,7 @@ class FS(ConfigBaseModel):
     north_home_external: str = None
     local_tmp: str = '/tmp'
     prefix_size: int = 2
-    archive_version_suffix: Union[str, List[str]] = Field(
+    archive_version_suffix: str | list[str] = Field(
         ['v1.2', 'v1'],
         description="""
         This allows to add an additional segment to the names of archive files and
@@ -453,15 +450,15 @@ class Mongo(ConfigBaseModel):
     )
     port: int = Field(27017, description='The port to connect with mongodb.')
     db_name: str = Field('nomad_v1', description='The used mongodb database name.')
-    username: Optional[str] = None
-    password: Optional[str] = None
+    username: str | None = None
+    password: str | None = None
 
 
 class Logstash(ConfigBaseModel):
     enabled: bool = False
     host: str = 'localhost'
     tcp_port: str = '5000'
-    level: Union[int, str] = logging.DEBUG
+    level: int | str = logging.DEBUG
 
     # Validators
     _level = field_validator('level', mode='before')(normalize_loglevel)
@@ -497,7 +494,7 @@ class Logtransfer(ConfigBaseModel):
         600,
         description='Time interval in seconds after which stored logs are potentially transferred.',
     )
-    level: Union[int, str] = Field(
+    level: int | str = Field(
         logging.INFO, description='The min log level for logs to be transferred.'
     )
     log_file: str = Field(
@@ -535,7 +532,7 @@ class Mail(ConfigBaseModel):
     user: str = ''
     password: str = ''
     from_address: str = 'support@nomad-lab.eu'
-    cc_address: Optional[str] = None
+    cc_address: str | None = None
 
 
 class Normalize(ConfigBaseModel):
@@ -627,7 +624,7 @@ class Normalize(ConfigBaseModel):
             level in order to still detect a gap. Unit: Joule.
         """,
     )
-    springer_db_path: Optional[str] = Field(
+    springer_db_path: str | None = Field(
         os.path.join(
             os.path.dirname(os.path.abspath(__file__)), 'normalizing/data/springer.msg'
         )
@@ -696,7 +693,7 @@ class Process(ConfigBaseModel):
     index_materials: bool = True
     reuse_parser: bool = True
     metadata_file_name: str = 'nomad'
-    metadata_file_extensions: Tuple[str, ...] = ('json', 'yaml', 'yml')
+    metadata_file_extensions: tuple[str, ...] = ('json', 'yaml', 'yml')
     auxfile_cutoff: int = 100
     parser_matching_size: int = 150 * 80
     max_upload_size: int = 32 * (1024**3)
@@ -946,7 +943,7 @@ class Config(ConfigBaseModel):
     bundle_import: BundleImport = BundleImport()
     archive: Archive = Archive()
     ui: UI = UI()
-    plugins: Optional[Plugins] = None
+    plugins: Plugins | None = None
 
     def api_url(
         self,
@@ -967,12 +964,12 @@ class Config(ConfigBaseModel):
             base = base[:-1]
 
         if page is not None:
-            return '%s/gui/%s' % (base, page)
+            return f'{base}/gui/{page}'
 
         return '%s/gui' % base
 
     def rabbitmq_url(self):
-        return 'pyamqp://%s:%s@%s//' % (
+        return 'pyamqp://{}:{}@{}//'.format(
             self.rabbitmq.user,
             self.rabbitmq.password,
             self.rabbitmq.host,
@@ -1119,7 +1116,7 @@ class Config(ConfigBaseModel):
             _plugins['plugin_packages'] = plugin_packages
 
             # Handle plugins defined in nomad.yaml (old plugin mechanism)
-            def load_plugin_yaml(name, values: Dict[str, Any]):
+            def load_plugin_yaml(name, values: dict[str, Any]):
                 """Loads plugin metadata from nomad_plugin.yaml"""
                 python_package = values.get('python_package')
                 if not python_package:
@@ -1135,7 +1132,7 @@ class Config(ConfigBaseModel):
                 metadata_path = os.path.join(package_path, 'nomad_plugin.yaml')
                 if os.path.exists(metadata_path):
                     try:
-                        with open(metadata_path, 'r', encoding='UTF-8') as f:
+                        with open(metadata_path, encoding='UTF-8') as f:
                             metadata = yaml.load(f, Loader=yaml.SafeLoader)
                     except Exception as e:
                         raise ValueError(

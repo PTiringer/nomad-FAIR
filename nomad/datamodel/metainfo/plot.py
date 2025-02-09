@@ -227,7 +227,7 @@ class PlotSection(ArchiveSection):
     )
 
     def normalize(self, archive, logger):
-        super(PlotSection, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         all_figures = []
         plotly_express_annotations = deepcopy(

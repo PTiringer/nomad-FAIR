@@ -42,7 +42,7 @@ class FilterException(Exception):
 def _get_transformer(without_prefix, **kwargs):
     from nomad.datamodel import OptimadeEntry
 
-    quantities: Dict[str, Quantity] = {
+    quantities: dict[str, Quantity] = {
         q.name: Quantity(
             q.name,
             backend_field='optimade.%s' % q.name,

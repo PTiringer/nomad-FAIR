@@ -582,7 +582,7 @@ class SingleElectronState(MSection):  # inherit from AtomicOrbitalState?
             )
         super().__setattr__(name, value)
 
-    def normalize(self, archive, logger: typing.Optional[Logger]):
+    def normalize(self, archive, logger: Logger | None):
         # self.set_degeneracy()
         pass
 
@@ -735,7 +735,7 @@ class CoreHole(SingleElectronState):
                 self.degeneracy = 1
         super().__setattr__(name, value)
 
-    def normalize(self, archive, logger: typing.Optional[Logger]):
+    def normalize(self, archive, logger: Logger | None):
         super().normalize(archive, logger)
         self.set_occupation()
 

@@ -16,7 +16,8 @@
 # limitations under the License.
 #
 import os
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING
+from collections.abc import Iterable
 import random
 import time
 import datetime
@@ -349,7 +350,7 @@ class Activity(BaseSection):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(Activity, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         if archive.results.eln.methods is None:
             archive.results.eln.methods = []
@@ -415,7 +416,7 @@ class EntityReference(SectionReference):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(EntityReference, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         if self.reference is None and self.lab_id is not None:
             from nomad.search import search, MetadataPagination
 
@@ -480,7 +481,7 @@ class ExperimentStep(ActivityStep):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(ExperimentStep, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         if self.activity is None and self.lab_id is not None:
             from nomad.search import search, MetadataPagination
 
@@ -587,7 +588,7 @@ class ElementalComposition(ArchiveSection):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(ElementalComposition, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         if self.element:
             if not archive.results:
@@ -998,7 +999,7 @@ class PureSubstance(System):
             archive (EntryArchive): The archive that is being normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(PureSubstance, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         #     if logger is None:
         #         logger = utils.get_logger(__name__)
         #     if self.molecular_formula:
@@ -1168,7 +1169,7 @@ class Instrument(Entity):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(Instrument, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         if self.name:
             if archive.results.eln.instruments is None:
@@ -1260,7 +1261,7 @@ class Process(Activity):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(Process, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         if (
             self.datetime is not None
             and all(step.duration is not None for step in self.steps)
@@ -1328,7 +1329,7 @@ class Analysis(Activity):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(Analysis, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         archive.workflow2.inputs = [
             Link(name=input.name, section=input.reference) for input in self.inputs
         ]
@@ -1395,7 +1396,7 @@ class Measurement(Activity):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(Measurement, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         archive.workflow2.inputs = [
             Link(name=sample.name, section=sample.reference) for sample in self.samples
         ]
@@ -1479,7 +1480,7 @@ class ReadableIdentifiers(ArchiveSection):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(ReadableIdentifiers, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         if self.owner is None or self.institute is None:
             author = archive.metadata.main_author
@@ -1606,7 +1607,7 @@ class PublicationReference(ArchiveSection):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(PublicationReference, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         from nomad.datamodel.datamodel import EntryMetadata
         import dateutil.parser
         import requests
@@ -1651,7 +1652,7 @@ class PublicationReference(ArchiveSection):
 
 class HDF5Normalizer(ArchiveSection):
     def normalize(self, archive, logger):
-        super(HDF5Normalizer, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         h5_re = re.compile(r'.*\.h5$')
 
         for quantity_name, quantity_def in self.m_def.all_quantities.items():

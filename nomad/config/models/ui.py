@@ -18,7 +18,8 @@
 
 from enum import Enum
 from typing import List, Dict, Union, Optional
-from typing_extensions import Literal, Annotated
+from typing import Literal
+from typing import Annotated
 from pydantic import BaseModel, ConfigDict, model_validator, Field
 
 from .common import (
@@ -54,7 +55,7 @@ class UnitSystemUnit(ConfigBaseModel):
         registered in the NOMAD unit registry (`nomad.units.ureg`).
     """
     )
-    locked: Optional[bool] = Field(
+    locked: bool | None = Field(
         False,
         description='Whether the unit is locked in the unit system it is defined in.',
     )
@@ -98,7 +99,7 @@ class UnitSystem(ConfigBaseModel):
     label: str = Field(
         description='Short, descriptive label used for this unit system.'
     )
-    units: Optional[Dict[str, UnitSystemUnit]] = Field(
+    units: dict[str, UnitSystemUnit] | None = Field(
         None,
         description=f"""
         Contains a mapping from each dimension to a unit. If a unit is not
@@ -177,7 +178,7 @@ class UnitSystem(ConfigBaseModel):
 class UnitSystems(OptionsSingle):
     """Controls the available unit systems."""
 
-    options: Optional[Dict[str, UnitSystem]] = Field(
+    options: dict[str, UnitSystem] | None = Field(
         None, description='Contains the available unit systems.'
     )
 
@@ -213,7 +214,7 @@ class Card(ConfigBaseModel):
 class Cards(Options):
     """Contains the overview page card definitions and controls their visibility."""
 
-    options: Optional[Dict[str, Card]] = Field(
+    options: dict[str, Card] | None = Field(
         None, description='Contains the available card options.'
     )
 
@@ -267,7 +268,7 @@ class Column(ConfigBaseModel):
      - Show instance that matches a criterion: `repeating_section[?label=='target'].quantity`
     """
 
-    search_quantity: Optional[str] = Field(
+    search_quantity: str | None = Field(
         None,
         description="""
         Path of the targeted quantity. Note that you can most of the features
@@ -276,26 +277,26 @@ class Column(ConfigBaseModel):
         statistical values.
         """,
     )
-    quantity: Optional[str] = Field(
+    quantity: str | None = Field(
         None,
         deprecated='The "quantity" field is deprecated, use "search_quantity" instead.',
     )
     selected: bool = Field(
         False, description="""Is this column initially selected to be shown."""
     )
-    title: Optional[str] = Field(
+    title: str | None = Field(
         None, description='Label shown in the header. Defaults to the quantity name.'
     )
-    label: Optional[str] = Field(None, description='Alias for title.')
+    label: str | None = Field(None, description='Alias for title.')
     align: AlignEnum = Field(AlignEnum.LEFT, description='Alignment in the table.')
-    unit: Optional[str] = Field(
+    unit: str | None = Field(
         None,
         description="""
         Unit to convert to when displaying. If not given will be displayed in
         using the default unit in the active unit system.
     """,
     )
-    format: Optional[Format] = Field(
+    format: Format | None = Field(
         None, description='Controls the formatting of the values.'
     )
 
@@ -325,7 +326,7 @@ class Columns(OptionsMulti):
     selection.
     """
 
-    options: Optional[Dict[str, Column]] = Field(
+    options: dict[str, Column] | None = Field(
         None,
         description="""
         All available column options. Note here that the key must correspond to a
@@ -337,7 +338,7 @@ class Columns(OptionsMulti):
 class RowAction(ConfigBaseModel):
     """Common configuration for all row actions."""
 
-    description: Optional[str] = Field(
+    description: str | None = Field(
         None, description="""Description of the action shown to the user."""
     )
     type: str = Field(description='Used to identify the action type.')
@@ -377,10 +378,10 @@ class RowActions(Options):
     """Controls the visualization of row actions that are shown at the end of each row."""
 
     enabled: bool = Field(True, description='Whether to enable row actions.')
-    options: Optional[Dict[str, RowActionURL]] = Field(
+    options: dict[str, RowActionURL] | None = Field(
         None, deprecated="""Deprecated, use 'items' instead."""
     )
-    items: Optional[List[RowActionURL]] = Field(
+    items: list[RowActionURL] | None = Field(
         None, description='List of actions to show for each row.'
     )
 
@@ -457,7 +458,7 @@ class FilterMenuActionCheckbox(FilterMenuAction):
 class FilterMenuActions(Options):
     """Contains filter menu action definitions and controls their availability."""
 
-    options: Optional[Dict[str, FilterMenuActionCheckbox]] = Field(
+    options: dict[str, FilterMenuActionCheckbox] | None = Field(
         None, description='Contains options for filter menu actions.'
     )
 
@@ -476,19 +477,19 @@ class FilterMenuSizeEnum(str, Enum):
 class FilterMenu(ConfigBaseModel):
     """Defines the layout and functionality for a filter menu."""
 
-    label: Optional[str] = Field(None, description='Menu label to show in the UI.')
-    level: Optional[int] = Field(0, description='Indentation level of the menu.')
-    size: Optional[FilterMenuSizeEnum] = Field(
+    label: str | None = Field(None, description='Menu label to show in the UI.')
+    level: int | None = Field(0, description='Indentation level of the menu.')
+    size: FilterMenuSizeEnum | None = Field(
         FilterMenuSizeEnum.S, description='Width of the menu.'
     )
-    actions: Optional[FilterMenuActions] = None
+    actions: FilterMenuActions | None = None
 
 
 # Deprecated
 class FilterMenus(Options):
     """Contains filter menu definitions and controls their availability."""
 
-    options: Optional[Dict[str, FilterMenu]] = Field(
+    options: dict[str, FilterMenu] | None = Field(
         None, description='Contains the available filter menu options.'
     )
 
@@ -500,7 +501,7 @@ class FilterMenus(Options):
 class AxisScale(ConfigBaseModel):
     """Basic configuration for a plot axis."""
 
-    scale: Optional[ScaleEnum] = Field(
+    scale: ScaleEnum | None = Field(
         ScaleEnum.LINEAR,
         description="""Defines the axis scaling. Defaults to linear scaling.""",
     )
@@ -509,13 +510,13 @@ class AxisScale(ConfigBaseModel):
 class AxisQuantity(ConfigBaseModel):
     """Configuration for a plot axis."""
 
-    title: Optional[str] = Field(
+    title: str | None = Field(
         None, description="""Custom title to show for the axis."""
     )
-    unit: Optional[str] = Field(
+    unit: str | None = Field(
         None, description="""Custom unit used for displaying the values."""
     )
-    quantity: Optional[str] = Field(
+    quantity: str | None = Field(
         None,
         deprecated='The "quantity" field is deprecated, use "search_quantity" instead.',
     )
@@ -550,7 +551,7 @@ class Axis(AxisScale, AxisQuantity):
 class TermsBase(ConfigBaseModel):
     """Base model for configuring terms components."""
 
-    quantity: Optional[str] = Field(
+    quantity: str | None = Field(
         None,
         deprecated='The "quantity" field is deprecated, use "search_quantity" instead.',
     )
@@ -560,7 +561,7 @@ class TermsBase(ConfigBaseModel):
     )
     scale: ScaleEnum = Field(ScaleEnum.LINEAR, description='Statistics scaling.')
     show_input: bool = Field(True, description='Whether to show text input field.')
-    showinput: Optional[bool] = Field(
+    showinput: bool | None = Field(
         None,
         deprecated='The "showinput" field is deprecated, use "show_input" instead.',
     )
@@ -593,37 +594,37 @@ class HistogramBase(ConfigBaseModel):
     type: Literal['histogram'] = Field(
         description='Set as `histogram` to get this widget type.'
     )
-    quantity: Optional[str] = Field(
+    quantity: str | None = Field(
         None,
         deprecated='The "quantity" field is deprecated, use "x.search_quantity" instead.',
     )
-    scale: Optional[ScaleEnum] = Field(
+    scale: ScaleEnum | None = Field(
         None, deprecated='The "scale" field is deprecated, use "y.scale" instead.'
     )
     show_input: bool = Field(True, description='Whether to show text input field.')
-    showinput: Optional[bool] = Field(
+    showinput: bool | None = Field(
         None,
         deprecated='The "showinput" field is deprecated, use "show_input" instead.',
     )
 
-    x: Union[Axis, str] = Field(
+    x: Axis | str = Field(
         description='Configures the information source and display options for the x-axis.'
     )
-    y: Union[AxisScale, str] = Field(
+    y: AxisScale | str = Field(
         description='Configures the information source and display options for the y-axis.'
     )
     autorange: bool = Field(
         False,
         description='Whether to automatically set the range according to the data limits.',
     )
-    n_bins: Optional[int] = Field(
+    n_bins: int | None = Field(
         None,
         description="""
         Maximum number of histogram bins. Notice that the actual number of bins
         may be smaller if there are fewer data items available.
         """,
     )
-    nbins: Optional[int] = Field(
+    nbins: int | None = Field(
         None, deprecated='The "nbins" field is deprecated, use "n_bins" instead.'
     )
 
@@ -673,14 +674,12 @@ class PeriodicTableBase(ConfigBaseModel):
     type: Literal['periodic_table'] = Field(
         description='Set as `periodic_table` to get this widget type.'
     )
-    quantity: Optional[str] = Field(
+    quantity: str | None = Field(
         None,
         deprecated='The "quantity" field is deprecated, use "search_quantity" instead.',
     )
     search_quantity: str = Field(description='The targeted search quantity.')
-    scale: Optional[ScaleEnum] = Field(
-        ScaleEnum.LINEAR, description='Statistics scaling.'
-    )
+    scale: ScaleEnum | None = Field(ScaleEnum.LINEAR, description='Statistics scaling.')
 
     @model_validator(mode='before')
     @classmethod
@@ -714,14 +713,14 @@ class MenuItem(ConfigBaseModel):
         description='Width of the item, 12 means maximum width. Note that the menu size can be changed.',
     )
     show_header: bool = Field(True, description='Whether to show the header.')
-    title: Optional[str] = Field(None, description='Custom item title.')
+    title: str | None = Field(None, description='Custom item title.')
 
 
 class MenuItemOption(ConfigBaseModel):
     """Represents an option shown for a filter."""
 
-    label: Optional[str] = Field(None, description='The label to show for this option.')
-    description: Optional[str] = Field(
+    label: str | None = Field(None, description='The label to show for this option.')
+    description: str | None = Field(
         None, description='Detailed description for this option.'
     )
 
@@ -731,7 +730,7 @@ class MenuItemTerms(MenuItem, TermsBase):
     quantities.
     """
 
-    options: Optional[Union[int | bool, Dict[str, MenuItemOption]]] = Field(
+    options: int | bool | dict[str, MenuItemOption] | None = Field(
         None,
         description="""
         Used to control the displayed options:
@@ -882,7 +881,7 @@ class MenuItemNestedObject(MenuItem):
     path: str = Field(
         description='Path of the nested object. Typically a section name.'
     )
-    items: Optional[List[MenuItemTypeNested]] = Field(
+    items: list[MenuItemTypeNested] | None = Field(
         None, description='Items that are grouped by this nested object.'
     )
 
@@ -923,15 +922,15 @@ class Menu(MenuItem):
     type: Literal['menu'] = Field(
         description='Set as `nested_object` to get this menu item type.',
     )
-    size: Optional[Union[MenuSizeEnum, str]] = Field(
+    size: MenuSizeEnum | str | None = Field(
         MenuSizeEnum.SM,
         description="""
         Size of the menu. Either use presets as defined by MenuSizeEnum,
         or then provide valid CSS widths.
         """,
     )
-    indentation: Optional[int] = Field(0, description='Indentation level for the menu.')
-    items: Optional[List[MenuItemType]] = Field(
+    indentation: int | None = Field(0, description='Indentation level for the menu.')
+    items: list[MenuItemType] | None = Field(
         None, description='List of items in the menu.'
     )
 
@@ -955,13 +954,13 @@ class SearchQuantities(OptionsGlob):
     `*.#myschema.schema.MySchema`.
     """
 
-    include: Optional[List[str]] = Field(
+    include: list[str] | None = Field(
         None,
         description="""
         List of included options. Supports glob/wildcard syntax.
     """,
     )
-    exclude: Optional[List[str]] = Field(
+    exclude: list[str] | None = Field(
         None,
         description="""
         List of excluded options. Supports glob/wildcard syntax. Has higher precedence than include.
@@ -988,7 +987,7 @@ class SearchSyntaxes(ConfigBaseModel):
      - `free_text`: For inexact, free-text queries. Requires that a set of keywords has been filled in the entry.
     """
 
-    exclude: Optional[List[str]] = Field(
+    exclude: list[str] | None = Field(
         None,
         description="""
         List of excluded options.
@@ -1003,8 +1002,8 @@ class Layout(ConfigBaseModel):
     w: int = Field(description='Width in grid units.')
     x: int = Field(description='Horizontal start location in the grid.')
     y: int = Field(description='Vertical start location in the grid.')
-    minH: Optional[int] = Field(3, description='Minimum height in grid units.')
-    minW: Optional[int] = Field(3, description='Minimum width in grid units.')
+    minH: int | None = Field(3, description='Minimum height in grid units.')
+    minW: int | None = Field(3, description='Minimum width in grid units.')
 
 
 class BreakpointEnum(str, Enum):
@@ -1018,7 +1017,7 @@ class BreakpointEnum(str, Enum):
 class AxisLimitedScale(AxisQuantity):
     """Configuration for a plot axis with limited scaling options."""
 
-    scale: Optional[ScaleEnumPlot] = Field(
+    scale: ScaleEnumPlot | None = Field(
         ScaleEnumPlot.LINEAR,
         description="""Defines the axis scaling. Defaults to linear scaling.""",
     )
@@ -1027,7 +1026,7 @@ class AxisLimitedScale(AxisQuantity):
 class Markers(ConfigBaseModel):
     """Configuration for plot markers."""
 
-    color: Optional[Axis] = Field(
+    color: Axis | None = Field(
         None,
         description='Configures the information source and display options for the marker colors.',
     )
@@ -1036,12 +1035,12 @@ class Markers(ConfigBaseModel):
 class Widget(ConfigBaseModel):
     """Common configuration for all widgets."""
 
-    title: Optional[str] = Field(
+    title: str | None = Field(
         None,
         description='Custom widget title. If not specified, a widget-specific default title is used.',
     )
     type: str = Field(description='Used to identify the widget type.')
-    layout: Dict[BreakpointEnum, Layout] = Field(
+    layout: dict[BreakpointEnum, Layout] = Field(
         description="""
         Defines widget size and grid positioning for different breakpoints. The
         following breakpoints are supported: `sm`, `md`, `lg`, `xl` and `xxl`.
@@ -1109,17 +1108,17 @@ class WidgetScatterPlot(Widget):
     type: Literal['scatter_plot'] = Field(
         description='Set as `scatter_plot` to get this widget type.'
     )
-    x: Union[AxisLimitedScale, str] = Field(
+    x: AxisLimitedScale | str = Field(
         description='Configures the information source and display options for the x-axis.'
     )
-    y: Union[AxisLimitedScale, str] = Field(
+    y: AxisLimitedScale | str = Field(
         description='Configures the information source and display options for the y-axis.'
     )
-    markers: Optional[Markers] = Field(
+    markers: Markers | None = Field(
         None,
         description='Configures the information source and display options for the markers.',
     )
-    color: Optional[str] = Field(
+    color: str | None = Field(
         None,
         description="""
         Quantity used for coloring points. Note that this field is deprecated
@@ -1215,7 +1214,7 @@ WidgetAnnotated = Annotated[
 class Dashboard(ConfigBaseModel):
     """Dashboard configuration."""
 
-    widgets: List[WidgetAnnotated] = Field(
+    widgets: list[WidgetAnnotated] = Field(
         description='List of widgets contained in the dashboard.'
     )
 
@@ -1231,47 +1230,43 @@ class App(ConfigBaseModel):
     label: str = Field(description='Name of the App.')
     path: str = Field(description='Path used in the browser address bar.')
     resource: ResourceEnum = Field('entries', description='Targeted resource.')  # type: ignore
-    breadcrumb: Optional[str] = Field(
+    breadcrumb: str | None = Field(
         None,
         description='Name displayed in the breadcrumb, by default the label will be used.',
     )
     category: str = Field(
         description='Category used to organize Apps in the explore menu.'
     )
-    description: Optional[str] = Field(
-        None, description='Short description of the App.'
-    )
-    readme: Optional[str] = Field(
+    description: str | None = Field(None, description='Short description of the App.')
+    readme: str | None = Field(
         None, description='Longer description of the App that can also use markdown.'
     )
     pagination: Pagination = Field(
         Pagination(), description='Default result pagination.'
     )
-    columns: Optional[List[Column]] = Field(
+    columns: list[Column] | None = Field(
         None, description='List of columns for the results table.'
     )
-    rows: Optional[Rows] = Field(
+    rows: Rows | None = Field(
         Rows(),
         description='Controls the display of entry rows in the results table.',
     )
-    menu: Optional[Menu] = Field(
+    menu: Menu | None = Field(
         None, description='Filter menu displayed on the left side of the screen.'
     )
-    filter_menus: Optional[FilterMenus] = Field(
+    filter_menus: FilterMenus | None = Field(
         None, deprecated='The "filter_menus" field is deprecated, use "menu" instead.'
     )
-    filters: Optional[Filters] = Field(
+    filters: Filters | None = Field(
         None,
         deprecated='The "filters" field is deprecated, use "search_quantities" instead.',
     )
-    search_quantities: Optional[SearchQuantities] = Field(
+    search_quantities: SearchQuantities | None = Field(
         SearchQuantities(exclude=['mainfile', 'entry_name', 'combine']),
         description='Controls the quantities that are available for search in this app.',
     )
-    dashboard: Optional[Dashboard] = Field(
-        None, description='Default dashboard layout.'
-    )
-    filters_locked: Optional[dict] = Field(
+    dashboard: Dashboard | None = Field(None, description='Default dashboard layout.')
+    filters_locked: dict | None = Field(
         None,
         description="""
         Fixed query object that is applied for this search context. This filter
@@ -1279,7 +1274,7 @@ class App(ConfigBaseModel):
         user by default.
         """,
     )
-    search_syntaxes: Optional[SearchSyntaxes] = Field(
+    search_syntaxes: SearchSyntaxes | None = Field(
         None, description='Controls which types of search syntax are available.'
     )
 
@@ -1997,7 +1992,7 @@ class App(ConfigBaseModel):
 class Apps(Options):
     """Contains App definitions and controls their availability."""
 
-    options: Optional[Dict[str, App]] = Field(
+    options: dict[str, App] | None = Field(
         None, description='Contains the available app options.'
     )
 

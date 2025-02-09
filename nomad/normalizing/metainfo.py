@@ -24,7 +24,7 @@ from . import Normalizer
 
 
 class MetainfoNormalizer(Normalizer):
-    domain: Optional[str] = None
+    domain: str | None = None
 
     def normalize_section(self, archive: EntryArchive, section, logger):
         normalize = None

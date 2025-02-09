@@ -20,7 +20,8 @@ import enum
 import fnmatch
 import json
 import re
-from typing import Any, Dict, List, Mapping, Optional, Union
+from typing import Any, Dict, List, Optional, Union
+from collections.abc import Mapping
 
 import pydantic
 from fastapi import Body, HTTPException, Request
@@ -49,7 +50,7 @@ from nomad.metainfo.elasticsearch_extension import (
 from nomad.utils import strip
 
 from .pagination import Pagination, PaginationResponse
-from typing_extensions import Annotated
+from typing import Annotated
 
 
 User: Any = datamodel.User.m_def.a_pydantic.model
@@ -118,19 +119,19 @@ class NoneEmptyBaseModel(BaseModel):
 
 
 class All(NoneEmptyBaseModel):
-    op: List[Value] = Field(None, alias='all')
+    op: list[Value] = Field(None, alias='all')
 
     model_config = ConfigDict(extra='forbid')
 
 
 class None_(NoneEmptyBaseModel):
-    op: List[Value] = Field(None, alias='none')
+    op: list[Value] = Field(None, alias='none')
 
     model_config = ConfigDict(extra='forbid')
 
 
 class Any_(NoneEmptyBaseModel):
-    op: List[Value] = Field(None, alias='any')
+    op: list[Value] = Field(None, alias='any')
 
     model_config = ConfigDict(extra='forbid')
 
@@ -169,10 +170,10 @@ class Range(BaseModel):
 
         return values
 
-    lt: Optional[ComparableValue] = Field(None)
-    lte: Optional[ComparableValue] = Field(None)
-    gt: Optional[ComparableValue] = Field(None)
-    gte: Optional[ComparableValue] = Field(None)
+    lt: ComparableValue | None = Field(None)
+    lte: ComparableValue | None = Field(None)
+    gt: ComparableValue | None = Field(None)
+    gte: ComparableValue | None = Field(None)
 
     model_config = ConfigDict(extra='forbid')
 
@@ -187,7 +188,7 @@ ops = {
     'any': Any_,
 }
 
-CriteriaValue = Union[Value, List[Value], Range, Any_, All, None_, Dict[str, Any]]
+CriteriaValue = Union[Value, list[Value], Range, Any_, All, None_, dict[str, Any]]
 
 
 class LogicalOperator(NoneEmptyBaseModel):
@@ -201,7 +202,7 @@ class LogicalOperator(NoneEmptyBaseModel):
 
 
 class And(LogicalOperator):
-    op: List['Query'] = Field(None, alias='and')
+    op: list['Query'] = Field(None, alias='and')
 
     @model_validator(mode='before')
     @classmethod
@@ -213,7 +214,7 @@ class And(LogicalOperator):
 
 
 class Or(LogicalOperator):
-    op: List['Query'] = Field(None, alias='or')
+    op: list['Query'] = Field(None, alias='or')
 
     @model_validator(mode='before')
     @classmethod
@@ -379,8 +380,8 @@ def restrict_query_to_upload(query: Query, upload_id: str):
 
 
 class WithQuery(BaseModel):
-    owner: Optional[Owner] = Body('public')
-    query: Optional[Query] = Body(
+    owner: Owner | None = Body('public')
+    query: Query | None = Body(
         None,
         embed=True,
         description=query_documentation,
@@ -442,10 +443,8 @@ class QueryParameters:
     def __call__(
         self,
         request: Request,
-        owner: Optional[Owner] = FastApiQuery(
-            'public', description=strip(Owner.__doc__)
-        ),
-        json_query: Optional[str] = FastApiQuery(
+        owner: Owner | None = FastApiQuery('public', description=strip(Owner.__doc__)),
+        json_query: str | None = FastApiQuery(
             None,
             description=strip(
                 """
@@ -453,7 +452,7 @@ class QueryParameters:
             """
             ),
         ),
-        q: Optional[List[str]] = FastApiQuery(
+        q: list[str] | None = FastApiQuery(
             [],
             description=strip(
                 """
@@ -515,7 +514,7 @@ class QueryParameters:
             query_params.setdefault(name_op, []).append(value)
 
         # transform query parameters to query
-        query: Dict[str, Any] = {}
+        query: dict[str, Any] = {}
         for key, query_value in query_params.items():
             op = None
             if '__' in key:
@@ -588,14 +587,14 @@ class QueryParameters:
 class MetadataRequired(BaseModel):
     """Defines which metadata quantities are included or excluded in the response."""
 
-    include: Optional[List[str]] = Field(
+    include: list[str] | None = Field(
         None,
         description=strip("""
             Quantities to include for each result. Only those quantities will be
             returned. At least one id quantity (e.g. `entry_id`) will always be included.
         """),
     )
-    exclude: Optional[List[str]] = Field(
+    exclude: list[str] | None = Field(
         None,
         description=strip("""
             Quantities to exclude for each result. Only all other quantities will
@@ -611,7 +610,7 @@ metadata_required_parameters = parameter_dependency_from_model(  # type: ignore
 
 
 class MetadataBasedPagination(Pagination):
-    order_by: Optional[str] = Field(
+    order_by: str | None = Field(
         None,
         description=strip(
             """
@@ -642,7 +641,7 @@ class MetadataBasedPagination(Pagination):
 
 
 class MetadataPagination(MetadataBasedPagination):
-    page: Optional[int] = Field(
+    page: int | None = Field(
         None,
         description=strip(
             """
@@ -656,7 +655,7 @@ class MetadataPagination(MetadataBasedPagination):
         ),
     )
 
-    page_offset: Optional[int] = Field(
+    page_offset: int | None = Field(
         None,
         description=strip(
             """
@@ -707,7 +706,7 @@ metadata_pagination_parameters = parameter_dependency_from_model(
 
 
 class AggregationPagination(MetadataBasedPagination):
-    order_by: Optional[str] = Field(
+    order_by: str | None = Field(
         None,  # type: ignore
         description=strip(
             """
@@ -749,7 +748,7 @@ class AggregationPagination(MetadataBasedPagination):
 
 
 class AggregatedEntities(BaseModel):
-    size: Optional[Annotated[int, Field(gt=0)]] = Field(  # type: ignore
+    size: Annotated[int, Field(gt=0)] | None = Field(  # type: ignore
         1,
         description=strip(
             """
@@ -758,7 +757,7 @@ class AggregatedEntities(BaseModel):
         """
         ),
     )
-    required: Optional[MetadataRequired] = Field(
+    required: MetadataRequired | None = Field(
         None,
         description=strip(
             """
@@ -801,7 +800,7 @@ class QuantityAggregation(AggregationBase):
 
 
 class BucketAggregation(QuantityAggregation):
-    metrics: Optional[List[str]] = Field(  # type: ignore
+    metrics: list[str] | None = Field(  # type: ignore
         [],
         description=strip(
             """
@@ -816,7 +815,7 @@ class BucketAggregation(QuantityAggregation):
 
 
 class TermsAggregation(BucketAggregation):
-    pagination: Optional[AggregationPagination] = Field(
+    pagination: AggregationPagination | None = Field(
         None,
         description=strip(
             """
@@ -829,7 +828,7 @@ class TermsAggregation(BucketAggregation):
         """
         ),
     )
-    size: Optional[Annotated[int, Field(gt=0)]] = Field(  # type: ignore
+    size: Annotated[int, Field(gt=0)] | None = Field(  # type: ignore
         None,
         description=strip(
             """
@@ -839,11 +838,9 @@ class TermsAggregation(BucketAggregation):
         """
         ),
     )
-    include: Optional[  # type: ignore
-        Union[
-            List[str], Annotated[str, StringConstraints(pattern=r'^[a-zA-Z0-9_\-\s]+$')]
-        ]
-    ] = Field(
+    include: None | (  # type: ignore
+        list[str] | Annotated[str, StringConstraints(pattern=r'^[a-zA-Z0-9_\-\s]+$')]
+    ) = Field(
         None,
         description=strip(
             """
@@ -855,7 +852,7 @@ class TermsAggregation(BucketAggregation):
         """
         ),
     )
-    entries: Optional[AggregatedEntities] = Field(
+    entries: AggregatedEntities | None = Field(
         None,
         description=strip(
             """
@@ -867,7 +864,7 @@ class TermsAggregation(BucketAggregation):
 
 
 class Bounds(BaseModel):
-    min: Optional[float] = Field(
+    min: float | None = Field(
         None,
         description=strip(
             """
@@ -875,7 +872,7 @@ class Bounds(BaseModel):
         """
         ),
     )
-    max: Optional[float] = Field(
+    max: float | None = Field(
         None,
         description=strip(
             """
@@ -897,7 +894,7 @@ class Bounds(BaseModel):
 
 
 class HistogramAggregation(BucketAggregation):
-    interval: Optional[float] = Field(
+    interval: float | None = Field(
         None,
         gt=0,
         description=strip(
@@ -907,7 +904,7 @@ class HistogramAggregation(BucketAggregation):
         """
         ),
     )
-    buckets: Optional[int] = Field(
+    buckets: int | None = Field(
         None,
         gt=0,
         description=strip(
@@ -921,8 +918,8 @@ class HistogramAggregation(BucketAggregation):
         """
         ),
     )
-    offset: Optional[float] = Field(None, gte=0)
-    extended_bounds: Optional[Bounds] = None
+    offset: float | None = Field(None, gte=0)
+    extended_bounds: Bounds | None = None
 
     @model_validator(mode='before')
     def check_bucketing(cls, values):  # pylint: disable=no-self-argument
@@ -955,7 +952,7 @@ class MinMaxAggregation(QuantityAggregation):
 
 
 class StatisticsAggregation(AggregationBase):
-    metrics: Optional[List[str]] = Field(  # type: ignore
+    metrics: list[str] | None = Field(  # type: ignore
         [],
         description=strip(
             """
@@ -968,7 +965,7 @@ class StatisticsAggregation(AggregationBase):
 
 
 class Aggregation(BaseModel):
-    terms: Optional[TermsAggregation] = Body(
+    terms: TermsAggregation | None = Body(
         None,
         description=strip(
             """
@@ -1010,7 +1007,7 @@ class Aggregation(BaseModel):
         ),
     )
 
-    histogram: Optional[HistogramAggregation] = Body(
+    histogram: HistogramAggregation | None = Body(
         None,
         description=strip(
             """
@@ -1036,7 +1033,7 @@ class Aggregation(BaseModel):
         ),
     )
 
-    date_histogram: Optional[DateHistogramAggregation] = Body(
+    date_histogram: DateHistogramAggregation | None = Body(
         None,
         description=strip(
             """
@@ -1062,7 +1059,7 @@ class Aggregation(BaseModel):
         ),
     )
 
-    auto_date_histogram: Optional[AutoDateHistogramAggregation] = Body(
+    auto_date_histogram: AutoDateHistogramAggregation | None = Body(
         None,
         description=strip(
             """
@@ -1091,7 +1088,7 @@ class Aggregation(BaseModel):
         ),
     )
 
-    min_max: Optional[MinMaxAggregation] = Body(
+    min_max: MinMaxAggregation | None = Body(
         None,
         description=strip(
             """
@@ -1114,7 +1111,7 @@ class Aggregation(BaseModel):
         ),
     )
 
-    statistics: Optional[StatisticsAggregation] = Body(
+    statistics: StatisticsAggregation | None = Body(
         None,
         description=strip(
             """
@@ -1138,13 +1135,13 @@ class Aggregation(BaseModel):
 
 
 class WithQueryAndPagination(WithQuery):
-    pagination: Optional[MetadataPagination] = Body(
+    pagination: MetadataPagination | None = Body(
         None, example={'page_size': 5, 'order_by': 'upload_create_time'}
     )
 
 
 class Metadata(WithQueryAndPagination):
-    required: Optional[MetadataRequired] = Body(
+    required: MetadataRequired | None = Body(
         None,
         example={
             'include': [
@@ -1156,7 +1153,7 @@ class Metadata(WithQueryAndPagination):
             ]
         },
     )
-    aggregations: Optional[Dict[str, Aggregation]] = Body(
+    aggregations: dict[str, Aggregation] | None = Body(
         {},
         example={
             'all_codes': {
@@ -1200,7 +1197,7 @@ class MetadataEditListAction(BaseModel):
     Defines an action to perform on a list quantity. This enables users to add and remove values.
     """
 
-    set: Optional[Union[str, List[str]]] = Field(
+    set: str | list[str] | None = Field(
         None,
         description=strip(
             """
@@ -1209,14 +1206,14 @@ class MetadataEditListAction(BaseModel):
         add- or remove-operation."""
         ),
     )
-    add: Optional[Union[str, List[str]]] = Field(
+    add: str | list[str] | None = Field(
         None,
         description=strip(
             """
         Value(s) to add to the list"""
         ),
     )
-    remove: Optional[Union[str, List[str]]] = Field(
+    remove: str | list[str] | None = Field(
         None,
         description=strip(
             """
@@ -1233,7 +1230,7 @@ for quantity in datamodel.EditableUserMetadata.m_def.definitions:
             quantity.type if quantity.type in (str, int, float, bool) else str
         )
     else:
-        pydantic_type = Union[str, List[str], MetadataEditListAction]
+        pydantic_type = Union[str, list[str], MetadataEditListAction]
     if getattr(quantity, 'a_auth_level', None) == datamodel.AuthLevel.admin:
         description = '**NOTE:** Only editable by admin user'
     else:
@@ -1253,14 +1250,14 @@ MetadataEditActions = create_model(
 class MetadataEditRequest(WithQuery):
     """Defines a request to edit metadata."""
 
-    metadata: Optional[MetadataEditActions] = Field(  # type: ignore
+    metadata: MetadataEditActions | None = Field(  # type: ignore
         None,
         description=strip(
             """
             Metadata to set, on the upload and/or selected entries."""
         ),
     )
-    entries: Optional[Dict[str, MetadataEditActions]] = Field(  # type: ignore
+    entries: dict[str, MetadataEditActions] | None = Field(  # type: ignore
         None,
         description=strip(
             """
@@ -1269,14 +1266,14 @@ class MetadataEditRequest(WithQuery):
             the entries. Note, only quantities defined on the entry level can be set using this method."""
         ),
     )
-    entries_key: Optional[str] = Field(
+    entries_key: str | None = Field(
         default='entry_id',
         description=strip(
             """
             Defines which type of key is used in `entries_metadata`. Default is `entry_id`."""
         ),
     )
-    verify_only: Optional[bool] = Field(
+    verify_only: bool | None = Field(
         default=False,
         description=strip(
             """
@@ -1289,7 +1286,7 @@ class MetadataEditRequest(WithQuery):
 class Files(BaseModel):
     """Configures the download of files."""
 
-    compress: Optional[bool] = Field(
+    compress: bool | None = Field(
         False,
         description=strip(
             """
@@ -1299,7 +1296,7 @@ class Files(BaseModel):
         network connection is limited."""
         ),
     )
-    glob_pattern: Optional[str] = Field(
+    glob_pattern: str | None = Field(
         None,
         description=strip(
             """
@@ -1309,7 +1306,7 @@ class Files(BaseModel):
         [fnmatch](https://docs.python.org/3/library/fnmatch.html) is used."""
         ),
     )
-    re_pattern: Optional[str] = Field(
+    re_pattern: str | None = Field(
         None,
         description=strip(
             """
@@ -1321,7 +1318,7 @@ class Files(BaseModel):
         A re pattern will replace a given glob pattern."""
         ),
     )
-    include_files: Optional[List[str]] = Field(
+    include_files: list[str] | None = Field(
         None,
         description=strip(
             """
@@ -1372,7 +1369,7 @@ files_parameters = parameter_dependency_from_model('files_parameters', Files)  #
 
 
 class Bucket(BaseModel):
-    entries: Optional[List[Dict[str, Any]]] = Field(
+    entries: list[dict[str, Any]] | None = Field(
         None, description=strip("""The entries that were requested for each value.""")
     )
     count: int = Field(
@@ -1386,19 +1383,19 @@ class Bucket(BaseModel):
             aggregations on non nested quantities."""
         ),
     )
-    metrics: Optional[Dict[str, int]] = None
+    metrics: dict[str, int] | None = None
 
-    value: Union[StrictBool, float, str]
+    value: StrictBool | float | str
 
 
 class BucketAggregationResponse(BaseModel):
-    data: List[Bucket] = Field(
+    data: list[Bucket] = Field(
         None, description=strip("""The aggregation data as a list.""")
     )
 
 
 class TermsAggregationResponse(BucketAggregationResponse, TermsAggregation):
-    pagination: Optional[PaginationResponse] = None  # type: ignore
+    pagination: PaginationResponse | None = None  # type: ignore
 
 
 class HistogramAggregationResponse(BucketAggregationResponse, HistogramAggregation):
@@ -1420,33 +1417,33 @@ class AutoDateHistogramAggregationResponse(
 
 
 class MinMaxAggregationResponse(MinMaxAggregation):
-    data: List[Union[float, None]]
+    data: list[float | None]
 
 
 class StatisticsAggregationResponse(StatisticsAggregation):
-    data: Optional[Dict[str, int]] = None
+    data: dict[str, int] | None = None
 
 
 class AggregationResponse(Aggregation):
-    terms: Optional[TermsAggregationResponse] = None
-    histogram: Optional[HistogramAggregationResponse] = None
-    date_histogram: Optional[DateHistogramAggregationResponse] = None
-    auto_date_histogram: Optional[AutoDateHistogramAggregationResponse] = None
-    min_max: Optional[MinMaxAggregationResponse] = None
-    statistics: Optional[StatisticsAggregationResponse] = None
+    terms: TermsAggregationResponse | None = None
+    histogram: HistogramAggregationResponse | None = None
+    date_histogram: DateHistogramAggregationResponse | None = None
+    auto_date_histogram: AutoDateHistogramAggregationResponse | None = None
+    min_max: MinMaxAggregationResponse | None = None
+    statistics: StatisticsAggregationResponse | None = None
 
 
 class CodeResponse(BaseModel):
     curl: str
     requests: str
-    nomad_lab: Optional[str] = None
+    nomad_lab: str | None = None
 
 
 class MetadataResponse(Metadata):
     pagination: PaginationResponse = None  # type: ignore
-    aggregations: Optional[Dict[str, AggregationResponse]] = None  # type: ignore
+    aggregations: dict[str, AggregationResponse] | None = None  # type: ignore
 
-    data: List[Dict[str, Any]] = Field(
+    data: list[dict[str, Any]] = Field(
         None,
         description=strip(
             """
@@ -1455,7 +1452,7 @@ class MetadataResponse(Metadata):
         ),
     )
 
-    code: Optional[CodeResponse] = None
+    code: CodeResponse | None = None
     es_query: Any = Field(
         None,
         description=strip(

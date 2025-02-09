@@ -42,10 +42,10 @@ class ExampleData:
     """
 
     def __init__(self, **kwargs):
-        self.upload_entries: Dict[str, List[str]] = dict()
-        self.uploads: Dict[str, Dict[str, Any]] = dict()
-        self.entries: Dict[str, EntryMetadata] = dict()
-        self.archives: Dict[str, EntryArchive] = dict()
+        self.upload_entries: dict[str, list[str]] = dict()
+        self.uploads: dict[str, dict[str, Any]] = dict()
+        self.entries: dict[str, EntryMetadata] = dict()
+        self.archives: dict[str, EntryArchive] = dict()
 
         self.entry_defaults = kwargs
         self._entry_id_counter = 1
@@ -139,10 +139,10 @@ class ExampleData:
     def create_entry_from_file(
         self,
         mainfile: str,
-        entry_archive: Optional[EntryArchive] = None,
-        entry_id: Optional[str] = None,
-        upload_id: Optional[str] = None,
-        parser_name: Optional[str] = None,
+        entry_archive: EntryArchive | None = None,
+        entry_id: str | None = None,
+        upload_id: str | None = None,
+        parser_name: str | None = None,
     ):
         """Creates an entry from a mainfile which then gets parsed and normalized."""
         from nomad.parsing import parsers
@@ -232,7 +232,7 @@ class ExampleData:
         upload_id: str = None,
         material_id: str = None,
         mainfile: str = None,
-        results: Union[Results, dict] = None,
+        results: Results | dict = None,
         archive: dict = None,
         **kwargs,
     ) -> EntryArchive:
@@ -351,7 +351,7 @@ class ExampleData:
         id: int,
         h: int,
         o: int,
-        extra: List[str],
+        extra: list[str],
         periodicity: int,
         optimade: bool = True,
         metadata: dict = None,

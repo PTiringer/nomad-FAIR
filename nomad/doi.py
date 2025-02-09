@@ -54,7 +54,7 @@ def edit_doi_url(doi: str, url: str = None):
     if url is None:
         url = _create_dataset_url(doi)
 
-    doi_url = '%s/doi/%s' % (config.datacite.mds_host, doi)
+    doi_url = f'{config.datacite.mds_host}/doi/{doi}'
     headers = {'Content-Type': 'text/plain;charset=UTF-8'}
     data = f'doi={doi}\nurl={url}'
     response = requests.put(doi_url, headers=headers, data=data, **_requests_args())
@@ -140,8 +140,8 @@ class DOI(Document):
             except NotUniqueError:
                 counter += 1
 
-        doi.metadata_url = '%s/metadata/%s' % (config.datacite.mds_host, doi_str)
-        doi.doi_url = '%s/doi/%s' % (config.datacite.mds_host, doi_str)
+        doi.metadata_url = f'{config.datacite.mds_host}/metadata/{doi_str}'
+        doi.doi_url = f'{config.datacite.mds_host}/doi/{doi_str}'
         doi.state = 'created'
         doi.create_time = create_time
         doi.url = _create_dataset_url(doi_str)
@@ -233,7 +233,7 @@ class DOI(Document):
     def make_findable(self):
         if config.datacite.enabled:
             assert self.state == 'draft', 'can only make drafts findable'
-            body = ('doi=%s\nurl=%s' % (self.doi, self.url)).encode('utf-8')
+            body = (f'doi={self.doi}\nurl={self.url}').encode()
             response = None
 
             try:

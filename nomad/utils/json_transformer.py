@@ -28,7 +28,7 @@ class Transformer:
         self.mapping_dict = mapping_dict
 
     @staticmethod
-    def parse_path(path: str) -> list[Union[str, int]]:
+    def parse_path(path: str) -> list[str | int]:
         """
         Parses a JMESPath-like path into a list of keys and indices.
 
@@ -234,7 +234,7 @@ class Transformer:
         return target
 
     def dict_to_dict(
-        self, source: dict[str, Any], rules: 'Rules', target: Optional[Any] = None
+        self, source: dict[str, Any], rules: 'Rules', target: Any | None = None
     ) -> Any:
         """
         Applies all rules in a Rules object to transform the source dictionary into the target.
@@ -257,7 +257,7 @@ class Transformer:
         self,
         source_data: dict[str, Any],
         mapping_name: str = None,
-        target_data: Optional[Any] = None,
+        target_data: Any | None = None,
     ) -> Any:
         """
         Transforms the source data into the target data based on the specified mapping.

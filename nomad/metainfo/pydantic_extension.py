@@ -55,7 +55,7 @@ class PydanticModel(DefinitionAnnotation):
     """
 
     def __init__(self):
-        self.model: Type[BaseModel] = None
+        self.model: type[BaseModel] = None
 
     def to_pydantic(self, section):
         """Returns the pydantic model instance for the given section."""

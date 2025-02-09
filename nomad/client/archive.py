@@ -572,7 +572,7 @@ class ArchiveQuery:
         self,
         keys_to_filter: list[str] = None,
         resolve_references: bool = False,
-        query_selection: Union[str, list[str]] = 'last',
+        query_selection: str | list[str] = 'last',
     ):
         """
         Interface to convert the archives to pandas dataframe.
@@ -585,7 +585,7 @@ class ArchiveQuery:
         Returns:
             pandas dataframe of the downloaded (and selected) archives
         """
-        t_list: Union[list[Any], dict] = []
+        t_list: list[Any] | dict = []
         if query_selection == 'all':
             t_list = [item for sublist in self._entries_dict for item in sublist]
         elif query_selection == 'last':

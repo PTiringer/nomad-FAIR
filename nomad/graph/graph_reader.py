@@ -27,7 +27,8 @@ import re
 from collections.abc import AsyncIterator, Iterator
 from contextlib import contextmanager
 from threading import Lock
-from typing import Any, Callable, Type, Union
+from typing import Any, Type, Union
+from collections.abc import Callable
 
 import orjson
 from cachetools import TTLCache
@@ -597,7 +598,7 @@ def _normalise_required(
     config: RequestConfig,
     *,
     key: str = None,
-    reader_type: Type[GeneralReader] = None,
+    reader_type: type[GeneralReader] = None,
 ):
     """
     Normalise the required dictionary.
@@ -715,7 +716,7 @@ def _normalise_required(
 
 
 def _parse_required(
-    required_query: dict | str, reader_type: Type[GeneralReader]
+    required_query: dict | str, reader_type: type[GeneralReader]
 ) -> tuple[dict | RequestConfig, RequestConfig]:
     # extract global config if present
     # do not modify the original dict as the same dict may be used elsewhere
@@ -1624,7 +1625,7 @@ class MongoReader(GeneralReader):
                 continue
 
             async def offload_read(
-                reader_cls: Type[GeneralReader], *args, read_list=False
+                reader_cls: type[GeneralReader], *args, read_list=False
             ):
                 try:
                     with (
@@ -2164,9 +2165,7 @@ class UserReader(MongoReader):
     @functools.cached_property
     def datasets(self):
         return Dataset.m_def.a_mongo.objects(
-            dataset_id__in=set(
-                v for e in self.entries if e.datasets for v in e.datasets
-            )
+            dataset_id__in={v for e in self.entries if e.datasets for v in e.datasets}
         )
 
     # noinspection PyMethodOverriding

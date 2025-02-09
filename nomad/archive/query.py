@@ -18,7 +18,8 @@
 
 import functools
 import re
-from typing import Any, Dict, Callable, Union, Tuple
+from typing import Any, Dict, Union, Tuple
+from collections.abc import Callable
 from io import BytesIO
 
 from nomad import utils
@@ -37,11 +38,11 @@ def _fix_index(index, length):
 
 
 @functools.lru_cache(maxsize=1024)
-def _extract_key_and_index(match) -> Tuple[str, Union[Tuple[int, int], int]]:
+def _extract_key_and_index(match) -> tuple[str, tuple[int, int] | int]:
     key = match.group(1)
 
     # noinspection PyTypeChecker
-    index: Union[Tuple[int, int], int] = None
+    index: tuple[int, int] | int = None
 
     # check if we have indices
     if match.group(2) is not None:
@@ -59,7 +60,7 @@ def _extract_key_and_index(match) -> Tuple[str, Union[Tuple[int, int], int]]:
 
 
 # @cached(thread_safe=False, max_size=1024)
-def _extract_child(archive_item, prop, index) -> Union[dict, list]:
+def _extract_child(archive_item, prop, index) -> dict | list:
     archive_child = archive_item[prop]
     from .storage_v2 import ArchiveList as ArchiveListNew
 
@@ -94,8 +95,8 @@ class ArchiveQueryError(Exception):
 
 
 def query_archive(
-    f_or_archive_reader: Union[str, ArchiveReader, BytesIO], query_dict: dict, **kwargs
-) -> Dict:
+    f_or_archive_reader: str | ArchiveReader | BytesIO, query_dict: dict, **kwargs
+) -> dict:
     """
     Takes an open msg-pack based archive (either as str, reader, or BytesIO) and returns
     the archive as JSON serializable dictionary filtered based on the given required
@@ -141,7 +142,7 @@ def query_archive(
         )
 
 
-def _load_data(query_dict: Dict[str, Any], archive_item: ArchiveDict) -> Dict:
+def _load_data(query_dict: dict[str, Any], archive_item: ArchiveDict) -> dict:
     query_dict_with_fixed_ids = {
         utils.adjust_uuid_size(key): value for key, value in query_dict.items()
     }
@@ -149,12 +150,12 @@ def _load_data(query_dict: Dict[str, Any], archive_item: ArchiveDict) -> Dict:
 
 
 def filter_archive(
-    required: Union[str, Dict[str, Any]],
-    archive_item: Union[Dict, ArchiveDict, str],
+    required: str | dict[str, Any],
+    archive_item: dict | ArchiveDict | str,
     transform: Callable,
-    result_root: Dict = None,
+    result_root: dict = None,
     resolve_inplace: bool = False,
-) -> Dict:
+) -> dict:
     if archive_item is None:
         return None
 
@@ -185,7 +186,7 @@ def filter_archive(
             f'resolving references in non partial archives is not yet implemented'
         )
 
-    result: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
     for key, val in required.items():
         key = key.strip()
 

@@ -272,14 +272,14 @@ def derive_origin(entry: 'EntryMetadata') -> str:
     return None
 
 
-def derive_authors(entry: 'EntryMetadata') -> List[User]:
+def derive_authors(entry: 'EntryMetadata') -> list[User]:
     if entry.external_db == 'EELS Data Base':
         return list(entry.entry_coauthors)
 
     if entry.entry_type == 'AIToolkitNotebook':
         return list(entry.entry_coauthors)
 
-    authors: List[User] = [entry.main_author]
+    authors: list[User] = [entry.main_author]
     if entry.coauthors:
         authors.extend(entry.coauthors)
     if entry.entry_coauthors:
@@ -1221,7 +1221,7 @@ class EntryArchive(ArchiveSection):
     definitions = SubSection(sub_section=Package)
 
     def normalize(self, archive, logger):
-        super(EntryArchive, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         if not archive.metadata.entry_type:
             if archive.definitions is not None:

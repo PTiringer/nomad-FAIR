@@ -312,7 +312,7 @@ def get_namefit(name: str, concept_name: str, name_any: bool = False) -> int:
     return len(concept_name) + match_count - uppercase_count
 
 
-def resolve_variadic_name(definitions: dict, name: str, hint: Optional[str] = None):
+def resolve_variadic_name(definitions: dict, name: str, hint: str | None = None):
     """
     Resolves a property name with variadic patterns to its corresponding definition in the schema.
 

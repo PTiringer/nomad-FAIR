@@ -20,7 +20,8 @@ import os
 import random
 import re
 import time
-from typing import TYPE_CHECKING, Dict, Iterable, List
+from typing import TYPE_CHECKING, Dict, List
+from collections.abc import Iterable
 
 import h5py
 import numpy as np
@@ -239,7 +240,7 @@ class BaseSection(ArchiveSection):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(BaseSection, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         if isinstance(self, EntryData):
             if archive.data == self and self.name:
@@ -391,7 +392,7 @@ class Activity(BaseSection):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(Activity, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         if archive.results.eln.methods is None:
             archive.results.eln.methods = []
@@ -457,7 +458,7 @@ class EntityReference(SectionReference):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(EntityReference, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         if self.reference is None and self.lab_id is not None:
             from nomad.search import MetadataPagination, search
 
@@ -522,7 +523,7 @@ class ExperimentStep(ActivityStep):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(ExperimentStep, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         if self.activity is None and self.lab_id is not None:
             from nomad.search import MetadataPagination, search
 
@@ -629,7 +630,7 @@ class ElementalComposition(ArchiveSection):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(ElementalComposition, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         if self.element:
             if not archive.results:
@@ -747,7 +748,7 @@ class System(Entity):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(System, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         if len(self.elemental_composition) > 0:
             self._fill_fractions(archive, logger)
@@ -767,7 +768,7 @@ class Instrument(Entity):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(Instrument, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         if self.name:
             if archive.results.eln.instruments is None:
@@ -835,7 +836,7 @@ class SystemComponent(Component):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(SystemComponent, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         if self.name is None and self.system is not None:
             self.name = self.system.name
 
@@ -958,14 +959,14 @@ class PureSubstanceComponent(Component):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(PureSubstanceComponent, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         if self.substance_name and self.pure_substance is None:
             self.pure_substance = PureSubstanceSection(name=self.substance_name)
         if self.name is None and self.pure_substance is not None:
             self.name = self.pure_substance.molecular_formula
 
 
-def elemental_composition_from_formula(formula: Formula) -> List[ElementalComposition]:
+def elemental_composition_from_formula(formula: Formula) -> list[ElementalComposition]:
     """
     Help function for generating list of `ElementalComposition` instances from
     `nomad.atomutils.Formula` item
@@ -1004,8 +1005,8 @@ class CompositeSystem(System):
 
     @staticmethod
     def _atomic_to_mass(
-        composition: List[ElementalComposition], mass: float
-    ) -> Dict[str, float]:
+        composition: list[ElementalComposition], mass: float
+    ) -> dict[str, float]:
         """
         Private static method for converting list of ElementalComposition objects to
         dictionary of element masses with the element symbol as key and mass as value.
@@ -1033,7 +1034,7 @@ class CompositeSystem(System):
             atom_masses.append(atomic_masses[atomic_numbers[comp.element]])
         masses = np.array(atomic_fractions) * np.array(atom_masses)
         mass_array = mass * masses / masses.sum()
-        mass_dict: Dict[str, float] = {}
+        mass_dict: dict[str, float] = {}
         for c, m in zip(composition, mass_array):
             if c.element in mass_dict:
                 mass_dict[c.element] += m
@@ -1042,7 +1043,7 @@ class CompositeSystem(System):
         return mass_dict
 
     @staticmethod
-    def _mass_to_atomic(mass_dict: Dict[str, float]) -> List[ElementalComposition]:
+    def _mass_to_atomic(mass_dict: dict[str, float]) -> list[ElementalComposition]:
         """
         Private static method for converting dictionary of elements with their masses
         to a list of ElementalComposition objects containing atomic fractions.
@@ -1096,7 +1097,7 @@ class CompositeSystem(System):
             mass_fractions.pop(empty_index)
             self.components[empty_index].mass_fraction = 1 - sum(mass_fractions)
         if not self.elemental_composition:
-            mass_dict: Dict[str, float] = {}
+            mass_dict: dict[str, float] = {}
             if any(component.mass is None for component in self.components):
                 if all(component.mass is None for component in self.components):
                     masses = [component.mass_fraction for component in self.components]
@@ -1148,7 +1149,7 @@ class CompositeSystem(System):
         for comp in self.elemental_composition:
             comp.normalize(archive, logger)
 
-        super(CompositeSystem, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
 
 class CompositeSystemReference(EntityReference):
@@ -1235,7 +1236,7 @@ class Process(Activity):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(Process, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         if (
             self.datetime is not None
             and all(step.duration is not None for step in self.steps)
@@ -1303,7 +1304,7 @@ class Analysis(Activity):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(Analysis, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         archive.workflow2.inputs = [
             Link(name=input.name, section=input.reference) for input in self.inputs
         ]
@@ -1370,7 +1371,7 @@ class Measurement(Activity):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(Measurement, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         archive.workflow2.inputs = [
             Link(name=sample.name, section=sample.reference) for sample in self.samples
         ]
@@ -1427,7 +1428,7 @@ class PureSubstance(System):
             archive (EntryArchive): The archive that is being normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(PureSubstance, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         if logger is None:
             logger = utils.get_logger(__name__)
         if self.pure_substance and self.pure_substance.molecular_formula:
@@ -1650,7 +1651,7 @@ class PubChemPureSubstanceSection(PureSubstanceSection):
         else:
             self._find_cid(logger)
 
-        super(PubChemPureSubstanceSection, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
 
 class CASExperimentalProperty(ArchiveSection):
@@ -1907,7 +1908,7 @@ class CASPureSubstanceSection(PureSubstanceSection):
         else:
             self._find_cas(archive, logger)
 
-        super(CASPureSubstanceSection, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
 
 class ReadableIdentifiers(ArchiveSection):
@@ -1985,7 +1986,7 @@ class ReadableIdentifiers(ArchiveSection):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(ReadableIdentifiers, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         if self.owner is None or self.institute is None:
             author = archive.metadata.main_author
@@ -2112,7 +2113,7 @@ class PublicationReference(ArchiveSection):
             normalized.
             logger ('BoundLogger'): A structlog logger.
         """
-        super(PublicationReference, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         import dateutil.parser
         import requests
         from nomad.datamodel.datamodel import EntryMetadata
@@ -2157,7 +2158,7 @@ class PublicationReference(ArchiveSection):
 
 class HDF5Normalizer(ArchiveSection):
     def normalize(self, archive, logger):
-        super(HDF5Normalizer, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         h5_re = re.compile(r'.*\.h5$')
 
         for quantity_name, quantity_def in self.m_def.all_quantities.items():

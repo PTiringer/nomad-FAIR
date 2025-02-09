@@ -126,13 +126,13 @@ class MaterialNormalizer:
 
         return material
 
-    def material_classification(self) -> Dict[str, List[str]]:
+    def material_classification(self) -> dict[str, list[str]]:
         try:
             sec_springer = self.repr_system['springer_material'][0]
         except Exception:
             return None
 
-        classes: Dict[str, List[str]] = {}
+        classes: dict[str, list[str]] = {}
         try:
             classifications = sec_springer['classification']
         except KeyError:
@@ -147,9 +147,7 @@ class MaterialNormalizer:
             classes['compound_class_springer'] = compound_classes
         return classes
 
-    def material_name(
-        self, symbols: Union[List, NDArray], counts: Union[List, NDArray]
-    ) -> str:
+    def material_name(self, symbols: list | NDArray, counts: list | NDArray) -> str:
         if symbols is None or counts is None:
             return None
         name = None

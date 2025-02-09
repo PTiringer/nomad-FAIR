@@ -50,14 +50,13 @@ from typing import (
     IO,
     Set,
     Dict,
-    Iterable,
-    Iterator,
     List,
     Tuple,
     Any,
     NamedTuple,
-    Callable,
 )
+from collections.abc import Callable
+from collections.abc import Iterable, Iterator
 from pydantic import BaseModel
 from datetime import datetime
 import os.path
@@ -172,7 +171,7 @@ class DirectoryObject(PathObject):
         if create and not os.path.isdir(self.os_path):
             os.makedirs(self.os_path)
 
-    def join_dir(self, path, create: bool = False) -> 'DirectoryObject':
+    def join_dir(self, path, create: bool = False) -> DirectoryObject:
         return DirectoryObject(os.path.join(self.os_path, path), create)
 
     def join_file(self, path, create_dir: bool = False) -> PathObject:
@@ -284,14 +283,14 @@ class BrowsableFileSource(FileSource, metaclass=ABCMeta):
         """Opens a file by the specified path."""
         raise NotImplementedError()
 
-    def directory_list(self, path: str) -> List[str]:
+    def directory_list(self, path: str) -> list[str]:
         """
         Returns a list of directory contents, located in the directory denoted by `path`
         in this file source.
         """
         raise NotImplementedError()
 
-    def sub_source(self, path: str) -> 'BrowsableFileSource':
+    def sub_source(self, path: str) -> BrowsableFileSource:
         """
         Creates a new instance of :class:`BrowsableFileSource` which just contains the
         files located under the specified path.
@@ -378,12 +377,12 @@ class DiskFileSource(BrowsableFileSource):
         assert is_safe_relative_path(path)
         return open(os.path.join(self.base_path, path), mode)
 
-    def directory_list(self, path: str) -> List[str]:
+    def directory_list(self, path: str) -> list[str]:
         assert is_safe_relative_path(path)
         sub_path = os.path.join(self.base_path, path)
         return os.listdir(sub_path)
 
-    def sub_source(self, path: str) -> 'DiskFileSource':
+    def sub_source(self, path: str) -> DiskFileSource:
         assert is_safe_relative_path(path)
         return DiskFileSource(self.base_path, path)
 
@@ -398,7 +397,7 @@ class ZipFileSource(BrowsableFileSource):
         assert is_safe_relative_path(sub_path)
         self.zip_file = zip_file
         self.sub_path = sub_path
-        self._namelist: List[str] = zip_file.namelist()
+        self._namelist: list[str] = zip_file.namelist()
 
     def to_streamed_files(self) -> Iterable[StreamedFile]:
         path_prefix = '' if not self.sub_path else self.sub_path + os.path.sep
@@ -421,7 +420,7 @@ class ZipFileSource(BrowsableFileSource):
             return io.TextIOWrapper(f)
         return f
 
-    def directory_list(self, path: str) -> List[str]:
+    def directory_list(self, path: str) -> list[str]:
         path_prefix = '' if not path else path + os.path.sep
         found = set()
         for path2 in self._namelist:
@@ -429,7 +428,7 @@ class ZipFileSource(BrowsableFileSource):
                 found.add(path2.split(os.path.sep)[0])
         return sorted(found)
 
-    def sub_source(self, path: str) -> 'ZipFileSource':
+    def sub_source(self, path: str) -> ZipFileSource:
         assert is_safe_relative_path(path), 'Unsafe path provided'
         if self.sub_path:
             assert path.startswith(self.sub_path + os.path.sep), (
@@ -452,8 +451,7 @@ class CombinedFileSource(FileSource):
 
     def to_streamed_files(self) -> Iterable[StreamedFile]:
         for file_source in self.file_sources:
-            for streamed_file in file_source.to_streamed_files():
-                yield streamed_file
+            yield from file_source.to_streamed_files()
 
     def to_disk(
         self, destination_dir: str, move_files: bool = False, overwrite: bool = False
@@ -484,13 +482,13 @@ class StandardJSONDecoder(json.JSONDecoder):
         return d
 
 
-def json_to_streamed_file(json_dict: Dict[str, Any], path: str) -> StreamedFile:
+def json_to_streamed_file(json_dict: dict[str, Any], path: str) -> StreamedFile:
     """Converts a json dictionary structure to a :class:`StreamedFile`."""
     json_bytes = json.dumps(json_dict, indent=2, cls=StandardJSONEncoder).encode()
     return StreamedFile(path=path, f=io.BytesIO(json_bytes), size=len(json_bytes))
 
 
-def create_zipstream_content(streamed_files: Iterable[StreamedFile]) -> Iterable[Dict]:
+def create_zipstream_content(streamed_files: Iterable[StreamedFile]) -> Iterable[dict]:
     """
     Generator which "casts" a sequence of StreamedFiles to a sequence of dictionaries, of
     the form which is required by the `zipstream` library, i.e. dictionaries with keys
@@ -621,7 +619,7 @@ class UploadFiles(DirectoryObject, metaclass=ABCMeta):
 
     def to_staging_upload_files(
         self, create: bool = False, include_archive: bool = False
-    ) -> 'StagingUploadFiles':
+    ) -> StagingUploadFiles:
         """Casts to or creates corresponding staging upload files or returns None."""
         raise NotImplementedError()
 
@@ -787,7 +785,7 @@ class StagingUploadFiles(UploadFiles):
 
     def to_staging_upload_files(
         self, create: bool = False, include_archive: bool = False
-    ) -> 'StagingUploadFiles':
+    ) -> StagingUploadFiles:
         return self
 
     @property
@@ -929,7 +927,7 @@ class StagingUploadFiles(UploadFiles):
         path: str,
         target_dir: str = '',
         cleanup_source_file_and_dir: bool = False,
-        updated_files: Set[str] = None,
+        updated_files: set[str] = None,
     ) -> None:
         """
         Adds the file or folder specified by `path` to this upload, in the raw directory
@@ -974,7 +972,7 @@ class StagingUploadFiles(UploadFiles):
                 extract_file(path, tmp_dir, compression_format, remove_archive=False)
 
             # Determine what to merge
-            elements_to_merge: Iterable[Tuple[str, List[str], List[str]]] = []
+            elements_to_merge: Iterable[tuple[str, list[str], list[str]]] = []
             if is_dir:
                 # Directory
                 source_dir = path
@@ -1054,7 +1052,7 @@ class StagingUploadFiles(UploadFiles):
                 if os.path.exists(parent_dir) and not os.listdir(parent_dir):
                     shutil.rmtree(parent_dir)
 
-    def delete_rawfiles(self, path, updated_files: Set[str] = None):
+    def delete_rawfiles(self, path, updated_files: set[str] = None):
         assert is_safe_relative_path(path)
         raw_os_path = os.path.join(self.os_path, 'raw')
         os_path = os.path.join(raw_os_path, path)
@@ -1083,7 +1081,7 @@ class StagingUploadFiles(UploadFiles):
         path_to_existing_file,
         path_to_target_file,
         copy_or_move,
-        updated_files: Set[str] = None,
+        updated_files: set[str] = None,
     ):
         assert is_safe_relative_path(path_to_existing_file)
         assert is_safe_relative_path(path_to_target_file)
@@ -1145,7 +1143,7 @@ class StagingUploadFiles(UploadFiles):
 
     def pack(
         self,
-        entries: List[datamodel.EntryMetadata],
+        entries: list[datamodel.EntryMetadata],
         with_embargo: bool,
         create: bool = True,
         include_raw: bool = True,
@@ -1173,7 +1171,7 @@ class StagingUploadFiles(UploadFiles):
 
         # freeze the upload
         assert not self.is_frozen, 'Cannot pack an upload that is packed, or packing.'
-        with open(self._frozen_file.os_path, 'wt') as f:
+        with open(self._frozen_file.os_path, 'w') as f:
             f.write('frozen')
 
         # Check embargo flag consistency
@@ -1211,7 +1209,7 @@ class StagingUploadFiles(UploadFiles):
     def _pack_archive_files(
         self,
         target_dir: DirectoryObject,
-        entries: List[datamodel.EntryMetadata],
+        entries: list[datamodel.EntryMetadata],
         access: str,
         other_access: str,
     ):
@@ -1307,7 +1305,7 @@ class StagingUploadFiles(UploadFiles):
         entry_relative_dir = entry_dir[len(self._raw_dir.os_path) + 1 :]
 
         file_count = 0
-        aux_files: List[str] = []
+        aux_files: list[str] = []
         dir_elements = os.listdir(entry_dir)
         dir_elements.sort()
         for dir_element in dir_elements:
@@ -1378,7 +1376,7 @@ class StagingUploadFiles(UploadFiles):
 class PublicUploadFiles(UploadFiles):
     def __init__(self, upload_id: str, create: bool = False):
         super().__init__(upload_id, create)
-        self._directories: Dict[str, Dict[str, RawPathInfo]] = None
+        self._directories: dict[str, dict[str, RawPathInfo]] = None
         self._raw_zip_file_object: PathObject = None
         self._raw_zip_file: zipfile.ZipFile = None
         self._archive_msg_file_object: PathObject = None
@@ -1536,7 +1534,7 @@ class PublicUploadFiles(UploadFiles):
 
     def to_staging_upload_files(
         self, create: bool = False, include_archive: bool = False
-    ) -> 'StagingUploadFiles':
+    ) -> StagingUploadFiles:
         exists = StagingUploadFiles.exists_for(self.upload_id)
         if exists:
             if create:
@@ -1581,7 +1579,7 @@ class PublicUploadFiles(UploadFiles):
         if self._directories is None:
             self._directories = dict()
             self._directories[''] = {}  # Root folder
-            directory_sizes: Dict[str, int] = {}
+            directory_sizes: dict[str, int] = {}
             # Add file RawPathInfo objects and calculate directory sizes
             try:
                 zf = self._open_raw_zip_file()

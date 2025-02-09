@@ -17,14 +17,14 @@ group_members_description = 'User ids of the group members.'
 
 
 class UserGroupEdit(BaseModel):
-    group_name: Optional[str] = Field(
+    group_name: str | None = Field(
         default=None,
         description=group_name_description,
         min_length=3,
         max_length=32,
         pattern=r'^[a-zA-Z0-9][a-zA-Z0-9 ._\-]+[a-zA-Z0-9]$',
     )
-    members: Optional[Set[str]] = Field(
+    members: set[str] | None = Field(
         default=None, description=group_members_description
     )
 
@@ -35,7 +35,7 @@ class UserGroup(BaseModel):
         default='Default Group Name', description=group_name_description
     )
     owner: str = Field(description='User id of the group owner.')
-    members: List[str] = Field(
+    members: list[str] = Field(
         default_factory=list, description=group_members_description
     )
 
@@ -43,18 +43,18 @@ class UserGroup(BaseModel):
 
 
 class UserGroupResponse(BaseModel):
-    pagination: Optional[PaginationResponse] = Field(None)
-    data: List[UserGroup]
+    pagination: PaginationResponse | None = Field(None)
+    data: list[UserGroup]
 
 
 class UserGroupQuery(BaseModel):
-    group_id: Optional[List[str]] = Field(
+    group_id: list[str] | None = Field(
         None, description='Search groups by their full id.'
     )
-    user_id: Optional[str] = Field(
+    user_id: str | None = Field(
         None, description='Search groups by their owner or members ids.'
     )
-    search_terms: Optional[str] = Field(
+    search_terms: str | None = Field(
         None, description='Search groups by parts of their name.'
     )
 

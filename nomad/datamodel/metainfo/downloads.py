@@ -95,7 +95,7 @@ class Downloads(ArchiveSection):
     )
 
     def normalize(self, archive, logger):
-        super(Downloads, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         from nomad.datamodel import EntryArchive, ServerContext
 

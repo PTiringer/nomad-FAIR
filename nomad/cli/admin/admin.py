@@ -445,7 +445,7 @@ def migrate_mongo(
             print('Cannot specify a query when using --ids-from-file.')
             return -1
         try:
-            with open(ids_from_file, 'r') as f:
+            with open(ids_from_file) as f:
                 upload_ids = [line.strip() for line in f.readlines() if line.strip()]
         except FileNotFoundError:
             print(f'Could not open file {ids_from_file}', file=sys.stderr)
@@ -536,5 +536,5 @@ def rewrite_doi_urls(dois, dry, save_existing_records):
                 edit_doi_url(doi)
     finally:
         if save_existing_records:
-            with open(save_existing_records, 'wt') as f:
+            with open(save_existing_records, 'w') as f:
                 json.dump(existing_records, f, indent=2)

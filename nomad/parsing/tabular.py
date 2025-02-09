@@ -16,7 +16,9 @@
 # limitations under the License.
 #
 import os
-from typing import List, Dict, Callable, Set, Any, Tuple, Iterator, Union, Iterable
+from typing import List, Dict, Set, Any, Tuple, Union
+from collections.abc import Callable
+from collections.abc import Iterator, Iterable
 
 import pandas as pd
 import re
@@ -76,7 +78,7 @@ def create_archive(entry_dict, context, file_name, file_type, logger):
         )
 
 
-def traverse_to_target_data_file(section, path_list: List[str]):
+def traverse_to_target_data_file(section, path_list: list[str]):
     if len(path_list) == 0 and (isinstance(section, str) or section is None):
         return section
     else:
@@ -106,7 +108,7 @@ class TableData(ArchiveSection):
     )
 
     def normalize(self, archive, logger):
-        super(TableData, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         if self.fill_archive_from_datafile:
             for quantity_def in self.m_def.all_quantities.values():
@@ -158,7 +160,7 @@ class TableData(ArchiveSection):
 
         mapping_options = annotation.mapping_options
         if mapping_options:
-            row_sections_counter: Dict[str, int] = {}
+            row_sections_counter: dict[str, int] = {}
             for mapping_option in mapping_options:
                 try:
                     file_mode = mapping_option.file_mode
@@ -554,10 +556,10 @@ def append_section_to_subsection(
 def _parse_row_mode(main_section, row_sections, data, logger):
     # Getting list of all repeating sections where new instances are going to be read from excel/csv file
     # and appended.
-    section_names: List[str] = row_sections
+    section_names: list[str] = row_sections
 
     # A list to track if the top-most level section has ever been visited
-    list_of_visited_sections: List[str] = []
+    list_of_visited_sections: list[str] = []
 
     for section_name in section_names:
         section_name_list = section_name.split('/')
@@ -607,10 +609,10 @@ def _get_relative_path(section_def) -> Iterator[str]:
 
 @cached(LRUCache(maxsize=10))
 def _create_column_to_quantity_mapping(section_def: Section):
-    mapping: Dict[str, Callable[[MSection, Any], MSection]] = {}
+    mapping: dict[str, Callable[[MSection, Any], MSection]] = {}
 
-    def add_section_def(section_def: Section, path: List[Tuple[SubSection, Section]]):
-        properties: Set[Property] = set()
+    def add_section_def(section_def: Section, path: list[tuple[SubSection, Section]]):
+        properties: set[Property] = set()
 
         for quantity in section_def.all_quantities.values():
             if quantity in properties:
@@ -674,7 +676,7 @@ def _create_column_to_quantity_mapping(section_def: Section):
                             )
 
                     section.m_set(quantity, value)
-                    _section_path_list: List[str] = list(_get_relative_path(section))
+                    _section_path_list: list[str] = list(_get_relative_path(section))
                     _section_path_str: str = '/'.join(_section_path_list)
                     section_path_to_top_subsection.append(_section_path_str)
 
@@ -743,7 +745,7 @@ def parse_table(pd_dataframe, section_def: Section, logger):
 
     data: pd.DataFrame = pd_dataframe
     data_dict = data.to_dict()
-    sections: List[MSection] = []
+    sections: list[MSection] = []
     sheet_name = list(data_dict[0])[0]
 
     mapping = _create_column_to_quantity_mapping(section_def)  # type: ignore
@@ -782,7 +784,7 @@ def parse_table(pd_dataframe, section_def: Section, logger):
         except Exception:
             continue
 
-    path_quantities_to_top_subsection: Set[str] = set()
+    path_quantities_to_top_subsection: set[str] = set()
     for row_index, row in df.iterrows():
         for col_index in range(0, max_no_of_repeated_columns + 1):
             section = section_def.section_cls()
@@ -793,7 +795,7 @@ def parse_table(pd_dataframe, section_def: Section, logger):
 
                     if col_name in df:
                         try:
-                            temp_quantity_path_container: List[str] = []
+                            temp_quantity_path_container: list[str] = []
                             mapping[column](
                                 section,
                                 row[col_name],
@@ -832,7 +834,7 @@ def parse_table(pd_dataframe, section_def: Section, logger):
             else:
                 try:
                     for item in path_quantities_to_top_subsection:
-                        section_name: List[str] = item.split('/')[1:]
+                        section_name: list[str] = item.split('/')[1:]
                         _append_subsections_from_section(
                             section_name, sections[row_index], section
                         )
@@ -846,7 +848,7 @@ def parse_table(pd_dataframe, section_def: Section, logger):
 
 
 def _strip_whitespaces_from_df_columns(df):
-    transformed_column_names: Dict[str, str] = {}
+    transformed_column_names: dict[str, str] = {}
     for col_name in list(df.columns):
         cleaned_col_name = col_name.strip().split('.')[0]
         count = 0
@@ -861,7 +863,7 @@ def _strip_whitespaces_from_df_columns(df):
 
 
 def _append_subsections_from_section(
-    section_name: List[str], target_section: MSection, source_section: MSection
+    section_name: list[str], target_section: MSection, source_section: MSection
 ):
     if len(section_name) == 1:
         for (
@@ -887,13 +889,13 @@ def read_table_data(
     file_or_path=None,
     comment: str = None,
     sep: str = None,
-    skiprows: Union[list[int], int] = None,
+    skiprows: list[int] | int = None,
     separator: str = None,
     filters: dict = None,
 ):
     import pandas as pd
 
-    def filter_columns(df: pd.DataFrame, filters: Union[None, dict]) -> pd.DataFrame:
+    def filter_columns(df: pd.DataFrame, filters: None | dict) -> pd.DataFrame:
         if not filters:
             return df
 
@@ -987,7 +989,7 @@ class TabularDataParser(MatchingParser):
         buffer: bytes,
         decoded_buffer: str,
         compression: str = None,
-    ) -> Union[bool, Iterable[str]]:
+    ) -> bool | Iterable[str]:
         # We use the main file regex capabilities of the superclass to check if this is a
         # .csv file
         import pandas as pd

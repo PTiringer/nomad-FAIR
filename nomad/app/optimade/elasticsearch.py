@@ -36,7 +36,7 @@ class NomadStructureMapper(StructureMapper):
         return doc
 
     @classproperty
-    def ALL_ATTRIBUTES(cls) -> Set[str]:  # pylint: disable=no-self-argument
+    def ALL_ATTRIBUTES(cls) -> set[str]:  # pylint: disable=no-self-argument
         result = getattr(cls, '_ALL_ATTRIBUTES', None)
         if result is None:
             result = StructureMapper.ALL_ATTRIBUTES  # pylint: disable=no-member
@@ -110,8 +110,8 @@ class StructureCollection(EntryCollection):
     def _es_to_optimade_result(
         self,
         es_result: dict,
-        response_fields: Set[str],
-        upload_files_cache: Dict[str, files.UploadFiles] = None,
+        response_fields: set[str],
+        upload_files_cache: dict[str, files.UploadFiles] = None,
     ) -> StructureResource:
         if upload_files_cache is None:
             upload_files_cache = {}
@@ -226,9 +226,9 @@ class StructureCollection(EntryCollection):
         return attrs
 
     def _es_to_optimade_results(
-        self, es_results: List[dict], response_fields: Set[str]
+        self, es_results: list[dict], response_fields: set[str]
     ):
-        upload_files_cache: Dict[str, files.UploadFiles] = {}
+        upload_files_cache: dict[str, files.UploadFiles] = {}
         optimade_results = []
         try:
             for es_result in es_results:
@@ -243,7 +243,7 @@ class StructureCollection(EntryCollection):
 
         return optimade_results
 
-    def _run_db_query(self, criteria: Dict[str, Any], single_entry=False):
+    def _run_db_query(self, criteria: dict[str, Any], single_entry=False):
         sort, order = criteria.get('sort', (('chemical_formula_reduced', 1),))[0]
         sort_quantity = datamodel.OptimadeEntry.m_def.all_quantities.get(sort, None)
         if sort_quantity is None:

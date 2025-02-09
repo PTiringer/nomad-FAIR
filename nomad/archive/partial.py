@@ -32,7 +32,7 @@ from nomad.datamodel import EntryArchive
 from nomad.datamodel.metainfo.common import FastAccess
 
 
-def create_partial_archive(archive: EntryArchive) -> Dict:
+def create_partial_archive(archive: EntryArchive) -> dict:
     """
     Creates a partial archive JSON serializable dict that can be stored directly.
     The given archive is filtered based on the metainfo category ``FastAccess``.
@@ -46,10 +46,10 @@ def create_partial_archive(archive: EntryArchive) -> Dict:
     """
     # A list with all referenced sections that might not yet been ensured to be in the
     # resulting partial archive
-    referenceds: List[MSection] = []
+    referenceds: list[MSection] = []
     # contents keeps track of all sections in the partial archive by keeping their
     # JSON serializable form and placeholder status in a dict
-    contents: Dict[MSection, Tuple[dict, bool]] = dict()
+    contents: dict[MSection, tuple[dict, bool]] = dict()
 
     def partial(definition: Definition, section: MSection) -> bool:
         """
@@ -87,7 +87,7 @@ def create_partial_archive(archive: EntryArchive) -> Dict:
         the section's serialization is added (or replacing an existing placeholder).
         Otherwise, an empty dict is added as a placeholder for referenced children.
         """
-        result: Dict[str, Any] = None
+        result: dict[str, Any] = None
         content, content_is_placeholder = contents.get(section, (None, True))
         if content is not None:
             if content_is_placeholder and not placeholder:
@@ -141,7 +141,7 @@ def write_partial_archive_to_mongo(archive: EntryArchive):
 
 def read_partial_archive_from_mongo(
     entry_id: str, as_dict=False
-) -> Union[EntryArchive, Dict]:
+) -> EntryArchive | dict:
     """
     Reads the partial archive for the given id from mongodb.
 
@@ -160,15 +160,15 @@ def read_partial_archive_from_mongo(
     return EntryArchive.m_from_dict(archive_dict)
 
 
-def delete_partial_archives_from_mongo(entry_ids: List[str]):
+def delete_partial_archives_from_mongo(entry_ids: list[str]):
     mongo_db = infrastructure.mongo_client[config.mongo.db_name]
     mongo_collection = mongo_db['archive']
     mongo_collection.delete_many(dict(_id={'$in': entry_ids}))
 
 
 def read_partial_archives_from_mongo(
-    entry_ids: List[str], as_dict=False
-) -> Dict[str, Union[EntryArchive, Dict]]:
+    entry_ids: list[str], as_dict=False
+) -> dict[str, EntryArchive | dict]:
     """
     Reads the partial archives for a set of entries.
 
@@ -193,7 +193,7 @@ def read_partial_archives_from_mongo(
     }
 
 
-__all_parent_sections: Dict[Section, Tuple[str, Section]] = {}
+__all_parent_sections: dict[Section, tuple[str, Section]] = {}
 
 
 def _all_parent_sections():
@@ -261,7 +261,7 @@ def compute_required_with_referenced(required):
 
         return result
 
-    def traverse(current: Union[dict, str], parent: Section = EntryArchive.m_def):
+    def traverse(current: dict | str, parent: Section = EntryArchive.m_def):
         if isinstance(current, str):
             return
 

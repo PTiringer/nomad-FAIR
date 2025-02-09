@@ -37,7 +37,7 @@ def parse(
     server_context: bool = False,
     username: str = None,
     password: str = None,
-) -> typing.List[datamodel.EntryArchive]:
+) -> list[datamodel.EntryArchive]:
     """
     Run the given parser on the provided mainfile. If parser_name is given, we only try
     to match this parser, otherwise we try to match all parsers.
@@ -73,9 +73,7 @@ def parse(
     return entry_archives
 
 
-def normalize(
-    normalizer: typing.Union[str, typing.Callable], entry_archive, logger=None
-):
+def normalize(normalizer: str | typing.Callable, entry_archive, logger=None):
     from nomad import normalizing
 
     if logger is None:
@@ -206,9 +204,7 @@ class LocalEntryProcessing:
         if exception:
             sys.exit(1)
 
-    def parse(
-        self, parser_name: str = None, **kwargs
-    ) -> typing.List[datamodel.EntryArchive]:
+    def parse(self, parser_name: str = None, **kwargs) -> list[datamodel.EntryArchive]:
         """
         Run the given parser on the downloaded entry. If no parser is given,
         do parser matching and use the respective parser.
@@ -222,9 +218,7 @@ class LocalEntryProcessing:
             **kwargs,
         )
 
-    def normalize(
-        self, normalizer: typing.Union[str, typing.Callable], entry_archive=None
-    ):
+    def normalize(self, normalizer: str | typing.Callable, entry_archive=None):
         """
         Parse the downloaded entry and run the given normalizer.
         """

@@ -183,7 +183,7 @@ def get_formula_iupac(formula: str) -> str:
     return None if formula is None else Formula(formula).format('iupac')
 
 
-def available_properties(root: MSection) -> List[str]:
+def available_properties(root: MSection) -> list[str]:
     """Returns a list of property names that are available in results.properties.
 
     Args:
@@ -220,7 +220,7 @@ def available_properties(root: MSection) -> List[str]:
         'optoelectronic.solar_cell': 'solar_cell',
         'electronic.density_charge': 'density_charge',
     }
-    available_properties: List[str] = []
+    available_properties: list[str] = []
     for path, shortcut in available_property_names.items():
         for _ in traverse_reversed(root, path.split('.')):
             available_properties.append(shortcut)
@@ -982,7 +982,7 @@ class CoreHole(CoreHoleRun):
         'ms_quantum_symbol',
     ]
 
-    def normalize(self, archive, logger: Optional[Logger]):
+    def normalize(self, archive, logger: Logger | None):
         super().normalize(archive, logger)
         # TODO: replace this for a more dynamic mapping
         self.set_l_quantum_symbol()

@@ -24,7 +24,8 @@ import traceback
 import re
 import urllib.parse
 import h5py
-from typing import Callable, Dict, Any, IO
+from typing import Dict, Any, IO
+from collections.abc import Callable
 
 from h5grove import fastapi_utils as h5grove_router, utils as h5grove_utils
 
@@ -40,7 +41,7 @@ logger = utils.get_logger(__name__)
 def open_zipped_h5_file(
     filepath: str,
     create_error: Callable[[int, str], Exception],
-    h5py_options: Dict[str, Any] = {},
+    h5py_options: dict[str, Any] = {},
 ) -> h5py.File:
     import re
     import io

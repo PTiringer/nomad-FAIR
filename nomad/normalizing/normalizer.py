@@ -32,7 +32,7 @@ class Normalizer(metaclass=ABCMeta):
     not mutate the state of the shared normalizer instance.
     """
 
-    domain: Optional[str] = 'dft'
+    domain: str | None = 'dft'
     """Deprecated: The domain this normalizer should be used in. Default for all normalizer is 'DFT'."""
     normalizer_level = 0
     """Deprecated: Specifies the order of normalization with respect to other normalizers. Lower level
@@ -64,7 +64,7 @@ class SystemBasedNormalizer(Normalizer, metaclass=ABCMeta):
         self.only_representatives = only_representatives
 
     @property
-    def quantities(self) -> List[str]:
+    def quantities(self) -> list[str]:
         return [
             'atom_labels',
             'atom_positions',

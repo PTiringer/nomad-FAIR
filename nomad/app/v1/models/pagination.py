@@ -27,28 +27,28 @@ class Direction(str, enum.Enum):
 class Pagination(BaseModel):
     """Defines the order, size, and page of results."""
 
-    page_size: Optional[int] = Field(
+    page_size: int | None = Field(
         10,
         description=strip("""
             The page size, e.g. the maximum number of items contained in one response.
             A `page_size` of 0 will return no results.
         """),
     )
-    order_by: Optional[str] = Field(
+    order_by: str | None = Field(
         None,
         description=strip("""
             The results are ordered by the values of this field. If omitted, default
             ordering is applied.
         """),
     )
-    order: Optional[Direction] = Field(
+    order: Direction | None = Field(
         Direction.asc,
         description=strip("""
             The ordering direction of the results based on `order_by`. Its either
             ascending `asc` or descending `desc`. Default is `asc`.
         """),
     )
-    page_after_value: Optional[str] = Field(
+    page_after_value: str | None = Field(
         None,
         description=strip("""
             This attribute defines the position after which the page begins, and is used
@@ -67,7 +67,7 @@ class Pagination(BaseModel):
             `page_after_value` and `next_page_after_value` to iterate through the results.
         """),
     )
-    page: Optional[int] = Field(
+    page: int | None = Field(
         None,
         description=strip("""
             The number of the page (1-based). When provided in a request, this attribute
@@ -81,7 +81,7 @@ class Pagination(BaseModel):
             **NOTE #2**: Only one, `page`, `page_offset` or `page_after_value`, can be used.
         """),
     )
-    page_offset: Optional[int] = Field(
+    page_offset: int | None = Field(
         None,
         description=strip("""
             The number of skipped entries. When provided in a request, this attribute
@@ -232,7 +232,7 @@ class PaginationResponse(Pagination):
         """
         ),
     )
-    next_page_after_value: Optional[str] = Field(
+    next_page_after_value: str | None = Field(
         None,
         description=strip(
             """
@@ -242,7 +242,7 @@ class PaginationResponse(Pagination):
         """
         ),
     )
-    page_url: Optional[str] = Field(
+    page_url: str | None = Field(
         None,
         description=strip(
             """
@@ -250,7 +250,7 @@ class PaginationResponse(Pagination):
         """
         ),
     )
-    next_page_url: Optional[str] = Field(
+    next_page_url: str | None = Field(
         None,
         description=strip(
             """
@@ -258,7 +258,7 @@ class PaginationResponse(Pagination):
         """
         ),
     )
-    prev_page_url: Optional[str] = Field(
+    prev_page_url: str | None = Field(
         None,
         description=strip(
             """
@@ -267,7 +267,7 @@ class PaginationResponse(Pagination):
         """
         ),
     )
-    first_page_url: Optional[str] = Field(
+    first_page_url: str | None = Field(
         None,
         description=strip(
             """

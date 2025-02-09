@@ -147,7 +147,7 @@ class LogstashFormatter(logstash.formatter.LogstashFormatterBase):
                 ]:
                     key = 'nomad.%s' % key
                 else:
-                    key = '%s.%s' % (record.name, key)
+                    key = f'{record.name}.{key}'
 
                 message[key] = value
         else:
@@ -241,9 +241,7 @@ class ConsoleFormatter(LogstashFormatter):
             else:
                 print_key = key
             if not cls.short_format or print_key not in ['deployment', 'service']:
-                out.write(
-                    '\n  - %s: %s' % (print_key, str(message_dict.get(key, None)))
-                )
+                out.write(f'\n  - {print_key}: {str(message_dict.get(key, None))}')
         return out.getvalue()
 
 

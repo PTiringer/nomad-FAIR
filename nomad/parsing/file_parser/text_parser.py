@@ -18,7 +18,8 @@ import io
 import re
 import numpy as np
 import pint
-from typing import List, Union, Callable, Type, Any
+from typing import List, Union, Type, Any
+from collections.abc import Callable
 
 from nomad.parsing.file_parser import FileParser
 from nomad.metainfo import Quantity as mQuantity
@@ -50,7 +51,7 @@ class ParsePattern:
         if self._re_pattern is None:
             head = r'%s[\s\S]*?' % self._head if self._head else ''
             key = r'%s\s*\:*\=*\s*' % self._key if self._key else ''
-            self._re_pattern = r'%s%s\s*\:*\=*\s*(%s)%s' % (
+            self._re_pattern = r'{}{}\s*\:*\=*\s*({}){}'.format(
                 head,
                 key,
                 self._value,
@@ -113,14 +114,14 @@ class Quantity:
 
     def __init__(
         self,
-        quantity: Union[str, mQuantity],
-        re_pattern: Union[str, ParsePattern],
+        quantity: str | mQuantity,
+        re_pattern: str | ParsePattern,
         **kwargs,
     ):
         self.name: str
         self.dtype: str
         self.unit: str
-        self.shape: List[int]
+        self.shape: list[int]
         if isinstance(quantity, str):
             self.name = quantity
             self.dtype = None
@@ -268,14 +269,14 @@ class TextParser(FileParser):
     def __init__(
         self,
         mainfile: str = None,
-        quantities: List[Quantity] = None,
+        quantities: list[Quantity] = None,
         logger=None,
         **kwargs,
     ):
         if logger is None:
             logger = get_logger(__name__)
         super().__init__(mainfile, logger=logger, open=kwargs.get('open', None))
-        self._quantities: List[Quantity] = quantities
+        self._quantities: list[Quantity] = quantities
         self.findall: bool = kwargs.get('findall', True)
         self._kwargs = kwargs
         self._file_length: int = kwargs.get('file_length', 0)
@@ -320,7 +321,7 @@ class TextParser(FileParser):
         return self._quantities
 
     @quantities.setter
-    def quantities(self, val: List[Quantity]):
+    def quantities(self, val: list[Quantity]):
         """
         Sets the quantities list.
         """
@@ -393,7 +394,7 @@ class TextParser(FileParser):
         for key in self.keys():
             yield key, self.get(key)
 
-    def _add_value(self, quantity: Quantity, value: List[str], units):
+    def _add_value(self, quantity: Quantity, value: list[str], units):
         """
         Converts the list of parsed blocks into data and apply the corresponding units.
         """
@@ -417,7 +418,7 @@ class TextParser(FileParser):
                 'Error setting value', data=dict(quantity=quantity.name)
             )
 
-    def _parse_quantities(self, quantities: List[Quantity]):
+    def _parse_quantities(self, quantities: list[Quantity]):
         """
         Parse a list of quantities.
         """
@@ -592,7 +593,7 @@ class DataTextParser(TextParser):
     """
 
     def __init__(self, **kwargs):
-        self._dtype: Type = kwargs.get('dtype', float)
+        self._dtype: type = kwargs.get('dtype', float)
         self._mainfile_contents: str = kwargs.get('mainfile_contents', '')
         super().__init__(**kwargs)
 

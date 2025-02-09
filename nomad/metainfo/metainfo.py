@@ -29,11 +29,11 @@ from copy import deepcopy
 from functools import wraps
 from typing import (
     Any,
-    Callable as TypingCallable,
     TypeVar,
     cast,
     Literal,
 )
+from collections.abc import Callable as TypingCallable
 from urllib.parse import urlsplit, urlunsplit
 
 import docstring_parser

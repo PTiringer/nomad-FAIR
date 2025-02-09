@@ -535,7 +535,7 @@ class ResultsNormalizer(Normalizer):
                     mapped_data.insert(0, results_data)
         return mapped_data
 
-    def resolve_spectra(self, path: list[str]) -> Optional[list[Spectra]]:
+    def resolve_spectra(self, path: list[str]) -> list[Spectra] | None:
         """Returns a section containing the references for a Spectra. This section is then
         stored under `archive.results.properties.spectroscopic`.
 
@@ -572,7 +572,7 @@ class ResultsNormalizer(Normalizer):
 
     def resolve_magnetic_shielding(
         self, path: list[str]
-    ) -> Optional[list[MagneticShielding]]:
+    ) -> list[MagneticShielding] | None:
         """Returns a section containing the references for the (atomic) Magnetic Shielding.
         This section is then stored under `archive.results.properties.magnetic`.
 
@@ -599,7 +599,7 @@ class ResultsNormalizer(Normalizer):
 
     def resolve_spin_spin_coupling(
         self, path: list[str]
-    ) -> Optional[list[SpinSpinCoupling]]:
+    ) -> list[SpinSpinCoupling] | None:
         """Returns a section containing the references for the Spin Spin Coupling.
         This section is then stored under `archive.results.properties.magnetic`.
 
@@ -633,7 +633,7 @@ class ResultsNormalizer(Normalizer):
 
     def resolve_magnetic_susceptibility(
         self, path: list[str]
-    ) -> Optional[list[MagneticSusceptibility]]:
+    ) -> list[MagneticSusceptibility] | None:
         """Returns a section containing the references for the Magnetic Susceptibility.
         This section is then stored under `archive.results.properties.magnetic`.
 
@@ -769,7 +769,7 @@ class ResultsNormalizer(Normalizer):
             spct_electronic = spectra
         return spct_electronic
 
-    def band_structure_phonon(self) -> Union[BandStructurePhonon, None]:
+    def band_structure_phonon(self) -> BandStructurePhonon | None:
         """Returns a new section containing a phonon band structure. In
          the case of multiple valid band structures, only the latest one is
          considered.
@@ -797,7 +797,7 @@ class ResultsNormalizer(Normalizer):
 
         return None
 
-    def dos_phonon(self) -> Union[DOSPhonon, None]:
+    def dos_phonon(self) -> DOSPhonon | None:
         """Returns a section containing phonon dos data. In the case of
          multiple valid data sources, only the latest one is reported.
 
@@ -817,7 +817,7 @@ class ResultsNormalizer(Normalizer):
 
         return None
 
-    def energy_free_helmholtz(self) -> Union[EnergyFreeHelmholtz, None]:
+    def energy_free_helmholtz(self) -> EnergyFreeHelmholtz | None:
         """Returns a section Helmholtz free energy data. In the case of
          multiple valid data sources, only the latest one is reported.
 
@@ -844,7 +844,7 @@ class ResultsNormalizer(Normalizer):
 
         return None
 
-    def heat_capacity_constant_volume(self) -> Union[HeatCapacityConstantVolume, None]:
+    def heat_capacity_constant_volume(self) -> HeatCapacityConstantVolume | None:
         """Returns a section containing heat capacity data. In the case of
          multiple valid data sources, only the latest one is reported.
 
@@ -870,7 +870,7 @@ class ResultsNormalizer(Normalizer):
 
         return None
 
-    def geometry_optimization(self) -> Union[GeometryOptimization, None]:
+    def geometry_optimization(self) -> GeometryOptimization | None:
         """Populates both geometry optimization methodology and calculated
         properties based on the first found geometry optimization workflow.
         """
@@ -905,7 +905,7 @@ class ResultsNormalizer(Normalizer):
 
         return None
 
-    def get_md_provenance(self, workflow: Workflow) -> Optional[MolecularDynamics]:
+    def get_md_provenance(self, workflow: Workflow) -> MolecularDynamics | None:
         """Retrieves the MD provenance from the given workflow."""
         md = None
         if workflow.m_def.name == 'MolecularDynamics':

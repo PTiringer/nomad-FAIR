@@ -18,20 +18,18 @@
 
 from __future__ import annotations
 from typing import (
-    Dict,
-    List,
     Optional,
-    Type,
     Literal,
     Union,
     Any,
-    Callable,
     ForwardRef,
     get_type_hints,
     get_origin,
     get_args,
     cast,
 )
+from collections.abc import Callable
+from types import UnionType
 from datetime import datetime
 from pydantic import (
     BaseModel,
@@ -52,7 +50,7 @@ response_suffix = 'Response'
 graph_model_export = False
 
 
-def json_schema_extra(schema: dict[str, Any], model: Type[_DictModel]) -> None:
+def json_schema_extra(schema: dict[str, Any], model: type[_DictModel]) -> None:
     if 'm_children' not in model.__annotations__:
         raise TypeError(
             f'No m_children field defined for dict model {model.__name__}. '
@@ -64,7 +62,7 @@ def json_schema_extra(schema: dict[str, Any], model: Type[_DictModel]) -> None:
             f"Could not determine m_children's type. Did you miss to call update_forward_refs()?"
         )
 
-    if get_origin(value_type) == Union:
+    if get_origin(value_type) in (Union, UnionType):
         value_types = get_args(value_type)
     else:
         value_types = (value_type,)
@@ -174,13 +172,16 @@ def _get_request_type(type_hint: Any, ns: ModelNamespace) -> Any:
 
     if origin is dict:
         key_type, value_type = args
-        return Dict[key_type, _get_request_type(value_type, ns)]  # type: ignore
+        return dict[key_type, _get_request_type(value_type, ns)]  # type: ignore
 
     # This is about Optional[T], which is translated to Union[None, T]
-    if origin is Union and len(args) == 2 and isinstance(None, args[1]):
-        return _get_request_type(args[0], ns)
+    if origin in (Union, UnionType) and len(args) == 2:
+        if isinstance(None, args[1]):
+            return _get_request_type(args[0], ns)
+        if isinstance(None, args[0]):
+            return _get_request_type(args[1], ns)
 
-    if origin is Union:
+    if origin in (Union, UnionType):
         union_types = tuple(_get_request_type(type_, ns) for type_ in args)
         return Union[union_types]  # type: ignore
 
@@ -197,7 +198,7 @@ def _get_response_type(type_hint: Any, ns: ModelNamespace) -> Any:
 
     if origin is list:
         value_type = args[0]
-        return List[_get_response_type(value_type, ns)]  # type: ignore
+        return list[_get_response_type(value_type, ns)]  # type: ignore
 
     if origin is dict:
         key_type, value_type = args
@@ -206,24 +207,27 @@ def _get_response_type(type_hint: Any, ns: ModelNamespace) -> Any:
             # We have detected direct type recursion, like in
             # Path = Dict[str, 'Path']
             return type_hint
-        return Dict[key_type, _get_response_type(value_type, ns)]  # type: ignore
+        return dict[key_type, _get_response_type(value_type, ns)]  # type: ignore
 
     # This is about Optional[T], which is translated to Union[None, T]
-    if origin is Union and len(args) == 2 and isinstance(None, args[1]):
-        return _get_response_type(args[0], ns)
+    if origin in (Union, UnionType) and len(args) == 2:
+        if isinstance(None, args[1]):
+            return _get_response_type(args[0], ns)
+        if isinstance(None, args[0]):
+            return _get_response_type(args[1], ns)
 
-    if origin is Union:
+    if origin in (Union, UnionType):
         union_types = tuple(_get_response_type(type_, ns) for type_ in args)
         return Union[union_types]  # type: ignore
 
     raise NotImplementedError(type_hint)
 
 
-ModelNamespace = Dict[str, Union[Type[BaseModel], ForwardRef]]
+ModelNamespace = dict[str, Union[type[BaseModel], ForwardRef]]
 
 
 def _generate_model(
-    source_model: Union[Type[BaseModel], Any],
+    source_model: type[BaseModel] | Any,
     suffix: str,
     generate_type: Callable[[type, ModelNamespace], type],
     ns: ModelNamespace,
@@ -256,7 +260,7 @@ def _generate_model(
 
         if field_name == 'm_children':
             origin, args = get_origin(type_hint), get_args(type_hint)
-            if origin is Union:
+            if origin in (Union, UnionType):
                 types = args
             else:
                 types = (type_hint,)
@@ -274,7 +278,7 @@ def _generate_model(
             # TODO we always add Literal['*'] at the end. Maybe it should be configurable
             # which models want to support '*' values for their children?
             value_type = Union[value_types + (Literal['*'],)]  # type: ignore
-            fields['m_children'] = (Optional[Dict[str, cast(Type, value_type)]], None)  # type: ignore
+            fields['m_children'] = (Optional[dict[str, cast(type, value_type)]], None)  # type: ignore
             continue
 
         if field_name == 'm_request':
@@ -367,7 +371,7 @@ def _generate_model(
     return result_model
 
 
-def mapped(model: Type[BaseModel], **mapping: Union[str, type]) -> Type[BaseModel]:
+def mapped(model: type[BaseModel], **mapping: str | type) -> type[BaseModel]:
     """
     Creates a new pydantic model based on the given model. The mapping argument allows
     to either change the name of a field in the input model or change the type of a field
@@ -416,9 +420,9 @@ def mapped(model: Type[BaseModel], **mapping: Union[str, type]) -> Type[BaseMode
     )
 
 
-def generate_request_model(source_model: Type[BaseModel]):
+def generate_request_model(source_model: type[BaseModel]):
     return _generate_model(source_model, request_suffix, _get_request_type, dict())
 
 
-def generate_response_model(source_model: Type[BaseModel]):
+def generate_response_model(source_model: type[BaseModel]):
     return _generate_model(source_model, response_suffix, _get_response_type, dict())

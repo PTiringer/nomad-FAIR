@@ -162,7 +162,6 @@ from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     DefaultDict,
     Dict,
     List,
@@ -172,6 +171,7 @@ from typing import (
     Union,
     cast,
 )
+from collections.abc import Callable
 
 from elasticsearch_dsl import Q
 from nomad import utils
@@ -226,13 +226,13 @@ class DocumentType:
         self.name = name
         self.id_field = id_field
         self.root_section_def = None
-        self.mapping: Dict[str, Any] = None
-        self.indexed_properties: Set[Definition] = set()
-        self.nested_object_keys: List[str] = []
-        self.nested_sections: List[SearchQuantity] = []
-        self.quantities: Dict[str, SearchQuantity] = {}
-        self.suggestions: Dict[str, Elasticsearch] = {}
-        self.metrics: Dict[str, Tuple[str, SearchQuantity]] = {}
+        self.mapping: dict[str, Any] = None
+        self.indexed_properties: set[Definition] = set()
+        self.nested_object_keys: list[str] = []
+        self.nested_sections: list[SearchQuantity] = []
+        self.quantities: dict[str, SearchQuantity] = {}
+        self.suggestions: dict[str, Elasticsearch] = {}
+        self.metrics: dict[str, tuple[str, SearchQuantity]] = {}
 
     def _reset(self):
         self.indexed_properties.clear()
@@ -302,7 +302,7 @@ class DocumentType:
 
             return False
 
-        kwargs: Dict[str, Any] = dict(
+        kwargs: dict[str, Any] = dict(
             with_meta=False,
             include_defaults=True,
             include_derived=True,
@@ -380,7 +380,7 @@ class DocumentType:
         auto_include_subsections: bool = False,
         repeats: bool = False,
     ):
-        mappings: Dict[str, Any] = {}
+        mappings: dict[str, Any] = {}
 
         if self == material_type and prefix is None:
             mappings['n_entries'] = {'type': 'integer'}
@@ -541,14 +541,13 @@ class DocumentType:
                 name = sub_section_def.name
                 repeats = sub_section_def.repeats
                 full_name = f'{prefix}.{name}' if prefix else name
-                for item in get_all_quantities(
+                yield from get_all_quantities(
                     sub_section_def.sub_section,
                     full_name,
                     new_branch,
                     repeats,
                     max_level - 1,
-                ):
-                    yield item
+                )
 
         quantities_dynamic = {}
         for package in packages_from_plugins.values():
@@ -850,19 +849,19 @@ class Elasticsearch(DefinitionAnnotation):
     def __init__(
         self,
         doc_type: DocumentType = entry_type,
-        mapping: Union[str, Dict[str, Any]] = None,
+        mapping: str | dict[str, Any] = None,
         field: str = None,
         es_field: str = None,
         value: Callable[[MSectionBound], Any] = None,
         index: bool = True,
-        values: List[str] = None,
+        values: list[str] = None,
         default_aggregation_size: int = None,
-        metrics: Dict[str, str] = None,
+        metrics: dict[str, str] = None,
         many_all: bool = False,
         auto_include_subsections: bool = False,
         nested: bool = False,
-        suggestion: Union[str, Callable[[MSectionBound], Any]] = None,
-        variants: Optional[Callable[[str], List[str]]] = None,
+        suggestion: str | Callable[[MSectionBound], Any] = None,
+        variants: Callable[[str], list[str]] | None = None,
         normalizer: Callable[[Any], Any] = None,
         es_query: str = 'match',
         _es_field: str = None,
@@ -910,7 +909,7 @@ class Elasticsearch(DefinitionAnnotation):
         self.doc_type = doc_type
         self.value = value
         self.index = index
-        self._mapping: Dict[str, Any] = None
+        self._mapping: dict[str, Any] = None
         self.default_aggregation_size = default_aggregation_size
         self.values = values
         self.metrics = metrics
@@ -933,11 +932,11 @@ class Elasticsearch(DefinitionAnnotation):
             self.default_aggregation_size = len(self._values)
 
     @property
-    def mapping(self) -> Dict[str, Any]:
+    def mapping(self) -> dict[str, Any]:
         if self._mapping is not None:
             return self._mapping
 
-        def compute_mapping(quantity: Quantity) -> Dict[str, Any]:
+        def compute_mapping(quantity: Quantity) -> dict[str, Any]:
             """Used to generate an ES mapping based on the quantity definition if
             no custom mapping is provided.
             """
@@ -991,7 +990,7 @@ class Elasticsearch(DefinitionAnnotation):
         return self._mapping
 
     @property
-    def fields(self) -> Dict[str, Any]:
+    def fields(self) -> dict[str, Any]:
         if self._es_field == '' or self._es_field is None:
             return {}
 
@@ -1216,12 +1215,12 @@ def index_entry(entry: MSection, **kwargs):
     index_entries([entry], **kwargs)
 
 
-def index_entries_with_materials(entries: List, refresh: bool = False):
+def index_entries_with_materials(entries: list, refresh: bool = False):
     index_entries(entries, refresh=refresh)
     update_materials(entries, refresh=refresh)
 
 
-def index_entries(entries: List, refresh: bool = False) -> Dict[str, str]:
+def index_entries(entries: list, refresh: bool = False) -> dict[str, str]:
     """
     Upserts the given entries in the entry index. Optionally updates the materials index
     as well. Returns a dictionary of the format {entry_id: error_message} for all entries
@@ -1258,7 +1257,7 @@ def index_entries(entries: List, refresh: bool = False) -> Dict[str, str]:
                     exc_info=e,
                 )
 
-        timer_kwargs: Dict[str, Any] = {}
+        timer_kwargs: dict[str, Any] = {}
         try:
             import json
 
@@ -1287,7 +1286,7 @@ def index_entries(entries: List, refresh: bool = False) -> Dict[str, str]:
         return rv
 
 
-def update_materials(entries: List, refresh: bool = False):
+def update_materials(entries: list, refresh: bool = False):
     # split into reasonably sized problems
     if len(entries) > config.elastic.bulk_size:
         for entries_part in [
@@ -1381,7 +1380,7 @@ def update_materials(entries: List, refresh: bool = False):
     # have the ammount of entries in all these materials roughly match the desired bulk size.
     # Using materials as a measure might not be good enough, if a single material has
     # lots of nested entries.
-    _actions_and_docs_bulks: List[List[Any]] = []
+    _actions_and_docs_bulks: list[list[Any]] = []
     _n_entries_in_bulk = [0]
 
     def add_action_or_doc(action_or_doc):
@@ -1509,7 +1508,7 @@ def update_materials(entries: List, refresh: bool = False):
         all_n_entries += material_doc['n_entries']
 
     # Execute the created actions in bulk.
-    timer_kwargs: Dict[str, Any] = {}
+    timer_kwargs: dict[str, Any] = {}
     try:
         import json
 
@@ -1570,7 +1569,7 @@ def get_searchable_quantity_value_field(
 
 def create_dynamic_quantity_annotation(
     quantity_def: Quantity, doc_type: DocumentType = None
-) -> Optional[Elasticsearch]:
+) -> Elasticsearch | None:
     """Given a quantity definition, this function will return the corresponding
     ES annotation if one can be built.
     """
@@ -1672,7 +1671,7 @@ def create_searchable_quantity(
     return searchable_quantity
 
 
-def parse_quantity_name(name: str) -> Tuple[str, Optional[str], Optional[str]]:
+def parse_quantity_name(name: str) -> tuple[str, str | None, str | None]:
     """Used to parse a quantity name into three parts:
     - path: Path in the schema
     - schema (optional): Schema identifider
