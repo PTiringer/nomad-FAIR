@@ -27,11 +27,14 @@ import React, {
 import { makeStyles } from '@material-ui/core/styles'
 import PropTypes from 'prop-types'
 import { Tooltip, List, ListItemText, ListSubheader } from '@material-ui/core'
+import { has } from 'lodash'
 import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
 import { getSchemaAbbreviation, getSuggestions, parseJMESPath } from '../../../utils'
 import { useSearchContext } from '../SearchContext'
 import { VariableSizeList } from 'react-window'
 import { InputText } from './InputText'
+import { dtypeSeparator } from '../../../config'
+import { postFixMap } from '../FilterRegistry'
 
 /**
  * Wrapper around InputText that is specialized in showing metainfo options. The
@@ -86,13 +89,15 @@ export const InputMetainfoControlled = React.memo(({
     }
     if (validate) {
       return validate(value)
-    } else if (!(keysSet.has(value))) {
+    // Check if the quantity is available. The check is ignored if the quantity
+    // explicitly contains the data type as a postfix.
+    } else if (!(keysSet.has(value)) && !hasDatatype(value)) {
       return {valid: false, error: `The quantity "${value}" is not available.`}
     }
     return {valid: true, error: undefined}
   }, [validate, keysSet, optional, disableValidation])
 
-  // Handles the selectance of a suggested value
+  // Handles the selection of a suggested value
   const handleSelect = useCallback((key) => {
     onSelect?.(key, options[key])
   }, [onSelect, options])
@@ -223,15 +228,15 @@ export const InputJMESPath = React.memo(React.forwardRef(({
     if (errorParse) {
       return {valid: false, error: 'Invalid JMESPath query, please check your syntax.'}
     }
-    if (!(keysSet.has(quantity))) {
+    if (!(keysSet.has(quantity)) && !hasDatatype(quantity)) {
       return {valid: false, error: `The quantity "${quantity}" is not available.`}
     }
     for (const extra of extras) {
-      if (!filterData[extra]) {
+      if (!filterData[extra] && !hasDatatype(extra)) {
         return {valid: false, error: `The quantity "${extra}" is not available.`}
       }
     }
-    if (filterData[quantity].repeats_section && quantity === path + schema) {
+    if (filterData[quantity]?.repeats_section && quantity === path + schema) {
       return {valid: false, error: `The quantity "${quantity}" is contained in at least one repeatable section. Please use JMESPath syntax to select one or more target sections.`}
     }
     return {valid: true, error: undefined}
@@ -435,4 +440,12 @@ function getMetainfoOptions(filterData, dtypes, dtypesRepeatable, disableNonAggr
         definition: data
     }])
   )
+}
+
+/**
+ * Checks if the given quantity name contains the data type as a postfix.
+*/
+function hasDatatype(quantity) {
+  const postFix = quantity.split(dtypeSeparator).pop()
+  return has(postFixMap, postFix)
 }

@@ -93,7 +93,7 @@ export const WidgetScatterPlotEdit = React.memo(({widget}) => {
     const handleAcceptQuantity = useCallback((key, value) => {
       handleAccept(key, value)
       const { quantity } = parseJMESPath(value)
-      const dimension = filterData[quantity]?.dimension
+      const dimension = filterData[quantity]?.dimension || 'dimensionless'
       setDimensions((old) => ({...old, [key]: dimension}))
     }, [handleAccept, filterData])
 

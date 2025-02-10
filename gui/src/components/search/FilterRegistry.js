@@ -36,6 +36,13 @@ const dtypeMap = {
   [DType.Enum]: 'str',
   [DType.Boolean]: 'bool'
 }
+export const postFixMap = {
+  'int': DType.Int,
+  'float': DType.Float,
+  'datetime': DType.Timestamp,
+  'str': DType.String,
+  'bool': DType.Boolean
+}
 
 /**
  * This function is used to register a new filter within the SearchContext.
@@ -732,6 +739,28 @@ export function getStaticSuggestions(quantities, filterData) {
   return suggestions
 }
 
+// add a specific filter
+export function addFilter(filterPath, def, repeats, filtersData, setFiltersData) {
+  if (filterPath in filtersData) {
+    return
+  }
+  const newFilters = {}
+  const pathDtype = filterPath.split(schemaSeparator).slice(-1)[0]
+  const dtype = dtypeMap[getDatatype(def)] || pathDtype
+  // TODO: For some Nexus quantities, the data types cannot be fetched.
+  if (!dtype) {
+    return
+  }
+  const params = {
+    name: filterPath,
+    quantity: filterPath,
+    aggregatable: new Set([DType.String, DType.Enum, DType.Boolean]).has(getDatatype(def)),
+    repeats: repeats
+  }
+  newFilters[filterPath] = new Filter(def, params)
+  setFiltersData((old) => ({...old, ...newFilters}))
+}
+
 /**
  * HOC that is used to preload search quantities from all required schemas. This
  * simplifies the rendering logic by first loading all schemas before rendering
@@ -744,7 +773,7 @@ export const withSearchQuantities = (WrappedComponent) => {
     const [yamlOptions, nexusOptions, initialFilterData] = useMemo(() => {
       const options = getOptions(initialSearchQuantities)
       const yamlOptions = options.filter((name) => name.includes(`#${yamlSchemaPrefix}`))
-      const nexusOptions = options.filter((name) => name.startsWith('nexus.'))
+      const nexusOptions = options.filter((name) => name.includes(`#pynxtools.nomad.schema`))
 
       // Perform glob filtering on default filters. Only exclude affects the
       // default filters.
@@ -786,14 +815,14 @@ export const withSearchQuantities = (WrappedComponent) => {
     // Nexus metainfo is loaded here once metainfo is ready
     useEffect(() => {
       if (!nexusOptions.length || !metainfo) return
-      const pkg = metainfo._packageDefs['nexus']
+      const pkg = metainfo._packageDefs['pynxtools.nomad.schema']
       const sections = pkg.section_definitions
       const nexusFilters = {}
       for (const section of sections) {
-        const sectionPath = `nexus.${section.name}`
+        const sectionPath = `data.${section.name}`
 
         // The NeXus section is skipped (it contains duplicate information)
-        if (sectionPath === 'nexus.NeXus') continue
+        if (sectionPath === 'data.NeXus') continue
 
         // Only applications definitions are loaded
         if (section?.more?.nx_category !== 'application') continue
@@ -806,8 +835,8 @@ export const withSearchQuantities = (WrappedComponent) => {
         // Add all included quantities recursively
         for (const [def, path, repeats] of getQuantities(section)) {
           const filterPath = `${sectionPath}.${path}`
-          const included = glob(filterPath, initialSearchQuantities?.include, initialSearchQuantities?.exclude)
-          if (!included) continue
+          // const included = glob(filterPath, initialSearchQuantities?.include, initialSearchQuantities?.exclude)
+          // if (!included) continue
           const dtype = dtypeMap[getDatatype(def)]
           // TODO: For some Nexus quantities, the data types cannot be fetched.
           if (!dtype) {

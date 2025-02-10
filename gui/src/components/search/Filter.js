@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { isNil, isArray, isEmpty, capitalize, split } from 'lodash'
+import { isNil, isArray, isEmpty } from 'lodash'
 import { searchQuantities } from '../../config'
 import {
   getDatatype,
@@ -24,7 +24,7 @@ import {
   getDisplayLabel,
   DType,
   multiTypes,
-  parseQuantityName
+  getLabel
 } from '../../utils'
 import { Unit } from '../units/Unit'
 
@@ -140,11 +140,6 @@ export class Filter {
     this.description = params?.description || def?.description
     this.unit = params?.unit || def?.unit
     this.dimension = def?.unit ? new Unit(def?.unit).dimension() : 'dimensionless'
-    function getLabel(quantity) {
-      if (isNil(quantity)) return ''
-      const {path} = parseQuantityName(quantity)
-      return capitalize(split(path, '.').slice(-1)[0].replace(/_/g, ' '))
-    }
     this.label = params?.label || getDisplayLabel(def) || getLabel(this.quantity)
     this.parent = parent
     this.group = params.group

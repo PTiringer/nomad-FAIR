@@ -107,8 +107,8 @@ export const WidgetScatterPlot = React.memo((
   // Get storage unit for API communication
   const {storageUnitX, storageUnitY, storageUnitColor} = useMemo(() => {
     if (error) return {}
-    const storageUnitX = new Unit(filterData[xParsed.quantity].unit || 'dimensionless')
-    const storageUnitY = new Unit(filterData[yParsed.quantity].unit || 'dimensionless')
+    const storageUnitX = new Unit(filterData[xParsed.quantity]?.unit || 'dimensionless')
+    const storageUnitY = new Unit(filterData[yParsed.quantity]?.unit || 'dimensionless')
     const storageUnitColor = new Unit(filterData[colorParsed?.quantity]?.unit || 'dimensionless')
     return {storageUnitX, storageUnitY, storageUnitColor}
   }, [filterData, xParsed.quantity, yParsed.quantity, colorParsed?.quantity, error])

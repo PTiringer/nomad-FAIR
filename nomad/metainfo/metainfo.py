@@ -27,13 +27,9 @@ import warnings
 from collections.abc import Iterable
 from copy import deepcopy
 from functools import wraps
-from typing import (
-    Any,
-    TypeVar,
-    cast,
-    Literal,
-)
-from collections.abc import Callable as TypingCallable
+from typing import Any
+from typing import Callable as TypingCallable
+from typing import Literal, TypeVar, cast
 from urllib.parse import urlsplit, urlunsplit
 
 import docstring_parser
@@ -43,26 +39,20 @@ from pydantic import TypeAdapter, ValidationError
 from typing_extensions import deprecated  # type: ignore
 
 from nomad.config import config
-from nomad.metainfo.data_type import (
-    Datatype,
-    normalize_type,
-    Number,
-    m_str,
-    Enum,
-    Datetime as DatetimeType,
-    Unit as UnitType,
-    Capitalized as CapitalizedType,
-    JSON as JSONType,
-    Bytes as BytesType,
-    Callable as CallableType,
-    URL as URLType,
-    Dimension as DimensionType,
-    File as FileType,
-    Any as AnyType,
-    check_dimensionality,
-    ExactNumber,
-    InexactNumber,
-)
+from nomad.metainfo.data_type import JSON as JSONType
+from nomad.metainfo.data_type import URL as URLType
+from nomad.metainfo.data_type import Any as AnyType
+from nomad.metainfo.data_type import Bytes as BytesType
+from nomad.metainfo.data_type import Callable as CallableType
+from nomad.metainfo.data_type import Capitalized as CapitalizedType
+from nomad.metainfo.data_type import Datatype
+from nomad.metainfo.data_type import Datetime as DatetimeType
+from nomad.metainfo.data_type import Dimension as DimensionType
+from nomad.metainfo.data_type import Enum, ExactNumber
+from nomad.metainfo.data_type import File as FileType
+from nomad.metainfo.data_type import InexactNumber, Number
+from nomad.metainfo.data_type import Unit as UnitType
+from nomad.metainfo.data_type import check_dimensionality, m_str, normalize_type
 from nomad.metainfo.util import (
     MQuantity,
     MSubSectionList,
@@ -74,11 +64,14 @@ from nomad.metainfo.util import (
     to_dict,
 )
 from nomad.units import ureg as units
+from pydantic import ValidationError, parse_obj_as
+from typing_extensions import deprecated  # type: ignore
+
 from .annotation import (
     Annotation,
+    AnnotationModel,
     DefinitionAnnotation,
     SectionAnnotation,
-    AnnotationModel,
 )
 
 # todo: remove once simulation package does not use it anymore
@@ -1927,7 +1920,7 @@ class MSection(metaclass=MObjectMeta):
                     target_value = quantity.default
 
             def _transform_wrapper(_value, _stack=None):
-                _path = path
+                _path = path if path else ''
                 if _stack is not None:
                     _path += '/' + '/'.join(str(i) for i in _stack)
                 return (

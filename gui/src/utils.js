@@ -614,7 +614,16 @@ export function getSerializer(dtype, pretty = true) {
   } else if (dtype === DType.Boolean) {
     return (value) => value ? 'true' : 'false'
   } else {
-    return (value) => value
+    return (value) => {
+      if (isNil(value)) {
+        return value
+      }
+      let val = value instanceof Quantity ? value.normalized_value : value
+      if (isNumber(val) && pretty) {
+        val = formatNumber(val)
+      }
+      return val
+    }
   }
 }
 
@@ -1544,6 +1553,15 @@ export function parseQuantityName(fullName) {
     ? dtypeParts
     : [schema, undefined]
   return {path, schema: schemaNew, dtype}
+}
+
+/**
+ * Autogenerates a sensible default name for a quantity based on its path.
+ */
+export function getLabel(quantity) {
+  if (isNil(quantity)) return ''
+  const {path} = parseQuantityName(quantity)
+  return capitalize(split(path, '.').slice(-1)[0].replace(/_/g, ' '))
 }
 
 /**

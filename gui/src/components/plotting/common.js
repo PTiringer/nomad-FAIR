@@ -41,8 +41,9 @@ import {
   eachQuarterOfInterval
 } from 'date-fns'
 import { scale as chromaScale } from 'chroma-js'
-import { scale as scaleUtils, add, DType, formatNumber, getDisplayLabel, parseJMESPath } from '../../utils.js'
+import { scale as scaleUtils, add, DType, formatNumber, getDisplayLabel, parseQuantityName, parseJMESPath, getLabel } from '../../utils.js'
 import { Unit } from '../units/Unit'
+import { postFixMap } from '../search/FilterRegistry.js'
 
 export const scales = {
   'linear': 'linear',
@@ -497,43 +498,49 @@ export function getPlotTracesVertical(plots, theme) {
  * @param {object} units Units in current unit system.
  */
 export function getAxisConfig(axis, filterData, units) {
-    const {quantity} = parseJMESPath(axis?.search_quantity)
-    const filter = filterData[quantity]
-    const dtype = filter?.dtype
-    const unit = axis.unit
-      ? new Unit(axis.unit)
-      : new Unit(filter?.unit || 'dimensionless').toSystem(units)
+  const {quantity} = parseJMESPath(axis?.search_quantity)
+  const filter = filterData[quantity]
+  let dtype = filter?.dtype
+  if (!dtype || dtype === DType.Unknown) {
+    const dtypeFromName = postFixMap[parseQuantityName(quantity)?.dtype]
+    if (dtypeFromName) {
+      dtype = dtypeFromName
+    }
+  }
+  const unit = axis.unit
+    ? new Unit(axis.unit)
+    : new Unit(filter?.unit || 'dimensionless').toSystem(units)
 
-    // Create the final label
-    let title = axis.title || filter?.label || getDisplayLabel(filter)
-    let finalUnit
-    if (unit) {
-      finalUnit = new Unit(unit).label()
-    } else if (filter?.unit) {
-      finalUnit = new Unit(filter.unit).toSystem(units).label()
-    }
-    if (finalUnit) {
-      title = `${title} (${finalUnit})`
-    }
+  // Create the final label
+  let title = axis.title || filter?.label || getDisplayLabel(filter) || getLabel(quantity)
+  let finalUnit
+  if (unit) {
+    finalUnit = new Unit(unit).label()
+  } else if (filter?.unit) {
+    finalUnit = new Unit(filter.unit).toSystem(units).label()
+  }
+  if (finalUnit) {
+    title = `${title} (${finalUnit})`
+  }
 
-    // Determine the final description
-    let description = axis.description || filter?.description || ''
-    if (description && quantity) {
-      description = (
-        <>
-          <Typography>{title}</Typography>
-          <b>Description: </b>{description}<br/>
-          <b>Path: </b>{quantity}
-        </>
-      )
-    }
+  // Determine the final description
+  let description = axis.description || filter?.description || ''
+  if (description && quantity) {
+    description = (
+      <>
+        <Typography>{title}</Typography>
+        <b>Description: </b>{description}<br/>
+        <b>Path: </b>{quantity}
+      </>
+    )
+  }
 
-    return {
-      ...axis,
-      description,
-      title,
-      unit,
-      dtype,
-      quantity
-    }
+  return {
+    ...axis,
+    description,
+    title,
+    unit,
+    dtype,
+    quantity
+  }
 }
