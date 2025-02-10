@@ -72,7 +72,7 @@ import UploadStatusIcon from '../uploads/UploadStatusIcon'
 import { getWidgetsObject } from './widgets/Widget'
 import { inputSectionContext } from './input/InputNestedObject'
 import { SearchSuggestion } from './SearchSuggestion'
-import { withSearchQuantities } from './FilterRegistry'
+import { withSearchQuantities, addFilter } from './FilterRegistry'
 import { useUnitContext } from '../units/UnitContext'
 
 const useWidthConstrainedStyles = makeStyles(theme => ({
@@ -442,6 +442,7 @@ export const SearchContextRaw = React.memo(({
       useSetPagination,
       usePaginationState,
       useAgg,
+      useRemoveAgg,
       useAggs,
       useSetAggsResponse,
       useSetFilters,
@@ -1088,13 +1089,16 @@ export const SearchContextRaw = React.memo(({
       const key = useMemo(() => `${name}:${id}`, [name, id])
       const setAgg = useSetRecoilState(aggsFamily(key))
       const aggResponse = useRecoilValue(aggsResponseFamily(key))
-      const filtersData = useRecoilValue(filtersDataState)
+      const [filtersData, setFiltersData] = useRecoilState(filtersDataState)
 
       // Whenever the aggregation requirements change, create the final
       // aggregation config and set it in the search context: this will then
       // trigger any required API calls that also return the aggregation
       // response that is returned by this hook.
       useEffect(() => {
+        if (!(name in filtersData)) {
+          addFilter(name, "", true, filtersData, setFiltersData)
+        }
         const defaults = filtersData[name]?.aggs?.[config?.type]
         const finalConfig = {
           update: update,
@@ -1102,9 +1106,20 @@ export const SearchContextRaw = React.memo(({
           ...config
         }
         setAgg(finalConfig)
-      }, [name, update, setAgg, config, filtersData])
+      }, [name, update, setAgg, config, filtersData, setFiltersData])
 
       return aggResponse
+    }
+
+    /**
+     * Function for removing an agg from use. Should be called when a component
+     * that uses an agg is unmounted.
+     */
+    const useRemoveAgg = () => {
+      return useRecoilCallback(({ reset }) => (name, id) => {
+        const key = `${name}:${id}`
+        reset(aggsFamilyRaw(key))
+      }, [])
     }
 
     /**
@@ -1165,6 +1180,7 @@ export const SearchContextRaw = React.memo(({
       useRemoveWidget,
       useResetWidgets,
       useAgg,
+      useRemoveAgg,
       useSetFilters,
       useUpdateFilter,
       useQuery,
@@ -1234,31 +1250,37 @@ export const SearchContextRaw = React.memo(({
    */
   const resolve = useCallback(prop => {
     const {response, timestamp, queryChanged, paginationChanged, search, aggsToUpdate, resource, callbackAgg, callbackHits} = prop
-    const data = response.response
+    const error = !response
     const next = apiQueue.current[0]
     if (next !== timestamp) {
       apiMap.current[timestamp] = prop
       return
     }
-    // Update the aggregations if new aggregation data is received. The old
-    // aggregation data is preserved and new information is updated.
-    if (!isEmpty(data.aggregations)) {
-      const newAggs = convertAggAPIToGUI(data.aggregations, aggsToUpdate, resource, filtersData)
-      callbackAgg && callbackAgg(newAggs, undefined, true)
+    if (error) {
+      callbackAgg && callbackAgg(undefined, error, true)
+      callbackHits && callbackHits(undefined, error, true, undefined)
     } else {
-      callbackAgg && callbackAgg(undefined, undefined, false)
-    }
-    // Update the query results if new data is received.
-    if (queryChanged || paginationChanged) {
-      paginationResponse.current = data.pagination
-      const newResults = {
-        response: response,
-        pagination: combinePagination(search.pagination, data.pagination),
-        setPagination: setPagination
+      const data = response.response
+      // Update the aggregations if new aggregation data is received. The old
+      // aggregation data is preserved and new information is updated.
+      if (!isEmpty(data.aggregations)) {
+        const newAggs = convertAggAPIToGUI(data.aggregations, aggsToUpdate, resource, filtersData)
+        callbackAgg && callbackAgg(newAggs, undefined, true)
+      } else {
+        callbackAgg && callbackAgg(undefined, undefined, false)
       }
-      callbackHits && callbackHits(newResults, undefined, true, search)
-    } else {
-      callbackHits && callbackHits(undefined, undefined, false, search)
+      // Update the query results if new data is received.
+      if (queryChanged || paginationChanged) {
+        paginationResponse.current = data.pagination
+        const newResults = {
+          response: response,
+          pagination: combinePagination(search.pagination, data.pagination),
+          setPagination: setPagination
+        }
+        callbackHits && callbackHits(newResults, undefined, true, search)
+      } else {
+        callbackHits && callbackHits(undefined, undefined, false, search)
+      }
     }
     // Remove this query from queue and see if next can be resolved.
     apiQueue.current.shift()
@@ -1373,24 +1395,30 @@ export const SearchContextRaw = React.memo(({
     const timestamp = Date.now()
     apiQueue.current.push(timestamp)
     setApiQuery(search?.query)
+    const resolveArgs = {
+        timestamp,
+        queryChanged,
+        paginationChanged,
+        search,
+        aggsToUpdate,
+        resource,
+        callbackAgg,
+        callbackHits
+      }
     api.query(resource, search, {loadingIndicator: true, returnRequest: true})
-      .then((response) => {
-        return resolve({
-          response,
-          timestamp,
-          queryChanged,
-          paginationChanged,
-          search,
-          aggsToUpdate,
-          resource,
-          callbackAgg,
-          callbackHits
-        })
-      })
+      .then((response) => resolve({response, ...resolveArgs}))
       .catch((error) => {
-        raiseError(error)
-        callbackAgg && callbackAgg(undefined, error, true)
-        callbackHits && callbackHits(undefined, error, true, undefined)
+        let apiErrorMessage = error?.apiMessage?.[0]?.msg
+        if (apiErrorMessage) {
+          if (apiErrorMessage?.endsWith('is not a doc quantity')) {
+            const name = apiErrorMessage.split(' ')[0]
+            apiErrorMessage = `Could not find definition for the search quantity "${name}". Please remove it from the search and try again.`
+          }
+          error = Error(apiErrorMessage)
+          error.name = 'BadRequest'
+          raiseError(error)
+        }
+        resolve({undefined, ...resolveArgs})
       })
   }, [filtersData, filterDefaults, filtersLocked, resource, api, raiseError, resolve, dynamicQueryModes, setApiQuery])
 
@@ -1715,6 +1743,7 @@ export const SearchContextRaw = React.memo(({
       useResults,
       useHits,
       useAgg,
+      useRemoveAgg,
       useAggCall,
       useSetFilters,
       useUpdateFilter
@@ -1760,6 +1789,7 @@ export const SearchContextRaw = React.memo(({
     useApiQuery,
     useApiData,
     useAgg,
+    useRemoveAgg,
     useAggs,
     useQuery,
     useSetFilters,
@@ -2112,7 +2142,7 @@ function convertAggGUIToAPI(aggs, resource, filtersData) {
   for (const [key, agg] of Object.entries(aggs)) {
     const filterName = rsplit(key, ':', 1)[0]
     if (agg.update) {
-      const exclusive = filtersData[filterName].exclusive
+      const exclusive = filterName in filtersData && filtersData[filterName].exclusive
       const type = agg.type
       const apiAgg = apiAggs[key] || {}
       const aggSet = agg.set
@@ -2266,7 +2296,7 @@ function reduceAggs(aggs, oldAggs, queryChanged, updatedFilters, filtersData) {
     // If the filter is exclusive, and ONLY it has been modified in this
     // query, we do not update it's aggregation.
     const exclude = isNil(agg.exclude_from_search)
-      ? filtersData[filter_name].exclusive
+      ? filter_name in filtersData && filtersData[filter_name].exclusive
       : agg.exclude_from_search
     if (exclude && updatedFilters.has(filter_name) && updatedFilters.size === 1) {
       update = false

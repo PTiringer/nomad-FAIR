@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { string, bool } from 'yup'
 import clsx from 'clsx'
@@ -108,12 +108,18 @@ export const WidgetTerms = React.memo((
   className,
   'data-testid': testID
 }) => {
-  const {useAgg, useFilterState, filterData} = useSearchContext()
+  const {useAgg, useRemoveAgg, useFilterState, filterData} = useSearchContext()
   const styles = useStyles()
   const [filter, setFilter] = useFilterState(search_quantity)
   const { height, ref } = useResizeDetector()
   const { useSetWidget } = useSearchContext()
   const setWidget = useSetWidget(id)
+  const removeAgg = useRemoveAgg()
+
+  // When component is unmounted, remove aggregation request
+  useEffect(() => {
+    return () => removeAgg(search_quantity, id)
+  }, [removeAgg, search_quantity, id])
 
   // The terms aggregations need to request at least 1 item or an API error is thrown
   const aggSize = useMemo(() => Math.max(Math.floor(height / inputItemHeight), 1), [height])

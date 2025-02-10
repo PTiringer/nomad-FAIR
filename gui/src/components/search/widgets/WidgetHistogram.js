@@ -45,6 +45,7 @@ export const WidgetHistogram = React.memo((
   const setWidget = useSetWidget(id)
 
   // Create final axis config for the plot
+  // console.log(x)
   const xAxis = useMemo(() => getAxisConfig(x, filterData, units), [x, filterData, units])
 
   const handleEdit = useCallback(() => {

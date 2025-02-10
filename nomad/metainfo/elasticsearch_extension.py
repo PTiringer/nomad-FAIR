@@ -198,7 +198,7 @@ if TYPE_CHECKING:
 schema_separator = '#'
 dtype_separator = '#'
 yaml_prefix = 'entry_id:'
-nexus_prefix = 'pynxtools.nomad.schema.NeXus.'
+nexus_prefix = 'pynxtools.nomad.schema'
 
 
 class DocumentType:
@@ -488,8 +488,6 @@ class DocumentType:
         if self != entry_type:
             return None
 
-        logger = utils.get_logger(__name__, doc_type=self.name)
-
         # Remove existing dynamic quantities
         for name, quantity in list(self.quantities.items()):
             if quantity.dynamic:
@@ -556,7 +554,7 @@ class DocumentType:
                     section.section_cls, EntryData
                 ):
                     schema_name = section.qualified_name()
-                    if section.name == 'NeXus':
+                    if schema_name.startswith('pynxtools'):
                         # Allow App searches for specific AppDefs:
                         selected_path = [
                             'Root',
@@ -569,7 +567,11 @@ class DocumentType:
                             'Ellipsometry',
                             'Raman',
                         ]
-                        max_level = 3
+                        if section.name in selected_path:
+                            max_level = 3
+                        else:
+                            max_level = 0
+                        selected_path = ['']
                     else:
                         selected_path = ['']
                         max_level = -1
@@ -596,14 +598,6 @@ class DocumentType:
                                 annotation, qualified_name=full_name, repeats=repeats
                             )
                             quantities_dynamic[full_name] = search_quantity
-                        # print(
-                        #     'With '
-                        #     + section.name
-                        #     + '.'
-                        #     + path_prefix
-                        #     + ' the number of dynamic quantities: '
-                        #     + str(len(quantities_dynamic))
-                        # )
         self.quantities.update(quantities_dynamic)
 
     def _register(self, annotation, prefix, repeats):

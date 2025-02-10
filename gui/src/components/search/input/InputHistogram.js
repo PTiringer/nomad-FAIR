@@ -59,7 +59,7 @@ export const Histogram = React.memo(({
   classes,
   'data-testid': testID
 }) => {
-  const {filterData, useAgg, useFilterState} = useSearchContext()
+  const {filterData, useAgg, useRemoveAgg, useFilterState} = useSearchContext()
   const sectionContext = useContext(inputSectionContext)
   const repeats = sectionContext?.repeats
   const styles = useStyles({classes})
@@ -79,6 +79,18 @@ export const Histogram = React.memo(({
   const [minInclusive, setMinInclusive] = useState(true)
   const [maxInclusive, setMaxInclusive] = useState(true)
   const highlight = Boolean(filter)
+
+  // When component is unmounted, remove aggregation requests
+  const quantityName = x.search_quantity
+  const aggIdHistogram = `${aggId}_histogram`
+  const aggIdSlider = `${aggId}_slider`
+  const removeAgg = useRemoveAgg()
+  useEffect(() => {
+    return () => {
+      removeAgg(quantityName, aggIdHistogram)
+      removeAgg(quantityName, aggIdSlider)
+    }
+  }, [removeAgg, quantityName, aggIdHistogram, aggIdSlider])
 
   // Determine the description and units
   const def = filterData[x.search_quantity]
@@ -161,7 +173,7 @@ export const Histogram = React.memo(({
       ? {type: 'histogram', buckets: nBins, exclude_from_search, extended_bounds}
       : {type: 'histogram', interval: discretization, exclude_from_search, extended_bounds}
   }, [filter, fromDisplayUnit, isTime, discretization, nBins, autorange])
-  const agg = useAgg(x.search_quantity, visible && showStatistics, `${aggId}_histogram`, aggHistogramConfig)
+  const agg = useAgg(quantityName, visible && showStatistics, aggIdHistogram, aggHistogramConfig)
   useEffect(() => {
     if (!isNil(agg)) {
       firstLoad.current = false
@@ -171,7 +183,7 @@ export const Histogram = React.memo(({
   // Aggregation when the statistics are disabled: a simple min_max aggregation
   // is enough in order to get the slider range.
   const aggSliderConfig = useMemo(() => ({type: 'min_max', exclude_from_search: true}), [])
-  const aggSlider = useAgg(x.search_quantity, visible && !showStatistics, `${aggId}_slider`, aggSliderConfig)
+  const aggSlider = useAgg(quantityName, visible && !showStatistics, aggIdSlider, aggSliderConfig)
 
   // Determine the global minimum and maximum values
   const [minGlobal, maxGlobal] = useMemo(() => {

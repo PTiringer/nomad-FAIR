@@ -514,7 +514,7 @@ def _es_to_entry_dict(
                 quantity = doc_type.quantities.get(id)
                 if not quantity:
                     path, schema, _ = parse_quantity_name(id)
-                    if schema and schema.startswith(yaml_prefix):
+                    if schema and schema.startswith((yaml_prefix, nexus_prefix)):
                         dtype_map = {
                             'float_value': float,
                             'str_value': str,
@@ -530,9 +530,6 @@ def _es_to_entry_dict(
                         quantity = get_quantity(
                             Quantity(type=dtype), path, schema, doc_type
                         )
-                    elif path.startswith(nexus_prefix):
-                        definition = get_definition(path)
-                        quantity = get_quantity(definition, path, schema, doc_type)
                     else:
                         continue
                 value_field_name = get_searchable_quantity_value_field(
@@ -699,9 +696,9 @@ def validate_quantity(
 
     if quantity is None:
         path, schema, dtype = parse_quantity_name(quantity_name)
-        # Queries targeting YAML are translated into dynamic quantity searches
-        # on the fly using the provided data type.
-        if schema and schema.startswith(yaml_prefix):
+        # Queries targeting YAML or nexus schema are translated into dynamic
+        # quantity searches on the fly using the provided data type.
+        if schema and schema.startswith((yaml_prefix, nexus_prefix)):
             datatype = {
                 'int': int,
                 'str': str,
@@ -713,23 +710,12 @@ def validate_quantity(
                 raise QueryValidationError(
                     (
                         f'Could not resolve the data type for quantity {quantity_name}. '
-                        'Please include the data type in the quantity name for quantities '
-                        'that target a custom YAML schema.'
+                        'Please include the data type in the quantity name using the '
+                        '"#<type>" postfix.'
                     ),
                     loc=[quantity_name] if loc is None else loc,
                 )
             quantity = get_quantity(Quantity(type=datatype), path, schema, doc_type)
-        # Queries targeting nexus are translated into dynamic quantity searches
-        # on the fly by looking at the definition in the metainfo.
-        elif path.startswith(nexus_prefix):
-            try:
-                definition = get_definition(path)
-                quantity = get_quantity(definition, path, schema, doc_type)
-            except Exception as e:
-                raise QueryValidationError(
-                    f'Could not find the definition for "{path}" in the metainfo.',
-                    loc=[quantity_name] if loc is None else loc,
-                ) from e
         else:
             raise QueryValidationError(
                 f'{quantity_name} is not a {doc_type} quantity',
