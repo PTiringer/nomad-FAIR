@@ -20,7 +20,7 @@ import enum
 import fnmatch
 import json
 import re
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 from collections.abc import Mapping
 
 import pydantic
@@ -56,8 +56,8 @@ from typing import Annotated
 User: Any = datamodel.User.m_def.a_pydantic.model
 # It is important that datetime.datetime comes last. Otherwise, number valued strings
 # are interpreted as epoch dates by pydantic
-Value = Union[StrictInt, StrictFloat, StrictBool, str, datetime.datetime]
-ComparableValue = Union[StrictInt, StrictFloat, str, datetime.datetime]
+Value = StrictInt | StrictFloat | StrictBool | str | datetime.datetime
+ComparableValue = StrictInt | StrictFloat | str | datetime.datetime
 
 
 owner_documentation = strip(
@@ -188,7 +188,7 @@ ops = {
     'any': Any_,
 }
 
-CriteriaValue = Union[Value, list[Value], Range, Any_, All, None_, dict[str, Any]]
+CriteriaValue = Value | list[Value] | Range | Any_ | All | None_ | dict[str, Any]
 
 
 class LogicalOperator(NoneEmptyBaseModel):
@@ -267,7 +267,7 @@ class Empty(BaseModel):
     pass
 
 
-Query = Union[And, Or, Not, Nested, Criteria, Empty, Mapping[str, CriteriaValue]]
+Query = And | Or | Not | Nested | Criteria | Empty | Mapping[str, CriteriaValue]
 
 
 And.model_rebuild()
@@ -557,8 +557,7 @@ class QueryParameters:
                         detail=[
                             {
                                 'loc': ['query', key],
-                                'msg': 'operator %s does not support multiple values'
-                                % op,
+                                'msg': f'operator {op} does not support multiple values',
                             }
                         ],
                     )
@@ -567,7 +566,7 @@ class QueryParameters:
                 raise HTTPException(
                     422,
                     detail=[
-                        {'loc': ['query', key], 'msg': 'operator %s is unknown' % op}
+                        {'loc': ['query', key], 'msg': f'operator {op} is unknown'}
                     ],
                 )
 
@@ -1230,13 +1229,13 @@ for quantity in datamodel.EditableUserMetadata.m_def.definitions:
             quantity.type if quantity.type in (str, int, float, bool) else str
         )
     else:
-        pydantic_type = Union[str, list[str], MetadataEditListAction]
+        pydantic_type = str | list[str] | MetadataEditListAction
     if getattr(quantity, 'a_auth_level', None) == datamodel.AuthLevel.admin:
         description = '**NOTE:** Only editable by admin user'
     else:
         description = None
     _metadata_edit_actions_fields[quantity.name] = (
-        Optional[pydantic_type],
+        pydantic_type | None,
         Field(None, description=description),
     )
 
@@ -1346,7 +1345,7 @@ class Files(BaseModel):
             return re.compile(re_pattern)
         except re.error as e:
             raise PydanticCustomError(
-                'invalid_pattern', 'could not parse the re pattern: %s' % e
+                'invalid_pattern', f'could not parse the re pattern: {e}'
             )
 
     @model_validator(mode='after')

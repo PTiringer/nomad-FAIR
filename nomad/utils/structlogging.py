@@ -145,7 +145,7 @@ class LogstashFormatter(logstash.formatter.LogstashFormatterBase):
                     'user_id',
                     'mainfile',
                 ]:
-                    key = 'nomad.%s' % key
+                    key = f'nomad.{key}'
                 else:
                     key = f'{record.name}.{key}'
 
@@ -229,11 +229,12 @@ class ConsoleFormatter(LogstashFormatter):
 
         out = StringIO()
         out.write(
-            '%s %s %s %s'
-            % (level.ljust(8), logger.ljust(20)[:20], time.ljust(19)[:19], event)
+            f'{level.ljust(8)} {logger.ljust(20)[:20]} {time.ljust(19)[:19]} {event}'
         )
         if exception is not None:
-            out.write('\n  - exception: %s' % str(exception).replace('\n', '\n    '))
+            out.write(
+                '\n  - exception: {}'.format(str(exception).replace('\n', '\n    '))
+            )
 
         for key in keys:
             if cls.short_format and key.startswith('nomad.'):
@@ -340,10 +341,7 @@ def configure_logging(console_log_level=config.services.console_log_level):
     for handler in root.handlers:
         if not isinstance(
             handler,
-            (
-                LogstashHandler,
-                LogtransferHandler,
-            ),
+            LogstashHandler | LogtransferHandler,
         ):
             handler.setLevel(console_log_level)
             handler.setFormatter(ConsoleFormatter())

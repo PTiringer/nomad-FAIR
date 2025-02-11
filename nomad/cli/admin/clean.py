@@ -68,8 +68,7 @@ def clean(dry, skip_entries, skip_fs, skip_es, staging_too, force):
         if not dry and len(missing_uploads) > 0:
             if not force:
                 input(
-                    'Will delete entries (mongo + es) for %d missing uploads. Press any key to continue ...'
-                    % len(missing_uploads)
+                    f'Will delete entries (mongo + es) for {len(missing_uploads)} missing uploads. Press any key to continue ...'
                 )
 
             for upload in missing_uploads:
@@ -81,8 +80,7 @@ def clean(dry, skip_entries, skip_fs, skip_es, staging_too, force):
                 ).query('term', upload_id=upload).delete()
         else:
             print(
-                'Found %s uploads that have entries in mongo, but there is no upload entry.'
-                % len(missing_uploads)
+                f'Found {len(missing_uploads)} uploads that have entries in mongo, but there is no upload entry.'
             )
             print('List first 10:')
             for upload in missing_uploads[:10]:
@@ -109,16 +107,13 @@ def clean(dry, skip_entries, skip_fs, skip_es, staging_too, force):
         if not dry and len(to_delete) > 0:
             if not force:
                 input(
-                    'Will delete %d upload directories. Press any key to continue ...'
-                    % len(to_delete)
+                    f'Will delete {len(to_delete)} upload directories. Press any key to continue ...'
                 )
 
             for path in to_delete:
                 shutil.rmtree(path)
         else:
-            print(
-                'Found %d upload directories with no upload in mongo.' % len(to_delete)
-            )
+            print(f'Found {len(to_delete)} upload directories with no upload in mongo.')
             print('List first 10:')
             for path in to_delete[:10]:
                 print(path)
@@ -131,16 +126,14 @@ def clean(dry, skip_entries, skip_fs, skip_es, staging_too, force):
         if not dry and len(to_delete) > 0:
             if not force:
                 input(
-                    'Will delete %d staging upload directories. Press any key to continue ...'
-                    % len(to_delete)
+                    f'Will delete {len(to_delete)} staging upload directories. Press any key to continue ...'
                 )
 
             for path in to_delete:
                 shutil.rmtree(path)
         else:
             print(
-                'Found %d staging upload directories with upload directory in public.'
-                % len(to_delete)
+                f'Found {len(to_delete)} staging upload directories with upload directory in public.'
             )
             print('List first 10:')
             for path in to_delete[:10]:
@@ -164,15 +157,13 @@ def clean(dry, skip_entries, skip_fs, skip_es, staging_too, force):
         if not dry and len(to_delete) > 0:
             if not force:
                 input(
-                    'Will delete %d entries in %d uploads from ES. Press any key to continue ...'
-                    % (entries, len(to_delete))
+                    f'Will delete {entries} entries in {len(to_delete)} uploads from ES. Press any key to continue ...'
                 )
             for upload_id, _ in to_delete:
                 delete_by_query(owner='all', query=dict(upload_id=upload_id))
         else:
             print(
-                'Found %d entries in %d uploads from ES with no upload in mongo.'
-                % (entries, len(to_delete))
+                f'Found {entries} entries in {len(to_delete)} uploads from ES with no upload in mongo.'
             )
             print('List first 10:')
             tabulate.tabulate(to_delete, headers=['id', '#entries'])

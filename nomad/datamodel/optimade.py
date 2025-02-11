@@ -33,8 +33,7 @@ from nomad.metainfo.elasticsearch_extension import Elasticsearch
 
 def optimade_links(section: str):
     return [
-        'https://github.com/Materials-Consortia/OPTiMaDe/blob/develop/optimade.md#%s'
-        % section
+        f'https://github.com/Materials-Consortia/OPTiMaDe/blob/develop/optimade.md#{section}'
     ]
 
 

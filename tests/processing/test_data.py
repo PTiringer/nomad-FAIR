@@ -16,7 +16,8 @@
 # limitations under the License.
 #
 
-from typing import Generator, Tuple, Dict
+from typing import Tuple, Dict
+from collections.abc import Generator
 import pytest
 import os.path
 import re
@@ -79,7 +80,7 @@ class TestBatch(EntryData):
     )
 
     def normalize(self, archive, logger):
-        super(TestBatch, self).normalize(archive, logger)
+        super().normalize(archive, logger)
         if not self.n_samples:
             return
         sample_refs = []
@@ -139,14 +140,14 @@ def mongo_forall(mongo_function):
 @pytest.fixture
 def uploaded_id_with_warning(
     raw_files_function,
-) -> Generator[Tuple[str, str], None, None]:
+) -> Generator[tuple[str, str], None, None]:
     example_file = 'tests/data/proc/examples_with_warning_template.zip'
     example_upload_id = os.path.basename(example_file).replace('.zip', '')
 
     yield example_upload_id, example_file
 
 
-def run_processing(uploaded: Tuple[str, str], main_author, **kwargs) -> Upload:
+def run_processing(uploaded: tuple[str, str], main_author, **kwargs) -> Upload:
     uploaded_id, uploaded_path = uploaded
     upload = Upload.create(upload_id=uploaded_id, main_author=main_author, **kwargs)
     assert upload.process_status == ProcessStatus.READY
@@ -349,7 +350,7 @@ def test_republish(
 
 @pytest.mark.timeout(config.tests.default_timeout)
 def test_publish_failed(
-    non_empty_uploaded: Tuple[str, str],
+    non_empty_uploaded: tuple[str, str],
     internal_example_user_metadata,
     user1,
     monkeypatch,
@@ -869,9 +870,7 @@ def mock_failure(cls, function_name, monkeypatch):
 
     mock.__name__ = function_name
 
-    monkeypatch.setattr(
-        'nomad.processing.data.%s.%s' % (cls.__name__, function_name), mock
-    )
+    monkeypatch.setattr(f'nomad.processing.data.{cls.__name__}.{function_name}', mock)
 
 
 @pytest.mark.parametrize(
@@ -974,7 +973,7 @@ def test_parent_child_parser(proc_infra, user1, tmp):
             mainfile: str,
             archive: EntryArchive,
             logger=None,
-            child_archives: Dict[str, EntryArchive] = None,
+            child_archives: dict[str, EntryArchive] = None,
         ):
             archive.metadata.comment = 'parent'
             for mainfile_key, child_archive in child_archives.items():

@@ -681,7 +681,7 @@ class Parser(PythonPluginBase):
         return MatchingParserInterface(**data)
 
 
-EntryPointType = Union[
+EntryPointType = Union[  # noqa
     Schema,
     Normalizer,
     Parser,

@@ -38,7 +38,7 @@ def rm(entries, skip_es, skip_mongo):
     infrastructure.setup_mongo()
     infrastructure.setup_elastic()
 
-    print('%d entries selected, deleting ...' % len(entries))
+    print(f'{len(entries)} entries selected, deleting ...')
 
     if not skip_es:
         for entry in entries:

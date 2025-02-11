@@ -92,7 +92,7 @@ def perform_entries_raw_test(
         if owner is not None:
             params['owner'] = owner
         response = client.get(
-            'entries/raw?%s' % urlencode(params, doseq=True), headers=headers
+            f'entries/raw?{urlencode(params, doseq=True)}', headers=headers
         )
 
     else:
@@ -129,7 +129,7 @@ def perform_entries_rawdir_test(
         for value in kwargs.values():
             params.update(**value)
         response = client.get(
-            'entries/rawdir?%s' % urlencode(params, doseq=True), headers=headers
+            f'entries/rawdir?{urlencode(params, doseq=True)}', headers=headers
         )
 
     elif http_method == 'post':
@@ -188,7 +188,7 @@ def perform_entries_archive_download_test(
         if owner is not None:
             params['owner'] = owner
         response = client.get(
-            'entries/archive/download?%s' % urlencode(params, doseq=True),
+            f'entries/archive/download?{urlencode(params, doseq=True)}',
             headers=headers,
         )
 
@@ -219,7 +219,7 @@ def perform_entries_archive_test(
         if 'pagination' in kwargs:
             params.update(**kwargs['pagination'])
         response = client.get(
-            'entries/archive?%s' % urlencode(params, doseq=True), headers=headers
+            f'entries/archive?{urlencode(params, doseq=True)}', headers=headers
         )
 
     else:
@@ -590,7 +590,7 @@ def test_entry_metadata(
     auth_headers, client, example_data, user, entry_id, required, status_code
 ):
     response = client.get(
-        'entries/%s?%s' % (entry_id, urlencode(required, doseq=True)),
+        f'entries/{entry_id}?{urlencode(required, doseq=True)}',
         headers=auth_headers[user],
     )
     response_json = assert_metadata_response(response, status_code=status_code)
@@ -773,7 +773,7 @@ def test_entries_download_max(
 def test_entry_rawdir(
     auth_headers, client, example_data, user, entry_id, files_per_entry, status_code
 ):
-    response = client.get('entries/%s/rawdir' % entry_id, headers=auth_headers[user])
+    response = client.get(f'entries/{entry_id}/rawdir', headers=auth_headers[user])
     assert_response(response, status_code)
     if status_code == 200:
         assert_entry_rawdir_response(response.json(), files_per_entry=files_per_entry)
@@ -806,7 +806,7 @@ def test_entry_raw(
     status_code,
 ):
     response = client.get(
-        'entries/%s/raw?%s' % (entry_id, urlencode(files, doseq=True)),
+        f'entries/{entry_id}/raw?{urlencode(files, doseq=True)}',
         headers=auth_headers[user],
     )
     assert_response(response, status_code)
@@ -1074,7 +1074,7 @@ def test_entries_archive(client, example_data, required, status_code):
     ],
 )
 def test_entry_archive(auth_headers, client, example_data, user, entry_id, status_code):
-    response = client.get('entries/%s/archive' % entry_id, headers=auth_headers[user])
+    response = client.get(f'entries/{entry_id}/archive', headers=auth_headers[user])
     assert_response(response, status_code)
     if status_code == 200:
         assert_archive_response(response.json())

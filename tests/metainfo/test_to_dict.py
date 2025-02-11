@@ -347,7 +347,7 @@ def test_schema_definition_id(schema_yaml):
     pkg.init_metainfo()
 
     def check_dict(value):
-        if not isinstance(value, (dict, list)):
+        if not isinstance(value, dict | list):
             return value
         if isinstance(value, list):
             return [check_dict(v) for v in value]

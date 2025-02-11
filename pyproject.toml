@@ -11,7 +11,7 @@ authors = [
 ]
 dynamic = ["version"]
 license = { text = "Apache-2.0" }
-requires-python = ">=3.10" # remember to update scripts/pyupgrade.sh
+requires-python = ">=3.10"
 
 dependencies = [
     'aniso8601>=7.0.0',
@@ -153,6 +153,7 @@ select = [
     "E",  # pycodestyle
     "W",  # pycodestyle
     "PL", # pylint
+    "UP", # pyupgrade
 ]
 ignore = [
     "E501",    # Line too long ({width} > {limit} characters)
@@ -168,8 +169,14 @@ ignore = [
     "PLW2901", # redefined-loop-name
     "PLR1714", # consider-using-in
     "PLR5501", # else-if-used
+    "UP035",   # deprecated-import
 ]
 fixable = ["ALL"]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"nomad/app/v1/models/graph/utils.py" = [
+    "UP007",
+] # causes pydantic model building errors
 
 [tool.ruff.format]
 # use single quotes for strings.

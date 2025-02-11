@@ -160,7 +160,7 @@ def clear_elastic_infra():
     from elasticsearch_dsl import connections
 
     connection = connections.create_connection(
-        hosts=['%s:%d' % (config.elastic.host, config.elastic.port)]
+        hosts=[f'{config.elastic.host}:{config.elastic.port}']
     )
 
     for index in indices:

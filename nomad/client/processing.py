@@ -59,7 +59,7 @@ def parse(
     else:
         parser_name = parser.__class__.__name__
 
-    assert parser is not None, 'there is no parser matching %s' % mainfile
+    assert parser is not None, f'there is no parser matching {mainfile}'
     logger = logger.bind(parser=parser.name)  # type: ignore
     logger.info('identified parser')
     if hasattr(parser, 'backend_factory'):
@@ -86,7 +86,7 @@ def normalize(normalizer: str | typing.Callable, entry_archive, logger=None):
             if normalizer_instance.__class__.__name__ == normalizer
         )
 
-    assert normalizer is not None, 'there is no normalizer %s' % str(normalizer)
+    assert normalizer is not None, f'there is no normalizer {str(normalizer)}'
     normalizer_instance = typing.cast(typing.Callable, normalizer)(entry_archive)
     logger = logger.bind(normalizer=normalizer_instance.__class__.__name__)
     logger.info('identified normalizer')

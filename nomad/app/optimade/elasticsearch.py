@@ -247,10 +247,10 @@ class StructureCollection(EntryCollection):
         sort, order = criteria.get('sort', (('chemical_formula_reduced', 1),))[0]
         sort_quantity = datamodel.OptimadeEntry.m_def.all_quantities.get(sort, None)
         if sort_quantity is None:
-            raise BadRequest(detail='Unable to sort on field %s' % sort)
+            raise BadRequest(detail=f'Unable to sort on field {sort}')
         sort_quantity_a_optimade = sort_quantity.m_get_annotations('optimade')
         if not sort_quantity_a_optimade.sortable:
-            raise BadRequest(detail='Unable to sort on field %s' % sort)
+            raise BadRequest(detail=f'Unable to sort on field {sort}')
 
         search_query = self._base_search_query()
 

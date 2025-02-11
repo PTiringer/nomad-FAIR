@@ -62,17 +62,16 @@ def parameter_dependency_from_model(
 
     code = inspect.cleandoc(
         """
-    def %s(%s):
+    def {}({}):
         try:
-            return %s(%s)
+            return {}({})
         except ValidationError as e:
             errors = e.errors()
             for error in errors:
                 error['loc'] = ['query'] + list(error['loc'])
             raise HTTPException(422, detail=errors)
 
-    """
-        % (
+    """.format(
             name,
             ', '.join(names),
             model_cls.__name__,  # type: ignore

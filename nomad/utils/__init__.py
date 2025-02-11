@@ -147,10 +147,7 @@ def set_console_log_level(level):
         for handler in root.handlers:
             if not isinstance(
                 handler,
-                (
-                    LogstashHandler,
-                    LogtransferHandler,
-                ),
+                LogstashHandler | LogtransferHandler,
             ):
                 handler.setLevel(level)
 
@@ -317,7 +314,7 @@ def timer(
     if logger_method is not None:
         logger_method(event, exec_time=stop - start, **kwargs)
     else:
-        logger.error('Unknown logger method %s.' % method)
+        logger.error(f'Unknown logger method {method}.')
 
 
 class archive:
@@ -454,7 +451,7 @@ class RestrictedDict(OrderedDict):
         """
         super().__init__()
 
-        if isinstance(mandatory_keys, (list, tuple, set)):
+        if isinstance(mandatory_keys, list | tuple | set):
             self._mandatory_keys = set(mandatory_keys)
         elif mandatory_keys is None:
             self._mandatory_keys = set()
@@ -463,7 +460,7 @@ class RestrictedDict(OrderedDict):
                 'Please provide the mandatory_keys as a list, tuple or set.'
             )
 
-        if isinstance(optional_keys, (list, tuple, set)):
+        if isinstance(optional_keys, list | tuple | set):
             self._optional_keys = set(optional_keys)
         elif optional_keys is None:
             self._optional_keys = set()
@@ -472,7 +469,7 @@ class RestrictedDict(OrderedDict):
                 'Please provide the optional_keys as a list, tuple or set.'
             )
 
-        if isinstance(forbidden_values, (list, tuple, set)):
+        if isinstance(forbidden_values, list | tuple | set):
             self._forbidden_values = set(forbidden_values)
         elif forbidden_values is None:
             self._forbidden_values = set()
@@ -521,9 +518,7 @@ class RestrictedDict(OrderedDict):
             else:
                 if match:
                     raise ValueError(
-                        "The value '{}' is not allowed but was set for key '{}'.".format(
-                            value, key
-                        )
+                        f"The value '{value}' is not allowed but was set for key '{key}'."
                     )
 
         # Check recursively
@@ -1060,7 +1055,7 @@ def dict_to_dataframe(
         elif isinstance(nested_dict, dict):
             for key, value in nested_dict.items():
                 new_key = f'{parent_key}{sep}{key}' if parent_key else key
-                if isinstance(value, (dict, list)):
+                if isinstance(value, dict | list):
                     items.update(
                         flatten_dict(value, new_key, current_depth + 1, df, col_name)
                     )

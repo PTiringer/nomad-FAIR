@@ -245,7 +245,7 @@ class DocumentType:
         """
         Creates an indexable document from the given archive.
         """
-        suggestions: DefaultDict = defaultdict(list)
+        suggestions: defaultdict = defaultdict(list)
 
         def transform(quantity, section, value, path):
             """
@@ -498,7 +498,7 @@ class DocumentType:
         package_names = set()
         packages_from_plugins = {}
         for plugin in config.plugins.entry_points.filtered_values():
-            if isinstance(plugin, (Schema, Parser)):
+            if isinstance(plugin, Schema | Parser):
                 package_name = plugin.python_package
                 if package_name in package_names:
                     raise ValueError(
@@ -608,15 +608,13 @@ class DocumentType:
 
         assert (
             name not in self.quantities or self.quantities[name] == search_quantity
-        ), 'Search quantity names must be unique: %s' % name
+        ), f'Search quantity names must be unique: {name}'
 
         self.quantities[name] = search_quantity
 
         if annotation.metrics is not None:
             for name, metric in annotation.metrics.items():
-                assert name not in self.metrics, (
-                    'Metric names must be unique: %s' % name
-                )
+                assert name not in self.metrics, f'Metric names must be unique: {name}'
                 self.metrics[name] = (metric, search_quantity)
 
         if self == entry_type:
@@ -939,8 +937,7 @@ class Elasticsearch(DefinitionAnnotation):
 
             if self.dynamic:
                 raise NotImplementedError(
-                    'Quantity type %s for dynamic quantity %s is not supported.'
-                    % (quantity.type, quantity)
+                    f'Quantity type {quantity.type} for dynamic quantity {quantity} is not supported.'
                 )
             if isinstance(quantity.type, QuantityReference):
                 return compute_mapping(quantity.type.target_quantity_def)
@@ -950,8 +947,7 @@ class Elasticsearch(DefinitionAnnotation):
                 )
             else:
                 raise NotImplementedError(
-                    'Quantity type %s for quantity %s is not supported.'
-                    % (quantity.type, quantity)
+                    f'Quantity type {quantity.type} for quantity {quantity} is not supported.'
                 )
 
         if self.suggestion:

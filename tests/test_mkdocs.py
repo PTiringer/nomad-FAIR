@@ -19,7 +19,7 @@
 from enum import Enum
 import pytest
 from typing import Union, List, Dict, Optional
-from typing_extensions import Literal, Annotated  # type: ignore
+from typing import Literal, Annotated  # type: ignore
 from pydantic import BaseModel, Field
 from nomad.config.models.ui import WidgetHistogram, WidgetTerms
 from nomad.mkdocs import (
@@ -54,26 +54,26 @@ class MyIntEnum(int, Enum):
         ),
         pytest.param(Enum, 'Enum', {Enum}, id='class'),
         pytest.param(
-            Optional[WidgetHistogram],
+            Optional[WidgetHistogram],  # noqa
             'Optional[WidgetHistogram, NoneType]',
             {WidgetHistogram, Union, type(None)},
             id='optional-ignored',
         ),
         pytest.param(
-            Union[str, WidgetHistogram],
+            Union[str, WidgetHistogram],  # noqa
             'Union[str, WidgetHistogram]',
             {Union, str, WidgetHistogram},
             id='union',
         ),
         pytest.param(
-            List[Union[str, WidgetHistogram]],
-            'List[Union[str, WidgetHistogram]]',
+            list[Union[str, WidgetHistogram]],  # noqa
+            'list[Union[str, WidgetHistogram]]',
             {list, Union, str, WidgetHistogram},
             id='list-with-union',
         ),
         pytest.param(
-            Dict[str, WidgetHistogram],
-            'Dict[str, WidgetHistogram]',
+            dict[str, WidgetHistogram],
+            'dict[str, WidgetHistogram]',
             {dict, str, WidgetHistogram},
             id='dict',
         ),
@@ -82,12 +82,12 @@ class MyIntEnum(int, Enum):
         pytest.param(MyStrEnum, 'str', {MyStrEnum}, id='enum-string'),
         pytest.param(MyIntEnum, 'int', {MyIntEnum}, id='enum-int'),
         pytest.param(
-            List[
+            list[
                 Annotated[
-                    Union[WidgetTerms, WidgetHistogram], Field(discriminator='type')
+                    Union[WidgetTerms, WidgetHistogram], Field(discriminator='type')  # noqa
                 ]
             ],  # type: ignore
-            'List[Union[WidgetTerms, WidgetHistogram]]',
+            'list[Union[WidgetTerms, WidgetHistogram]]',
             {list, Union, WidgetTerms, WidgetHistogram},
             id='annotated-ignored',
         ),

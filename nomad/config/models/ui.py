@@ -853,15 +853,13 @@ class MenuItemCustomQuantities(MenuItem):
 # The 'discriminated union' feature of Pydantic is used here:
 # https://docs.pydantic.dev/usage/types/#discriminated-unions-aka-tagged-unions
 MenuItemTypeNested = Annotated[
-    Union[
-        MenuItemTerms,
-        MenuItemHistogram,
-        MenuItemPeriodicTable,
-        MenuItemVisibility,
-        MenuItemDefinitions,
-        MenuItemOptimade,
-        MenuItemCustomQuantities,
-    ],
+    MenuItemTerms
+    | MenuItemHistogram
+    | MenuItemPeriodicTable
+    | MenuItemVisibility
+    | MenuItemDefinitions
+    | MenuItemOptimade
+    | MenuItemCustomQuantities,
     Field(discriminator='type'),
 ]
 
@@ -1199,14 +1197,12 @@ class WidgetScatterPlotDeprecated(WidgetScatterPlot):
 # The 'discriminated union' feature of Pydantic is used here:
 # https://docs.pydantic.dev/usage/types/#discriminated-unions-aka-tagged-unions
 WidgetAnnotated = Annotated[
-    Union[
-        WidgetTerms,
-        WidgetHistogram,
-        WidgetScatterPlot,
-        WidgetScatterPlotDeprecated,
-        WidgetPeriodicTable,
-        WidgetPeriodicTableDeprecated,
-    ],
+    WidgetTerms
+    | WidgetHistogram
+    | WidgetScatterPlot
+    | WidgetScatterPlotDeprecated
+    | WidgetPeriodicTable
+    | WidgetPeriodicTableDeprecated,
     Field(discriminator='type'),
 ]
 

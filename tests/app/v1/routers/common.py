@@ -139,7 +139,7 @@ def post_query_test_parameters(
 
 def get_query_test_parameters(
     str: dict, int: dict, date: dict, subsection: dict, total: int
-) -> List[Any]:
+) -> list[Any]:
     """Convenience function for constructing GET query test parameters.
 
     Args:
@@ -439,14 +439,14 @@ def aggregation_test_parameters(
     bool: dict,
     int: dict,
     pagination: dict,
-    pagination_order_by: Optional[dict],
+    pagination_order_by: dict | None,
     histogram_int: dict,
     histogram_date: dict,
     include: dict,
     metrics: dict,
     empty: dict,
-    fixed: Optional[dict],
-) -> List[Any]:
+    fixed: dict | None,
+) -> list[Any]:
     """Convenience function for constructing aggregation tests.
 
     Args:
@@ -1222,7 +1222,7 @@ def assert_metadata_response(response, status_code=None):
 def assert_required(data, required, default_key: str):
     # We flat out all keys in data and then make sure that the full qualified keys in the
     # data are consistent with the keys given in the required include and exclude.
-    keys: Set[str] = set()
+    keys: set[str] = set()
 
     def collect_keys(data, prefix=None):
         if isinstance(data, list):
@@ -1294,13 +1294,13 @@ def assert_aggregations(
 
     if agg_type == 'min_max':
         assert len(data) == 2
-        assert isinstance(data[0], (float, int))
-        assert isinstance(data[1], (float, int))
+        assert isinstance(data[0], float | int)
+        assert isinstance(data[1], float | int)
     elif agg_type == 'statistics':
         assert 'metrics' in agg_response
         for metric in agg.get('metrics', []):
             assert metric in data
-            assert isinstance(data[metric], (float, int))
+            assert isinstance(data[metric], float | int)
     else:
         assert total == -1 or total >= n_data
         assert size == -1 or size == n_data
@@ -1317,11 +1317,11 @@ def assert_aggregations(
             if agg_type == 'date_histogram':
                 assert re.match(r'\d{4}\-\d{2}\-\d{2}', value)
             elif agg_type == 'histogram':
-                assert isinstance(value, (float, int))
+                assert isinstance(value, float | int)
 
             for metric in agg.get('metrics', []):
                 assert metric in bucket['metrics']
-                assert isinstance(bucket['metrics'][metric], (float, int))
+                assert isinstance(bucket['metrics'][metric], float | int)
 
     if 'entries' in agg:
         for bucket in data:
@@ -1346,7 +1346,7 @@ def assert_query_response(client, test_method, query, total, status_code):
     if 'pagination' not in response_json:
         return
 
-    response = client.get('entries?%s' % urlencode(query, doseq=True))
+    response = client.get(f'entries?{urlencode(query, doseq=True)}')
 
     response_json = assert_metadata_response(response, status_code=status_code)
 
@@ -1547,7 +1547,7 @@ def perform_quantity_search_test(
     assert api_result == result
 
 
-def build_headers(accept: Optional[str] = None, user_auth: Optional[dict] = None):
+def build_headers(accept: str | None = None, user_auth: dict | None = None):
     headers = {}
     if accept:
         headers['Accept'] = accept

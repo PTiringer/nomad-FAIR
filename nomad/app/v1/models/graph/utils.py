@@ -223,7 +223,7 @@ def _get_response_type(type_hint: Any, ns: ModelNamespace) -> Any:
     raise NotImplementedError(type_hint)
 
 
-ModelNamespace = dict[str, Union[type[BaseModel], ForwardRef]]
+ModelNamespace = dict[str, type[BaseModel] | ForwardRef]
 
 
 def _generate_model(
@@ -297,7 +297,7 @@ def _generate_model(
 
         if field_name == 'm_errors':
             if suffix == response_suffix:
-                fields[field_name] = (Optional[Union[type_hint]], None)  # type: ignore
+                fields[field_name] = (Optional[type_hint], None)  # type: ignore
             continue
 
         if field_name.startswith('m_') and field_name not in ['m_def', 'm_def_id']:

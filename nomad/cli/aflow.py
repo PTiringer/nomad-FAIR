@@ -76,7 +76,7 @@ class DbUpdater:
             if hasattr(self, key):
                 setattr(self, key, val)
             else:
-                raise KeyError('Invalid key %s' % key)
+                raise KeyError(f'Invalid key {key}')
 
         # create directory to save data
         subdir = ''
@@ -99,7 +99,7 @@ class DbUpdater:
                     else 'OUTCAR.static.xz'
                 )
         else:
-            raise NotImplementedError('%s not yet supported.' % self.db_name)
+            raise NotImplementedError(f'{self.db_name} not yet supported.')
 
         self._session = requests.Session()
 
@@ -126,7 +126,7 @@ class DbUpdater:
         return re.sub(r'[^\w\d-]', '_', path)
 
     def _read_from_file(self, filename):
-        print('Reading from file %s' % filename)
+        print(f'Reading from file {filename}')
         data = []
         with open(filename) as f:
             line = f.readline()
@@ -147,7 +147,7 @@ class DbUpdater:
         with open(filename, 'w') as f:
             for i in range(len(data)):
                 if isinstance(data[i], str):
-                    f.write('%s\n' % data[i])
+                    f.write(f'{data[i]}\n')
                 else:
                     f.write(f'{data[i][0]} {data[i][1]} \n')
 
@@ -155,7 +155,7 @@ class DbUpdater:
         if self.dbfile is not None and os.path.isfile(self.dbfile):
             self.db_files = self._read_from_file(self.dbfile)
         else:
-            print('Generating list from %s' % self.root_url)
+            print(f'Generating list from {self.root_url}')
             self.db_files = []
             todo = self._get_paths(self.root_url)
             while len(todo) > 0:
@@ -189,7 +189,7 @@ class DbUpdater:
         else:
             print('Generating NOMAD list')
             if self.db_name.lower() == 'aflowlib':
-                servers = ['LIB%d_LIB' % n for n in range(1, 10)] + ['ICSD_WEB']
+                servers = [f'LIB{n}_LIB' for n in range(1, 10)] + ['ICSD_WEB']
                 paths = [s for s in servers if s in self.root_url]
                 paths = paths if paths else servers
                 # main_author: Stefano Curtarolo
@@ -258,7 +258,7 @@ class DbUpdater:
         if len(in_nomad) > 0:
             fn = 'in_nomad.txt'
             print('Warning: Some NOMAD entries not found in db.')
-            print('See %s for list.' % fn)
+            print(f'See {fn} for list.')
             self._write_to_file(in_nomad, fn)
 
         # add the root back
@@ -267,7 +267,7 @@ class DbUpdater:
         root = f'{u.scheme}://{u.netloc}/{up}'
         self.update_list = [os.path.join(root, e) for e in self.update_list]
         self.is_updated_list = [False] * len(self.update_list)
-        print('Found %d entries to be added in NOMAD' % len(self.update_list))
+        print(f'Found {len(self.update_list)} entries to be added in NOMAD')
 
         if self.outfile is not None:
             data = [self.update_list[i] for i in range(len(self.update_list))]
@@ -345,7 +345,7 @@ class DbUpdater:
 
         tarname = f'{d1}-{d2}'
         uploadname = f'{self.db_name.upper()}_{tarname}'
-        tarname = os.path.join(self._local_path, '%s.tar' % tarname)
+        tarname = os.path.join(self._local_path, f'{tarname}.tar')
 
         return tarname, uploadname
 
@@ -477,7 +477,7 @@ class DbUpdater:
         """
         Download files from database.
         """
-        print('Downloading from %s' % self.root_url)
+        print(f'Downloading from {self.root_url}')
         s = time.time()
         plist = [[] for i in range(self.parallel)]
         cur = 0
@@ -669,9 +669,7 @@ def update_prototypes(ctx, filepath, matches_only):
                     atoms = ase.io.read(poscar_file, format='vasp')
                 except Exception:
                     print(
-                        'Error in getting prototype structure from POSCAR: {}'.format(
-                            poscarurl
-                        )
+                        f'Error in getting prototype structure from POSCAR: {poscarurl}'
                     )
                     print(
                         'Could not read prototype structure from CIF or POSCAR file for prototype: {}, {}, '.format(
@@ -705,9 +703,7 @@ def update_prototypes(ctx, filepath, matches_only):
         aflow_prototypes = {'prototypes_by_spacegroup': structure_types_by_spacegroup}
         print(
             'Extracted latest AFLOW prototypes online. Total number of '
-            'successfully fetched prototypes: {}, missing: {}'.format(
-                n_prototypes, n_missing
-            )
+            f'successfully fetched prototypes: {n_prototypes}, missing: {n_missing}'
         )
 
     # Update matches
@@ -748,9 +744,7 @@ def update_prototypes(ctx, filepath, matches_only):
                     n_unmatched += 1
     print(
         'Updated matches in AFLOW prototype library. Total number of '
-        'prototypes: {}, unmatched: {}, failed: {}'.format(
-            n_prototypes, n_unmatched, n_failed
-        )
+        f'prototypes: {n_prototypes}, unmatched: {n_unmatched}, failed: {n_failed}'
     )
 
     # Write data file to the specified path

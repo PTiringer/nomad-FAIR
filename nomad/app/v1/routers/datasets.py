@@ -300,7 +300,7 @@ async def get_datasets(
         doi=doi,
     )
     if prefix is not None and prefix != '':
-        query_params.update(dataset_name=re.compile('^%s.*' % prefix, re.IGNORECASE))  # type: ignore
+        query_params.update(dataset_name=re.compile(f'^{prefix}.*', re.IGNORECASE))  # type: ignore
     query_params = {k: v for k, v in query_params.items() if v is not None}
 
     mongodb_query = pagination.order_result(mongodb_objects(**query_params))
@@ -554,7 +554,7 @@ async def assign_doi(
             detail=_dataset_has_unpublished_contents[1]['description'],
         )
 
-    doi = DOI.create(title='NOMAD dataset: %s' % dataset.dataset_name, user=user)
+    doi = DOI.create(title=f'NOMAD dataset: {dataset.dataset_name}', user=user)
 
     try:
         doi.create_draft()

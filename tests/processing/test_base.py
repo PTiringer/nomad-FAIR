@@ -36,7 +36,7 @@ random.seed(0)
 
 
 fail = 'FAIL'
-events: List[str] = []
+events: list[str] = []
 
 
 @pytest.fixture(scope='function')
@@ -54,7 +54,7 @@ def assert_proc(
     assert not proc.process_running
 
 
-def assert_events(expected_events: List[Union[str, List[str]]]):
+def assert_events(expected_events: list[str | list[str]]):
     ind = 0
     for expected in expected_events:
         if isinstance(expected, str):
@@ -205,8 +205,8 @@ class ParentProc(Proc):
         fail_spawn: bool = False,
         suffix: str = '',
         delay=0.1,
-        child_args: List[Any] = [],
-        join_args: List[Any] = [],
+        child_args: list[Any] = [],
+        join_args: list[Any] = [],
     ):
         """
         Arguments:

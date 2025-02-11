@@ -406,7 +406,7 @@ def validate_allowable_unit(
         except KeyError:
             return False
 
-    if isinstance(allowable_list, (pint.Unit, pint.Quantity)):
+    if isinstance(allowable_list, pint.Unit | pint.Quantity):
         if dimensionality in ('1', 'dimensionless'):
             return allowable_list.dimensionless
 

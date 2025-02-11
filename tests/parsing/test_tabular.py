@@ -907,13 +907,13 @@ def get_files(schema=None, content=None):
     """
     if schema:
         schema_file = os.path.join(config.fs.tmp, 'my_schema.archive.yaml')
-        with open(schema_file, 'wt') as f:
+        with open(schema_file, 'w') as f:
             f.write(schema)
     else:
         schema_file = None
     if content:
         mainfile = os.path.join(config.fs.tmp, 'test.my_schema.archive.csv')
-        with open(mainfile, 'wt') as f:
+        with open(mainfile, 'w') as f:
             f.write(content)
     else:
         mainfile = None

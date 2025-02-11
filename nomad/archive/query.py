@@ -64,7 +64,7 @@ def _extract_child(archive_item, prop, index) -> dict | list:
     archive_child = archive_item[prop]
     from .storage_v2 import ArchiveList as ArchiveListNew
 
-    is_list = isinstance(archive_child, (ArchiveListNew, ArchiveList, list))
+    is_list = isinstance(archive_child, ArchiveListNew | ArchiveList | list)
 
     if index is None and is_list:
         index = (0, None)
@@ -132,7 +132,7 @@ def query_archive(
 
     if isinstance(f_or_archive_reader, ArchiveReader):
         return _load_data(query_dict, f_or_archive_reader)
-    elif isinstance(f_or_archive_reader, (BytesIO, str)):
+    elif isinstance(f_or_archive_reader, BytesIO | str):
         with read_archive(f_or_archive_reader, **kwargs) as archive:
             return _load_data(query_dict, archive)
 
@@ -198,14 +198,14 @@ def filter_archive(
             # TODO
             raise ArchiveQueryError('key wildcards not yet implemented')
         else:
-            raise ArchiveQueryError('invalid key format: %s' % key)
+            raise ArchiveQueryError(f'invalid key format: {key}')
 
         try:
             archive_child = _extract_child(archive_item, key, index)
 
             from .storage_v2 import ArchiveList as ArchiveListNew
 
-            if isinstance(archive_child, (ArchiveListNew, ArchiveList, list)):
+            if isinstance(archive_child, ArchiveListNew | ArchiveList | list):
                 result[key] = [
                     filter_archive(val, item, transform=transform)
                     for item in archive_child

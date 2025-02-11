@@ -18,7 +18,8 @@
 
 import json
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Sequence, Union
+from typing import Any, Dict, List, Union
+from collections.abc import Iterable, Sequence
 
 import pytest
 
@@ -59,8 +60,8 @@ def split(path):
 
 
 def assert_search_upload(
-    entries: Union[int, Iterable] = -1,
-    additional_keys: List[str] = [],
+    entries: int | Iterable = -1,
+    additional_keys: list[str] = [],
     upload_id: str = None,
     **kwargs,
 ):
@@ -73,7 +74,7 @@ def assert_search_upload(
 
     keys = ['entry_id', 'upload_id', 'mainfile']
     refresh()
-    body: Dict[str, Any] = {}
+    body: dict[str, Any] = {}
     body.update(size=10)
     if upload_id is not None:
         body['query'] = dict(match=dict(upload_id=upload_id))

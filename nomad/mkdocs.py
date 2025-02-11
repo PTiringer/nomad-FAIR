@@ -158,7 +158,7 @@ def get_field_default(field) -> str | None:
     """
     default_value = field.default
     if default_value is not None:
-        if isinstance(default_value, (dict, BaseModel)):
+        if isinstance(default_value, dict | BaseModel):
             default_value = 'Complex object, default value not displayed.'
         elif default_value == '':
             default_value = '""'

@@ -507,7 +507,7 @@ class Reference:
         }
 
     def _normalize_impl(self, section, value):
-        if isinstance(value, (str, int, dict)):
+        if isinstance(value, str | int | dict):
             if isinstance(value, str):
                 context = section.m_root().m_context if section else None
                 value = (
@@ -984,7 +984,7 @@ class MSection(metaclass=MObjectMeta):
         event_handlers: set[TypingCallable] = set(m_def.event_handlers)
         for name, attr in cls.__dict__.items():
             # transfer names and descriptions for properties, init properties
-            if isinstance(attr, (Attribute, Property)):
+            if isinstance(attr, Attribute | Property):
                 attr.name = name
                 if attr.description is not None:
                     attr.description = re.sub(
@@ -1110,7 +1110,7 @@ class MSection(metaclass=MObjectMeta):
             return default_name
 
         quantity_def = self.m_def.all_quantities.get(key_quantity)
-        if not isinstance(quantity_def.type, (m_str, Enum)):
+        if not isinstance(quantity_def.type, m_str | Enum):
             raise TypeError(f'Key quantity {key_quantity} must be of type str.')
 
         if self.m_is_set(quantity_def):
@@ -1332,7 +1332,7 @@ class MSection(metaclass=MObjectMeta):
 
             target = definition.__get__(self)
             if isinstance(target, list) and index is not None:
-                assert isinstance(index, (int, slice))
+                assert isinstance(index, int | slice)
                 try:
                     sliced = target[index]
                 except IndexError:
@@ -2505,7 +2505,7 @@ class MSection(metaclass=MObjectMeta):
         """
         if isinstance(key, str):
             value = self.m_annotations.get(key, default)
-            if as_list and not isinstance(value, (list, tuple)):
+            if as_list and not isinstance(value, list | tuple):
                 return [value]
             else:
                 return value
@@ -2513,7 +2513,7 @@ class MSection(metaclass=MObjectMeta):
         elif isinstance(key, type):
             result_list = []
             for values in self.m_annotations.values():
-                if isinstance(values, (tuple, list)):
+                if isinstance(values, tuple | list):
                     for value in values:
                         if isinstance(value, key):
                             result_list.append(value)
@@ -3207,7 +3207,7 @@ class Quantity(Property):
                 except Exception as e:
                     raise DeriveError(f'Could not derive value for {self}: {str(e)}')
 
-            if isinstance(self.default, (dict, list)):
+            if isinstance(self.default, dict | list):
                 value = self.default.copy()
             else:
                 value = self.default
@@ -3487,13 +3487,13 @@ class SubSection(Property):
         """
         existing: MSection | MSubSectionList | None = self.__get__(obj)
         if self.repeats:
-            if value is not None and not isinstance(value, (list, set)):
+            if value is not None and not isinstance(value, list | set):
                 raise TypeError(
                     'Cannot set a repeating subsection directly, modify the list, e.a. via append.'
                 )
             existing = cast(MSubSectionList, existing)
             existing.clear()
-            if isinstance(value, (list, set)):
+            if isinstance(value, list | set):
                 existing.extend(value)
         else:
             if existing is value:

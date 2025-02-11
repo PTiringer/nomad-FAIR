@@ -151,7 +151,7 @@ def create_custom_mapping(
                     if isinstance(value, float) and math.isnan(value):
                         value = None
 
-                    if isinstance(value, (int, float, str)):
+                    if isinstance(value, int | float | str):
                         value = np.array([value])
 
                     if value is not None:

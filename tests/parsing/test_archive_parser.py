@@ -44,7 +44,7 @@ def test_archive_parser(raw_files_function):
     }
 
     mainfile = os.path.join(config.fs.tmp, 'test_mainfile.archive.json')
-    with open(mainfile, 'wt') as f:
+    with open(mainfile, 'w') as f:
         json.dump(archive_data, f)
 
     archive = EntryArchive()

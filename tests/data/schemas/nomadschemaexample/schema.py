@@ -96,7 +96,7 @@ class MySchema(EntryData):
     child_recursive = SubSection(section_def=MySectionRecursiveA)
 
     def normalize(self, archive, logger):
-        super(MySchema, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
 
 m_package.__init_metainfo__()

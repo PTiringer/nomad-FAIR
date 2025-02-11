@@ -41,7 +41,7 @@ class ParsePattern:
                 token += r'\w'
             if 'array' in value:
                 token += r' '
-            value = r'[%s]+' % token
+            value = rf'[{token}]+'
         self._value = value
         self._tail = kwargs.get('tail', '\n')
         self._re_pattern = None
@@ -49,14 +49,9 @@ class ParsePattern:
     @property
     def re_pattern(self):
         if self._re_pattern is None:
-            head = r'%s[\s\S]*?' % self._head if self._head else ''
-            key = r'%s\s*\:*\=*\s*' % self._key if self._key else ''
-            self._re_pattern = r'{}{}\s*\:*\=*\s*({}){}'.format(
-                head,
-                key,
-                self._value,
-                self._tail,
-            )
+            head = rf'{self._head}[\s\S]*?' if self._head else ''
+            key = rf'{self._key}\s*\:*\=*\s*' if self._key else ''
+            self._re_pattern = rf'{head}{key}\s*\:*\=*\s*({self._value}){self._tail}'
         return self._re_pattern
 
     def __call__(self, text, repeats=True):
@@ -163,7 +158,7 @@ class Quantity:
         Returns a compiled re pattern.
         """
         if isinstance(self._re_pattern, str):
-            re_pattern = self._re_pattern.replace('__unit', '__unit_%s' % self.name)
+            re_pattern = self._re_pattern.replace('__unit', f'__unit_{self.name}')
             self._re_pattern = re.compile(re_pattern.encode())
         return self._re_pattern
 
@@ -194,7 +189,7 @@ class Quantity:
 
                 return val
 
-            elif isinstance(val, (list, np.ndarray)):
+            elif isinstance(val, list | np.ndarray):
                 try:
                     dtype = float if self.dtype is None else self.dtype
                     val_test = np.array(val, dtype=dtype)
@@ -429,7 +424,7 @@ class TextParser(FileParser):
             re_findall = '|'.join([q.re_pattern.pattern.decode() for q in quantities])
             if len(quantities) == 1:
                 # necessary to add a dummy variable to make multiple matches
-                re_findall = '%s|(__dummy__)' % re_findall
+                re_findall = f'{re_findall}|(__dummy__)'
             re_findall_b = re.compile(re_findall.encode())
             if self._re_findall is None:
                 self._re_findall = re_findall_b
@@ -451,7 +446,7 @@ class TextParser(FileParser):
                     continue
                 non_empty_matches.append(non_empty_match)
             index_unit = quantity.re_pattern.groupindex.get(
-                '__unit_%s' % quantity.name, None
+                f'__unit_{quantity.name}', None
             )
             for non_empty_match in non_empty_matches:
                 try:
@@ -498,7 +493,7 @@ class TextParser(FileParser):
 
             else:
                 try:
-                    unit = res.groupdict().get('__unit_%s' % quantity.name, None)
+                    unit = res.groupdict().get(f'__unit_{quantity.name}', None)
                     units.append(unit.decode() if unit is not None else None)
                     value.append(
                         ' '.join(

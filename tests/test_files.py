@@ -16,7 +16,8 @@
 # limitations under the License.
 #
 
-from typing import Generator, Any, Dict, Tuple, Iterable, List, Union
+from typing import Any, Dict, Tuple, List, Union
+from collections.abc import Generator, Iterable
 from datetime import datetime
 import os
 import os.path
@@ -40,10 +41,10 @@ from nomad.files import StagingUploadFiles, PublicUploadFiles, UploadFiles
 from nomad.processing import Upload
 
 
-EntryWithFiles = Tuple[datamodel.EntryMetadata, str]
-UploadWithFiles = Tuple[str, List[datamodel.EntryMetadata], UploadFiles]
-StagingUploadWithFiles = Tuple[str, List[datamodel.EntryMetadata], StagingUploadFiles]
-PublicUploadWithFiles = Tuple[str, List[datamodel.EntryMetadata], PublicUploadFiles]
+EntryWithFiles = tuple[datamodel.EntryMetadata, str]
+UploadWithFiles = tuple[str, list[datamodel.EntryMetadata], UploadFiles]
+StagingUploadWithFiles = tuple[str, list[datamodel.EntryMetadata], StagingUploadFiles]
+PublicUploadWithFiles = tuple[str, list[datamodel.EntryMetadata], PublicUploadFiles]
 
 # example_file uses an artificial parser for faster test execution, can also be
 # changed to examples_vasp.zip for using vasp parser
@@ -129,7 +130,7 @@ class TestObjects:
         assert os.path.exists(os.path.dirname(file.os_path)) == create
 
 
-example_entry: Dict[str, Any] = {
+example_entry: dict[str, Any] = {
     'entry_id': '0',
     'mainfile': 'examples_template/template.json',
     'data': 'value',
@@ -145,7 +146,7 @@ def generate_example_entry(
     example_entry = datamodel.EntryMetadata(domain='dft', entry_id=str(entry_id))
 
     if with_mainfile_prefix:
-        mainfile = '%d.template.json' % entry_id
+        mainfile = f'{entry_id}.template.json'
     else:
         mainfile = 'template.json'
 
@@ -162,7 +163,7 @@ def generate_example_entry(
             filename = os.path.basename(filepath)
             arcname = filename
             if arcname == 'template.json' and with_mainfile_prefix:
-                arcname = '%d.template.json' % entry_id
+                arcname = f'{entry_id}.template.json'
 
             if subdirectory is not None:
                 arcname = os.path.join(subdirectory, arcname)
@@ -685,8 +686,8 @@ def assert_upload_files(
 
 
 def create_test_upload_files(
-    upload_id: Union[str, None],
-    archives: Union[List[datamodel.EntryArchive], None] = None,
+    upload_id: str | None,
+    archives: list[datamodel.EntryArchive] | None = None,
     published: bool = True,
     embargo_length: int = 0,
     raw_files: str = None,
@@ -790,8 +791,8 @@ def test_test_upload_files(raw_files_infra):
     for index in range(0, 3):
         archive = datamodel.EntryArchive()
         metadata = archive.m_create(datamodel.EntryMetadata)
-        metadata.entry_id = 'example_entry_id_%d' % index
-        metadata.mainfile = 'test/test/entry_%d/mainfile_%d.json' % (index, index)
+        metadata.entry_id = f'example_entry_id_{index}'
+        metadata.mainfile = f'test/test/entry_{index}/mainfile_{index}.json'
         archives.append(archive)
 
     upload_files = create_test_upload_files(upload_id, archives, embargo_length=0)

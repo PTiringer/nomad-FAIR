@@ -128,7 +128,7 @@ class TestEditRepo:
 
     def mongo(self, *args, edited: bool = True, **kwargs):
         for entry_id in args:
-            entry = proc.Entry.objects(entry_id='test_entry_id_%d' % entry_id).first()
+            entry = proc.Entry.objects(entry_id=f'test_entry_id_{entry_id}').first()
             assert entry is not None
             if edited:
                 assert entry.last_edit_time is not None
@@ -141,7 +141,7 @@ class TestEditRepo:
     def assert_elastic(self, *args, invert: bool = False, **kwargs):
         def assert_entry(get_entries):
             for arg in args:
-                entry_id = 'test_entry_id_%d' % arg
+                entry_id = f'test_entry_id_{arg}'
                 entries = list(get_entries(entry_id))
                 assert len(entries) > 0, entry_id
                 for entry in entries:
@@ -285,7 +285,7 @@ class TestEditRepo:
 
         assert rv.status_code == 200
         rv = self.api.post(
-            'datasets/%s/action/doi' % self.example_dataset.dataset_name,
+            f'datasets/{self.example_dataset.dataset_name}/action/doi',
             headers=self.user_auth,
         )
         assert rv.status_code == 200

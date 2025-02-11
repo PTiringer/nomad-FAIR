@@ -56,7 +56,7 @@ from nomad.utils.exampledata import ExampleData
 
 
 def create_example_uuid(index: int = 0):
-    return ('{:%dd}' % utils.default_hash_len).format(index)
+    return f'{index:{utils.default_hash_len}d}'
 
 
 @pytest.fixture(scope='session')
@@ -221,7 +221,7 @@ def test_read_archive_multi(monkeypatch, example_uuid, example_entry, use_blocke
             assert float(i) == entry['large_list'][i]
 
 
-test_query_example: Dict[Any, Any] = {
+test_query_example: dict[Any, Any] = {
     'c1': {
         's1': {'ss1': [{'p1': 1.0, 'p2': 'x'}, {'p1': 1.5, 'p2': 'y'}]},
         's2': [{'p1': ['a', 'b'], 'p2': True}],
@@ -1117,8 +1117,8 @@ def assert_required_results(
     results: dict,
     required: dict,
     archive: MSection,
-    current_results: Union[dict, str] = None,
-    current_archive_serialized: Union[str, dict] = None,
+    current_results: dict | str = None,
+    current_archive_serialized: str | dict = None,
 ):
     """
     Asserts if the resulting dict from a :class:`RequiredReader` contains everything that

@@ -291,7 +291,7 @@ def central_logstash_mock(monkeypatch):
                 try:
                     line = self.rfile.readline()
                     # print(f'received {line=}')
-                except socket.timeout:
+                except TimeoutError:
                     # print(f'server timed out')
                     line = b''  # if time out, close connection
 
@@ -365,7 +365,7 @@ class MockFileManager:
     def read(self, name):
         name = os.path.abspath(name)
         if name not in self.files:
-            raise IOError(2, "No such file or directory: '%s'" % name)
+            raise OSError(2, f"No such file or directory: '{name}'")
 
         return self.files[name].getvalue()
 

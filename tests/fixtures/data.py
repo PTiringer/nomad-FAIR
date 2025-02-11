@@ -31,7 +31,7 @@ from tests.utils import (
 
 
 @pytest.fixture(scope='session')
-def example_mainfile() -> Tuple[str, str]:
+def example_mainfile() -> tuple[str, str]:
     return ('parsers/template', 'tests/data/templates/template.json')
 
 
@@ -82,7 +82,7 @@ def internal_example_user_metadata(example_user_metadata) -> dict:
 
 
 @pytest.fixture(scope='session')
-def parsed(example_mainfile: Tuple[str, str]) -> EntryArchive:
+def parsed(example_mainfile: tuple[str, str]) -> EntryArchive:
     """Provides a parsed entry in the form of an EntryArchive."""
     parser, mainfile = example_mainfile
     return test_parsing.run_singular_parser(parser, mainfile)
@@ -103,7 +103,7 @@ def normalized(parsed: EntryArchive) -> EntryArchive:
 
 
 @pytest.fixture(scope='function')
-def uploaded(example_upload: str, raw_files_function) -> Tuple[str, str]:
+def uploaded(example_upload: str, raw_files_function) -> tuple[str, str]:
     """
     Provides a uploaded with uploaded example file and gives the upload_id.
     Clears files after test.
@@ -115,7 +115,7 @@ def uploaded(example_upload: str, raw_files_function) -> Tuple[str, str]:
 @pytest.fixture(scope='function')
 def non_empty_uploaded(
     non_empty_example_upload: str, raw_files_function
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     example_upload_id = os.path.basename(non_empty_example_upload).replace('.zip', '')
     return example_upload_id, non_empty_example_upload
 
@@ -212,7 +212,7 @@ def oasis_publishable_upload(
 @pytest.mark.timeout(config.tests.default_timeout)
 @pytest.fixture(scope='function')
 def processed(
-    uploaded: Tuple[str, str], user1: User, proc_infra, mails
+    uploaded: tuple[str, str], user1: User, proc_infra, mails
 ) -> processing.Upload:
     """
     Provides a processed upload. Upload was uploaded with user1.
@@ -224,12 +224,11 @@ def processed(
 @pytest.fixture(scope='function')
 def processeds(
     non_empty_example_upload: str, user1: User, proc_infra
-) -> List[processing.Upload]:
-    result: List[processing.Upload] = []
+) -> list[processing.Upload]:
+    result: list[processing.Upload] = []
     for i in range(2):
-        upload_id = '%s_%d' % (
-            os.path.basename(non_empty_example_upload).replace('.zip', ''),
-            i,
+        upload_id = (
+            f'{os.path.basename(non_empty_example_upload).replace(".zip", "")}_{i}'
         )
         result.append(
             test_processing.run_processing((upload_id, non_empty_example_upload), user1)
@@ -241,7 +240,7 @@ def processeds(
 @pytest.mark.timeout(config.tests.default_timeout)
 @pytest.fixture(scope='function')
 def non_empty_processed(
-    non_empty_uploaded: Tuple[str, str], user1: User, proc_infra
+    non_empty_uploaded: tuple[str, str], user1: User, proc_infra
 ) -> processing.Upload:
     """
     Provides a processed upload. Upload was uploaded with user1.
@@ -358,9 +357,9 @@ def example_data(
         upload_id='id_published', upload_name='name_published', published=True
     )
     for i in range(1, 24):
-        entry_id = 'id_%02d' % i
-        material_id = 'id_%02d' % (int(math.floor(i / 4)) + 1)
-        mainfile = 'test_content/subdir/test_entry_%02d/mainfile.json' % i
+        entry_id = f'id_{i:02d}'
+        material_id = f'id_{int(math.floor(i / 4)) + 1:02d}'
+        mainfile = f'test_content/subdir/test_entry_{i:02d}/mainfile.json'
         kwargs = dict(
             optimade=OptimadeEntry(nelements=2, elements=['H', 'O']),
         )

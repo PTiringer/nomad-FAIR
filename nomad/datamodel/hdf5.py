@@ -216,7 +216,7 @@ class HDF5Dataset(NonPrimitive):
             raise ValueError('Cannot normalize HDF5 value without context.')
 
         if not isinstance(
-            value, (str, np.ndarray, h5py.Dataset, pint.Quantity, HDF5Wrapper)
+            value, str | np.ndarray | h5py.Dataset | pint.Quantity | HDF5Wrapper
         ):
             raise ValueError(f'Invalid HDF5 dataset value: {value}.')
 

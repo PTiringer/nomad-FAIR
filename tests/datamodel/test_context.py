@@ -439,7 +439,7 @@ def test_server_external_schema(upload1_contents, upload2_contents, raw_files_fu
     for index, (file_name, content) in enumerate(upload1_contents.items()):
         if not re.match(r'.*.archive.json', file_name):
             continue
-        entry_id = 'upload1_entry{}'.format(index)
+        entry_id = f'upload1_entry{index}'
         archive = EntryArchive(
             m_context=context1,
             metadata=EntryMetadata(
@@ -462,7 +462,7 @@ def test_server_external_schema(upload1_contents, upload2_contents, raw_files_fu
     parser = ArchiveParser()
 
     for index, (file_name, content) in enumerate(upload2_contents.items()):
-        entry_id = 'upload2_entry{}'.format(index)
+        entry_id = f'upload2_entry{index}'
         archive = EntryArchive(
             m_context=context2,
             metadata=EntryMetadata(
@@ -491,7 +491,7 @@ def test_client_custom_schema(api_v1, published_wo_user_metadata):
         published_wo_user_metadata.upload_id, f'examples_template/template.json'
     )
 
-    with open(full_path, 'r') as f:
+    with open(full_path) as f:
         text = f.read().replace(
             '/run/0',
             f'{url}/uploads/{published_wo_user_metadata.upload_id}/archive/{entry_id}#/run/0',
@@ -572,7 +572,7 @@ def test_client_external_schema(
 
     parser = ArchiveParser()
     for index, (file_name, content) in enumerate(referencing_upload_contents.items()):
-        entry_id = 'upload2_entry{}'.format(index)
+        entry_id = f'upload2_entry{index}'
         archive = EntryArchive(
             m_context=context2,
             metadata=EntryMetadata(

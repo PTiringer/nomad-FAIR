@@ -51,7 +51,7 @@ def upload_file(
             headers={'Accept': 'application/json'},
             auth=auth,
         )
-        print('process offline: %s' % file_path)
+        print(f'process offline: {file_path}')
     else:
         with open(file_path, 'rb') as f:
             response = api.post(
@@ -62,7 +62,7 @@ def upload_file(
                 auth=auth,
             )
     if response.status_code != 200:
-        print('Could not create upload: %s' % response.text)
+        print(f'Could not create upload: {response.text}')
         return None
     upload = response.json()['data']
 
@@ -86,15 +86,8 @@ def upload_file(
         )
 
         print(
-            'status: %s; process: %s; parsing: %d/%d/%d                %s'
-            % (
-                upload['process_status'],
-                upload['current_process'],
-                successes,
-                failures,
-                total,
-                ret,
-            ),
+            f'status: {upload["process_status"]}; process: {upload["current_process"]}; '
+            f'parsing: {successes}/{failures}/{total} {ret}',
             end='',
         )
 
@@ -103,11 +96,11 @@ def upload_file(
     if upload['process_status'] == ProcessStatus.FAILURE:
         print('There have been errors:')
         for error in upload['errors']:
-            print('    %s' % error)
+            print(f'    {error}')
     elif publish:
         response = api.post(f'uploads/{upload["upload_id"]}/action/publish', auth=auth)
         if response.status_code != 200:
-            print('Could not publish upload: %s' % response.text)
+            print(f'Could not publish upload: {response.text}')
             return None
 
     return upload['upload_id']
