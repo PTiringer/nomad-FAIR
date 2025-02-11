@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 
-from typing import List, Dict, Set, Any, Optional, Union
+from typing import List, Dict, Tuple, Set, Iterator, Any, Optional, Union
 from collections.abc import Iterator
 from types import FunctionType
 import urllib
@@ -283,6 +283,69 @@ def update_url_query_arguments(original_url: str, **kwargs) -> str:
     return urllib.parse.urlunparse((scheme, netloc, path, params, query, fragment))
 
 
+def get_query_keys(
+    d: list | dict,
+    exclude_keys: list[str] | None = None,
+    current_key_string: str = '',
+    keys: set[str] | None = None,
+) -> set[str]:
+    """
+    Extracts all unique keys from a dictionary or list.
+
+    Arguments:
+        d: Dictionary or list to process
+        exclude_keys: Set of keys to exclude
+        current_key_string: Current key string
+        keys: Set to store keys
+
+    Returns:
+        Set of keys
+    """
+    if keys is None:
+        keys = set()
+    if exclude_keys is None:
+        exclude_keys = []
+
+    if isinstance(d, dict):
+        # If dictionary is empty or has no non-excluded keys, add current key string
+        valid_items = [
+            (k, v)
+            for k, v in d.items()
+            if isinstance(v, (dict, list)) or k not in exclude_keys
+        ]
+        if not valid_items and current_key_string:
+            keys.add(current_key_string)
+            return keys
+
+        for key, value in d.items():
+            # Determine the new key string based on whether key is excluded
+            if key in exclude_keys:
+                new_key_string = current_key_string
+            else:
+                new_key_string = (
+                    f'{current_key_string}.{key}' if current_key_string else key
+                )
+
+            # Only recurse if value is a dict, list, or key is excluded
+            if isinstance(value, (dict, list)):
+                keys.update(get_query_keys(value, exclude_keys, new_key_string, keys))
+            elif key not in exclude_keys:
+                keys.add(new_key_string)
+
+    elif isinstance(d, list):
+        if not d and current_key_string:  # Empty list
+            keys.add(current_key_string)
+            return keys
+
+        for item in d:
+            keys.update(get_query_keys(item, exclude_keys, current_key_string, keys))
+
+    else:
+        keys.add(current_key_string)
+
+    return keys
+
+
 def convert_data_to_dict(data: Any) -> dict[str, Any]:
     """
     Converts a pydantic model or a dictionary containing pydantic models to a dictionary.
@@ -291,18 +354,22 @@ def convert_data_to_dict(data: Any) -> dict[str, Any]:
         data: A pydantic model or a dictionary containing pydantic models.
     """
     if hasattr(data, 'dict') and callable(getattr(data, 'dict')):
-        return data.dict()
+        return data.dict(by_alias=True)
     elif not isinstance(data, dict):
         return data
     return {k: convert_data_to_dict(v) for k, v in data.items()}
 
 
-def convert_log_to_json(data: Any):
+def convert_log_to_json(data: Any) -> tuple[str, list[str]]:
     """
-    Converts the log field to json and returns the keys of the data.
+    Converts the log field to json string and returns the keys of the data.
     """
+
+    from nomad.app.v1.models.models import ops
+
     data = convert_data_to_dict(data)
-    data_keys = list(data.keys()) if isinstance(data, dict) else []
+    exclude_keys = list(ops.keys()) + ['and', 'or', 'not']
+    data_keys = list(get_query_keys(data, exclude_keys))
     data_json = json.dumps(data, sort_keys=True)
     return data_json, data_keys
 
