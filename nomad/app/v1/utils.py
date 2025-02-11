@@ -310,7 +310,7 @@ def get_query_keys(
         valid_items = [
             (k, v)
             for k, v in d.items()
-            if isinstance(v, (dict, list)) or k not in exclude_keys
+            if isinstance(v, dict | list) or k not in exclude_keys
         ]
         if not valid_items and current_key_string:
             keys.add(current_key_string)
@@ -326,7 +326,7 @@ def get_query_keys(
                 )
 
             # Only recurse if value is a dict, list, or key is excluded
-            if isinstance(value, (dict, list)):
+            if isinstance(value, dict | list):
                 keys.update(get_query_keys(value, exclude_keys, new_key_string, keys))
             elif key not in exclude_keys:
                 keys.add(new_key_string)
