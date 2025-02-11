@@ -77,7 +77,7 @@ def setup(**kwargs):
 
     infrastructure.setup()
     utils.get_logger(__name__).info(
-        'celery configured with acks_late=%s' % str(config.celery.acks_late)
+        f'celery configured with acks_late={str(config.celery.acks_late)}'
     )
 
 
@@ -398,7 +398,7 @@ class Proc(Document):
         try:
             obj = cls.objects(**{id_field: id}).first()
         except ValidationError:
-            raise InvalidId('%s is not a valid id' % id)
+            raise InvalidId(f'{id} is not a valid id')
         except ConnectionFailure as e:
             raise e
 
@@ -559,10 +559,7 @@ class Proc(Document):
         )
 
     def __str__(self):
-        return 'proc celery_task_id={} worker_hostname={}'.format(
-            self.celery_task_id,
-            self.worker_hostname,
-        )
+        return f'proc celery_task_id={self.celery_task_id} worker_hostname={self.worker_hostname}'
 
     def parent(self) -> 'Proc':
         """
@@ -884,7 +881,7 @@ class NomadCeleryRequest(Request):
                 'detected WorkerLostError', exc_info=exc_info.exception
             )
             self._fail(
-                'process failed due to worker lost: %s' % str(exc_info.exception),
+                f'process failed due to worker lost: {str(exc_info.exception)}',
                 exc_info=exc_info,
             )
 
@@ -913,7 +910,7 @@ def unwarp_task(task, cls_name, self_id, *args, **kwargs):
 
     if cls is None:
         logger.critical('document not a subclass of Proc')
-        raise ProcNotRegistered('document %s not a subclass of Proc' % cls_name)
+        raise ProcNotRegistered(f'document {cls_name} not a subclass of Proc')
 
     # get the process instance
     try:
@@ -962,8 +959,7 @@ def proc_task(task, cls_name, self_id, func_name, args, kwargs):
     if func is None:  # "Should not happen"
         logger.error('called function not a function of proc class')
         proc.fail(
-            'called function %s is not a function of proc class %s'
-            % (func_name, cls_name)
+            f'called function {func_name} is not a function of proc class {cls_name}'
         )
         return
 
@@ -971,7 +967,7 @@ def proc_task(task, cls_name, self_id, func_name, args, kwargs):
     unwrapped_func = getattr(func, '__process_unwrapped', None)
     if unwrapped_func is None:  # "Should not happen"
         logger.error('called function was not decorated with @process')
-        proc.fail('called function %s was not decorated with @process' % func_name)
+        proc.fail(f'called function {func_name} was not decorated with @process')
         return
 
     # call the process function

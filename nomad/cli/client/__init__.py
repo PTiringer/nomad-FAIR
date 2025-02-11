@@ -28,7 +28,7 @@ from nomad.config import config
     '-n',
     '--url',
     default=config.client.url,
-    help='The URL where nomad is running, default is "%s".' % config.client.url,
+    help=f'The URL where nomad is running, default is "{config.client.url}".',
 )
 @click.option(
     '-u', '--user', default=None, help='the user name to login, default is no login.'
@@ -235,7 +235,7 @@ def local(
 
     from nomad.client import LocalEntryProcessing
 
-    print('Using %s' % config.client.url)
+    print(f'Using {config.client.url}')
     auth = _create_auth(ctx)
 
     with LocalEntryProcessing(entry_id, auth=auth, **kwargs) as local:

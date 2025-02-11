@@ -98,7 +98,7 @@ def api_model(model):
         if isinstance(data, dict):
             processed_dict = {}
             for key, value in data.items():
-                if isinstance(value, (dict, list)):
+                if isinstance(value, dict | list):
                     processed_value = remove_null_types(value)
 
                     # Only add the key if the processed value is not a "type": "null" dictionary

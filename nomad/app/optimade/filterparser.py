@@ -45,7 +45,7 @@ def _get_transformer(without_prefix, **kwargs):
     quantities: dict[str, Quantity] = {
         q.name: Quantity(
             q.name,
-            backend_field='optimade.%s' % q.name,
+            backend_field=f'optimade.{q.name}',
             elastic_mapping_type=q.a_elasticsearch.mapping['type'],
         )
         for q in OptimadeEntry.m_def.all_quantities.values()
@@ -101,12 +101,12 @@ def parse_filter(filter_str: str, without_prefix=False) -> Q:
     try:
         parse_tree = _parser.parse(filter_str)
     except Exception as e:
-        raise FilterException('Syntax error: %s' % str(e))
+        raise FilterException(f'Syntax error: {str(e)}')
 
     try:
         query = transformer.transform(parse_tree)
     except Exception as e:
-        raise FilterException('Semantic error: %s' % str(e))
+        raise FilterException(f'Semantic error: {str(e)}')
 
     return query
 
@@ -155,7 +155,7 @@ class ElasticTransformer(OPTElasticTransformer):
             quantity = quantities[0]
 
             if quantity.length_quantity is None:
-                raise Exception('HAS ONLY is not supported by %s' % quantity.name)
+                raise Exception(f'HAS ONLY is not supported by {quantity.name}')
 
             has_all = super()._has_query_op(quantities, 'HAS ALL', predicate_zip_list)
             has_length = Q(

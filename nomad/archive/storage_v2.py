@@ -123,7 +123,7 @@ class TOCPacker:
             """
             _pack_direct(Utility.packb(_obj))
 
-        if self._depth >= self._toc_depth or not isinstance(obj, (dict, list)):
+        if self._depth >= self._toc_depth or not isinstance(obj, dict | list):
             start_pos = self._pos
             _pack_raw(obj)
             return {'pos': [start_pos, self._pos]}

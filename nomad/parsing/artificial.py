@@ -140,7 +140,7 @@ class ChaosParser(Parser):
             while True:
                 data.append('a' * 10**6)
                 i += 1
-                logger.info('ate %d mb' % i)
+                logger.info(f'ate {i} mb')
         elif chaos == 'exception':
             raise Exception('Some chaos happened, muhuha...')
         elif chaos == 'segfault':

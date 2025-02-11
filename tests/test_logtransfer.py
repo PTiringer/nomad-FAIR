@@ -31,7 +31,7 @@ def test_logtransfer_handler(log_handler):
     test_logger.info('test event', data='test data')
 
     assert os.path.exists(log_handler.baseFilename)
-    with open(log_handler.baseFilename, 'r') as f:
+    with open(log_handler.baseFilename) as f:
         logs = f.readlines()
 
     assert len(logs) == 1
@@ -68,7 +68,7 @@ def test_transfer_logs(log_handler, monkeypatch, api_v1, central_logstash_mock, 
         test_logger.info('test event', data='test data')
 
     assert os.path.exists(log_handler.baseFilename)
-    with open(log_handler.baseFilename, 'r') as f:
+    with open(log_handler.baseFilename) as f:
         logs = f.readlines()
     assert len(logs) == size
 

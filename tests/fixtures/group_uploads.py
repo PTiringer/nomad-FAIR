@@ -10,7 +10,7 @@ Values:
 - XgKLgMN: field X with groupKL and groupMN
 """
 
-from typing import Sequence
+from collections.abc import Sequence
 import pytest
 
 from nomad.utils.exampledata import ExampleData

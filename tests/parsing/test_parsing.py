@@ -160,7 +160,7 @@ def parse_file(parser_name_and_mainfile) -> EntryArchive:
     return run_singular_parser(parser_name, mainfile)
 
 
-@pytest.fixture(params=parser_examples, ids=lambda spec: '%s-%s' % spec)
+@pytest.fixture(params=parser_examples, ids=lambda spec: '{}-{}'.format(*spec))
 def parsed_example(request) -> EntryArchive:
     parser_name, mainfile = request.param
     result = run_singular_parser(parser_name, mainfile)
@@ -290,10 +290,7 @@ def test_match(
             matched_mainfiles[mainfile] = parser
 
     assert len(matched_mainfiles) >= num_output_files, ', '.join(
-        [
-            '%s: %s' % (parser.name, mainfile)
-            for mainfile, parser in matched_mainfiles.items()
-        ]
+        [f'{parser.name}: {mainfile}' for mainfile, parser in matched_mainfiles.items()]
     )
 
 

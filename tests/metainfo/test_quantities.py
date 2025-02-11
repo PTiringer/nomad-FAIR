@@ -233,7 +233,7 @@ def test_complex_number(unit, quantity_type, value, shape):
 
     def assert_complex_equal():
         result = section.quantity.m if unit else section.quantity
-        if isinstance(value, (list, np.ndarray)):
+        if isinstance(value, list | np.ndarray):
             for a, b in zip(result, value):
                 assert a == quantity_type(b)
         elif not isinstance(value, pint.Quantity):

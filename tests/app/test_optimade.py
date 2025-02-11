@@ -184,9 +184,7 @@ def assert_eq_attrib(data, key, ref, item=None):
 
 @pytest.mark.parametrize('limit, offset, results', [(1, 1, 1), (3, 2, 2), (5, 0, 4)])
 def test_list_endpoint_pagination(client, example_structures, limit, offset, results):
-    rv = client.get(
-        '/optimade/structures?page_limit=%d&page_offset=%d' % (limit, offset)
-    )
+    rv = client.get(f'/optimade/structures?page_limit={limit}&page_offset={offset}')
     assert rv.status_code == 200
     data = rv.json()
     assert len(data['data']) == results
@@ -194,7 +192,7 @@ def test_list_endpoint_pagination(client, example_structures, limit, offset, res
 
 @pytest.mark.parametrize('sort, order', [('nelements', 1), ('-nelements', -1)])
 def test_list_endpoint_sort(client, example_structures, sort, order):
-    rv = client.get('/optimade/structures?sort=%s' % sort)
+    rv = client.get(f'/optimade/structures?sort={sort}')
     assert rv.status_code == 200
     data = rv.json()['data']
 
@@ -228,7 +226,9 @@ def test_list_endpoint_response_fields(client, example_structures):
 
 def test_single_endpoint_response_fields(client, example_structures):
     rv = client.get(
-        '/optimade/structures/%s?response_fields=nelements,elements' % 'test_entry_id_1'
+        '/optimade/structures/{}?response_fields=nelements,elements'.format(
+            'test_entry_id_1'
+        )
     )
     assert rv.status_code == 200, json.dumps(rv.json(), indent=2)
     data = rv.json()
@@ -240,7 +240,7 @@ def test_single_endpoint_response_fields(client, example_structures):
 
 
 def test_single_endpoint(client, example_structures):
-    rv = client.get('/optimade/structures/%s' % 'test_entry_id_1')
+    rv = client.get('/optimade/structures/{}'.format('test_entry_id_1'))
     assert rv.status_code == 200
     data = rv.json()
     for key in ['type', 'id', 'attributes']:
@@ -323,7 +323,7 @@ def test_structures_endpoint(client, example_structures):
 
 
 def test_structure_endpoint(client, example_structures):
-    rv = client.get('/optimade/structures/%s' % 'test_entry_id_1')
+    rv = client.get('/optimade/structures/{}'.format('test_entry_id_1'))
     assert rv.status_code == 200
     data = rv.json()
     assert data.get('data') is not None
@@ -347,8 +347,9 @@ def test_nmd_properties_info(client, example_structures):
 
 def test_nmd_properties(client, example_structures):
     rv = client.get(
-        '/optimade/structures/%s'
-        % 'test_entry_id_1?response_fields=_nmd_results_material_elements,_nmd_results_material_structural_type,_nmd_doesnotexist,_nmd_archive_url'
+        '/optimade/structures/{}'.format(
+            'test_entry_id_1?response_fields=_nmd_results_material_elements,_nmd_results_material_structural_type,_nmd_doesnotexist,_nmd_archive_url'
+        )
     )
     assert rv.status_code == 200
     data = rv.json()

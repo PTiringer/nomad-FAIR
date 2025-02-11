@@ -112,8 +112,8 @@ logger = utils.get_logger(__name__)
 
 # bug when used in isinstance() with mypy
 # see https://github.com/python/mypy/issues/11673
-GenericList = Union[list, ArchiveList, ArchiveListNew]
-GenericDict = Union[dict, ArchiveDict, ArchiveDictNew]
+GenericList = list | ArchiveList | ArchiveListNew
+GenericDict = dict | ArchiveDict | ArchiveDictNew
 
 
 @dataclasses.dataclass(frozen=True)
@@ -187,7 +187,7 @@ class ConfigError(Exception):
 
 async def goto_child(container, key: str | int | list):
     if not isinstance(key, list):
-        if isinstance(container, (list, dict)):
+        if isinstance(container, list | dict):
             return container[key]  # type: ignore
 
         return await asyncio.to_thread(container.__getitem__, key)
@@ -2510,7 +2510,7 @@ def _is_quantity_reference(definition) -> bool:
         isinstance(definition, Quantity)
         and isinstance(definition.type, Reference)
         and not isinstance(
-            definition.type, (UserReference, AuthorReference, DatasetReference)
+            definition.type, UserReference | AuthorReference | DatasetReference
         )
     )
 
@@ -2801,7 +2801,7 @@ class ArchiveReader(ArchiveLikeReader):
             )
 
         if isinstance(node.definition, Quantity) or isinstance(
-            getattr(node.definition, 'type', None), (JSON, AnyType)
+            getattr(node.definition, 'type', None), JSON | AnyType
         ):
             # the container size limit does not recursively apply to JSON
             result_to_write = (
@@ -3065,7 +3065,7 @@ class DefinitionReader(ArchiveLikeReader):
             # for derived quantities like 'all_properties', 'all_quantities', etc.
             # normalise them to maps
             is_plain_container: bool = (
-                False if is_list else isinstance(child_def, (list, set, dict))
+                False if is_list else isinstance(child_def, list | set | dict)
             )
 
             child_path: list = node.current_path + [name]
@@ -3090,7 +3090,7 @@ class DefinitionReader(ArchiveLikeReader):
                         await _populate_result(
                             node.result_root, child_path + [k], __convert(v)
                         )
-                elif isinstance(child_def, (set, list)):
+                elif isinstance(child_def, set | list):
                     await _populate_result(node.result_root, child_path, [])
                     for i, v in enumerate(child_def):
                         await _populate_result(
@@ -3109,7 +3109,7 @@ class DefinitionReader(ArchiveLikeReader):
                 if isinstance(child_def, dict):
                     for _k, _v in child_def.items():
                         await __func(child_path + [_k], _v)
-                elif isinstance(child_def, (set, list)):
+                elif isinstance(child_def, set | list):
                     for _i, _v in enumerate(child_def):
                         await __func(child_path + [str(_i)], _v)
                 else:
@@ -3264,7 +3264,7 @@ class DefinitionReader(ArchiveLikeReader):
                             _unwrap_subsection(v)
                             for v in (
                                 target
-                                if isinstance(target, (list, set))
+                                if isinstance(target, list | set)
                                 else target.values()
                             )
                         )

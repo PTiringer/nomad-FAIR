@@ -49,6 +49,6 @@ def import_command(path_to_users_file):
             infrastructure.user_management.add_user(
                 user, bcrypt_password=password, invite=False
             )
-            print('Imported %s' % user.name)
+            print(f'Imported {user.name}')
         except Exception as e:
             logger.error('could not import user', exc_info=e)

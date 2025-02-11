@@ -161,9 +161,7 @@ def test_materials_required(client, example_data, required, status_code, http_me
     ],
 )
 def test_material_metadata(client, example_data, material_id, required, status_code):
-    response = client.get(
-        'materials/%s?%s' % (material_id, urlencode(required, doseq=True))
-    )
+    response = client.get(f'materials/{material_id}?{urlencode(required, doseq=True)}')
     response_json = assert_metadata_response(response, status_code=status_code)
 
     if response_json is None:
@@ -302,7 +300,7 @@ def test_materials_get_query(client, example_data, query, status_code, total):
     if 'pagination' not in response_json:
         return
 
-    response = client.get('materials?%s' % urlencode(query, doseq=True))
+    response = client.get(f'materials?{urlencode(query, doseq=True)}')
 
     response_json = assert_metadata_response(response, status_code=status_code)
 

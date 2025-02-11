@@ -332,7 +332,7 @@ def test_parser_plugins():
     parsers = [
         entry_point
         for entry_point in config.plugins.entry_points.options.values()
-        if isinstance(entry_point, (Parser, ParserEntryPoint))
+        if isinstance(entry_point, Parser | ParserEntryPoint)
     ]
     assert len(parsers) == 72
 

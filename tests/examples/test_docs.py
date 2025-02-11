@@ -14,7 +14,7 @@ def _file(path):
 
 
 def _load_yaml(path):
-    with open(_file(path), 'rt') as f:
+    with open(_file(path)) as f:
         return yaml.safe_load(f)
 
 

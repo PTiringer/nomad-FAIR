@@ -114,7 +114,7 @@ def match_parser(
     else:
         parsers_to_check = parsers
     for parser in parsers_to_check:
-        if strict and isinstance(parser, (MissingParser, EmptyParser)):
+        if strict and isinstance(parser, MissingParser | EmptyParser):
             continue
 
         match_result = parser.is_mainfile(

@@ -49,11 +49,11 @@ def find_all_paths(json_obj, path=None, paths_list=None):
     if paths_list is None:
         paths_list = []
 
-    if isinstance(json_obj, (dict, ArchiveDict)):
+    if isinstance(json_obj, dict | ArchiveDict):
         for key, value in json_obj.items():
             new_path = [key] if not path else path + [key]
             find_all_paths(value, new_path, paths_list)
-    elif isinstance(json_obj, (list, ArchiveList)):
+    elif isinstance(json_obj, list | ArchiveList):
         for index, value in enumerate(json_obj):
             new_path = [index] if not path else path + [index]
             find_all_paths(value, new_path, paths_list)

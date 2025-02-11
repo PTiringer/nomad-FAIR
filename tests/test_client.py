@@ -42,7 +42,7 @@ from tests.processing import test_data as test_processing
 
 
 def assert_results(
-    results: List[MSection], sub_section_defs: List[SubSection] = None, total=1
+    results: list[MSection], sub_section_defs: list[SubSection] = None, total=1
 ):
     assert len(results) == total
     for result in results:
@@ -62,11 +62,11 @@ def assert_results(
 
 
 @pytest.fixture(scope='function')
-def many_uploads(non_empty_uploaded: Tuple[str, str], user1: User, proc_infra):
+def many_uploads(non_empty_uploaded: tuple[str, str], user1: User, proc_infra):
     _, upload_file = non_empty_uploaded
     for index in range(0, 4):
         upload = test_processing.run_processing(
-            ('test_upload_%d' % index, upload_file), user1
+            (f'test_upload_{index}', upload_file), user1
         )
         upload.publish_upload()  # pylint: disable=no-member
         try:
@@ -166,9 +166,9 @@ def load_example(path: str):
     expected_path = os.path.join(
         current_dir, 'examples', 'data', 'json_transformer', 'expected.json'
     )
-    with open(rules_path, 'r') as file:
+    with open(rules_path) as file:
         rules_data = json.load(file)
-    with open(expected_path, 'r') as f:
+    with open(expected_path) as f:
         expected = json.load(f)
 
     transformation_dict = {}

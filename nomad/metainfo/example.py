@@ -182,7 +182,7 @@ if __name__ == '__main__':
     print(system.n_atoms)
 
     # To validate dimensions and custom constraints
-    print('errors: %s' % run.m_all_validate())
+    print(f'errors: {run.m_all_validate()}')
 
     # To serialize the data:
     serializable = run.m_to_dict()

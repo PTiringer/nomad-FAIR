@@ -167,7 +167,7 @@ def test_module():
         ),
     ],
 )
-def test_validation(request_yaml: str, paths: List[str], error_path: str):
+def test_validation(request_yaml: str, paths: list[str], error_path: str):
     try:
         request = GraphRequest.model_validate(yaml.safe_load(strip(request_yaml)))
     except ValidationError as error:

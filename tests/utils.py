@@ -66,18 +66,14 @@ def assert_at_least(source, target):
     the same information in target. Additional information in target is ignored.
     """
     for key, value in source.items():
-        assert key in target, '%s with value %s in %s is not in %s' % (
-            key,
-            source[key],
-            source,
-            target,
+        assert key in target, (
+            f'{key} with value {source[key]} in {source} is not in {target}'
         )
         if isinstance(value, dict):
             assert_at_least(value, target[key])
         else:
             assert value == target[key], (
-                '%s with value %s in %s is not equal the target value %s in %s'
-                % (key, source[key], source, target[key], target)
+                f'{key} with value {source[key]} in {source} is not equal the target value {target[key]} in {target}'
             )
 
 
@@ -94,7 +90,7 @@ def assert_url_query_args(url: str, **kwargs):
             assert query_dict[k][0] == str(v)
 
 
-def build_url(base_url: str, query_args: Dict[str, Any]) -> str:
+def build_url(base_url: str, query_args: dict[str, Any]) -> str:
     """
     Takes a base_url and a dictionary, and combines to a url with query arguments.
     Arguments with value None are ignored.
@@ -106,7 +102,7 @@ def build_url(base_url: str, query_args: Dict[str, Any]) -> str:
     return base_url + '?' + urllib.parse.urlencode(query_args_clean, doseq=True)
 
 
-def set_upload_entry_metadata(upload, metadata: Dict[str, Any]):
+def set_upload_entry_metadata(upload, metadata: dict[str, Any]):
     """
     Sets the provided metadata values on all entries of the given upload.
     """
@@ -119,11 +115,11 @@ def set_upload_entry_metadata(upload, metadata: Dict[str, Any]):
 
 def create_template_upload_file(
     tmp,
-    mainfiles: Union[str, List[str]] = None,
+    mainfiles: str | list[str] = None,
     auxfiles: int = 4,
     directory: str = 'examples_template',
     name: str = 'examples_template.zip',
-    more_files: Union[str, List[str]] = None,
+    more_files: str | list[str] = None,
 ):
     """
     Creates a temporary upload.zip file based on template.json (for the artificial test

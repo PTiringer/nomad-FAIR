@@ -18,7 +18,7 @@
 from datetime import datetime
 
 from enum import Enum
-from typing import Annotated, Optional, Set, Union, Dict, Any, List, Type
+from typing import Any
 from collections.abc import Iterator
 from fastapi import (
     APIRouter,
@@ -197,7 +197,7 @@ replace the references:
 )
 
 
-ArchiveRequired = Union[str, dict[str, Any]]
+ArchiveRequired = str | dict[str, Any]
 
 _archive_required_field = Body(
     '*',
@@ -291,9 +291,9 @@ EntryMetadataEditActions = create_model(
     'EntryMetadataEditActions',
     **{  # type: ignore
         quantity.name: (
-            Optional[EntryMetadataEditActionField]
+            EntryMetadataEditActionField | None
             if quantity.is_scalar
-            else Optional[list[EntryMetadataEditActionField]],
+            else list[EntryMetadataEditActionField] | None,
             None,
         )
         for quantity in EditableUserMetadata.m_def.definitions
@@ -705,8 +705,10 @@ def _answer_entries_raw_request(owner: Owner, query: Query, files: Files, user: 
     if response.pagination.total > config.services.max_entry_download:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
-            detail='The limit of maximum number of entries in a single download (%d) has been exeeded (%d).'
-            % (config.services.max_entry_download, response.pagination.total),
+            detail=(
+                f'The limit of maximum number of entries in a single download '
+                f'({config.services.max_entry_download}) has been exceeded ({response.pagination.total}).'
+            ),
         )
 
     files_params = Files() if files is None else files
@@ -1741,7 +1743,7 @@ async def post_entry_metadata_edit(
             if quantity is None:
                 raise HTTPException(
                     status.HTTP_400_BAD_REQUEST,
-                    detail='Unknown quantity %s' % action_quantity_name,
+                    detail=f'Unknown quantity {action_quantity_name}',
                 )
 
             # TODO this does not work. Because the quantities are not in EditableUserMetadata
@@ -1751,13 +1753,13 @@ async def post_entry_metadata_edit(
                 if not user.is_admin():
                     raise HTTPException(
                         status.HTTP_400_BAD_REQUEST,
-                        detail='Only the admin user can set %s' % quantity.name,
+                        detail=f'Only the admin user can set {quantity.name}',
                     )
 
             if isinstance(quantity_actions, list) == quantity.is_scalar:
                 raise HTTPException(
                     status.HTTP_400_BAD_REQUEST,
-                    detail='Wrong shape for quantity %s' % action_quantity_name,
+                    detail=f'Wrong shape for quantity {action_quantity_name}',
                 )
 
             if not isinstance(quantity_actions, list):
@@ -1866,8 +1868,7 @@ async def post_entry_metadata_edit(
                 if doi_ds is not None and not user.is_admin:
                     data.success = False
                     data.message = (data.message if data.message else '') + (
-                        'Edit would remove entries from a dataset with DOI (%s) '
-                        % doi_ds.dataset_name
+                        f'Edit would remove entries from a dataset with DOI ({doi_ds.dataset_name}) '
                     )
                     has_error = True
 

@@ -329,7 +329,7 @@ class RequiredReader:
             try:
                 result[prop] = (
                     [handle_item(item) for item in value]
-                    if isinstance(value, (list, ArchiveList, ArchiveListNew))
+                    if isinstance(value, list | ArchiveList | ArchiveListNew)
                     else handle_item(value)
                 )
             except ArchiveError as e:
@@ -552,7 +552,7 @@ class RequiredReader:
         if isinstance(archive_item, ArchiveDict):
             archive_item = to_json(archive_item)
 
-        if isinstance(archive_item, (dict, NewArchiveDict)) and 'm_def' in archive_item:
+        if isinstance(archive_item, dict | NewArchiveDict) and 'm_def' in archive_item:
             dataset = dataset.replace(
                 definition=self._resolve_definition(
                     dataset.upload_id,
@@ -606,7 +606,7 @@ class RequiredReader:
 
                 from .storage_v2 import ArchiveList as ArchiveListNew
 
-                if isinstance(archive_child, (ArchiveListNew, ArchiveList, list)):
+                if isinstance(archive_child, ArchiveListNew | ArchiveList | list):
                     result[prop] = [
                         self._apply_required(
                             val, item, dataset.replace(definition=prop_def)

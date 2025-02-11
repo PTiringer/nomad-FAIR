@@ -1094,7 +1094,7 @@ class EntryMetadata(MSection):
             if section_path.startswith('data') and isinstance(property_def, Quantity):
                 # From each string dtype, we get a truncated sample to put into
                 # the keywords field, unless we are already storing too many unique values.
-                if (isinstance(property_def.type, (MEnum, m_str))) and len(
+                if (isinstance(property_def.type, MEnum | m_str)) and len(
                     keywords_set
                 ) < 10000:
                     keyword = section.m_get(property_def)

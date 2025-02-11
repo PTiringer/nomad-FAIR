@@ -27,7 +27,7 @@ def perform_get_token_test(client, http_method, status_code, username, password)
         )
     else:
         response = client.get(
-            'auth/token?%s' % urlencode(dict(username=username, password=password))
+            f'auth/token?{urlencode(dict(username=username, password=password))}'
         )
 
     assert response.status_code == status_code

@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 
-from typing import Iterable
+from collections.abc import Iterable
 import pytest
 import json
 
@@ -39,9 +39,7 @@ class MockResponse:
 
 @pytest.fixture(scope='function')
 def external_api_fixture(monkeypatch):
-    with open(
-        'tests/data/datamodel/metainfo/external_api_mock_response.json', 'r'
-    ) as fp:
+    with open('tests/data/datamodel/metainfo/external_api_mock_response.json') as fp:
         mock_responses = json.load(fp)
 
     def pub_chem_api_get_properties(cid: int, properties: Iterable[str]):

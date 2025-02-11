@@ -166,7 +166,7 @@ class ExampleData:
         else:
             parser_name = parser.__class__.__name__
 
-        assert parser is not None, 'there is no parser matching %s' % mainfile
+        assert parser is not None, f'there is no parser matching {mainfile}'
         parser.parse(mainfile=mainfile, archive=entry_archive)
 
         entry_metadata = entry_archive.metadata
@@ -406,7 +406,7 @@ class ExampleData:
         self.create_entry(
             entry_archive=archive,
             upload_id=upload_id,
-            entry_id='test_entry_id_%d' % id,
+            entry_id=f'test_entry_id_{id}',
             domain='dft',
             **kwargs,
         )

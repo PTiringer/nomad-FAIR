@@ -577,4 +577,4 @@ class MissingParser(MatchingParser):
     def parse(
         self, mainfile: str, archive: EntryArchive, logger=None, child_archives=None
     ):
-        raise Exception('The code %s is not yet supported.' % self.code_name)
+        raise Exception(f'The code {self.code_name} is not yet supported.')

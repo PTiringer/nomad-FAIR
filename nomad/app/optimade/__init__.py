@@ -104,7 +104,7 @@ from nomad import utils  # nopep8
 from nomad.config import config
 from optimade.server.config import CONFIG  # nopep8
 
-CONFIG.root_path = '%s/optimade' % config.services.api_base_path
+CONFIG.root_path = f'{config.services.api_base_path}/optimade'
 CONFIG.base_url = '{}://{}'.format(
     'https' if config.services.https else 'http',
     config.services.api_host.strip('/'),

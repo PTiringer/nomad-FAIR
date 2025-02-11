@@ -106,7 +106,7 @@ def setup_elastic():
         http_auth = (config.elastic.username, config.elastic.password)
     global elastic_client
     elastic_client = connections.create_connection(
-        hosts=['%s:%d' % (config.elastic.host, config.elastic.port)],
+        hosts=[f'{config.elastic.host}:{config.elastic.port}'],
         timeout=config.elastic.timeout,
         max_retries=10,
         retry_on_timeout=True,
@@ -348,7 +348,7 @@ class KeycloakUserManagement(UserManagement):
         index = 1
         try:
             while self.get_user(username=user.username):
-                user.username += '%d' % index
+                user.username += f'{index}'
                 index += 1
         except KeyError:
             pass
@@ -415,12 +415,12 @@ class KeycloakUserManagement(UserManagement):
         if user.user_id != 'not_set':
             try:
                 self._admin_client.get_user(user.user_id)
-                return 'User %s with given id already exists' % user.email
+                return f'User {user.email} with given id already exists'
             except KeycloakGetError:
                 pass
 
         if self._admin_client.get_user_id(user.email) is not None:
-            return 'User with email %s already exists' % user.email
+            return f'User with email {user.email} already exists'
 
         try:
             self._admin_client.create_user(keycloak_user)
@@ -484,7 +484,7 @@ class KeycloakUserManagement(UserManagement):
                 user_id = self._admin_client.get_user_id(username)
 
             if user_id is None:
-                raise KeyError('User with username %s does not exist' % username)
+                raise KeyError(f'User with username {username} does not exist')
 
         if email is not None and user_id is None:
             with utils.lnr(logger, 'Could not use keycloak admin client'):
@@ -494,7 +494,7 @@ class KeycloakUserManagement(UserManagement):
                 user_id = users[0]['id']
 
             if user_id is None:
-                raise KeyError('User with email %s does not exist' % email)
+                raise KeyError(f'User with email {email} does not exist')
 
         assert user_id is not None, 'Could not determine user from given kwargs'
 
@@ -625,7 +625,7 @@ def send_mail(name: str, email: str, message: str, subject: str):
     to_addrs = [email]
 
     if config.mail.cc_address is not None:
-        msg['Cc'] = 'The nomad team <%s>' % config.mail.cc_address
+        msg['Cc'] = f'The nomad team <{config.mail.cc_address}>'
         to_addrs.append(config.mail.cc_address)
 
     try:

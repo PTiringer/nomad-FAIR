@@ -77,8 +77,7 @@ def reset_processing(zero_complete_time):
             process_status__in=proc.ProcessStatus.STATUSES_PROCESSING
         )
         print(
-            '%d %s processes need to be reset due to incomplete process'
-            % (in_processing.count(), cls.__name__)
+            f'{in_processing.count()} {cls.__name__} processes need to be reset due to incomplete process'
         )
         in_processing.update(
             process_status=proc.ProcessStatus.READY,
@@ -126,10 +125,8 @@ def lift_embargo(dry, parallel):
 
         if upload.publish_time + relativedelta(months=embargo_length) < datetime.now():
             print(
-                'need to lift the embargo of %s (publish_time=%s, embargo=%d)'
-                % (upload.upload_id, upload.publish_time, embargo_length)
+                f'need to lift the embargo of {upload.upload_id} (publish_time={upload.publish_time}, embargo={embargo_length})'
             )
-
             if not dry:
                 upload.edit_upload_metadata(
                     edit_request_json=dict(metadata={'embargo_length': 0}),
@@ -154,9 +151,7 @@ def dump(restore: bool):
 
     date_str = datetime.utcnow().strftime('%Y_%m_%d')
     print(
-        'mongodump --host {} --port {} --db {} -o /backup/fairdi/mongo/{}'.format(
-            config.mongo.host, config.mongo.port, config.mongo.db_name, date_str
-        )
+        f'mongodump --host {config.mongo.host} --port {config.mongo.port} --db {config.mongo.db_name} -o /backup/fairdi/mongo/{date_str}'
     )
 
 
@@ -164,9 +159,7 @@ def dump(restore: bool):
 @click.argument('PATH_TO_DUMP', type=str, nargs=1)
 def restore(path_to_dump):
     print(
-        'mongorestore --host {} --port {} --db {} {}'.format(
-            config.mongo.host, config.mongo.port, config.mongo.db_name, path_to_dump
-        )
+        f'mongorestore --host {config.mongo.host} --port {config.mongo.port} --db {config.mongo.db_name} {path_to_dump}'
     )
 
 
@@ -199,7 +192,7 @@ def restore(path_to_dump):
 )
 def nginx_conf(prefix, host, port, server):
     prefix = prefix.rstrip('/')
-    prefix = '/%s' % prefix.lstrip('/')
+    prefix = '/{}'.format(prefix.lstrip('/'))
 
     if server:
         print(
@@ -211,24 +204,24 @@ def nginx_conf(prefix, host, port, server):
         )
 
     print(
-        """
+        f"""
     location / {{
-        proxy_pass http://{1}:{2};
+        proxy_pass http://{host}:{port};
     }}
 
-    location ~ {0}\\/?(gui)?$ {{
-        rewrite ^ {0}/gui/ permanent;
+    location ~ {prefix}\\/?(gui)?$ {{
+        rewrite ^ {prefix}/gui/ permanent;
     }}
 
-    location {0}/gui/ {{
+    location {prefix}/gui/ {{
         proxy_intercept_errors on;
         error_page 404 = @redirect_to_index;
-        proxy_pass http://{1}:{2};
+        proxy_pass http://{host}:{port};
     }}
 
     location @redirect_to_index {{
-        rewrite ^ {0}/gui/index.html break;
-        proxy_pass http://{1}:{2};
+        rewrite ^ {prefix}/gui/index.html break;
+        proxy_pass http://{host}:{port};
     }}
 
     location ~ \\/gui\\/(service-worker\\.js|meta\\.json)$ {{
@@ -237,20 +230,20 @@ def nginx_conf(prefix, host, port, server):
         if_modified_since off;
         expires off;
         etag off;
-        proxy_pass http://{1}:{2};
+        proxy_pass http://{host}:{port};
     }}
 
     location ~ /api/v1/uploads(/?$|.*/raw|.*/bundle?$) {{
         client_max_body_size 35g;
         proxy_request_buffering off;
-        proxy_pass http://{1}:{2};
+        proxy_pass http://{host}:{port};
     }}
 
     location ~ /api/v1/.*/download {{
         proxy_buffering off;
-        proxy_pass http://{1}:{2};
+        proxy_pass http://{host}:{port};
     }}
-""".format(prefix, host, port)
+"""
     )
     if server:
         print('}')

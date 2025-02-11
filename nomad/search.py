@@ -362,7 +362,7 @@ _entry_metadata_defaults = {
 _all_author_quantities = [
     quantity.name
     for quantity in EntryMetadata.m_def.all_quantities.values()
-    if isinstance(quantity.type, (UserReference, AuthorReference))
+    if isinstance(quantity.type, UserReference | AuthorReference)
 ]
 
 
@@ -825,7 +825,7 @@ def normalize_api_query(
             query=normalize_api_query(query, doc_type=doc_type, prefix=query.prefix),
         )
 
-    if isinstance(query, (models.Empty, models.Criteria)):
+    if isinstance(query, models.Empty | models.Criteria):
         return query
 
     raise NotImplementedError(f'Query type {query.__class__} is not supported')
@@ -952,7 +952,7 @@ def _api_to_es_query(
             quantity = validate_quantity(name, doc_type=doc_type)
             return quantity.get_range_query(value)
 
-        elif isinstance(value, (models.And, models.Or, models.Not)):
+        elif isinstance(value, models.And | models.Or | models.Not):
             return validate_query(value)
 
         # list of values is treated as an "all" over the items
@@ -1029,7 +1029,7 @@ def validate_pagination(
         and pagination.order_by != doc_type.id_field
         and ':' not in page_after_value
     ):
-        pagination.page_after_value = '%s:' % page_after_value
+        pagination.page_after_value = f'{page_after_value}:'
 
     return order_quantity, page_after_value
 
@@ -1117,7 +1117,7 @@ def _api_to_es_aggregation(
                 )
             metric_aggregation, metric_quantity = metrics[metric_name]
             es_aggs.metric(
-                'statistics:%s' % metric_name,
+                f'statistics:{metric_name}',
                 A(metric_aggregation, field=metric_quantity.qualified_field),
             )
 
@@ -1134,7 +1134,7 @@ def _api_to_es_aggregation(
     is_nested = False
     for nested_key in doc_type.nested_object_keys:
         if agg.quantity.startswith(nested_key):
-            es_aggs = es_aggs.bucket('nested_agg:%s' % name, 'nested', path=nested_key)
+            es_aggs = es_aggs.bucket(f'nested_agg:{name}', 'nested', path=nested_key)
             longest_nested_key = nested_key
             is_nested = True
 
@@ -1143,7 +1143,7 @@ def _api_to_es_aggregation(
     # quantity.
     if quantity.dynamic:
         es_aggs = es_aggs.bucket(
-            'nested_agg:%s' % name, 'nested', path='search_quantities'
+            f'nested_agg:{name}', 'nested', path='search_quantities'
         )
         is_nested = True
         longest_nested_key = 'search_quantities'
@@ -1227,7 +1227,7 @@ def _api_to_es_aggregation(
 
             # additional cardinality to get total
             es_aggs.metric(
-                'agg:%s:total' % name, 'cardinality', field=quantity.search_field
+                f'agg:{name}:total', 'cardinality', field=quantity.search_field
             )
         else:
             if agg.size is None:
@@ -1360,7 +1360,7 @@ def _api_to_es_aggregation(
                 )
             metric_aggregation, metric_quantity = metrics[metric_name]
             es_agg.metric(
-                'metric:%s' % metric_name,
+                f'metric:{metric_name}',
                 A(metric_aggregation, field=metric_quantity.qualified_field),
             )
 
@@ -1498,7 +1498,7 @@ def _es_to_api_aggregation(
                         data.append(Bucket(value=value, count=0, metrics=metrics))
 
         else:
-            total = es_aggs['agg:%s:total' % name]['value']
+            total = es_aggs[f'agg:{name}:total']['value']
             pagination = PaginationResponse(
                 total=total, **aggregation_dict['pagination']
             )
@@ -1544,8 +1544,8 @@ def _es_to_api_aggregation(
             raise NotImplementedError()
 
     if isinstance(agg, MinMaxAggregation):
-        min_value = es_aggs['agg:%s:min' % name]['value']
-        max_value = es_aggs['agg:%s:max' % name]['value']
+        min_value = es_aggs[f'agg:{name}:min']['value']
+        max_value = es_aggs[f'agg:{name}:max']['value']
 
         return AggregationResponse(
             min_max=MinMaxAggregationResponse(

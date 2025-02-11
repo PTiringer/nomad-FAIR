@@ -198,7 +198,7 @@ async def invite_user(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Invalid user data: %s' % str(e),
+            detail=f'Invalid user data: {str(e)}',
         )
 
     if user.email is None:
@@ -212,13 +212,13 @@ async def invite_user(
     except KeyError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Invalid user data: %s' % str(e),
+            detail=f'Invalid user data: {str(e)}',
         )
 
     if error is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Could not invite user: %s' % str(error),
+            detail=f'Could not invite user: {str(error)}',
         )
 
     return datamodel.User.get(username=user.username)

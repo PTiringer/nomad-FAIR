@@ -118,8 +118,9 @@ class Mapping:
                 dataset,
                 DCAT.landingPage,
                 URIRef(
-                    '%s/entry/id/%s/%s'
-                    % (config.gui_url(), entry['upload_id'], entry['entry_id'])
+                    '{}/entry/id/{}/{}'.format(
+                        config.gui_url(), entry['upload_id'], entry['entry_id']
+                    )
                 ),
             )
         )
@@ -175,7 +176,7 @@ class Mapping:
         self.g.add((person, FOAF.givenName, Literal(user.first_name)))
         self.g.add((person, FOAF.familyName, Literal(user.last_name)))
         self.g.add((person, FOAF.nick, Literal(user.username)))
-        self.g.add((person, FOAF.mbox, URIRef('mailto:%s' % (user.email))))
+        self.g.add((person, FOAF.mbox, URIRef(f'mailto:{user.email}')))
 
         self.persons[user.user_id] = person
 

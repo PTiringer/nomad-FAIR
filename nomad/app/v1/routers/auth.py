@@ -463,7 +463,4 @@ def generate_upload_token(user):
         bytes(config.services.api_secret, 'utf-8'), msg=payload, digestmod=hashlib.sha1
     )
 
-    return '{}.{}'.format(
-        utils.base64_encode(payload),
-        utils.base64_encode(signature.digest()),
-    )
+    return f'{utils.base64_encode(payload)}.{utils.base64_encode(signature.digest())}'

@@ -87,8 +87,7 @@ def edit_doi_url(doi: str, url: str = None):
 
     if response.status_code >= 300:
         raise Exception(
-            'Unexpected datacite response (status code %d): %s'
-            % (response.status_code, response.text)
+            f'Unexpected datacite response (status code {response.status_code}): {response.text}'
         )
 
 
@@ -127,12 +126,7 @@ class DOI(Document):
         create_time = datetime.datetime.utcnow()
 
         while True:
-            doi_str = '%s/NOMAD/%s-%d' % (
-                config.datacite.prefix,
-                create_time.strftime('%Y.%m.%d'),
-                counter,
-            )
-
+            doi_str = f'{config.datacite.prefix}/NOMAD/{create_time.strftime("%Y.%m.%d")}-{counter}'
             try:
                 doi = DOI(doi=doi_str)
                 doi.save(force_insert=True)
@@ -188,7 +182,7 @@ class DOI(Document):
     def __handle_datacite_errors(self, response, msg: str):
         if response is None or response.status_code >= 300:
             utils.get_logger(__name__).error(
-                'could not %s' % msg,
+                f'could not {msg}',
                 status_code=response.status_code,
                 body=response.content,
                 doi=self.doi,

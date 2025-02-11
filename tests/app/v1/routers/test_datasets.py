@@ -100,8 +100,8 @@ def data(elastic_function, raw_files_function, mongo_function, user1, user2):
     for i in range(1, 4):
         data.create_entry(
             upload_id='other_data',
-            entry_id='id_%02d' % i,
-            mainfile='test_content/%02d/mainfile.json' % i,
+            entry_id=f'id_{i:02d}',
+            mainfile=f'test_content/{i:02d}/mainfile.json',
         )
 
     data.save(with_files=False)
@@ -127,7 +127,7 @@ def assert_pagination(pagination):
 def assert_dataset(
     dataset,
     query: Query = None,
-    entries: List[str] = None,
+    entries: list[str] = None,
     n_entries: int = -1,
     **kwargs,
 ):
@@ -223,7 +223,7 @@ def test_datasets(client, data, query, size, status_code):
     ],
 )
 def test_dataset(client, data, dataset_id, result, status_code):
-    response = client.get('datasets/%s' % dataset_id)
+    response = client.get(f'datasets/{dataset_id}')
 
     assert_response(response, status_code=status_code)
     if status_code != 200:
@@ -354,7 +354,7 @@ def test_post_datasets(
     ],
 )
 def test_delete_dataset(auth_headers, client, data, dataset_id, user, status_code):
-    response = client.delete('datasets/%s' % dataset_id, headers=auth_headers[user])
+    response = client.delete(f'datasets/{dataset_id}', headers=auth_headers[user])
 
     assert_response(response, status_code=status_code)
     if status_code != 200:
@@ -410,7 +410,7 @@ def test_assign_doi_dataset(
     more_data.save(with_files=False)
 
     headers = auth_headers[user]
-    response = client.post('datasets/%s/action/doi' % dataset_id, headers=headers)
+    response = client.post(f'datasets/{dataset_id}/action/doi', headers=headers)
 
     assert_response(response, status_code=status_code)
     if status_code != 200:

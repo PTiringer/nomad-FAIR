@@ -684,7 +684,7 @@ def get_formula_string(symbols: Iterable[str], counts: Iterable[int]) -> str:
     formula = ''
     for symbol, count in zip(symbols, counts):
         if count > 1:
-            formula += '%s%d' % (symbol, count)
+            formula += f'{symbol}{count}'
         else:
             formula += symbol
     return formula
@@ -744,7 +744,7 @@ def get_normalized_wyckoff(
     sorted_species.sort(key=functools.cmp_to_key(compare_atomic_number))
     standard_atom_names = {}
     for i, at in enumerate(sorted_species):
-        standard_atom_names[at] = 'X_%d' % i
+        standard_atom_names[at] = f'X_{i}'
 
     # Rename with anonymized species labels
     standard_wyc: dict = {}

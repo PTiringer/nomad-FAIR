@@ -22,7 +22,8 @@ import time
 import zipfile
 from datetime import datetime
 import tempfile
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, List
+from collections.abc import Iterable
 
 import pytest
 import requests
@@ -401,7 +402,7 @@ def block_until_completed(client, upload_id: str, user_auth):
     start_time = time.time()
     while time.time() - start_time < config.tests.default_timeout:
         time.sleep(0.1)
-        response = client.get('uploads/%s' % upload_id, headers=user_auth)
+        response = client.get(f'uploads/{upload_id}', headers=user_auth)
         if response.status_code == 200:
             response_json = response.json()
             assert_upload(response_json)
@@ -412,14 +413,13 @@ def block_until_completed(client, upload_id: str, user_auth):
             return None
         else:
             raise Exception(
-                'unexpected status code while blocking for upload processing: %s'
-                % str(response.status_code)
+                f'unexpected status code while blocking for upload processing: {str(response.status_code)}'
             )
     raise Exception('Timed out while waiting for upload processing to finish')
 
 
 def get_upload_entries_metadata(
-    entries: List[Dict[str, Any]],
+    entries: list[dict[str, Any]],
 ) -> Iterable[EntryMetadata]:
     """
     Create a iterable of :class:`EntryMetadata` from a API upload json record, plus a

@@ -86,8 +86,7 @@ def normalize_formula(formula_str: str) -> str:
     symbol_normamount = {e: round(a / total * 100.0) for e, a in symbol_amount.items()}
 
     formula_sorted = [
-        '%s%d' % (s, symbol_normamount[s])
-        for s in sorted(list(symbol_normamount.keys()))
+        f'{s}{symbol_normamount[s]}' for s in sorted(list(symbol_normamount.keys()))
     ]
 
     return ''.join(formula_sorted)
@@ -198,10 +197,7 @@ def update_springer(max_n_query: int = 10, retry_time: int = 120):
     page = 1
     while True:
         # check springer database for new entries by comparing with local database
-        root = (
-            'http://materials.springer.com/search?searchTerm=&pageNumber=%d&datasourceFacet=sm_isp&substanceId='
-            % page
-        )
+        root = f'http://materials.springer.com/search?searchTerm=&pageNumber={page}&datasourceFacet=sm_isp&substanceId='
         req_text = _download(root, max_n_query, retry_time)
         if 'Sorry,' in req_text:
             break
@@ -216,7 +212,7 @@ def update_springer(max_n_query: int = 10, retry_time: int = 120):
             if sp_id in sp_ids:
                 continue
 
-            path = 'http://materials.springer.com%s' % path
+            path = f'http://materials.springer.com{path}'
             req_text = _download(path, max_n_query, retry_time)
             try:
                 data = parse(req_text)

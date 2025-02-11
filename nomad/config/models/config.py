@@ -598,7 +598,7 @@ class Normalize(ConfigBaseModel):
         """,
     )
     angle_rounding: float = Field(
-        float(10.0),
+        10.0,
         description="""
             Defines the "bin size" for rounding cell angles for the material hash in degree.
         """,
@@ -966,14 +966,10 @@ class Config(ConfigBaseModel):
         if page is not None:
             return f'{base}/gui/{page}'
 
-        return '%s/gui' % base
+        return f'{base}/gui'
 
     def rabbitmq_url(self):
-        return 'pyamqp://{}:{}@{}//'.format(
-            self.rabbitmq.user,
-            self.rabbitmq.password,
-            self.rabbitmq.host,
-        )
+        return f'pyamqp://{self.rabbitmq.user}:{self.rabbitmq.password}@{self.rabbitmq.host}//'
 
     def north_url(self, ssl: bool = True):
         return self.api_url(

@@ -79,7 +79,7 @@ def data(user1, user2, elastic_infra, mongo_module):
 
     for i in range(1, 11):
         example_attrs.update(
-            entry_id='test-id-%d' % i, last_processing_time=datetime(2020, 1, i)
+            entry_id=f'test-id-{i}', last_processing_time=datetime(2020, 1, i)
         )
         data.create_entry(**example_attrs)
 
@@ -101,7 +101,7 @@ def test_mapping(example_entry):
 
 def test_get_dataset(api, example_entry):
     entry_id = 'test-id'
-    rv = api.get('/datasets/%s' % entry_id)
+    rv = api.get(f'/datasets/{entry_id}')
     assert rv.status_code == 200
 
 

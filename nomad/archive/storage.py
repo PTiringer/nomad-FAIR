@@ -151,7 +151,7 @@ class ArchiveReader(ArchiveDict):
                     self._file_or_path, 'rb', buffering=config.archive.read_buffer_size
                 ),
             )
-        elif isinstance(self._file_or_path, (BytesIO, BufferedReader)):
+        elif isinstance(self._file_or_path, BytesIO | BufferedReader):
             f = cast(BytesIO, self._file_or_path)
         else:
             raise ValueError('not a file or path')

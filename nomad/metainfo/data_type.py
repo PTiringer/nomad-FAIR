@@ -25,7 +25,7 @@ from base64 import b64decode, b64encode
 from datetime import datetime, date
 from functools import reduce
 from inspect import isclass
-from typing import Any as TypingAny, Optional
+from typing import Any as TypingAny
 from urllib.parse import urlparse, urlunparse
 
 import numpy as np
@@ -230,7 +230,7 @@ class Primitive(Datatype):
             return value
 
         if self.is_scalar:
-            if isinstance(value, (list, np.ndarray)):
+            if isinstance(value, list | np.ndarray):
                 raise ValueError(f'Shape mismatch for {value}.')
         else:
             if not self.support_array:
@@ -261,7 +261,7 @@ class Primitive(Datatype):
                 'type_data': self._dtype.__name__,
             } | self.flags
 
-        if issubclass(self._dtype, (np.number, np.str_, np.bool_)):
+        if issubclass(self._dtype, np.number | np.str_ | np.bool_):
             return {
                 'type_kind': 'numpy',
                 'type_data': self._dtype.__name__,
@@ -274,7 +274,7 @@ class Primitive(Datatype):
             return value
 
         def extract_magnitude(v):
-            if isinstance(v, (list, tuple)):
+            if isinstance(v, list | tuple):
                 return [extract_magnitude(x) for x in v]
 
             if not isinstance(v, pint.Quantity):
@@ -333,9 +333,9 @@ class Primitive(Datatype):
 
         if isinstance(value, np.ndarray):
             array = value
-        elif isinstance(value, (pd.DataFrame, pd.Series)):
+        elif isinstance(value, pd.DataFrame | pd.Series):
             array = value.to_numpy()
-        elif isinstance(value, (list, tuple)):
+        elif isinstance(value, list | tuple):
             array = np.array(value)
         else:
             raise ValueError(f'Cannot identify type for {value}.')
@@ -363,7 +363,7 @@ class Primitive(Datatype):
                     array = array.astype(self._dtype, casting='safe')
                 except TypeError:
                     new_array = array.astype(self._dtype).astype(original_dtype)
-                    if isinstance(self, (m_str, m_bool)):
+                    if isinstance(self, m_str | m_bool):
                         if not np.all(array == new_array):
                             raise ValueError(
                                 f'Cannot convert {array} to {self._dtype}.'
@@ -535,7 +535,7 @@ class InexactNumber(Number):
         """
 
         def _preprocess(v):
-            if isinstance(v, (list, tuple)):
+            if isinstance(v, list | tuple):
                 return [_preprocess(x) for x in v]
 
             return float('nan') if v is None else v
@@ -658,7 +658,7 @@ class m_complex128(m_complex):
             return {'re': value.real, 'im': value.imag}
 
         # 1D
-        if isinstance(value, (list, tuple)):
+        if isinstance(value, list | tuple):
             return {'re': [v.real for v in value], 'im': [v.imag for v in value]}
 
         # ND
@@ -993,7 +993,7 @@ class Datetime(NonPrimitive):
             datetime_obj = datetime(value.year, value.month, value.day)
         elif isinstance(value, str):
             datetime_obj = parse(value)
-        elif isinstance(value, (int, float)):
+        elif isinstance(value, int | float):
             datetime_obj = datetime.fromtimestamp(value)
         elif isinstance(value, pd.Timestamp):
             datetime_obj = value.to_pydatetime()
@@ -1278,20 +1278,19 @@ def to_pydantic_type(in_type: Datatype):
     standard_type = in_type.standard_type()
 
     if standard_type.startswith('int'):
-        return Optional[int]
+        return int | None
     if standard_type.startswith('float'):
-        return Optional[float]
+        return float | None
     if standard_type.startswith('complex'):
-        return Optional[complex]
+        return complex | None
     if standard_type == 'bool':
-        return Optional[bool]
+        return bool | None
     if standard_type in ('str', 'enum'):
-        return Optional[str]
+        return str | None
     if standard_type == 'datetime':
-        return Optional[datetime]
+        return datetime | None
     if standard_type == 'dict':
-        return Optional[dict]
-
+        return dict | None
     raise NotImplementedError(f'Unsupported pydantic data type {in_type}.')
 
 
@@ -1399,7 +1398,7 @@ def _normalize_complex(value, complex_type, to_unit: str | ureg.Unit | None):
         )
 
     # complex or real part only
-    if isinstance(value, (int, float, complex, np.number)):
+    if isinstance(value, int | float | complex | np.number):
         __check_precision(type(value))
         return complex_type(value)
 

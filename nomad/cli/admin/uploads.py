@@ -37,7 +37,7 @@ def _run_parallel(
 
     from nomad import utils, processing as proc
 
-    if isinstance(uploads, (tuple, list)):
+    if isinstance(uploads, tuple | list):
         uploads_count = len(uploads)
 
     else:
@@ -53,10 +53,10 @@ def _run_parallel(
 
     logger = utils.get_logger(__name__)
 
-    print('%d uploads selected, %s ...' % (uploads_count, label))
+    print(f'{uploads_count} uploads selected, {label} ...')
 
     def process_upload(upload: proc.Upload):
-        logger.info('%s started' % label, upload_id=upload.upload_id)
+        logger.info(f'{label} started', upload_id=upload.upload_id)
 
         completed = False
         try:
@@ -64,7 +64,7 @@ def _run_parallel(
                 completed = True
         except Exception as e:
             completed = True
-            logger.error('%s failed' % label, upload_id=upload.upload_id, exc_info=e)
+            logger.error(f'{label} failed', upload_id=upload.upload_id, exc_info=e)
 
         with cv:
             state['completed_count'] += 1 if completed else 0
@@ -72,8 +72,7 @@ def _run_parallel(
             state['available_threads_count'] += 1
 
             print(
-                '   %s %s and skipped %s of %s uploads'
-                % (
+                '   {} {} and skipped {} of {} uploads'.format(
                     label,
                     state['completed_count'],
                     state['skipped_count'],
@@ -85,7 +84,7 @@ def _run_parallel(
 
     for upload in uploads:
         logger.info(
-            'cli schedules parallel %s processing for upload' % label,
+            f'cli schedules parallel {label} processing for upload',
             current_process=upload.current_process,
             last_status_message=upload.last_status_message,
             upload_id=upload.upload_id,
@@ -125,15 +124,14 @@ def _run_processing(
 
     def run_process(upload, logger):
         logger.info(
-            'cli calls %s processing' % label,
+            f'cli calls {label} processing',
             current_process=upload.current_process,
             last_status_message=upload.last_status_message,
             upload_id=upload.upload_id,
         )
         if upload.process_running and not process_running:
             logger.warn(
-                'cannot trigger %s, since the upload is already/still processing'
-                % label,
+                f'cannot trigger {label}, since the upload is already/still processing',
                 current_process=upload.current_process,
                 last_status_message=upload.last_status_message,
                 upload_id=upload.upload_id,
@@ -152,9 +150,9 @@ def _run_processing(
             upload.block_until_complete_or_waiting_for_result(interval=0.5)
 
         if upload.process_status == proc.ProcessStatus.FAILURE:
-            logger.info('%s with failure' % label, upload_id=upload.upload_id)
+            logger.info(f'{label} with failure', upload_id=upload.upload_id)
 
-        logger.info('%s complete' % label, upload_id=upload.upload_id)
+        logger.info(f'{label} complete', upload_id=upload.upload_id)
         return True
 
     _run_parallel(
@@ -514,7 +512,7 @@ def chown(ctx, username, uploads):
 
     _, uploads = _query_uploads(uploads, **ctx.obj.uploads_kwargs)
 
-    print('%d uploads selected, changing owner ...' % uploads.count())
+    print(f'{uploads.count()} uploads selected, changing owner ...')
 
     user = datamodel.User.get(username=username)
     for upload in uploads:
@@ -544,7 +542,7 @@ def reset(ctx, uploads, with_entries, success, failure):
     _, uploads = _query_uploads(uploads, **ctx.obj.uploads_kwargs)
     uploads_count = uploads.count()
 
-    print('%d uploads selected, resetting their processing ...' % uploads_count)
+    print(f'{uploads_count} uploads selected, resetting their processing ...')
 
     i = 0
     for upload in uploads:
@@ -566,7 +564,7 @@ def reset(ctx, uploads, with_entries, success, failure):
             upload.process_status = proc.ProcessStatus.FAILURE
         upload.save()
         i += 1
-        print('resetted %d of %d uploads' % (i, uploads_count))
+        print(f'resetted {i} of {uploads_count} uploads')
 
 
 @uploads.command(help='(Re-)index all entries of the given uploads.')
@@ -671,7 +669,7 @@ def delete_upload(
 def rm(ctx, uploads, skip_es, skip_mongo, skip_files):
     _, uploads = _query_uploads(uploads, **ctx.obj.uploads_kwargs)
 
-    print('%d uploads selected, deleting ...' % uploads.count())
+    print(f'{uploads.count()} uploads selected, deleting ...')
 
     for upload in uploads:
         delete_upload(

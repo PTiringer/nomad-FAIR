@@ -95,7 +95,7 @@ def perform_search(*args, **kwargs) -> MetadataResponse:
     except SearchError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Elasticsearch could not process your query: %s' % str(e),
+            detail=f'Elasticsearch could not process your query: {str(e)}',
         )
 
 

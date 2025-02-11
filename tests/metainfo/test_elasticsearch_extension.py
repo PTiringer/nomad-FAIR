@@ -270,7 +270,7 @@ def assert_entry_indexed(entry: Entry):
     )
 
 
-def assert_entries_indexed(entries: List[Entry]):
+def assert_entries_indexed(entries: list[Entry]):
     """
     Assert that the given entries and only the given entries and their materials are
     indexed.

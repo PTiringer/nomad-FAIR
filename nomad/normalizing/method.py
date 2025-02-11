@@ -20,7 +20,6 @@ from ase.dft.kpoints import monkhorst_pack, get_monkhorst_pack_size_and_offset
 from collections import OrderedDict
 import re
 import numpy as np
-from typing import List, Tuple, Union, Optional
 
 from nomad.datamodel import EntryArchive, ArchiveSection
 from nomad.metainfo import MSection
@@ -718,7 +717,7 @@ class DFTMethod(ElectronicMethod):
                 method_dict['smearing_kind'] = smearing_kind
             smearing_width = self._repr_method.electronic.smearing.width
             if smearing_width is not None:
-                smearing_width = '%.4f' % (smearing_width)
+                smearing_width = f'{smearing_width:.4f}'
                 method_dict['smearing_width'] = smearing_width
         except Exception:
             pass
@@ -737,7 +736,7 @@ class DFTMethod(ElectronicMethod):
         try:
             conv_thr = self._repr_method.scf.threshold_energy_change
             if conv_thr is not None:
-                conv_thr = '%.13f' % (conv_thr.to(ureg.rydberg).magnitude)
+                conv_thr = f'{conv_thr.to(ureg.rydberg).magnitude:.13f}'
                 method_dict['scf_threshold_energy_change'] = conv_thr
         except Exception:
             pass
@@ -789,12 +788,12 @@ class DFTMethod(ElectronicMethod):
             atom_positions = atoms['positions']
             geom_dict['atom_positions'] = np.array2string(
                 atom_positions.to(ureg.angstrom).magnitude,  # convert to Angstrom
-                formatter={'float_kind': lambda x: '%.6f' % x},  # type: ignore
+                formatter={'float_kind': lambda x: f'{x:.6f}'},  # type: ignore
             ).replace('\n', '')
             cell = atoms['lattice_vectors']
             geom_dict['simulation_cell'] = np.array2string(
                 cell.to(ureg.angstrom).magnitude,  # convert to Angstrom
-                formatter={'float_kind': lambda x: '%.6f' % x},  # type: ignore
+                formatter={'float_kind': lambda x: f'{x:.6f}'},  # type: ignore
             ).replace('\n', '')
         except Exception:
             pass
@@ -813,7 +812,7 @@ class DFTMethod(ElectronicMethod):
             else None
         )
         if conv_thr is not None:
-            conv_thr = '%.13f' % (conv_thr.to(ureg.rydberg).magnitude)
+            conv_thr = f'{conv_thr.to(ureg.rydberg).magnitude:.13f}'
         param_dict['scf_threshold_energy_change'] = conv_thr
 
         # Pseudopotentials are kept constant, if applicable
@@ -1109,10 +1108,10 @@ class BasisSetFHIAims(MethodNormalizerBasisSet):
         result = None
         if data is None:
             return None
-        elif isinstance(data, (Section, dict)):
+        elif isinstance(data, Section | dict):
             result = OrderedDict()
             for k in sorted(cls._filtered_section_keys(data)):
-                v = data.get(k, None)
+                v = data.get(k, None)  # type: ignore
                 result[k] = cls._values_to_dict(v, level=level + 1)
         elif isinstance(data, (list)):
             result = []
@@ -1170,14 +1169,14 @@ class BasisSetExciting(MethodNormalizerBasisSet):
             for group in groups:
                 label = group.x_exciting_geometry_atom_labels
                 try:
-                    muffin_tin_settings[f'{label}_muffin_tin_radius'] = '%.6f' % (
-                        group.x_exciting_muffin_tin_radius.to(ureg.angstrom).magnitude
+                    muffin_tin_settings[f'{label}_muffin_tin_radius'] = (
+                        f'{group.x_exciting_muffin_tin_radius.to(ureg.angstrom).magnitude:.6f}'
                     )
                 except Exception:
                     muffin_tin_settings[f'{label}_muffin_tin_radius'] = None
                 try:
                     muffin_tin_settings[f'{label}_muffin_tin_points'] = (
-                        '%d' % group.x_exciting_muffin_tin_points
+                        f'{group.x_exciting_muffin_tin_points}'
                     )
                 except Exception:
                     muffin_tin_settings[f'{label}_muffin_tin_points'] = None
@@ -1188,7 +1187,7 @@ class BasisSetExciting(MethodNormalizerBasisSet):
         # Other important method settings
         system = self._repr_system
         try:
-            self.settings['rgkmax'] = '%.6f' % (system.x_exciting_rgkmax.magnitude)
+            self.settings['rgkmax'] = f'{system.x_exciting_rgkmax.magnitude:.6f}'
         except Exception:
             pass
         try:
@@ -1198,11 +1197,11 @@ class BasisSetExciting(MethodNormalizerBasisSet):
         except Exception:
             pass
         try:
-            self.settings['lo'] = '%d' % (system.x_exciting_lo)
+            self.settings['lo'] = f'{system.x_exciting_lo}'
         except Exception:
             pass
         try:
-            self.settings['lmaxapw'] = '%d' % (system.x_exciting_lmaxapw)
+            self.settings['lmaxapw'] = f'{system.x_exciting_lmaxapw}'
         except Exception:
             pass
 

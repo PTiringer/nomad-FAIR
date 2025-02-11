@@ -17,7 +17,8 @@
 #
 from collections import defaultdict
 import numpy as np
-from typing import Any, Iterable, List, Union
+from typing import Any, List, Union
+from collections.abc import Iterable
 import pytest
 from ase import Atoms
 import ase.build
@@ -277,8 +278,8 @@ def robust_compare(a: Any, b: Any) -> bool:
     elif isinstance(a, np.ndarray) and isinstance(b, np.ndarray):
         return np.array_equal(a, b)
     # Check if both are non-iterables (e.g., int, float)
-    elif not isinstance(a, (np.ndarray, list, tuple)) and not isinstance(
-        b, (np.ndarray, list, tuple)
+    elif not isinstance(a, np.ndarray | list | tuple) and not isinstance(
+        b, np.ndarray | list | tuple
     ):
         return a == b
     # Fallback case if one is an iterable and the other is not
@@ -308,11 +309,11 @@ def check_template_active_orbitals(template: EntryArchive, **kwargs) -> dict[str
                     continue  # skip quantities that were unasked for
                 # Assuming quantity_value is either a list or a single data object
                 if not isinstance(
-                    quantity_value, (list, np.ndarray)
+                    quantity_value, list | np.ndarray
                 ):  # for multiple core holes
                     quantity_value = [quantity_value]
                 extracted_values = getattr(top.active_orbitals, quantity_name, [])
-                if not isinstance(extracted_values, (list, np.ndarray)):
+                if not isinstance(extracted_values, list | np.ndarray):
                     extracted_values = [extracted_values]
                 # run over all reference values
                 if len(extracted_values) != len(quantity_value):
@@ -445,10 +446,10 @@ def get_section_system(atoms: Atoms):
 
 def add_template_dos(
     template: EntryArchive,
-    fill: List = [[[0, 1], [2, 3]]],
-    energy_reference_fermi: Union[float, None] = None,
-    energy_reference_highest_occupied: Union[float, None] = None,
-    energy_reference_lowest_unoccupied: Union[float, None] = None,
+    fill: list = [[[0, 1], [2, 3]]],
+    energy_reference_fermi: float | None = None,
+    energy_reference_highest_occupied: float | None = None,
+    energy_reference_lowest_unoccupied: float | None = None,
     n_values: int = 101,
     type: str = 'electronic',
 ) -> EntryArchive:
@@ -498,10 +499,10 @@ def add_template_dos(
 
 
 def get_template_dos(
-    fill: List = [[[0, 1], [2, 3]]],
-    energy_reference_fermi: Union[float, None] = None,
-    energy_reference_highest_occupied: Union[float, None] = None,
-    energy_reference_lowest_unoccupied: Union[float, None] = None,
+    fill: list = [[[0, 1], [2, 3]]],
+    energy_reference_fermi: float | None = None,
+    energy_reference_highest_occupied: float | None = None,
+    energy_reference_lowest_unoccupied: float | None = None,
     n_values: int = 101,
     type: str = 'electronic',
     normalize: bool = True,
@@ -523,7 +524,7 @@ def get_template_dos(
 
 def add_template_band_structure(
     template: EntryArchive,
-    band_gaps: List = None,
+    band_gaps: list = None,
     type: str = 'electronic',
     has_references: bool = True,
     has_reciprocal_cell: bool = True,
@@ -548,9 +549,9 @@ def add_template_band_structure(
         bs = runschema.calculation.BandStructure()
         scc.band_structure_electronic.append(bs)
         n_spin_channels = len(band_gaps)
-        fermi: List[float] = []
-        highest: List[float] = []
-        lowest: List[float] = []
+        fermi: list[float] = []
+        highest: list[float] = []
+        lowest: list[float] = []
         for gap in band_gaps:
             if gap is None:
                 highest.append(0)
@@ -573,10 +574,8 @@ def add_template_band_structure(
     full_space = np.linspace(0, 2 * np.pi, 200)
     k, m = divmod(len(full_space), n_segments)
     space = list(
-        (
-            full_space[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)]
-            for i in range(n_segments)
-        )
+        full_space[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)]
+        for i in range(n_segments)
     )
     for i_seg in range(n_segments):
         krange = space[i_seg]
@@ -610,7 +609,7 @@ def add_template_band_structure(
 
 
 def get_template_band_structure(
-    band_gaps: List = None,
+    band_gaps: list = None,
     type: str = 'electronic',
     has_references: bool = True,
     has_reciprocal_cell: bool = True,
@@ -1675,12 +1674,12 @@ def create_system(
     structural_type: str,
     dimensionality: str,
     building_block: str,
-    elements: List[str],
+    elements: list[str],
     formula_hill: str,
     formula_reduced: str,
     formula_anonymous: str,
     system_relation: Relation,
-    indices: List[List[int]] = None,
+    indices: list[list[int]] = None,
     material_id: str = None,
     atoms: ArchiveSection = None,
     cell: Cell = None,
@@ -1766,7 +1765,7 @@ def rattle(atoms):
     return atoms
 
 
-def single_cu_surface_topology() -> List[ResultSystem]:
+def single_cu_surface_topology() -> list[ResultSystem]:
     """Copper surface topology"""
     conv_cell = conv_fcc('Cu')
     surface = surf(conv_cell, (1, 0, 0))
@@ -1815,7 +1814,7 @@ def single_cu_surface_topology() -> List[ResultSystem]:
     return [subsystem, convsystem]
 
 
-def single_cr_surface_topology() -> List[ResultSystem]:
+def single_cr_surface_topology() -> list[ResultSystem]:
     """Cr surface topology"""
     conv_cell = conv_bcc('Cr')
     surface = surf(conv_cell, (1, 0, 0))
@@ -1863,7 +1862,7 @@ def single_cr_surface_topology() -> List[ResultSystem]:
     return [subsystem, convsystem]
 
 
-def single_ni_surface_topology() -> List[ResultSystem]:
+def single_ni_surface_topology() -> list[ResultSystem]:
     """Ni surface topology"""
     conv_cell = conv_fcc('Ni')
     surface = surf(conv_cell, (1, 0, 0))
@@ -1911,7 +1910,7 @@ def single_ni_surface_topology() -> List[ResultSystem]:
     return [subsystem, convsystem]
 
 
-def stacked_cu_ni_surface_topology() -> List[ResultSystem]:
+def stacked_cu_ni_surface_topology() -> list[ResultSystem]:
     topologies_cu = single_cu_surface_topology()
     topologies_ni = single_ni_surface_topology()
 
@@ -1942,7 +1941,7 @@ def graphene() -> Atoms:
     return system_c
 
 
-def graphene_topology() -> List[ResultSystem]:
+def graphene_topology() -> list[ResultSystem]:
     """Graphene topology"""
     subsystem = create_system(
         label='subsystem',
@@ -2020,7 +2019,7 @@ def boron_nitride() -> Atoms:
     return bn_16
 
 
-def boron_nitride_topology() -> List[ResultSystem]:
+def boron_nitride_topology() -> list[ResultSystem]:
     """Boron nitride topology"""
     subsystem = create_system(
         label='subsystem',
@@ -2099,7 +2098,7 @@ def mos2() -> Atoms:
     return stacked_2d_mos2_2
 
 
-def mos2_topology() -> List[ResultSystem]:
+def mos2_topology() -> list[ResultSystem]:
     subsystem = create_system(
         label='subsystem',
         structural_type='2D',

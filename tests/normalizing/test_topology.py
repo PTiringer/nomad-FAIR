@@ -315,7 +315,7 @@ def test_topology_2d(surface, ref_topologies):
             assert real_value.magnitude == pytest.approx(
                 ref_value.magnitude, rel=0.01, abs=0
             )
-        elif isinstance(ref_value, (np.ndarray, list)):
+        elif isinstance(ref_value, np.ndarray | list):
             real_array = np.array(real_value)
             ref_array = np.array(ref_value)
             if ref_array.dtype == bool:

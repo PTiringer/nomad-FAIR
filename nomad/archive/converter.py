@@ -274,7 +274,7 @@ def convert_upload(
         force_repack (bool, optional): Force repacking the existing archive (in new format). Defaults to False.
         size_limit (int, optional): Size limit in GB for the archive. Defaults to -1 (no limit).
     """
-    if isinstance(uploads, (str, Upload)):
+    if isinstance(uploads, str | Upload):
         uploads = [uploads]
 
     if not uploads:

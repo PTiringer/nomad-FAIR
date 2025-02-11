@@ -309,7 +309,7 @@ class MetadataEditRequestHandler:
     ):
         # Initialization
         assert user, 'Must specify `user`'
-        assert isinstance(edit_request, (StagingUploadFiles, dict)), (
+        assert isinstance(edit_request, StagingUploadFiles | dict), (
             '`edit_request` must be either a json dictionary or a :class:`StagingUploadfiles` object'
         )
         self.logger = logger
@@ -344,7 +344,7 @@ class MetadataEditRequestHandler:
         self.verified_entries: dict[
             str, dict[str, Any]
         ] = {}  # Metadata specified for individual entries
-        self.affected_uploads: list['Upload'] = (
+        self.affected_uploads: list[Upload] = (
             None  # A MetadataEditRequest may involve multiple uploads
         )
 
@@ -969,7 +969,7 @@ class Entry(Proc):
         self._upload: Upload = None
         self._upload_files: StagingUploadFiles = None
         self._proc_logs: list[Any] = []
-        self._child_entries: list['Entry'] = []
+        self._child_entries: list[Entry] = []
 
         self._entry_metadata: EntryMetadata = None
         self._perform_index = True
@@ -1661,11 +1661,7 @@ class Entry(Proc):
         return self._proc_logs
 
     def __str__(self):
-        return 'entry {} entry_id={} upload_id{}'.format(
-            super().__str__(),
-            self.entry_id,
-            self.upload_id,
-        )
+        return f'entry {super().__str__()} entry_id={self.entry_id} upload_id{self.upload_id}'
 
 
 class Upload(Proc):
@@ -1781,10 +1777,7 @@ class Upload(Proc):
     def get_logger(self, **kwargs):
         logger = super().get_logger()
         main_author_user = self.main_author_user
-        main_author_name = '{} {}'.format(
-            main_author_user.first_name,
-            main_author_user.last_name,
-        )
+        main_author_name = f'{main_author_user.first_name} {main_author_user.last_name}'
         # We are not using 'main_author' because logstash (?) will filter these entries ?!
         logger = logger.bind(
             upload_id=self.upload_id,
@@ -2306,21 +2299,16 @@ class Upload(Proc):
                 self.staging_upload_files.raw_file_object(stripped_path).os_path, 'w'
             ) as stripped_f:
                 stripped_f.write(
-                    'Stripped POTCAR file. Checksum of original file (sha224): %s\n'
-                    % checksum
+                    f'Stripped POTCAR file. Checksum of original file (sha224): {checksum}\n'
                 )
             os.system(
+                f"""
+                    awk < '{self.staging_upload_files.raw_file_object(path).os_path}' >> '{self.staging_upload_files.raw_file_object(stripped_path).os_path}' '
+                    BEGIN {{ dump=1 }}
+                    /End of Dataset/ {{ dump=1 }}
+                    dump==1 {{ print }}
+                    /END of PSCTR/ {{ dump=0 }}'
                 """
-                    awk < '%s' >> '%s' '
-                    BEGIN { dump=1 }
-                    /End of Dataset/ { dump=1 }
-                    dump==1 { print }
-                    /END of PSCTR/ { dump=0 }'
-                """
-                % (
-                    self.staging_upload_files.raw_file_object(path).os_path,
-                    self.staging_upload_files.raw_file_object(stripped_path).os_path,
-                )
             )
 
     def match_mainfiles(
