@@ -91,7 +91,8 @@
     "test-integration": "cross-env READ_MODE=api WRITE_MODE=none craco test --testPathIgnorePatterns=.*/conftest.spec.js --watchAll=false --runInBand",
     "test-record": "cross-env READ_MODE=api WRITE_MODE=snapshot craco test --testPathIgnorePatterns=.*/conftest.spec.js --watchAll=false --runInBand",
     "lint": "eslint 'src/**/*.js'",
-    "eject": "craco eject"
+    "eject": "craco eject",
+    "postinstall": "node postinstall.js"
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.22.15",

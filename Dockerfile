@@ -112,7 +112,7 @@ ENV PATH=/app/node_modules/.bin:$PATH
 ENV NODE_OPTIONS="--max_old_space_size=4096 --openssl-legacy-provider"
 
 # Fetch and cache all (but only) the dependencies
-COPY gui/yarn.lock gui/package.json ./
+COPY gui/yarn.lock gui/package.json gui/postinstall.js ./
 
 RUN yarn --network-timeout 1200000
 
