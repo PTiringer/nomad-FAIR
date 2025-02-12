@@ -248,6 +248,24 @@ class HDF5Dataset(NonPrimitive):
                 if hdf5_path != value.file:
                     raise ValueError('Cannot reference another HDF5 archive.')
 
+            def resolve_h5_root(path: str, group: h5py.Group) -> tuple[str, h5py.Group]:
+                if path.startswith('/'):
+                    return resolve_h5_root(path[1:], group.file)
+                elif path.startswith('../'):
+                    return resolve_h5_root(path[3:], group.parent)
+                else:
+                    return path, group
+
+            def join_path(root: str, base: str):
+                base_segment = base.split('/', 1)
+                part = base_segment[1] if len(base_segment) > 1 else ''
+                if base_segment[0] == '..':
+                    return join_path(root.rsplit('/', 1)[0], part)
+                elif base_segment[0] == '.':
+                    return join_path(root, part)
+                else:
+                    return base if base.startswith('/') else f'{root}/{base}'
+
             segment = f'{section.m_path()}/{self._definition.name}'
             with File(hdf5_path, 'a') as hdf5_file:
                 target_group = hdf5_file.require_group(section.m_path())
@@ -264,26 +282,106 @@ class HDF5Dataset(NonPrimitive):
                     target_dataset.attrs['units'] = unit
 
                 annotation_key = 'h5web'
-                annotation: H5WebAnnotation = section.m_def.m_get_annotation(
+                s_annotation: H5WebAnnotation = section.m_def.m_get_annotation(
                     annotation_key
                 )
-                if not annotation:
-                    annotation = section.m_get_annotation(annotation_key)
-                if annotation:
+                if not s_annotation:
+                    s_annotation = section.m_get_annotation(annotation_key)
+                if s_annotation:
+                    # h5 web does not support full paths, so map to the dataset name
+                    annotation_dct = s_annotation.dict()
+                    for a_key, a_val in annotation_dct.items():
+                        if (
+                            a_key not in ['signal', 'axes', 'auxiliary_signals']
+                            or a_val is None
+                        ):
+                            continue
+                        list_val = [a_val] if isinstance(a_val, str) else a_val
+                        for n, path in enumerate(list_val):
+                            path_segments = path.rsplit('/', 1)
+                            list_val[n] = path_segments[-1]
+                            if (
+                                len(path_segments) == 1
+                                or path_segments[-1] in target_group
+                            ):
+                                continue
+                            # link dataset if in a different group
+                            path, source_group = resolve_h5_root(path, target_group)
+                            source_dataset = source_group.get(path)
+                            if source_dataset is None:
+                                raise ValueError('Reference to non-existent dataset.')
+                            target_group[path_segments[-1]] = source_dataset
+                            # and errors dataset if available
+                            source_errors = source_group.get(f'{path}_errors')
+                            if source_errors is not None:
+                                target_group[f'{path_segments[-1]}_errors'] = (
+                                    source_errors
+                                )
+                        annotation_dct[a_key] = (
+                            list_val if isinstance(a_val, list) else list_val[0]
+                        )
+
                     target_group.attrs.update(
                         {
                             key: val
-                            for key, val in annotation.dict().items()
+                            for key, val in annotation_dct.items()
                             if val is not None
                         }
                     )
+                    # when errors is specified in section annotation, assign this to
+                    # signal
+                    if s_annotation.errors and s_annotation.signal:
+                        path, source_group = resolve_h5_root(
+                            s_annotation.errors, target_group
+                        )
+                        errors_key = f'{s_annotation.signal.split("/")[-1]}_errors'
+                        if (
+                            errors_ds := source_group.get(path)
+                        ) is not None and errors_key not in target_group:
+                            target_group[errors_key] = errors_ds
                     target_group.attrs['NX_class'] = 'NXdata'
 
                 q_annotation = self._definition.m_get_annotation(annotation_key)
+
+                # label
                 long_name = q_annotation.long_name if q_annotation else None
                 if long_name is None:
                     long_name = self._definition.name
                     long_name = f'{long_name} ({unit})' if unit else long_name
                 target_dataset.attrs['long_name'] = long_name
+
+                # indices
+                indices = q_annotation.indices if q_annotation else None
+                if indices is not None:
+                    target_group.attrs[f'{self._definition.name}_indices'] = indices
+
+                # errors
+                errors_path = q_annotation.errors if q_annotation else None
+                if errors_path is not None:
+                    errors_path, source_group = resolve_h5_root(
+                        errors_path, target_group
+                    )
+                    errors_ds = source_group.get(errors_path)
+                    path = f'{self._definition.name}_errors'
+                    if errors_ds is not None and target_group.get(path) is None:
+                        target_group[path] = errors_ds
+                else:
+                    # handle case when errors is defined after the dataset
+                    # iterate over all quantities in sub-sectionssection to check for
+                    # errors annotation
+                    for sub_section in section.m_root().m_all_contents():
+                        for name, quantity in sub_section.m_def.all_quantities.items():
+                            if not (
+                                q_annotation := quantity.m_get_annotation(
+                                    annotation_key
+                                )
+                            ) or not (errors_path := q_annotation.errors):
+                                continue
+                            ref_path = join_path(sub_section.m_path(), errors_path)
+                            if ref_path == path:
+                                errors_key = f'{name}_errors'
+                                source_group = hdf5_file.get(sub_section.m_path())
+                                if source_group and errors_key not in source_group:
+                                    source_group[errors_key] = target_dataset
 
         return HDF5Wrapper(hdf5_path, segment)

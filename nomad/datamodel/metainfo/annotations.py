@@ -1090,6 +1090,18 @@ class H5WebAnnotation(AnnotationModel):
         Title of the plot
         """,
     )
+    errors: str = Field(
+        None,
+        description="""
+        Name of the HDF5Dataset quantity to plot as error bars.
+        """,
+    )
+    indices: int | list[int] = Field(
+        None,
+        description="""
+        Indices of the HDF5Dataset to include in plot.
+        """,
+    )
     paths: list[str] = Field([], description="""List of section paths to visualize.""")
 
 
