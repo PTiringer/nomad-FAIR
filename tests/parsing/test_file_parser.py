@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
 import pint
-from nomad.units import ureg
 from nomad.parsing.file_parser import (
     TextParser,
     Quantity,

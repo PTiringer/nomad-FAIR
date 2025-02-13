@@ -16,11 +16,9 @@
 # limitations under the License.
 #
 
-from typing import Dict, List, Optional, Union
 from collections import defaultdict
 import pathlib
 import json
-from math import isnan
 
 from ase import Atoms
 from ase.data import chemical_symbols

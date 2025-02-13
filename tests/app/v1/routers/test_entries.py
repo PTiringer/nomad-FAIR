@@ -25,7 +25,7 @@ import json
 from nomad.metainfo.elasticsearch_extension import entry_type, schema_separator
 from nomad.utils.exampledata import ExampleData
 
-from tests.test_files import example_mainfile_contents, append_raw_files  # pylint: disable=unused-import
+from tests.test_files import example_mainfile_contents, append_raw_files  # noqa: F401
 from tests.variables import python_schema_name
 
 from .common import (

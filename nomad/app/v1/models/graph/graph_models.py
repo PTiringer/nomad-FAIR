@@ -17,7 +17,7 @@
 #
 
 from __future__ import annotations
-from typing import Optional, List, Union, Any, Literal
+from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, Extra
 
 from ..groups import UserGroup, UserGroupPagination, UserGroupQuery

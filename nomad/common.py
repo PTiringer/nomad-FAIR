@@ -26,7 +26,6 @@ import pkgutil
 import shutil
 import zipfile
 import tarfile
-from typing import Optional
 from typing import Literal
 from tempfile import TemporaryDirectory
 import httpx

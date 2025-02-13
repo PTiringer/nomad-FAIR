@@ -17,7 +17,6 @@
 #
 
 import os.path
-from typing import Optional, Tuple, List, Dict
 from collections.abc import Iterable
 
 from nomad.config import config
@@ -38,8 +37,6 @@ from .tabular import TabularDataParser
 try:
     # these packages are not available without parsing extra, which is ok, if the
     # parsers are only initialized to load their metainfo definitions
-    import platform
-
     import magic
     import gzip
     import bz2

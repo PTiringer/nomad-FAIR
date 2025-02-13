@@ -20,7 +20,7 @@
 API endpoint that deliver backend configuration details.
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Any
 from datetime import datetime
 from fastapi.routing import APIRouter
 from pydantic.fields import Field

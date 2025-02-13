@@ -19,11 +19,10 @@
 import numpy as np
 from collections import defaultdict
 import pytest
-from nomad.client.processing import normalize
 from nomad.datamodel.metainfo import runschema
 
 from nomad.units import ureg
-from tests.normalizing.conftest import (  # pylint: disable=unused-import
+from tests.normalizing.conftest import (  # noqa: F401
     get_template_for_structure,
     get_template_topology,
     conv_bcc,

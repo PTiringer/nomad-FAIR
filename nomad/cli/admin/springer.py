@@ -23,7 +23,7 @@ http://materials.springer.com. The database is stuctured as
 space_group_number : normalized_formula : springer_id : entry
 """
 
-from typing import Dict, List, Any
+from typing import Any
 import requests
 import re
 import bs4

@@ -20,7 +20,7 @@ import os.path
 
 from cachetools import TTLCache, cached
 
-from typing import Dict, Any, Optional
+from typing import Any
 from pydantic import Field
 
 from nomad.config import config

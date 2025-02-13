@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 
-from typing import Any, Dict
+from typing import Any
 import numpy as np
 import re
 import ase.data

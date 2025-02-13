@@ -17,12 +17,10 @@
 #
 
 import time
-import json
 import pytest
 import pandas as pd
-import logging
 
-from nomad import utils, config
+from nomad import utils
 from nomad.metainfo.metainfo import MSection, Quantity, SubSection
 from nomad import files
 from nomad.processing import Upload

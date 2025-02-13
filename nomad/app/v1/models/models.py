@@ -23,10 +23,9 @@ import re
 from typing import Any
 from collections.abc import Mapping
 
-import pydantic
 from fastapi import Body, HTTPException, Request
 from fastapi import Query as FastApiQuery
-from pydantic import (  # pylint: disable=unused-import
+from pydantic import (  # noqa: F401
     field_validator,
     model_validator,
     StringConstraints,
@@ -40,7 +39,7 @@ from pydantic import (  # pylint: disable=unused-import
 from pydantic.main import create_model
 from pydantic_core import PydanticCustomError
 
-from nomad import datamodel, metainfo  # pylint: disable=unused-import
+from nomad import datamodel, metainfo  # noqa: F401
 from nomad.app.v1.utils import parameter_dependency_from_model
 from nomad.metainfo.elasticsearch_extension import (
     DocumentType,

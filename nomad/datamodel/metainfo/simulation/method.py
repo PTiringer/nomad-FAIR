@@ -21,12 +21,12 @@
 # https://github.com/nomad-coe/nomad-schema-plugin-run.git
 
 from logging import Logger
-import numpy as np  # pylint: disable=unused-import
+import numpy as np  # noqa: F401
 import typing
 
-from pint.util import SharedRegistryObject  # pylint: disable=unused-import
+from pint.util import SharedRegistryObject  # noqa: F401
 from nomad.datamodel.data import ArchiveSection
-from nomad.metainfo import (  # pylint: disable=unused-import
+from nomad.metainfo import (  # noqa: F401
     MSection,
     MCategory,
     Category,
@@ -38,7 +38,6 @@ from nomad.metainfo import (  # pylint: disable=unused-import
     Reference,
     MEnum,
 )
-from nomad.metainfo.metainfo import derived
 from nomad.quantum_states import RussellSaundersState
 from ..common import FastAccess
 

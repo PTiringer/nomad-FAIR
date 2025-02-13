@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 
-from typing import Dict, cast
+from typing import cast
 
 from nomad.metainfo.data_type import Datatype, to_optimade_type
 from nomad.metainfo.metainfo import Quantity, Reference

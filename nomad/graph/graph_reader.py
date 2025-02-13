@@ -27,7 +27,7 @@ import re
 from collections.abc import AsyncIterator, Iterator
 from contextlib import contextmanager
 from threading import Lock
-from typing import Any, Type, Union
+from typing import Any
 from collections.abc import Callable
 
 import orjson

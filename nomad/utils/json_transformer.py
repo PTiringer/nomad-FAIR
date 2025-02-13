@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 import re
-from typing import Union, Any, Optional
+from typing import Any
 
 import jmespath
 

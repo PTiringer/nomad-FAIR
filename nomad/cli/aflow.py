@@ -20,7 +20,6 @@
 # code will fail.
 # TODO The metadata should not be set via API, but added to the uploads as nomad.json.
 
-from typing import List
 import requests
 import re
 import subprocess
@@ -29,7 +28,6 @@ import os
 import tarfile
 import threading
 import time
-import typing
 import io
 import re
 import uuid

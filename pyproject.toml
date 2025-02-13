@@ -150,10 +150,11 @@ indent-width = 4
 
 [tool.ruff.lint]
 select = [
-    "E",  # pycodestyle
-    "W",  # pycodestyle
-    "PL", # pylint
-    "UP", # pyupgrade
+    "E",     # pycodestyle
+    "F401",  # remove unused import
+    "PL",    # pylint
+    "UP",    # pyupgrade
+    "W",     # pycodestyle
 ]
 ignore = [
     "E501",    # Line too long ({width} > {limit} characters)
@@ -169,11 +170,11 @@ ignore = [
     "PLW2901", # redefined-loop-name
     "PLR1714", # consider-using-in
     "PLR5501", # else-if-used
-    "UP035",   # deprecated-import
 ]
 fixable = ["ALL"]
 
 [tool.ruff.lint.extend-per-file-ignores]
+"__init__.py" = ["F401"]
 "nomad/app/v1/models/graph/utils.py" = [
     "UP007",
 ] # causes pydantic model building errors

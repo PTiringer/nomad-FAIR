@@ -15,7 +15,7 @@
 from abc import ABC, abstractmethod
 import os
 import pint
-from typing import Any, Dict, IO, Union, List
+from typing import Any, IO
 from collections.abc import Callable
 import gzip
 import bz2

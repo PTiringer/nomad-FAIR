@@ -16,12 +16,10 @@
 # limitations under the License.
 #
 
-from typing import Dict, Any
 from urllib.parse import urlsplit, urlunsplit
 import re
 import os.path
 
-import h5py
 import requests
 
 from nomad import utils

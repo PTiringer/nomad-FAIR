@@ -20,7 +20,6 @@ import json
 import os
 import os.path
 import traceback
-import typing
 
 import click
 from orjson import dumps
@@ -238,7 +237,7 @@ def _query_uploads(
     list of upoad ids and further filter parameters.
     """
 
-    from typing import Set, cast
+    from typing import cast
     import json
     from mongoengine import Q
 

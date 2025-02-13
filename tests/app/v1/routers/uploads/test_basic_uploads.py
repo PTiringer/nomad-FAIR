@@ -22,7 +22,7 @@ import time
 import zipfile
 from datetime import datetime
 import tempfile
-from typing import Any, Dict, List
+from typing import Any
 from collections.abc import Iterable
 
 import pytest
@@ -53,7 +53,6 @@ from tests.config.models.test_plugins import (
 from tests.test_files import (
     assert_upload_files,
     empty_file,
-    example_directory,
     example_file_aux,
     example_file_corrupt_zip,
     example_file_mainfile_different_atoms,

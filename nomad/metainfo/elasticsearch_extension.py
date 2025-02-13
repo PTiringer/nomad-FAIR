@@ -162,13 +162,7 @@ from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
     Any,
-    DefaultDict,
-    Dict,
-    List,
     Optional,
-    Set,
-    Tuple,
-    Union,
     cast,
 )
 from collections.abc import Callable
@@ -193,7 +187,7 @@ from .metainfo import (
 )
 
 if TYPE_CHECKING:
-    from nomad.datamodel.datamodel import EntryArchive, SearchableQuantity
+    from nomad.datamodel.datamodel import SearchableQuantity
 
 schema_separator = '#'
 dtype_separator = '#'

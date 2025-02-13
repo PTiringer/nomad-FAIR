@@ -16,7 +16,6 @@
 # limitations under the License.
 #
 
-from typing import Optional
 from fastapi import Response, Query, Header
 import urllib.parse
 from rdflib import Graph

@@ -27,10 +27,8 @@ from nomad.app.v1.models.groups import (
 )
 from nomad.app.v1.models.pagination import PaginationResponse
 from nomad.app.v1.utils import parameter_dependency_from_model
-from typing import List, Optional, Set
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import ConfigDict, BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from nomad.datamodel import User as UserDataModel
 from nomad.groups import MongoUserGroup

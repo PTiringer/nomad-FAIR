@@ -18,7 +18,7 @@
 
 from enum import Enum
 import pytest
-from typing import Union, List, Dict, Optional
+from typing import Union, Optional
 from typing import Literal, Annotated  # type: ignore
 from pydantic import BaseModel, Field
 from nomad.config.models.ui import WidgetHistogram, WidgetTerms

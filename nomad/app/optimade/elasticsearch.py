@@ -1,4 +1,4 @@
-from typing import List, Dict, Set, Any
+from typing import Any
 from elasticsearch_dsl import Q
 
 from optimade.filterparser import LarkParser

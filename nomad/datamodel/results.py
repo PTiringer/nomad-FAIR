@@ -17,13 +17,12 @@
 #
 
 from logging import Logger
-from typing import List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 import numpy as np
 from elasticsearch_dsl import Text
 
 from ase.data import chemical_symbols
 
-from nomad import utils
 from nomad.config import config
 from nomad.datamodel.metainfo.common import ProvenanceTracker, PropertySection
 from nomad.datamodel.metainfo.simulation.method import CoreHole as CoreHoleRun

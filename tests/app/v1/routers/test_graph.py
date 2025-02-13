@@ -20,7 +20,6 @@ import pytest
 
 from nomad.graph.graph_reader import EntryReader, Token
 from nomad.datamodel import EntryArchive
-from nomad.metainfo import Section, Quantity
 from nomad.utils.exampledata import ExampleData
 from tests.archive.test_archive import assert_dict
 from nomad.datamodel.metainfo import simulationworkflowschema, SCHEMA_IMPORT_ERROR

@@ -24,7 +24,7 @@ import traceback
 import re
 import urllib.parse
 import h5py
-from typing import Dict, Any, IO
+from typing import Any, IO
 from collections.abc import Callable
 
 from h5grove import fastapi_utils as h5grove_router, utils as h5grove_utils

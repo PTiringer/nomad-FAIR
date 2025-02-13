@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 from datetime import datetime
-from typing import Dict, Any, Union
+from typing import Any
 import pytest
 import msgpack
 from io import BytesIO

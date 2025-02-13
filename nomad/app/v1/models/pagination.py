@@ -1,5 +1,4 @@
 import enum
-from typing import Optional
 from fastapi import HTTPException, Request
 from pydantic import (
     BaseModel,
@@ -7,7 +6,6 @@ from pydantic import (
     Field,
     field_validator,
     model_validator,
-    validator,
 )
 from pydantic_core import PydanticCustomError
 

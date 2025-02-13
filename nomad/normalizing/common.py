@@ -16,9 +16,8 @@
 # limitations under the License.
 #
 import numpy as np
-from math import isnan
 from ase import Atoms
-from typing import List, Set, Any, Optional, Dict, Union
+from typing import Any
 from nptyping import NDArray
 from matid import SymmetryAnalyzer  # pylint: disable=import-error
 from matid.symmetry.wyckoffset import WyckoffSet as WyckoffSetMatID  # pylint: disable=import-error

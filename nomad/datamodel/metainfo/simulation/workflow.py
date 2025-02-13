@@ -20,7 +20,6 @@
 # Only for purpose of compatibility. Use simulation workflow schema plugin.
 # https://github.com/nomad-coe/nomad-schema-plugin-simulation-workflow.git
 
-from typing import List
 import numpy as np
 from ase import Atoms
 from ase.eos import EquationOfState as aseEOS

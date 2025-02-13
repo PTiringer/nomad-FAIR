@@ -21,7 +21,7 @@ import functools
 import re
 from enum import Enum
 from hashlib import sha1
-from typing import Annotated, Optional, Union
+from typing import Annotated, Union
 
 from pydantic import (
     AfterValidator,

@@ -20,8 +20,8 @@
 # Only for purpose of compatibility. Use run schema plugin.
 # https://github.com/nomad-coe/nomad-schema-plugin-run.git
 
-import numpy as np  # pylint: disable=unused-import
-from nomad.metainfo import (  # pylint: disable=unused-import
+import numpy as np  # noqa: F401
+from nomad.metainfo import (  # noqa: F401
     MSection,
     MCategory,
     Category,

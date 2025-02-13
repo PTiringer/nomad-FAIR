@@ -16,7 +16,6 @@
 # limitations under the License.
 #
 
-from tests.normalizing.conftest import run_normalize
 from tests.normalizing.conftest import run_processing
 
 

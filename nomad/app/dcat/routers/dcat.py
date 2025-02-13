@@ -16,7 +16,6 @@
 # limitations under the License.
 #
 
-from typing import Union
 from fastapi import APIRouter, Query, Path, HTTPException, status, Depends
 from datetime import datetime, date
 from elasticsearch_dsl import Q

@@ -18,7 +18,7 @@ import io
 import re
 import numpy as np
 import pint
-from typing import List, Union, Type, Any
+from typing import Any
 from collections.abc import Callable
 
 from nomad.parsing.file_parser import FileParser

@@ -16,14 +16,13 @@
 # limitations under the License.
 #
 
-from typing import Any, Tuple, List, Dict, NamedTuple
+from typing import Any, NamedTuple
 import logging
 import time
 import os
 from collections import defaultdict
 from celery import Celery, Task
 from celery.worker.request import Request
-from celery.bootsteps import StartStopStep
 from celery.signals import (
     after_setup_task_logger,
     after_setup_logger,
@@ -51,7 +50,7 @@ from nomad import utils, infrastructure
 from nomad.config import config
 from nomad.config.models.config import CELERY_WORKER_ROUTING
 from nomad.app.v1.routers.info import statistics
-import nomad.patch  # pylint: disable=unused-import
+import nomad.patch  # noqa: F401
 
 
 if config.logstash.enabled:

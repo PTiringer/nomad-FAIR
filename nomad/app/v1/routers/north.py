@@ -19,7 +19,6 @@
 import os
 import requests
 
-from typing import List, Dict, Optional
 from enum import Enum
 from nomad.groups import get_group_ids
 from pydantic import BaseModel
@@ -31,7 +30,7 @@ from nomad.config.models.north import NORTHTool
 from nomad.utils import strip, get_logger, slugify
 from nomad.processing import Upload
 from nomad.app.v1.routers.auth import generate_simple_token
-from .auth import create_user_dependency, oauth2_scheme
+from .auth import create_user_dependency
 from ..models import User, HTTPExceptionModel
 from ..utils import create_responses
 

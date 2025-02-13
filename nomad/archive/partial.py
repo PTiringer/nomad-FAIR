@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 
-from typing import Any, Tuple, Dict, Union, List
+from typing import Any
 
 from nomad import infrastructure
 from nomad.config import config

@@ -24,7 +24,7 @@ import asyncio
 import httpx
 from fastapi import APIRouter, Query as FastApiQuery
 from pydantic import BaseModel, Field
-from typing import List, Any, Dict, Optional
+from typing import Any
 from datetime import datetime
 import ase.io
 from mongoengine import (

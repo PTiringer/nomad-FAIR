@@ -17,7 +17,7 @@
 #
 from __future__ import annotations
 
-from typing import Any, Tuple, Dict, Union, cast
+from typing import Any, cast
 from collections.abc import Generator
 from io import BytesIO, BufferedReader
 from collections.abc import Mapping, Sequence

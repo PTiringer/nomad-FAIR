@@ -22,10 +22,6 @@ import random
 import time
 import datetime
 import re
-from typing import (
-    Dict,
-    List,
-)
 
 from unidecode import unidecode
 import numpy as np
@@ -44,9 +40,6 @@ if TYPE_CHECKING:
     from structlog.stdlib import (
         BoundLogger,
     )
-from nomad.atomutils import (
-    Formula,
-)
 from nomad import (
     utils,
 )
@@ -56,7 +49,6 @@ from nomad.units import (
 from nomad.metainfo import (
     Quantity,
     Datetime,
-    Reference,
     Section,
     SectionProxy,
     SubSection,
@@ -65,7 +57,6 @@ from nomad.metainfo.util import MEnum
 from nomad.datamodel.util import create_custom_mapping
 from nomad.datamodel.data import (
     ArchiveSection,
-    EntryData,
 )
 from nomad.datamodel.results import (
     Results,
@@ -75,7 +66,6 @@ from nomad.datamodel.results import (
 )
 from nomad.datamodel.metainfo.annotations import (
     ELNAnnotation,
-    ELNComponentEnum,
     Filter,
     SectionProperties,
     HDF5Annotation,
