@@ -18,8 +18,8 @@
 
 import json
 from datetime import datetime
-from typing import Any, Dict, List, Union
-from collections.abc import Iterable, Sequence
+from typing import Any
+from collections.abc import Iterable
 
 import pytest
 

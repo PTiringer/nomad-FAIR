@@ -16,7 +16,6 @@
 # limitations under the License.
 #
 
-from typing import List, Union, Optional
 from fastapi import Depends, APIRouter, status, HTTPException, Query
 from pydantic.main import BaseModel
 

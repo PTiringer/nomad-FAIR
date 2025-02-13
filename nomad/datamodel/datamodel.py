@@ -18,7 +18,7 @@
 
 """All generic entry metadata and related classes."""
 
-from typing import List, Any
+from typing import Any
 from enum import Enum
 import os.path
 

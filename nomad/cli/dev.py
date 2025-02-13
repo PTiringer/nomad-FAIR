@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-from typing import Tuple, Any
+from typing import Any
 import sys
 import json
 import os
@@ -25,7 +25,6 @@ from pint import Unit
 from pint.errors import UndefinedUnitError
 
 from nomad.config import config
-from nomad.config.models.plugins import ExampleUploadEntryPoint
 from nomad.metainfo.elasticsearch_extension import schema_separator
 from .cli import cli
 

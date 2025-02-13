@@ -16,7 +16,6 @@
 # limitations under the License.
 #
 
-from typing import List
 import pytest
 from urllib.parse import urlencode
 from datetime import datetime

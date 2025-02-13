@@ -20,7 +20,7 @@ from __future__ import annotations
 import asyncio
 from asyncio import Semaphore
 from itertools import islice
-from typing import Any, Union
+from typing import Any
 from time import monotonic
 import threading
 

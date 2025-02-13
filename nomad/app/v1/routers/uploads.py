@@ -18,9 +18,11 @@
 import os
 import io
 import shutil
+import zipfile
+import tarfile
 from enum import Enum
 from datetime import datetime
-from typing import Tuple, List, Set, Dict, Any, Optional, Union, cast
+from typing import Any, cast
 from pydantic import (
     field_validator,
     ConfigDict,
@@ -2691,9 +2693,9 @@ async def _get_files_if_provided(
         # Only ok if uploaded file is a zip or a tar archive.
         ext = (
             '.zip'
-            if files.zipfile.is_zipfile(upload_path)
+            if zipfile.is_zipfile(upload_path)
             else '.tar'
-            if files.tarfile.is_tarfile(upload_path)
+            if tarfile.is_tarfile(upload_path)
             else None
         )
         if not ext:

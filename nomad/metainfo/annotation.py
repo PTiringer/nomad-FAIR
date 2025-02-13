@@ -18,7 +18,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, ClassVar, ForwardRef, Optional
+from typing import Any, ClassVar, ForwardRef
 
 from pydantic import ConfigDict, BaseModel, Field
 

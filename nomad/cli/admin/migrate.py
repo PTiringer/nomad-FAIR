@@ -18,7 +18,7 @@
 
 import time
 from datetime import datetime
-from typing import List, Dict, Set, Any, Optional
+from typing import Any
 from pydantic import BaseModel
 
 from pymongo import ReplaceOne

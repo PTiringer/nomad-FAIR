@@ -17,7 +17,7 @@
 #
 
 import re
-from typing import cast, Optional, List
+from typing import cast
 from fastapi import (
     APIRouter,
     Request,
@@ -27,7 +27,7 @@ from fastapi import (
     HTTPException,
     status,
 )
-from pydantic import field_validator, BaseModel, Field, validator
+from pydantic import field_validator, BaseModel, Field
 from datetime import datetime
 import enum
 

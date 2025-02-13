@@ -16,7 +16,6 @@
 # limitations under the License.
 #
 
-from typing import Dict
 from elasticsearch_dsl import Q
 from cachetools import cached
 

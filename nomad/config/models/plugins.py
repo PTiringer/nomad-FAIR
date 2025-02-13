@@ -21,7 +21,7 @@ import sys
 import shutil
 from abc import ABCMeta, abstractmethod
 import importlib
-from typing import Optional, Dict, Union, List, Literal, cast, TYPE_CHECKING
+from typing import Union, Literal, cast, TYPE_CHECKING
 from pydantic import model_validator, BaseModel, Field
 
 from nomad.common import get_package_path, download_file, is_url, is_safe_relative_path

@@ -16,11 +16,10 @@
 # limitations under the License.
 #
 import pytest
-import json
 import random
 import time
 import threading
-from typing import List, Any, Union
+from typing import Any
 
 from mongoengine import StringField, IntField, ListField
 

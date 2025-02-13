@@ -37,7 +37,7 @@ import sys
 import yaml
 import logging
 import os.path
-from typing import Dict, Any
+from typing import Any
 from nomad.config.models.config import Config
 
 # use std python logger, since logging is not configured while loading configuration

@@ -22,7 +22,7 @@ from urllib.parse import urlencode
 from nomad.metainfo.elasticsearch_extension import material_entry_type
 from nomad.datamodel import results
 
-from tests.test_files import example_mainfile_contents  # pylint: disable=unused-import
+from tests.test_files import example_mainfile_contents  # noqa: F401
 
 from .common import (
     aggregation_exclude_from_search_test_parameters,

@@ -21,8 +21,6 @@ from io import StringIO
 import pytest
 import time
 import os
-import socket
-import json
 import logging
 import warnings
 import tempfile

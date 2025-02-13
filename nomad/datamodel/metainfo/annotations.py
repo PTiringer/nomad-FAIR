@@ -16,9 +16,9 @@
 # limitations under the License.
 #
 
-from typing import List, Any, Union, Dict, Optional
+from typing import Any
 from enum import Enum
-from pydantic import field_validator, ConfigDict, Field, validator
+from pydantic import field_validator, ConfigDict, Field
 import re
 
 from pydantic.main import BaseModel

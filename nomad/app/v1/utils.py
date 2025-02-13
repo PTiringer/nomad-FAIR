@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 
-from typing import List, Dict, Tuple, Set, Iterator, Any, Optional, Union
+from typing import Any
 from collections.abc import Iterator
 from types import FunctionType
 import urllib
@@ -24,8 +24,8 @@ import io
 import json
 import os
 import inspect
-from fastapi import Request, Query, HTTPException, status  # pylint: disable=unused-import
-from pydantic import ValidationError, BaseModel  # pylint: disable=unused-import
+from fastapi import Request, Query, HTTPException, status  # noqa: F401
+from pydantic import ValidationError, BaseModel  # noqa: F401
 import gzip
 import lzma
 from nomad.files import UploadFiles, StreamedFile, create_zipstream

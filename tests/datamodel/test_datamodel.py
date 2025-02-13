@@ -24,8 +24,6 @@ import random
 from essential_generators import DocumentGenerator
 import pytest
 
-from nomad.datamodel import EntryArchive, EntryMetadata
-from nomad.metainfo import MSection, Quantity, SubSection
 from nomad.parsing.parsers import parser_dict
 from nomad.datamodel.metainfo import runschema, SCHEMA_IMPORT_ERROR
 
@@ -86,7 +84,7 @@ def test_common_metainfo():
 @pytest.mark.skipif(runschema is None, reason=SCHEMA_IMPORT_ERROR)
 def test_vasp_metainfo():
     from runschema.run import Run
-    from electronicparsers.vasp.metainfo import vasp  # pylint: disable=unused-import
+    from electronicparsers.vasp.metainfo import vasp  # noqa: F401
 
     run = Run()
     assert 'vasp_src_date' in run.m_def.all_quantities

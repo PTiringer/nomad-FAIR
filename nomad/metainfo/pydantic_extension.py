@@ -32,7 +32,7 @@
 Allows to create pydantic models from section definitions.
 """
 
-from typing import Optional, cast, Type
+from typing import cast
 from pydantic import create_model, Field, BaseModel
 
 from .data_type import to_pydantic_type

@@ -46,7 +46,7 @@ from nomad.utils.structlogging import get_logger
 # The metainfo is defined and used during imports. This is problematic.
 # We import all parsers very early in the infrastructure setup. This will populate
 # the metainfo with parser specific definitions, before the metainfo might be used.
-from nomad.parsing import parsers  # pylint: disable=unused-import
+from nomad.parsing import parsers  # noqa: F401
 
 # TODO put somemore thought into warnings
 import warnings

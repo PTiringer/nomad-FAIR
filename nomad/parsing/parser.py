@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 
-from typing import List, Dict, Union, Any, IO
+from typing import Any, IO
 from collections.abc import Iterable
 from abc import ABCMeta, abstractmethod
 import re
@@ -24,7 +24,7 @@ import os
 import os.path
 from functools import lru_cache
 import importlib
-from pydantic import BaseModel, Extra  # pylint: disable=unused-import
+from pydantic import BaseModel, Extra  # noqa: F401
 import yaml
 import h5py
 import numpy as np

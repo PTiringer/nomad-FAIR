@@ -18,7 +18,7 @@
 
 import functools
 import re
-from typing import Any, Dict, Union, Tuple
+from typing import Any
 from collections.abc import Callable
 from io import BytesIO
 

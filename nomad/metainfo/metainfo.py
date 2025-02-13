@@ -28,7 +28,7 @@ from collections.abc import Iterable
 from copy import deepcopy
 from functools import wraps
 from typing import Any
-from typing import Callable as TypingCallable
+from collections.abc import Callable as TypingCallable
 from typing import Literal, TypeVar, cast
 from urllib.parse import urlsplit, urlunsplit
 
@@ -36,7 +36,6 @@ import docstring_parser
 import jmespath
 import pint
 from pydantic import TypeAdapter, ValidationError
-from typing_extensions import deprecated  # type: ignore
 
 from nomad.config import config
 from nomad.metainfo.data_type import JSON as JSONType
@@ -64,8 +63,7 @@ from nomad.metainfo.util import (
     to_dict,
 )
 from nomad.units import ureg as units
-from pydantic import ValidationError, parse_obj_as
-from typing_extensions import deprecated  # type: ignore
+from pydantic import ValidationError
 
 from .annotation import (
     Annotation,

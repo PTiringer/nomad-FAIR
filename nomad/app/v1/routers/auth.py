@@ -20,7 +20,7 @@ import hmac
 import hashlib
 import uuid
 import requests
-from typing import cast, Union
+from typing import cast
 from collections.abc import Callable
 from inspect import Parameter, signature
 from functools import wraps

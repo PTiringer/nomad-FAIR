@@ -18,13 +18,11 @@
 
 """Methods to help with testing of nomad@FAIRDI."""
 
-import json
 import os.path
 import urllib.parse
 import zipfile
 from logging import LogRecord
-from typing import Any, Dict, List, Union
-from structlog import get_logger
+from typing import Any
 import pytest
 
 

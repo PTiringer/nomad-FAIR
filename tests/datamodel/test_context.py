@@ -21,7 +21,6 @@ import os
 import pytest
 import json
 import re
-import numpy as np
 
 from nomad import utils, files, processing
 from nomad.metainfo.metainfo import MSection

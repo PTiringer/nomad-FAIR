@@ -37,7 +37,6 @@ from structlog.processors import (
 )
 from structlog.stdlib import LoggerFactory
 import logstash
-from contextlib import contextmanager
 import json
 import re
 import os.path

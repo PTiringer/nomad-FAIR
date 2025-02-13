@@ -18,7 +18,7 @@
 
 import re
 import numpy as np
-from typing import Union, Any, Optional
+from typing import Any
 import ase.data
 from matid import SymmetryAnalyzer  # pylint: disable=import-error
 import matid.geometry  # pylint: disable=import-error

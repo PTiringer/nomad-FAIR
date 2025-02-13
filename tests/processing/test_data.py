@@ -16,7 +16,6 @@
 # limitations under the License.
 #
 
-from typing import Tuple, Dict
 from collections.abc import Generator
 import pytest
 import os.path

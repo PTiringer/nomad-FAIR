@@ -48,10 +48,6 @@ from __future__ import annotations
 from abc import ABCMeta
 from typing import (
     IO,
-    Set,
-    Dict,
-    List,
-    Tuple,
     Any,
     NamedTuple,
 )
@@ -68,8 +64,9 @@ import io
 import json
 import yaml
 import magic
+import tarfile  # noqa: F401
 import zipfile
-import tarfile
+
 
 from nomad import utils, datamodel
 from nomad.common import (

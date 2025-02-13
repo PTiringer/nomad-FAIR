@@ -30,18 +30,11 @@ entries, and files
 
 import base64
 from typing import (
-    Optional,
     cast,
     Any,
-    List,
-    Tuple,
-    Set,
-    Dict,
     Union,
 )
 from collections.abc import Iterator, Iterable, Sequence
-from pydantic import ValidationError
-from pydantic_core import InitErrorDetails, PydanticCustomError
 import rfc3161ng
 from mongoengine import (
     StringField,

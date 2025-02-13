@@ -17,7 +17,6 @@
 #
 
 from datetime import date
-from typing import List
 import pytest
 import numpy as np
 from elasticsearch_dsl import Keyword

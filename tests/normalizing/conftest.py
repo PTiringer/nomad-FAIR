@@ -17,16 +17,13 @@
 #
 from collections import defaultdict
 import numpy as np
-from typing import Any, List, Union
-from collections.abc import Iterable
+from typing import Any
 import pytest
 from ase import Atoms
 import ase.build
 import re
 from warnings import warn
-import importlib
 
-from nomad.config import config
 from nomad.units import ureg
 from nomad.utils import get_logger
 from nomad.normalizing import normalizers
@@ -43,7 +40,6 @@ from nomad.datamodel.optimade import Species
 from nomad.normalizing.common import cell_from_ase_atoms, nomad_atoms_from_ase_atoms
 from nomad.datamodel.metainfo.simulation.method import CoreHole
 from nomad.datamodel.metainfo.workflow import Workflow
-from nomad.datamodel.metainfo.workflow import Link, TaskReference
 from nomad.datamodel.metainfo.measurements import (
     Measurement,
     Sample,
@@ -57,15 +53,14 @@ from nomad.datamodel.context import ServerContext
 from nomad.datamodel.datamodel import EntryArchive, EntryMetadata
 from nomad.parsing.parser import ArchiveParser
 from nomad.processing.data import Upload
-from tests.parsing.test_parsing import parsed_vasp_example  # pylint: disable=unused-import
-from tests.parsing.test_parsing import parsed_template_example  # pylint: disable=unused-import
-from tests.parsing.test_parsing import parsed_example  # pylint: disable=unused-import
+from tests.parsing.test_parsing import parsed_vasp_example  # noqa: F401
+from tests.parsing.test_parsing import parsed_template_example  # noqa: F401
+from tests.parsing.test_parsing import parsed_example  # noqa: F401
 from tests.parsing.test_parsing import parse_file
 from tests.test_files import create_test_upload_files
 from nomad.datamodel.metainfo import (
     simulationworkflowschema,
     runschema,
-    SCHEMA_IMPORT_ERROR,
 )
 
 

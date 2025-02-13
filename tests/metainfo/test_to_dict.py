@@ -25,7 +25,7 @@ from nomad.app.v1.routers.metainfo import (
     store_package_definition,
 )
 from nomad.metainfo import MSection, MCategory, Quantity, SubSection
-from nomad.metainfo.metainfo import Datetime, Package, MEnum, Reference, Definition
+from nomad.metainfo.metainfo import Package, MEnum, Reference, Definition
 
 # resolve_references are tested in .test_references
 # type specific serialization is tested in .test_quantities

@@ -38,7 +38,7 @@ Depending on the configuration all logs will also be send to a central logstash.
 .. autofunc::nomad.utils.strip
 """
 
-from typing import List, Union, Any, Dict, Optional
+from typing import Any
 from collections.abc import Iterable
 from collections import OrderedDict
 from functools import reduce

@@ -16,7 +16,6 @@
 #
 
 import re
-from typing import Union, Dict, List
 from nptyping import NDArray
 
 import ase.data
