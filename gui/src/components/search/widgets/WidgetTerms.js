@@ -133,7 +133,7 @@ export const WidgetTerms = React.memo((
     return config
   }, [aggSize, filterData, search_quantity])
   const agg = useAgg(search_quantity, !isNil(height), id, aggConfig)
-  const max = agg ? Math.max(...agg.data.map(option => option.nested_count)) : 0
+  const max = agg ? Math.max(...agg.data.map(option => option.nested_count || 0)) : 0
 
   const handleChange = useCallback((event, key, selected) => {
     setFilter(old => {
