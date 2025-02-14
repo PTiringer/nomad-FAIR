@@ -268,7 +268,7 @@ const InputTerms = React.memo(({
       reservedHeight = itemHeight + actionHeight
     }
 
-    const max = agg ? Math.max(...agg.data.map(option => option.nested_count)) : 0
+    const max = agg ? Math.max(...agg.data.map(option => option.nested_count || 0)) : 0
     const items = visibleOptions && <div
       className={styles.grid}
       style={{gridTemplateRows: `repeat(${nRows}, 1fr)`}}
@@ -379,8 +379,8 @@ InputTerms.propTypes = {
   increment: PropTypes.number, // The amount of new items to load on 'show more'
   showInput: PropTypes.bool, // Whether to show the search input field
   showHeader: PropTypes.bool, // Whether to show the header
-  showStatistics: PropTypes.bool, // Whether to disable statistics
-  showSuggestions: PropTypes.bool, // Whether to disable the text field suggestions
+  showStatistics: PropTypes.bool, // Whether to show statistics
+  showSuggestions: PropTypes.bool, // Whether to show the text field suggestions
   className: PropTypes.string,
   classes: PropTypes.object,
   'data-testid': PropTypes.string
@@ -391,6 +391,7 @@ InputTerms.defaultProps = {
   showHeader: true,
   showInput: true,
   showStatistics: true,
+  showSuggestions: true,
   sortStatic: true,
   'data-testid': 'input-terms'
 }
