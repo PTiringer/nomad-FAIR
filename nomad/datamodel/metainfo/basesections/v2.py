@@ -33,7 +33,7 @@ from ase.data import (
 )
 import requests
 
-from nomad.datamodel.metainfo.workflow import Link, Task, TaskReference, Workflow
+from nomad.datamodel.metainfo.workflow import Link, Task, Workflow
 from nomad.metainfo.data_type import m_str
 
 if TYPE_CHECKING:
@@ -281,7 +281,7 @@ class ActivityStep(ArchiveSection):
         """,
         a_eln=ELNAnnotation(component='DateTimeEditQuantity', label='starting time'),
     )
-    comment = Quantity(
+    description = Quantity(
         type=str,
         description="""
         Any additional information about the step not captured by the other fields.
@@ -439,15 +439,6 @@ class ExperimentStep(ActivityStep):
     Any dependant step of an `Experiment`.
     """
 
-    activity = Quantity(
-        type=Activity,
-        description="""
-        The activity that makes up this step of the experiment.
-        """,
-        a_eln=ELNAnnotation(
-            component='ReferenceEditQuantity',
-        ),
-    )
     lab_id = Quantity(
         type=str,
         description="""
@@ -458,56 +449,57 @@ class ExperimentStep(ActivityStep):
             label='activity ID',
         ),
     )
+    activity = Quantity(
+        type=Activity,
+        description="""
+        The activity that makes up this step of the experiment.
+        """,
+        a_eln=ELNAnnotation(
+            component='ReferenceEditQuantity',
+        ),
+    )
+
+
+class NestedExperimentStep(ExperimentStep):
+    """
+    A step of an Experiment.
+
+    This class is a wrapper for the `Activity` class and is used to describe
+    the metadata of an activity when it is a step of another, larger, experiment.
+
+    The `Activity` class instance can be instantiated in the `activity` property
+    as a nested subsection.
+
+    A normalizer will create a link in the activity property inherited from
+    the ExperimentStep class.
+
+    """
+
+    m_def = Section(
+        a_eln=ELNAnnotation(
+            properties=SectionProperties(
+                visible=Filter(
+                    exclude=[
+                        'activity',
+                    ],
+                ),
+            )
+        )
+    )
+
+    nested_activity = SubSection(
+        section_def=Activity,
+        description="""
+        Section describing the activity that is the step on an experiment.
+        """,
+        label='activity',
+    )
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
-        """
-        The normalizer for the `ExperimentStep` class.
-        Will attempt to fill the `activity` from the `lab_id` or vice versa.
-        If the activity reference is filled but the start time is not the time will be
-        taken from the `datetime` property of the referenced activity.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
-        """
         super().normalize(archive, logger)
-        if self.activity is None and self.lab_id is not None:
-            from nomad.search import search, MetadataPagination
 
-            query = {'results.eln.lab_ids': self.lab_id}
-            search_result = search(
-                owner='all',
-                query=query,
-                pagination=MetadataPagination(page_size=1),
-                user_id=archive.metadata.main_author.user_id,
-            )
-            if search_result.pagination.total > 0:
-                entry_id = search_result.data[0]['entry_id']
-                upload_id = search_result.data[0]['upload_id']
-                self.activity = f'../uploads/{upload_id}/archive/{entry_id}#data'
-                if search_result.pagination.total > 1:
-                    logger.warn(
-                        f'Found {search_result.pagination.total} entries with lab_id: '
-                        f'"{self.lab_id}". Will use the first one found.'
-                    )
-            else:
-                logger.warn(f'Found no entries with lab_id: "{self.lab_id}".')
-        elif self.lab_id is None and self.activity is not None:
-            self.lab_id = self.activity.lab_id
-        if self.name is None and self.lab_id is not None:
-            self.name = self.lab_id
-        if (
-            self.activity is not None
-            and self.start_time is None
-            and self.activity.datetime
-        ):
-            self.start_time = self.activity.datetime
-
-    def to_task(self) -> Task:
-        if self.activity is None:
-            return Task(name=self.name)
-        return TaskReference(task=self.activity.m_parent.workflow2)
+        if self.nested_activity:
+            self.activity = self.nested_activity
 
 
 class Experiment(Activity):
@@ -515,8 +507,13 @@ class Experiment(Activity):
     A section for grouping activities together into an experiment.
     """
 
-    steps = Activity.steps.m_copy()
-    steps.section_def = ExperimentStep
+    steps = SubSection(
+        section_def=ExperimentStep,
+        description="""
+        An ordered list of all the dependant steps that make up this experiment.
+        """,
+        repeats=True,
+    )
 
 
 class Collection(Entity):
