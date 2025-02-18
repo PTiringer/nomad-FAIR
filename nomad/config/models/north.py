@@ -97,7 +97,7 @@ class NORTHTool(BaseModel):
             'e.g. /home/jovyan for Jupyter containers.'
         ),
     )
-    icon: str = Field(
+    icon: str | None = Field(
         None,
         description='A URL to an icon that is used to represent the tool in the NOMAD UI.',
     )
@@ -125,7 +125,7 @@ class NORTH(ConfigBaseModel):
         whether you run a jupyter hub or not.
     """,
     )
-    hub_connect_ip: str = Field(
+    hub_connect_ip: str | None = Field(
         None,
         description="""
         Overwrites the default hostname that can be used from within a north container
@@ -135,10 +135,12 @@ class NORTH(ConfigBaseModel):
         on windows/macos.
     """,
     )
-    hub_connect_url: str = Field(None, description=_jupyterhub_config_description)
+    hub_connect_url: str | None = Field(
+        None, description=_jupyterhub_config_description
+    )
     hub_ip: str = Field('0.0.0.0', description=_jupyterhub_config_description)
-    docker_network: str = Field(None, description=_jupyterhub_config_description)
-    hub_host: str = Field(
+    docker_network: str | None = Field(None, description=_jupyterhub_config_description)
+    hub_host: str | None = Field(
         'localhost',
         description="""
         The internal host name that NOMAD services use to connect to the jupyterhub API.
@@ -150,9 +152,11 @@ class NORTH(ConfigBaseModel):
         The internal port that NOMAD services use to connect to the jupyterhub API.
     """,
     )
-    jupyterhub_crypt_key: str = Field(None, description=_jupyterhub_config_description)
+    jupyterhub_crypt_key: str | None = Field(
+        None, description=_jupyterhub_config_description
+    )
 
-    nomad_host: str = Field(
+    nomad_host: str | None = Field(
         None, description='The NOMAD app host name that spawned containers use.'
     )
     windows: bool = Field(True, description='Enable windows OS hacks.')
