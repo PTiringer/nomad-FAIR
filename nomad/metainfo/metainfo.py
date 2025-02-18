@@ -35,7 +35,7 @@ from urllib.parse import urlsplit, urlunsplit
 import docstring_parser
 import jmespath
 import pint
-from pydantic import TypeAdapter, ValidationError
+from pydantic import TypeAdapter, ValidationError, BaseModel
 
 from nomad.config import config
 from nomad.metainfo.data_type import JSON as JSONType
@@ -2014,6 +2014,9 @@ class MSection(metaclass=MObjectMeta):
         def serialize_annotation(annotation):
             if isinstance(annotation, Annotation):
                 return annotation.m_to_dict()
+
+            if isinstance(annotation, BaseModel):
+                return annotation.dict()
 
             if not isinstance(annotation, dict):
                 return str(annotation)
