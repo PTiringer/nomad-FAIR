@@ -98,8 +98,17 @@ class TaskReference(Task):
 
     def normalize(self, archive, logger):
         super().normalize(archive, logger)
-        if not self.name and self.task:
+        if self.task is None:
+            return
+
+        if not self.name:
             self.name = self.task.name
+
+        # add task inputs/outputs to inputs/outputs
+        self.inputs.extend([inp for inp in self.task.inputs if inp not in self.inputs])
+        self.outputs.extend(
+            [out for out in self.task.outputs if out not in self.outputs]
+        )
 
 
 class Workflow(Task, EntryData):
