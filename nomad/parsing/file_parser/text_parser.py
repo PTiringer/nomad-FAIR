@@ -273,6 +273,7 @@ class TextParser(FileParser):
         super().__init__(mainfile, logger=logger, open=kwargs.get('open', None))
         self._quantities: list[Quantity] = quantities
         self.findall: bool = kwargs.get('findall', True)
+        self.findlazy: bool = kwargs.get('findlazy', None)
         self._kwargs = kwargs
         self._file_length: int = kwargs.get('file_length', 0)
         self._file_offset: int = kwargs.get('file_offset', 0)
@@ -488,8 +489,10 @@ class TextParser(FileParser):
                 sub_parser = quantity.sub_parser.copy()
                 sub_parser.mainfile = self.mainfile
                 sub_parser.logger = self.logger
+                if sub_parser.findlazy is None:
+                    sub_parser.findlazy = self.findlazy
                 sub_parser._file_handler = b' '.join([g for g in res.groups() if g])
-                value.append(sub_parser.parse())
+                value.append(sub_parser if sub_parser.findlazy else sub_parser.parse())
 
             else:
                 try:
@@ -562,8 +565,9 @@ class TextParser(FileParser):
                         self._parse_quantity(quantity)
 
         # free up memory
-        if isinstance(self._file_handler, mmap.mmap) and self.findall:
-            self._file_handler.close()
+        if self.findall:
+            if isinstance(self._file_handler, mmap.mmap):
+                self._file_handler.close()
             self._file_handler = b' '
 
         return self
