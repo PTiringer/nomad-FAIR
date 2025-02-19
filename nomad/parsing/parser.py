@@ -427,7 +427,11 @@ class MatchingParserInterface(MatchingParser):
     An interface to the NOMAD parsers.
 
     Arguments:
-        parser_class_name: concatenation of module path and parser class name
+        parser_class_name:
+            path specification in python style up to the parser class
+            in case of a plugin, the path starts from `src/`.
+            E.g. `nomad_parser.parsers.parser.Parser`
+            for a `Parser` under `<plugin_root>/src/nomad_parser/parsers/parser.py`.
     """
 
     def __init__(self, parser_class_name: str, *args, **kwargs):

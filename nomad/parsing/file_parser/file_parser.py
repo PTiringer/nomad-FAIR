@@ -221,11 +221,19 @@ class FileParser(ABC):
     def parse(self, quantity_key: str = None, **kwargs):
         pass
 
+    def pop(self, key, default=None):
+        return self._results.pop(key, default)
+
     def __getitem__(self, key):
         if isinstance(key, str):
             return self.get(key)
         elif isinstance(key, int):
             return self[int]
+
+    def __setitem__(self, key, val):
+        if self._results is None:
+            self._results = {}
+        self._results[key] = val
 
     def __getattr__(self, key):
         if self._results is None:
@@ -258,11 +266,11 @@ class FileParser(ABC):
                 pass
 
 
-class Parser(ABC):
+class ArchiveWriter(ABC):
     mainfile: str = None
     archive: EntryArchive = None
     logger = None
-    child_archives = None
+    child_archives: dict[str, EntryArchive] = None
 
     def get_mainfile_keys(self, filename: str, decoded_buffer: str) -> bool | list[str]:
         """
@@ -307,11 +315,11 @@ class Parser(ABC):
 
         self.archive.m_update_from_dict(self.to_dict())
 
-    def parse(
+    def write(
         self, mainfile: str, archive: EntryArchive, logger=None, child_archives=None
     ) -> None:
         """
-        Main interface to the nomad parsing infrastructure.
+        Wrapper to write_to_archive method.
         """
         self.mainfile = mainfile
         self.archive = archive
@@ -319,3 +327,11 @@ class Parser(ABC):
         self.child_archives = child_archives
 
         self.write_to_archive()
+
+    def parse(
+        self, mainfile: str, archive: EntryArchive, logger=None, child_archives=None
+    ) -> None:
+        """
+        Wraps write method for backwards compatibility.
+        """
+        self.write(mainfile, archive, logger, child_archives)
