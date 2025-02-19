@@ -203,6 +203,15 @@ const getLinks = async (source, query) => {
   const isLinked = (source, target) => {
     if (source.url === target.url) return false
 
+    const inputs = []
+    if (target.type === 'tasks' && target.nodes) {
+      inputs.push(...target.nodes.filter(node => node.type && node.type.startsWith('inputs')).map(node => node.url))
+    } else {
+      inputs.push(target.url)
+    }
+
+    if (inputs.includes(source.url)) return true
+
     const outputs = []
     if (source.type === 'tasks' && source.nodes) {
       outputs.push(...source.nodes.filter(node => node.type === 'outputs').map(node => node.url))
@@ -210,12 +219,7 @@ const getLinks = async (source, query) => {
       outputs.push(source.url)
     }
 
-    const inputs = []
-    if (target.type === 'tasks' && target.nodes) {
-      inputs.push(...target.nodes.filter(node => node.type && node.type.startsWith('inputs')).map(node => node.url))
-    } else {
-      inputs.push(target.url)
-    }
+    if (outputs.includes(target.url)) return true
 
     let linked = false
     for (const output of outputs) {
