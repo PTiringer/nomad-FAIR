@@ -22,6 +22,7 @@ import io
 import bs4
 import asyncio
 import httpx
+from enum import Enum
 from fastapi import APIRouter, Query as FastApiQuery
 from pydantic import BaseModel, Field
 from typing import Any
@@ -48,7 +49,10 @@ logger = utils.get_logger(__name__)
 
 router = APIRouter()
 
-default_tag = 'resources'
+
+class APITag(str, Enum):
+    DEFAULT = 'resources'
+
 
 # TODO generate list from optimade api
 optimade_providers = {
@@ -664,7 +668,7 @@ def retrieve_resources(
 
 @router.get(
     '/',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Get a list of external resources.',
     response_model=ResourcesModel,
     response_model_exclude_unset=True,

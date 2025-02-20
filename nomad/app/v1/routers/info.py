@@ -20,6 +20,7 @@
 API endpoint that deliver backend configuration details.
 """
 
+from enum import Enum
 from typing import Any
 from datetime import datetime
 from fastapi.routing import APIRouter
@@ -37,7 +38,10 @@ from nomad.metainfo.elasticsearch_extension import entry_type
 
 
 router = APIRouter()
-default_tag = 'info'
+
+
+class APITag(str, Enum):
+    DEFAULT = 'info'
 
 
 class MetainfoModel(BaseModel):
@@ -145,7 +149,7 @@ def statistics():
 
 @router.get(
     '',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Get information about the nomad backend and its configuration',
     response_model_exclude_unset=True,
     response_model_exclude_none=True,

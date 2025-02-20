@@ -1,4 +1,4 @@
-import enum
+from enum import Enum
 from fastapi import HTTPException, Request
 from pydantic import (
     BaseModel,
@@ -13,7 +13,7 @@ from nomad.app.v1.utils import update_url_query_arguments
 from nomad.utils import strip
 
 
-class Direction(str, enum.Enum):
+class Direction(str, Enum):
     """
     Order direction, either ascending (`asc`) or descending (`desc`)
     """

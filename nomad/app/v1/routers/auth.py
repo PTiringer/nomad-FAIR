@@ -20,6 +20,7 @@ import hmac
 import hashlib
 import uuid
 import requests
+from enum import Enum
 from typing import cast
 from collections.abc import Callable
 from inspect import Parameter, signature
@@ -48,7 +49,10 @@ from ..utils import create_responses
 logger = get_logger(__name__)
 
 router = APIRouter()
-default_tag = 'auth'
+
+
+class APITag(str, Enum):
+    DEFAULT = 'auth'
 
 
 class Token(BaseModel):
@@ -347,7 +351,7 @@ _bad_credentials_response = (
 
 @router.post(
     '/token',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Get an access token',
     responses=create_responses(_bad_credentials_response),
     response_model=Token,
@@ -382,7 +386,7 @@ async def get_token(form_data: OAuth2PasswordRequestForm = Depends()):
 
 @router.get(
     '/token',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Get an access token',
     responses=create_responses(_bad_credentials_response),
     response_model=Token,
@@ -406,7 +410,7 @@ async def get_token_via_query(username: str, password: str):
 
 @router.get(
     '/signature_token',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Get a signature token',
     response_model=SignatureToken,
 )
@@ -423,7 +427,7 @@ async def get_signature_token(
 
 @router.get(
     '/app_token',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Get an app token',
     response_model=AppToken,
 )

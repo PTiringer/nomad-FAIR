@@ -17,6 +17,7 @@
 #
 
 import re
+from enum import Enum
 from typing import cast
 from fastapi import (
     APIRouter,
@@ -29,7 +30,6 @@ from fastapi import (
 )
 from pydantic import field_validator, BaseModel, Field
 from datetime import datetime
-import enum
 
 from nomad import utils, datamodel, processing
 from nomad.config import config
@@ -56,7 +56,11 @@ from ..models import (
 
 
 router = APIRouter()
-default_tag = 'datasets'
+
+
+class APITag(str, Enum):
+    DEFAULT = 'datasets'
+
 
 logger = utils.get_logger(__name__)
 
@@ -257,7 +261,7 @@ class DatasetResponse(BaseModel):
     data: Dataset = Field()  # type: ignore
 
 
-class DatasetType(str, enum.Enum):
+class DatasetType(str, Enum):
     owned = 'owned'
     foreign = 'foreign'
 
@@ -271,7 +275,7 @@ class DatasetCreate(BaseModel):  # type: ignore
 
 @router.get(
     '/',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Get a list of datasets',
     response_model=DatasetsResponse,
     response_model_exclude_unset=True,
@@ -318,7 +322,7 @@ async def get_datasets(
 
 @router.get(
     '/{dataset_id}',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Get a list of datasets',
     response_model=DatasetResponse,
     responses=create_responses(_bad_id_response),
@@ -347,7 +351,7 @@ async def get_dataset(
 
 @router.post(
     '/',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Create a new dataset',
     response_model=DatasetResponse,
     responses=create_responses(_existing_name_response),
@@ -436,7 +440,7 @@ async def post_datasets(
 
 @router.delete(
     '/{dataset_id}',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Delete a dataset',
     response_model=DatasetResponse,
     responses=create_responses(
@@ -482,7 +486,7 @@ async def delete_dataset(
 
 @router.post(
     '/{dataset_id}/action/doi',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Assign a DOI to a dataset',
     response_model=DatasetResponse,
     responses=create_responses(

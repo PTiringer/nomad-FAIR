@@ -100,10 +100,14 @@ from ..models import (
 
 
 router = APIRouter()
-default_tag = 'entries'
-metadata_tag = 'entries/metadata'
-raw_tag = 'entries/raw'
-archive_tag = 'entries/archive'
+
+
+class APITag(str, Enum):
+    DEFAULT = 'entries'
+    METADATA = 'entries/metadata'
+    RAW = 'entries/raw'
+    ARCHIVE = 'entries/archive'
+
 
 logger = utils.get_logger(__name__)
 
@@ -495,7 +499,7 @@ def perform_search(*args, **kwargs):
 
 @router.post(
     '/query',
-    tags=[metadata_tag],
+    tags=[APITag.METADATA],
     summary='Search entries and retrieve their metadata',
     response_model=MetadataResponse,
     responses=create_responses(_bad_owner_response),
@@ -536,7 +540,7 @@ async def post_entries_metadata_query(
 
 @router.get(
     '',
-    tags=[metadata_tag],
+    tags=[APITag.METADATA],
     summary='Search entries and retrieve their metadata',
     response_model=MetadataResponse,
     responses=create_responses(_bad_owner_response),
@@ -770,7 +774,7 @@ _entries_rawdir_query_docstring = strip(
 
 @router.post(
     '/rawdir/query',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Search entries and get their raw files metadata',
     description=_entries_rawdir_query_docstring,
     response_model=EntriesRawDirResponse,
@@ -790,7 +794,7 @@ async def post_entries_rawdir_query(
 
 @router.get(
     '/rawdir',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Search entries and get their raw files metadata',
     description=_entries_rawdir_query_docstring,
     response_model=EntriesRawDirResponse,
@@ -834,7 +838,7 @@ _entries_raw_query_docstring = strip(
 
 @router.post(
     '/raw/query',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Search entries and download their raw files',
     description=_entries_raw_query_docstring,
     response_class=StreamingResponse,
@@ -850,7 +854,7 @@ async def post_entries_raw_query(
 
 @router.get(
     '/raw',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Search entries and download their raw files',
     description=_entries_raw_query_docstring,
     response_class=StreamingResponse,
@@ -991,7 +995,7 @@ _entries_archive_docstring = strip(
 
 @router.post(
     '/archive/query',
-    tags=[archive_tag],
+    tags=[APITag.ARCHIVE],
     summary='Search entries and access their archives',
     description=_entries_archive_docstring,
     response_model=EntriesArchiveResponse,
@@ -1025,7 +1029,7 @@ async def post_entries_archive_query(
 
 @router.get(
     '/archive',
-    tags=[archive_tag],
+    tags=[APITag.ARCHIVE],
     summary='Search entries and access their archives',
     description=_entries_archive_docstring,
     response_model=EntriesArchiveResponse,
@@ -1142,7 +1146,7 @@ _entries_archive_download_docstring = strip(
 
 @router.post(
     '/archive/download/query',
-    tags=[archive_tag],
+    tags=[APITag.ARCHIVE],
     summary='Search entries and download their archives',
     description=_entries_archive_download_docstring,
     response_class=StreamingResponse,
@@ -1164,7 +1168,7 @@ async def post_entries_archive_download_query(
 
 @router.get(
     '/archive/download',
-    tags=[archive_tag],
+    tags=[APITag.ARCHIVE],
     summary='Search entries and download their archives',
     description=_entries_archive_download_docstring,
     response_class=StreamingResponse,
@@ -1188,7 +1192,7 @@ async def get_entries_archive_download(
 
 @router.get(
     '/{entry_id}',
-    tags=[metadata_tag],
+    tags=[APITag.METADATA],
     summary='Get the metadata of an entry by its id',
     response_model=EntryMetadataResponse,
     responses=create_responses(_bad_id_response),
@@ -1225,7 +1229,7 @@ async def get_entry_metadata(
 
 @router.get(
     '/{entry_id}/rawdir',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Get the raw files metadata for an entry by its id',
     response_model=EntryRawDirResponse,
     responses=create_responses(_bad_id_response),
@@ -1264,7 +1268,7 @@ async def get_entry_rawdir(
 
 @router.get(
     '/{entry_id}/raw',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Get the raw data of an entry by its id',
     response_class=StreamingResponse,
     responses=create_responses(_bad_id_response, _raw_response),
@@ -1300,7 +1304,7 @@ async def get_entry_raw(
 
 @router.get(
     '/{entry_id}/raw/{path}',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Get the raw data of an entry by its id',
     response_class=StreamingResponse,
     responses=create_responses(
@@ -1430,7 +1434,7 @@ def answer_entry_archive_request(
 
 @router.post(
     '/{entry_id}/edit',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Edit a raw mainfile in archive format.',
     response_model=EntryEditResponse,
     response_model_exclude_unset=True,
@@ -1561,7 +1565,7 @@ async def post_entry_edit(
 
 @router.get(
     '/{entry_id}/archive',
-    tags=[archive_tag],
+    tags=[APITag.ARCHIVE],
     summary='Get the archive for an entry by its id',
     response_model=EntryArchiveResponse,
     response_model_exclude_unset=True,
@@ -1585,7 +1589,7 @@ async def get_entry_archive(
 
 @router.get(
     '/{entry_id}/archive/download',
-    tags=[archive_tag],
+    tags=[APITag.ARCHIVE],
     summary='Get the archive for an entry by its id as plain archive json',
     responses=create_responses(_bad_id_response, _archive_download_response),
 )
@@ -1607,7 +1611,7 @@ async def get_entry_archive_download(
 
 @router.post(
     '/{entry_id}/archive/query',
-    tags=[archive_tag],
+    tags=[APITag.ARCHIVE],
     summary='Get the archive for an entry by its id',
     response_model=EntryArchiveResponse,
     response_model_exclude_unset=True,
@@ -1705,7 +1709,7 @@ _editable_quantities = {
 
 @router.post(
     '/edit_v0',
-    tags=[metadata_tag],
+    tags=[APITag.METADATA],
     summary='Edit the user metadata of a set of entries',
     response_model=EntryMetadataEditResponse,
     response_model_exclude_unset=True,
@@ -1896,7 +1900,7 @@ async def post_entry_metadata_edit(
 
 @router.post(
     '/edit',
-    tags=[metadata_tag],
+    tags=[APITag.METADATA],
     summary='Edit the user metadata of a set of entries',
     response_model=MetadataEditRequest,
     response_model_exclude_unset=True,
