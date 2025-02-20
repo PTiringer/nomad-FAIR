@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 import datetime
-import enum
+from enum import Enum
 import fnmatch
 import json
 import re
@@ -80,7 +80,7 @@ owner_documentation = strip(
 )
 
 
-class Owner(str, enum.Enum):
+class Owner(str, Enum):
     __doc__ = owner_documentation
 
     # There seems to be a slight bug in fast API. When it creates the example in OpenAPI

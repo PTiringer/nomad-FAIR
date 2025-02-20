@@ -22,6 +22,7 @@ API endpoint to receive telemetry data (in logstash format) from local installat
 
 import socket
 import zlib
+from enum import Enum
 
 from fastapi import Request, HTTPException
 from fastapi.routing import APIRouter
@@ -32,12 +33,15 @@ from nomad.config import config
 logger = utils.get_logger(__name__)
 
 router = APIRouter()
-default_tag = 'federation'
+
+
+class APITag(str, Enum):
+    DEFAULT = 'federation'
 
 
 @router.post(
     '/logs/',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Receive logs in logstash format from other Nomad installations and store into central logstash '
     'for further analysis.',
 )

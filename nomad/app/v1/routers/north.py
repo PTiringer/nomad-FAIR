@@ -37,8 +37,12 @@ from ..utils import create_responses
 
 TOOLS = {k: v for k, v in config.north.tools.filtered_items()}
 
-default_tag = 'north'
 router = APIRouter()
+
+
+class APITag(str, Enum):
+    DEFAULT = 'north'
+
 
 hub_api_headers = {'Authorization': f'Bearer {config.north.hub_service_api_token}'}
 logger = get_logger(__name__)
@@ -107,7 +111,7 @@ def _get_status(tool: ToolModel, user: User) -> ToolModel:
 
 @router.get(
     '/',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     response_model=ToolsResponseModel,
     summary='Get a list of all configured tools and their current state.',
     response_model_exclude_unset=True,
@@ -134,7 +138,7 @@ async def tool(name: str) -> ToolModel:
 
 @router.get(
     '/{name}',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Get information for a specific tool.',
     response_model=ToolResponseModel,
     responses=create_responses(_bad_tool_response),
@@ -152,7 +156,7 @@ async def get_tool(
 
 @router.post(
     '/{name}',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     response_model=ToolResponseModel,
     summary='Start a tool.',
     response_model_exclude_unset=True,
@@ -300,7 +304,7 @@ async def start_tool(
 
 @router.delete(
     '/{name}',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     response_model=ToolResponseModel,
     summary='Stop a tool.',
     response_model_exclude_unset=True,

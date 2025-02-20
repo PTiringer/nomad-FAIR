@@ -40,7 +40,10 @@ from ..utils import create_responses
 from ..models import User, HTTPExceptionModel
 
 router = APIRouter()
-default_tag = 'systems'
+
+
+class APITag(str, Enum):
+    DEFAULT = 'systems'
 
 
 def write_pdb(atoms: NOMADAtoms, entry_id: str = None, formula: str = None) -> str:
@@ -283,7 +286,7 @@ _serialization_error_response = (
 
 @router.get(
     '/{entry_id}',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary=strip(
         """
     Build and retrieve an atomistic structure file from data within an entry.
