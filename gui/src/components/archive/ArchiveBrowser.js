@@ -33,7 +33,7 @@ import SaveIcon from '@material-ui/icons/Save'
 import { Alert } from '@material-ui/lab'
 import classNames from 'classnames'
 import DOMPurify from 'dompurify'
-import { isArray, isNaN, partition, range } from 'lodash'
+import { isArray, isNaN, isPlainObject, partition, range } from 'lodash'
 import { complex, format } from 'mathjs'
 import PropTypes from 'prop-types'
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
@@ -60,6 +60,7 @@ import { useErrors } from '../errors'
 import Markdown from '../Markdown'
 import { EntryButton } from '../nav/Routes'
 import { Quantity as Q } from '../units/Quantity'
+import { Unit } from '../units/Unit'
 import { useDisplayUnit } from '../units/useDisplayUnit'
 import H5Web from '../visualization/H5Web'
 import Pagination from '../visualization/Pagination'
@@ -673,11 +674,13 @@ class QuantityAdaptor extends ArchiveAdaptor {
   }
 
   render() {
-    if (quantityUsesFullStorage(this.def)) {
-      return <FullStorageQuantity value={this.obj} def={this.def}/>
-    } else {
-      return <Quantity value={this.obj} def={this.def}/>
-    }
+    return <Quantity value={this.obj} def={this.def}>
+      {this.obj?.m_attributes?.length > 0 && <Compartment title="attributes">
+        {Object.keys(this.obj?.m_attributes).map(key => (
+          <Item key={key} itemKey={key}>{key}</Item>
+        ))}
+      </Compartment>}
+    </Quantity>
   }
 }
 
@@ -694,7 +697,7 @@ const convertComplexArray = (real, imag) => {
 }
 
 export function QuantityItemPreview({value, def}) {
-  const displayUnit = useDisplayUnit(def)
+  let {finalValue, displayUnit, storageUnit} = useQuantityData(value, def)
 
   if (isReference(def)) {
     return <Box component="span" fontStyle="italic">
@@ -720,14 +723,14 @@ export function QuantityItemPreview({value, def}) {
     const dimensions = []
     let typeLabel = 'unknown'
     try {
-      let current = value.re || value.im || value
+      let current = finalValue.re || finalValue.im || finalValue
       for (let i = 0; i < def.shape.length; i++) {
         dimensions.push(current.length)
         current = current[0]
       }
       if (def.type.type_kind === 'python') {
         typeLabel = 'list'
-      } else if (typeof value === 'string') {
+      } else if (typeof finalValue === 'string') {
         typeLabel = 'HDF5 array'
         dimensions.length = 0
       } else {
@@ -752,17 +755,13 @@ export function QuantityItemPreview({value, def}) {
       </Typography>
     </Box>
   } else {
-    let finalValue
     if (def.type.type_data === 'nomad.metainfo.metainfo._Datetime' || def.type.type_data === 'nomad.metainfo.data_type.Datetime') {
-      finalValue = formatTimestamp(value)
+      finalValue = formatTimestamp(finalValue)
     } else if (def.type.type_data.startsWith?.('complex')) {
-      finalValue = convertComplexArray(value.re, value.im)
-    } else {
-      finalValue = value
+      finalValue = convertComplexArray(finalValue.re, finalValue.im)
     }
-
     if (displayUnit) {
-      finalValue = new Q(finalValue, def.unit).to(displayUnit).value()
+      finalValue = new Q(finalValue, storageUnit).to(displayUnit).value()
     }
     return <Box component="span" whiteSpace="nowarp">
       <Number component="span" variant="body1" value={finalValue} exp={8}/>
@@ -776,12 +775,32 @@ QuantityItemPreview.propTypes = ({
   def: PropTypes.object.isRequired
 })
 
+/**
+ * Hook for getting the final value and units for a quantity. Also supports
+ * quantities using full storage.
+ *
+ * @param {*} data Value of the quantity
+ * @param {*} def Defintion of the quantity
+ * @returns Object containing the final value, storage unit and display unit.
+ */
+function useQuantityData(data, def) {
+  let storageUnit = def.unit
+  let displayUnit = useDisplayUnit(def)
+  let finalValue = data
+  if (quantityUsesFullStorage(def) && isPlainObject(data)) {
+    displayUnit = data?.m_unit && new Unit(data.m_unit)
+    storageUnit = data?.m_original_unit
+    finalValue = data?.m_value
+  }
+  return {finalValue, displayUnit, storageUnit}
+}
+
 export const QuantityValue = React.memo(function QuantityValue({value, def}) {
   const {uploadId} = useEntryStore() || {}
-  const displayUnit = useDisplayUnit(def)
+  let {finalValue, displayUnit, storageUnit} = useQuantityData(value, def)
 
-  const getRenderValue = useCallback(value => {
-    let finalValue
+  const getRenderValue = useCallback((value) => {
+    let finalValue, finalUnit
     if (def.type.type_data === 'nomad.metainfo.metainfo._Datetime' || def.type.type_data === 'nomad.metainfo.data_type.Datetime') {
       finalValue = formatTimestamp(value)
     } else if (def.type.type_data.startsWith?.('complex')) {
@@ -789,22 +808,24 @@ export const QuantityValue = React.memo(function QuantityValue({value, def}) {
     } else {
       finalValue = value
     }
-    let finalUnit
-    if (def.unit && typeof finalValue !== 'string') {
-      const systemUnitQ = new Q(finalValue, def.unit).to(displayUnit)
+
+    if (typeof finalValue !== 'string' && storageUnit && displayUnit) {
+      const systemUnitQ = new Q(finalValue, storageUnit).to(displayUnit)
       finalValue = systemUnitQ.value()
       finalUnit = systemUnitQ.label()
     }
+
     return [finalValue, finalUnit]
-  }, [def, displayUnit])
+  }, [def, storageUnit, displayUnit])
 
   const isMathValue = (def.type.type_kind === 'numpy' || def.type.type_kind === 'python') && typeof value !== 'string'
   if (isMathValue) {
-    const [finalValue, finalUnit] = getRenderValue(value)
+    const [renderValue, finalUnit] = getRenderValue(finalValue)
     if (def.shape.length > 0) {
+      console.log(renderValue)
       return <Box textAlign="center">
         <Matrix
-          values={finalValue}
+          values={renderValue}
           shape={def.shape}
           invert={def.shape.length === 1}
           type={def.type.type_data}
@@ -818,54 +839,53 @@ export const QuantityValue = React.memo(function QuantityValue({value, def}) {
         {finalUnit && <Typography noWrap>{finalUnit}</Typography>}
       </Box>
     } else {
-      return <Number value={finalValue} exp={16} variant="body1" unit={finalUnit}/>
+      return <Number value={renderValue} exp={16} variant="body1" unit={finalUnit}/>
     }
   } else if (def.m_annotations?.browser?.[0]?.render_value === 'HtmlValue' || def.m_annotations?.eln?.[0]?.component === 'RichTextEditQuantity') {
-    const html = DOMPurify.sanitize(value)
+    const html = DOMPurify.sanitize(finalValue)
     return <div dangerouslySetInnerHTML={{__html: html}}/>
   } else if (def.type?.type_data === 'nomad.metainfo.metainfo._JSON' || def.type?.type_data === 'nomad.metainfo.data_type.JSON') {
     return <ReactJson
       name="value"
-      src={value}
+      src={finalValue}
       enableClipboard={false}
       collapsed={2}
       displayObjectSize={false}
     />
   } else {
     if (def.type.type_data.startsWith?.('complex')) {
-      value = convertComplexArray(value.re, value.im)
+      finalValue = convertComplexArray(finalValue.re, finalValue.im)
 
-      return Array.isArray(value)
+      return Array.isArray(finalValue)
         ? <ul style={{margin: 0}}>
-          {value.map((value, index) => <li key={index}><Typography>{value}</Typography></li>)}
+          {finalValue.map((value, index) => <li key={index}><Typography>{value}</Typography></li>)}
         </ul>
-        : <Typography>{value}</Typography>
-    } else if (Array.isArray(value)) {
+        : <Typography>{finalValue}</Typography>
+    } else if (Array.isArray(finalValue)) {
       return <ul style={{margin: 0}}>
-        {value.map((value, index) => {
-          const [finalValue] = getRenderValue(value)
+        {finalValue.map((value, index) => {
+          const [renderValue] = getRenderValue(value)
           return <li key={index}>
-            <Typography>{typeof finalValue === 'object' ? JSON.stringify(finalValue) : finalValue?.toString()}</Typography>
+            <Typography>{typeof renderValue === 'object' ? JSON.stringify(renderValue) : renderValue?.toString()}</Typography>
           </li>
         })}
       </ul>
     } else if (def.type?.type_data === 'nomad.datamodel.hdf5.HDF5Dataset' || def.type?.type_data === 'nomad.datamodel.hdf5.HDF5Reference') {
-      const {h5UploadId, h5File, h5Source, h5Path} = matchH5Path(value)
+      const {h5UploadId, h5File, h5Source, h5Path} = matchH5Path(finalValue)
       return <Compartment title='hdf5'>
         <H5Web upload_id={h5UploadId || uploadId} filename={h5File} initialPath={h5Path} source={h5Source} sidebarOpen={false}></H5Web>
       </Compartment>
     } else if (def?.type?.type_kind === 'custom' && def?.type?.type_data === 'nomad.datamodel.data.Query') {
-      return <Query value={value} def={def}/>
+      return <Query value={finalValue} def={def}/>
     } else {
-      const [finalValue] = getRenderValue(value)
-      return <Typography>{typeof finalValue === 'object' ? JSON.stringify(finalValue) : finalValue?.toString()}</Typography>
+      const [renderValue] = getRenderValue(finalValue)
+      return <Typography>{typeof renderValue === 'object' ? JSON.stringify(renderValue) : renderValue?.toString()}</Typography>
     }
   }
 })
 QuantityValue.propTypes = ({
   value: PropTypes.any,
-  def: PropTypes.object.isRequired,
-  unit: PropTypes.string
+  def: PropTypes.object.isRequired
 })
 
 const InheritingSections = React.memo(function InheritingSections({def, section, lane}) {
@@ -1072,7 +1092,7 @@ export function Section({section, def, property, parentRelation, sectionIsEditab
       const storage = section[quantityDef.name] || {}
       return <React.Fragment key={key}>
         {Object.keys(storage).map(quantityName =>
-          renderQuantityItem(key, quantityName, quantityDef, storage[quantityName]?.m_value, disabled)
+          renderQuantityItem(key, quantityName, quantityDef, storage[quantityName], disabled)
         )}
       </React.Fragment>
     } else {
@@ -1623,23 +1643,7 @@ SectionPlots.propTypes = {
   entryId: PropTypes.string
 }
 
-function FullStorageQuantity({value, def}) {
-  const attributes = value.m_attributes || {}
-  return <Quantity value={value.m_value} def={def} unit={value.m_unit}>
-    {Object.keys(attributes).length > 0 && <Compartment title="attributes">
-      {Object.keys(attributes).map(key => (
-        <Item key={key} itemKey={key}>{key}</Item>
-      ))}
-    </Compartment>}
-  </Quantity>
-}
-
-FullStorageQuantity.propTypes = ({
-  value: PropTypes.any,
-  def: PropTypes.object.isRequired
-})
-
-function Quantity({value, def, unit, children}) {
+function Quantity({value, def, children}) {
   const {prev} = useLane()
   return <Content>
     <ArchiveTitle def={def} data={value} kindLabel="value"/>
@@ -1657,7 +1661,6 @@ function Quantity({value, def, unit, children}) {
       <QuantityValue
         value={value}
         def={def}
-        unit={unit}
       />
     </Compartment>
     {children}

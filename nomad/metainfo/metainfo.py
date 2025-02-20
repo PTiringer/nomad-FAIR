@@ -24,12 +24,11 @@ import json
 import re
 import sys
 import warnings
+from collections.abc import Callable as TypingCallable
 from collections.abc import Iterable
 from copy import deepcopy
 from functools import wraps
-from typing import Any
-from collections.abc import Callable as TypingCallable
-from typing import Literal, TypeVar, cast
+from typing import Any, Literal, TypeVar, cast
 from urllib.parse import urlsplit, urlunsplit
 
 import docstring_parser
@@ -63,7 +62,7 @@ from nomad.metainfo.util import (
     to_dict,
 )
 from nomad.units import ureg as units
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from .annotation import (
     Annotation,
@@ -2759,7 +2758,7 @@ class Definition(MSection):
             Python references, e.g. in `m_def`.
 
         variable:
-            A boolean that indicates this property as variable parts in its name.
+            A boolean that indicates this property has variable parts in its name.
             If this is set to true, all capital letters in the name can be
             replaced with arbitrary strings. However, variable names work similar to
             aliases and can be considered on-demand aliases. Other aliases and the

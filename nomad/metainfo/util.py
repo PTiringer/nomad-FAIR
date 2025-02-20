@@ -22,7 +22,6 @@ import re
 from typing import Any
 
 import pint
-
 from nomad.metainfo.data_type import Enum
 from nomad.units import ureg
 
@@ -361,13 +360,15 @@ def resolve_variadic_name(definitions: dict, name: str, hint: str | None = None)
     candidates = {}
     hint_candidates = {}
 
-    for definition in definitions:
-        match_score = get_namefit(name, definition)
+    for dname, definition in definitions.items():
+        if not definition.variable:  # TODO: also if type does not match
+            continue
+        match_score = get_namefit(name, dname)
         if match_score >= 0:
-            candidates[definition] = match_score
+            candidates[dname] = match_score
             # Check if the hint exists in the definition
             if hint and hint in definition.all_attributes:
-                hint_candidates[definition] = match_score
+                hint_candidates[dname] = match_score
 
     if len(candidates) == 0:
         raise ValueError(f'Cannot find a proper definition for name "{name}".')

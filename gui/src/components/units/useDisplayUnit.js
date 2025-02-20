@@ -4,6 +4,12 @@ import {Unit} from "./Unit"
 import {useUnitContext} from "./UnitContext"
 import {getFieldProps} from "../editQuantity/StringEditQuantity"
 
+/**
+ * Used to retrieve the unit to use for displaying a quantity.
+ *
+ * @param {*} quantityDef Definition for the quantity
+ * @returns {Unit} The unit to use for displaying the quantity.
+ */
 export function useDisplayUnit(quantityDef) {
   const {units} = useUnitContext()
   const {raiseError} = useErrors()
