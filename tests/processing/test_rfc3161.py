@@ -74,7 +74,6 @@ def test_rfc3161ng_timestamp(server, cert, result, monkeysession):
         assert rfc3161ng.get_timestamp(new_metadata.token) == rfc3161ng_time
 
 
-@pytest.mark.skip()
 def test_rfc3161ng_processing(published, monkeypatch):
     entry_id = Entry.objects(upload_id=published.upload_id).first().entry_id
     file_path = published.upload_files._create_msg_file_object(
