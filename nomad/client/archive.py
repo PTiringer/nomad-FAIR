@@ -413,7 +413,7 @@ class ArchiveQuery:
                 ]
                 results = await asyncio.gather(*tasks)
 
-        return [archive for result in results if result for archive in result]
+        return [archive for result in results if result for archive in result]  # type: ignore
 
     async def _acquire(
         self,

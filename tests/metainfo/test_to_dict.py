@@ -66,7 +66,7 @@ expected_child = dict(**values)
 expected_root = dict(
     child=expected_child,
     children=[expected_child, expected_child],
-    abstract=dict(m_def='tests.metainfo.test_to_dict.Child', **expected_child),
+    abstract=dict(m_def='tests.metainfo.test_to_dict.Child', **expected_child),  # type: ignore
     **values,
 )
 

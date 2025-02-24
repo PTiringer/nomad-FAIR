@@ -1345,9 +1345,6 @@ class MSection(metaclass=MObjectMeta):
             if not definition.repeats or target is None:
                 return _wrap(target)
 
-            # this practically does nothing only to make mypy happy
-            # it is guaranteed to be a MSubSectionList
-            target = cast(MSubSectionList, target)
             if isinstance(index, str) and target.has_duplicated_key():
                 raise MetainfoError(f'Multiple sections with key {index} exist.')
 

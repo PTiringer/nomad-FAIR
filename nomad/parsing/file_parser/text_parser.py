@@ -114,7 +114,7 @@ class Quantity:
         **kwargs,
     ):
         self.name: str
-        self.dtype: str
+        self.dtype: str | Any
         self.unit: str
         self.shape: list[int]
         if isinstance(quantity, str):

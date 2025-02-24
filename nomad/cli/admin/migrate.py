@@ -69,10 +69,10 @@ class _CollectionStatistics(BaseModel):
 
 
 class _UpgradeStatistics(BaseModel):
-    uploads = _CollectionStatistics(collection_name='Uploads')
-    entries = _CollectionStatistics(collection_name='Entries')
-    datasets = _CollectionStatistics(collection_name='Datasets')
-    dois = _CollectionStatistics(collection_name='DOIs')
+    uploads: _CollectionStatistics = _CollectionStatistics(collection_name='Uploads')
+    entries: _CollectionStatistics = _CollectionStatistics(collection_name='Entries')
+    datasets: _CollectionStatistics = _CollectionStatistics(collection_name='Datasets')
+    dois: _CollectionStatistics = _CollectionStatistics(collection_name='DOIs')
 
 
 class _DatasetCacheItem(BaseModel):

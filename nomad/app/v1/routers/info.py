@@ -93,11 +93,11 @@ class InfoModel(BaseModel):
     normalizers: list[str]
     plugin_entry_points: list[dict] = Field(
         None,
-        desciption='List of plugin entry points that are activated in this deployment.',
+        description='List of plugin entry points that are activated in this deployment.',
     )
     plugin_packages: list[dict] = Field(
         None,
-        desciption='List of plugin packages that are installed in this deployment.',
+        description='List of plugin packages that are installed in this deployment.',
     )
     statistics: StatisticsModel = Field(None, description='General NOMAD statistics')
     search_quantities: dict

@@ -1253,7 +1253,7 @@ class HDF5Parser(MappingParser):
                         root[key] = {self.value_key: v}
                         set_attributes(val, root[key])
                     else:
-                        root[key] = v
+                        root[key] = v  # type: ignore
             return root
 
         dct: dict[str, Any] = {}

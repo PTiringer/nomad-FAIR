@@ -127,7 +127,7 @@ class ExampleHDF5Parser(HDF5Parser):
 
 class ExampleParser(MappingParser):
     def from_dict(self, dct: dict[str, Any]):
-        return super().from_dict(dct)
+        return super().from_dict(dct)  # type: ignore
 
     def load_file(self) -> Any:
         return super().load_file()
