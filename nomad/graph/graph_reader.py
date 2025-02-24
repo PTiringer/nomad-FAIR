@@ -110,8 +110,6 @@ from nomad.utils import timer
 
 logger = utils.get_logger(__name__)
 
-# bug when used in isinstance() with mypy
-# see https://github.com/python/mypy/issues/11673
 GenericList = list | ArchiveList | ArchiveListNew
 GenericDict = dict | ArchiveDict | ArchiveDictNew
 

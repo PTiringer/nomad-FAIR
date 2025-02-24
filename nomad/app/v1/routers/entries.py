@@ -281,19 +281,21 @@ class EntryMetadataResponse(BaseModel):
 
 
 class EntryMetadataEditActionField(BaseModel):
-    value: str = Field(None, description='The value/values that is set as a string.')
+    value: str | None = Field(
+        None, description='The value/values that is set as a string.'
+    )
     success: bool | None = Field(
         None, description='If this can/could be done. Only in API response.'
     )
     message: str | None = Field(
         None,
-        descriptin='A message that details the action result. Only in API response.',
+        description='A message that details the action result. Only in API response.',
     )
 
 
-EntryMetadataEditActions = create_model(
-    'EntryMetadataEditActions',
-    **{  # type: ignore
+EntryMetadataEditActions: Any = create_model(
+    'EntryMetadataEditActions',  # type: ignore
+    **{
         quantity.name: (
             EntryMetadataEditActionField | None
             if quantity.is_scalar
@@ -311,7 +313,7 @@ class EntryMetadataEdit(WithQuery):
     actions: EntryMetadataEditActions = Field(  # type: ignore
         None,
         description='Each action specifies a single value (even for multi valued quantities).',
-    )
+    )  # type: ignore
 
     @field_validator('owner')
     @classmethod

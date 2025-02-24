@@ -28,7 +28,6 @@ from pydantic import (
     field_validator,
     model_validator,
     Field,
-    validator,
     ConfigDict,
 )
 
@@ -509,7 +508,7 @@ class Logtransfer(ConfigBaseModel):
     )
 
     # Validators
-    _level = validator('level', allow_reuse=True)(normalize_loglevel)
+    _level = field_validator('level', mode='before')(normalize_loglevel)
 
 
 class Tests(ConfigBaseModel):

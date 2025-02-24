@@ -145,7 +145,7 @@ class ProcData(BaseModel):
         'process is currently running.',
     )
     errors: list[str] = Field(
-        descriptions='A list of error messages that occurred during the last processing'
+        description='A list of error messages that occurred during the last processing'
     )
     warnings: list[str] = Field(
         description='A list of warning messages that occurred during the last processing'
