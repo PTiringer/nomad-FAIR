@@ -580,17 +580,32 @@ async def get_entries_metadata(
 
 
 def _do_exhaustive_search(
-    owner: Owner, query: Query, include: list[str], user: User
+    owner: Owner,
+    query: Query,
+    required: MetadataRequired,
+    user: User,
+    page_size: int = 100,
 ) -> Iterator[dict[str, Any]]:
-    page_after_value = None
+    """Perform a paginated search.
+
+    Args:
+        owner (Owner): The owner defining the search scope.
+        query (Query): The query specifying search filters and conditions.
+        required (MetadataRequired): Includes and excludes for the response.
+        user (User): The user performing the search, used for authorization.
+        page_size (int): The number of results per page.
+    """
+    page_after_value: str | None = None
     while True:
         response = perform_search(
             owner=owner,
             query=query,
             pagination=MetadataPagination(
-                page_size=100, page_after_value=page_after_value, order_by='upload_id'
+                page_size=page_size,
+                page_after_value=page_after_value,
+                order_by='upload_id',
             ),
-            required=MetadataRequired(include=include),
+            required=required,
             user_id=user.user_id if user is not None else None,
         )
 
@@ -725,7 +740,10 @@ def _answer_entries_raw_request(owner: Owner, query: Query, files: Files, user: 
         def download_items_generator():
             # go through all entries that match the query
             for entry_metadata in _do_exhaustive_search(
-                owner, query, include=search_includes, user=user
+                owner,
+                query,
+                required=MetadataRequired(include=search_includes),
+                user=user,
             ):
                 upload_id = entry_metadata['upload_id']
                 mainfile = entry_metadata['mainfile']
@@ -1096,7 +1114,7 @@ def _answer_entries_archive_download_request(
     def streamed_files():
         # go through all entries that match the query
         for entry_metadata in _do_exhaustive_search(
-            owner, query, include=search_includes, user=user
+            owner, query, required=MetadataRequired(include=search_includes), user=user
         ):
             path = os.path.join(
                 entry_metadata['upload_id'], f'{entry_metadata["entry_id"]}.json'
@@ -1647,7 +1665,10 @@ def edit(
     upload_ids: set[str] = set()
     with utils.timer(logger, 'edit query executed'):
         all_entries = _do_exhaustive_search(
-            owner=Owner.user, query=query, include=['entry_id', 'upload_id'], user=user
+            owner=Owner.user,
+            query=query,
+            required=MetadataRequired(include=['entry_id', 'upload_id']),
+            user=user,
         )
 
         for entry_dict in all_entries:
