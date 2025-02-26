@@ -52,6 +52,7 @@ from ..models import (
     Direction,
     Owner,
     Any_,
+    MetadataRequired,
 )
 
 
@@ -182,7 +183,10 @@ Dataset = datamodel.Dataset.m_def.a_pydantic.model
 def _delete_dataset(user: User, dataset_id, dataset):
     es_query = cast(Query, {'datasets.dataset_id': dataset_id})
     entries = _do_exhaustive_search(
-        owner=Owner.user, query=es_query, user=user, include=['entry_id']
+        owner=Owner.user,
+        query=es_query,
+        user=user,
+        required=MetadataRequired(include=['entry_id']),
     )
     entry_ids = [entry['entry_id'] for entry in entries]
     mongo_query = {'_id': {'$in': entry_ids}}
@@ -412,7 +416,10 @@ async def post_datasets(
             empty = True
         else:
             entries = _do_exhaustive_search(
-                owner=Owner.user, query=es_query, user=user, include=['entry_id']
+                owner=Owner.user,
+                query=es_query,
+                user=user,
+                required=MetadataRequired(include=['entry_id']),
             )
             entry_ids = [entry['entry_id'] for entry in entries]
             mongo_query = {'_id': {'$in': entry_ids}}
