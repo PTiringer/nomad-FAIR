@@ -28,9 +28,23 @@ import InputUnavailable from './InputUnavailable'
 import Placeholder from '../../visualization/Placeholder'
 import { useSearchContext } from '../SearchContext'
 import { isNil, isNumber } from 'lodash'
+import { DType } from '../../../utils'
 import Pagination from '../../visualization/Pagination'
 import { guiState } from '../../GUIMenu'
 import { InputTextQuantity } from './InputText'
+
+/**
+ * Converts a string value to its appropriate type based on the provided dtype.
+ * Needed for converting booleans used as object keys (object keys are always
+ * strings).
+ *
+ * @param {string} value - The value to be converted.
+ * @param {DType} dtype - The data type to convert the value to.
+ * @returns {boolean|string} - The converted value.
+ */
+function getFinalKey(value, dtype) {
+  return dtype === DType.Boolean ? value === 'true' : value
+}
 
 /**
  * Generic input component that can be configured to fit several use cases. The
@@ -152,6 +166,7 @@ const InputTerms = React.memo(({
   // results or change in the available options.
   useEffect(() => {
     let options = Object.entries(finalOptions).reduce((opt, [key, value]) => {
+      key = getFinalKey(key, filterData[searchQuantity]?.dtype)
       const selected = filter?.has(key) || false
       opt[key] = {
         checked: selected,
@@ -184,7 +199,7 @@ const InputTerms = React.memo(({
     }
 
     setVisibleOptions(options)
-  }, [agg?.data, filter, finalOptions, fixedOptions, isStatisticsEnabled, showStatistics, sortStatic])
+  }, [agg?.data, filter, filterData, finalOptions, fixedOptions, isStatisticsEnabled, searchQuantity, showStatistics, sortStatic])
 
   // Show more values
   const handleShowMore = useCallback(() => {
@@ -214,9 +229,9 @@ const InputTerms = React.memo(({
     newOptions[key].checked = selected
     const checked = Object.entries(newOptions)
       .filter(([key, value]) => value.checked)
-      .map(([key, value]) => key)
+      .map(([key, value]) => getFinalKey(key, filterData[searchQuantity]?.dtype))
     setFilter(new Set(checked))
-  }, [setFilter, visibleOptions])
+  }, [setFilter, visibleOptions, filterData, searchQuantity])
 
   // Create the search component
   const searchComponent = useMemo(() => {

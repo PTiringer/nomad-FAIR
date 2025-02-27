@@ -143,7 +143,7 @@ const termQuantityAll = {aggs: {terms: {size: 5}}, exclusive: false, multiple: t
 const termQuantityAllNonExclusive = {...termQuantityNonExclusive, queryMode: 'all'}
 const noAggQuantity = {}
 const nestedQuantity = {}
-const noQueryQuantity = {multiple: false, global: true}
+const noQueryQuantity = {global: true}
 const numberHistogramQuantity = {multiple: false, exclusive: false}
 
 // Filters that directly correspond to a metainfo value
@@ -587,6 +587,7 @@ registerFilter(
   'combine',
   {
     ...noQueryQuantity,
+    dtype: DType.Boolean,
     default: true,
     description: 'If selected, your filters may be matched from several entries that contain the same material. When unchecked, the material has to have a single entry that matches all your filters.'
   }
