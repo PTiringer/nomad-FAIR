@@ -909,6 +909,7 @@ class Entry(Proc):
             external database where the data was imported from
         nomad_version: the NOMAD version used for the last processing
         nomad_commit: the NOMAD commit used for the last processing
+        nomad_distro_commit_url: the NOMAD distro commit url used for the last processing
         comment: a user provided comment for this entry
         references: user provided references (URLs) for this entry
         entry_coauthors: a user provided list of co-authors specific for this entry. Note
@@ -929,6 +930,7 @@ class Entry(Proc):
     external_id = StringField()
     nomad_version = StringField()
     nomad_commit = StringField()
+    nomad_distro_commit_url = StringField()
     comment = StringField()
     references = ListField(StringField())
     entry_coauthors = ListField()
@@ -1012,8 +1014,11 @@ class Entry(Proc):
         In this case, the timestamp stored in the archive is used.
         If no previous timestamp is available, a new timestamp is generated.
         """
+        distro_commit_url = utils.nomad_distro_metadata()
+        entry_metadata.nomad_version = config.meta.version
         entry_metadata.nomad_version = config.meta.version
         entry_metadata.nomad_commit = ''
+        entry_metadata.nomad_distro_commit_url = distro_commit_url or ''
         entry_metadata.entry_hash = self.upload_files.entry_hash(
             self.mainfile, self.mainfile_key
         )
