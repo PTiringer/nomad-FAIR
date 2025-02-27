@@ -516,7 +516,7 @@ test('Toggle visible for all checkbox; check embargo, icon', async () => {
   await user.click(await screen.findByRole('option', { name: '36' }))
   expect(embargoButton).toHaveTextContent('36')
   expect(embargoHelper).toHaveTextContent('months before the data becomes public')
-  expect(screen.getByTooltip('Unpublished, accessible by you, coauthors and reviewers')).toBeInTheDocument()
+  expect(screen.getByTooltip('Unpublished, accessible only by you')).toBeInTheDocument()
 
   await testAndToggleCheckbox(false)
   expect(embargoButton).toHaveAttribute('aria-disabled', 'true')
@@ -528,7 +528,7 @@ test('Toggle visible for all checkbox; check embargo, icon', async () => {
   expect(embargoButton).not.toHaveAttribute('aria-disabled', 'true')
   expect(embargoButton).toHaveTextContent('No embargo')
   expect(embargoHelper).toHaveTextContent('publish without embargo')
-  expect(screen.getByTooltip('Unpublished, accessible by you, coauthors and reviewers')).toBeInTheDocument()
+  expect(screen.getByTooltip('Unpublished, accessible only by you')).toBeInTheDocument()
 
   await testAndToggleCheckbox(false, { skipToggle: true })
 })

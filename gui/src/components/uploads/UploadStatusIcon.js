@@ -70,7 +70,7 @@ const UploadStatusIcon = React.memo(({data, user, ...props}) => {
       if (isVisibleForAll) {
         tooltip = "Unpublished but accessible by everyone"
       } else if (isMainAuthor) {
-        tooltip = "Unpublished, accessible by you, coauthors and reviewers"
+        tooltip = "Unpublished, accessible only by you"
       } else if (isCoauthor) {
         tooltip = "Unpublished, accessible by you as a coauthor"
       } else if (isReviewer) {
