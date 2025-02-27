@@ -723,6 +723,12 @@ class EntryMetadata(MSection):
         a_elasticsearch=Elasticsearch(),
     )
 
+    nomad_distro_commit_url = Quantity(
+        type=str,
+        description='The NOMAD distro commit url used for the last processing',
+        categories=[MongoEntryMetadata],
+        a_elasticsearch=Elasticsearch(),
+    )
     comment = Quantity(
         type=str,
         categories=[MongoEntryMetadata, EditableUserMetadata],

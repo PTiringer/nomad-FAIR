@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 
+from importlib.metadata import PackageNotFoundError
 import time
 import pytest
 import pandas as pd
@@ -25,6 +26,7 @@ from nomad.metainfo.metainfo import MSection, Quantity, SubSection
 from nomad import files
 from nomad.processing import Upload
 from nomad.utils import (
+    nomad_distro_metadata,
     structlogging,
     flatten_dict,
     rebuild_dict,
@@ -313,3 +315,55 @@ class TestDictDataFrameConverter:
     def test_invalid_input_type(self, invalid_input):
         with pytest.raises(ValueError, match='Input must be a dictionary'):
             dict_to_dataframe(invalid_input)
+
+
+@pytest.mark.parametrize(
+    'project_urls, version_str, expected_url',
+    [
+        (
+            ['repository, https://github.com/example/repo'],
+            '1.2.3+gabcdef',
+            'https://github.com/example/repo/tree/abcdef',
+        ),
+        (['notrepository, https://github.com/example/repo'], '1.2.3+gabcdef', None),
+        (
+            ['repository, https://github.com/example/repo'],
+            '1.2.3',
+            'https://github.com/example/repo/tree/v1.2.3',
+        ),
+        ([], '1.2.3+gabcdef', None),
+        (['repository, '], '1.2.3+gabcdef', None),
+    ],
+)
+def test_nomad_distro_metadata(monkeypatch, project_urls, version_str, expected_url):
+    def mock_metadata(package_name):
+        class MockMetadata:
+            def get_all(self, key, default=[]):
+                if key == 'Project-URL':
+                    return project_urls
+                return default
+
+        return MockMetadata()
+
+    def mock_version(package_name):
+        return version_str
+
+    monkeypatch.setattr('nomad.utils.metadata', lambda x: mock_metadata(x))
+    monkeypatch.setattr('nomad.utils.version', mock_version)
+
+    actual_url = nomad_distro_metadata()
+    assert actual_url == expected_url
+
+
+def test_nomad_distro_package_not_found(monkeypatch):
+    def mock_metadata(package_name):
+        raise PackageNotFoundError
+
+    def mock_version(package_name):
+        return '1.2.3'
+
+    monkeypatch.setattr('nomad.utils.metadata', lambda x: mock_metadata(x))
+    monkeypatch.setattr('nomad.utils.version', mock_version)
+
+    actual_url = nomad_distro_metadata()
+    assert actual_url is None
