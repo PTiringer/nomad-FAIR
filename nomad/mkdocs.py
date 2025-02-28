@@ -20,13 +20,14 @@
 Definitions that are used in the documentation via mkdocs-macro-plugin.
 """
 
+from types import UnionType
+from pydantic.fields import FieldInfo
 import yaml
 import json
 from enum import Enum
 from pydantic import BaseModel
 import os.path
-from typing import List, Set, Tuple, Any, Optional, Dict
-from typing_extensions import _AnnotatedAlias  # type: ignore
+from typing import Annotated, Any, Union, get_args, get_origin
 from typing import Literal
 from inspect import isclass
 from markdown.extensions.toc import slugify
@@ -49,7 +50,7 @@ doc_snippets = {
 }
 
 
-def get_field_type_info(field) -> tuple[str, set[Any]]:
+def get_field_type_info(field: FieldInfo) -> tuple[str, set[Any]]:
     """Used to recursively walk through a type definition, building up a cleaned
     up type name and returning all of the classes that were used.
 
@@ -60,77 +61,84 @@ def get_field_type_info(field) -> tuple[str, set[Any]]:
         Tuple containing the cleaned up type name and a set of classes
         found inside.
     """
-    # Notice that pydantic does not store the full type in field.type_, but instead in
-    # field.outer_type_
-    type_ = field.annotation
-    type_name: list[str] = []
-    models = set()
+    classes = set()
+    annotation = field.annotation
 
-    def fetch_models(type_, type_name):
-        """Used to recursively walk through a type definition, building up a
-        pretty type name and adding any found models to the docs.
-        """
-        # Get the type name
-        early_stop = False
-        skip_parent = False
-        cls = type_
-        name = None
+    def get_class_name(ann: Any) -> str:
+        if hasattr(ann, '__name__'):
+            name = ann.__name__
+            return 'None' if name == 'NoneType' else name
+        return str(ann)
 
-        # All string subclasses displayed as str. Note that bool has to be on
-        # top, as it is also a subclass of int.
-        if isclass(type_) and issubclass(type_, bool):
-            name = 'bool'
-        elif isclass(type_) and issubclass(type_, str):
-            name = 'str'
-        elif isclass(type_) and issubclass(type_, int):
-            name = 'int'
-        # Special handling for type definitions
-        elif hasattr(type_, '__origin__'):
-            origin = type_.__origin__
-            # For literals we report the actual data type that is stored inside.
-            if origin == Literal:
-                arg = type_.__args__[0]
-                cls = type(arg)
-                early_stop = True
-            # Skip the annotated container. In newer python versions the
-            # identification of 'Annotated' could be done with
-            # `get_origin(a) is Annotated``, but this is the cleanest
-            # solution with Python 3.7.
-            elif type(cls) is _AnnotatedAlias:
-                skip_parent = True
+    def _recursive_extract(ann: Any, type_str: str = '') -> str:
+        nonlocal classes
+
+        origin = get_origin(ann)
+        args = get_args(ann)
+
+        if origin is None and issubclass(ann, Enum):
+            classes.add(ann)
+            # Determine base type for Enums
+            if issubclass(ann, str):
+                return get_class_name(str)
+            elif issubclass(ann, int):
+                return get_class_name(int)
             else:
-                name = str(cls).split('[', 1)[0].rsplit('.')[-1]
-
-        if not skip_parent:
-            if not name:
-                try:
-                    name = cls.__name__
-                except Exception:
-                    name = str(cls)
-            type_name.append(name)
-            if hasattr(type_, '__origin__'):
-                models.add(type_.__origin__)
+                return get_class_name(ann)
+        elif origin is None:
+            classes.add(ann)
+            return get_class_name(ann)
+        if origin is list:
+            classes.add(origin)
+            if type_str:
+                type_str += '[' + _recursive_extract(args[0]) + ']'
             else:
-                models.add(type_)
+                type_str = 'list[' + _recursive_extract(args[0]) + ']'
+        elif origin is dict:
+            classes.add(origin)
+            if type_str:
+                type_str += (
+                    '['
+                    + _recursive_extract(args[0])
+                    + ', '
+                    + _recursive_extract(args[1])
+                    + ']'
+                )
+            else:
+                type_str = (
+                    'dict['
+                    + _recursive_extract(args[0])
+                    + ', '
+                    + _recursive_extract(args[1])
+                    + ']'
+                )
 
-        if not early_stop:
-            if hasattr(type_, '__args__'):
-                if not skip_parent:
-                    type_name.append('[')
-                origin = type_.__origin__
-                for iarg, arg in enumerate(type_.__args__):
-                    fetch_models(arg, type_name)
-                    if iarg + 1 != len(type_.__args__):
-                        type_name.append(', ')
-                if not skip_parent:
-                    type_name.append(']')
+        elif origin is UnionType or origin is Union:
+            # Handle Union types (e.g., Optional[str] is equivalent to Union[str, None])
+            union_types = []
+            for arg in args:
+                union_types.append(_recursive_extract(arg))
+            type_str = ' | '.join(union_types)
+        elif origin is Literal:
+            classes.add(origin)
+            return get_class_name(
+                type(args[0])
+            )  # Add name of the literal value (e.g., str)
+        elif origin is Annotated:
+            # Extract the underlying type from Annotated
+            return _recursive_extract(args[0])
+        else:
+            # Handle generic types
+            classes.add(origin)
+            return get_class_name(ann)
 
-    fetch_models(type_, type_name)
+        return type_str
 
-    return ''.join(type_name), models
+    type_name = _recursive_extract(annotation)
+    return type_name, classes
 
 
-def get_field_description(field) -> str | None:
+def get_field_description(field: FieldInfo) -> str | None:
     """Retrieves the description for a pydantic field as a markdown string.
 
     Args:
@@ -147,7 +155,7 @@ def get_field_description(field) -> str | None:
     return value
 
 
-def get_field_default(field) -> str | None:
+def get_field_default(field: FieldInfo) -> str | None:
     """Retrieves the default value from a pydantic field as a markdown string.
 
     Args:
@@ -167,7 +175,7 @@ def get_field_default(field) -> str | None:
     return default_value
 
 
-def get_field_options(field) -> dict[str, str | None]:
+def get_field_options(field: FieldInfo) -> dict[str, str | None]:
     """Retrieves a dictionary of value-description pairs from a pydantic field.
 
     Args:
@@ -184,7 +192,7 @@ def get_field_options(field) -> dict[str, str | None]:
     return options
 
 
-def get_field_deprecated(field) -> bool:
+def get_field_deprecated(field: FieldInfo) -> bool:
     """Returns whether the given pydantic field is deprecated or not.
 
     Args:
@@ -193,7 +201,9 @@ def get_field_deprecated(field) -> bool:
     Returns:
         Whether the field is deprecated.
     """
-    return field.deprecated
+    if field.deprecated:
+        return True
+    return False
 
 
 class MyYamlDumper(yaml.Dumper):
@@ -286,24 +296,26 @@ def define_env(env):
         from nomad.config.models.config import Config
 
         results = ''
-        for field in Config.model_fields.values():
-            if models and field.title not in models:
+        for name, field in Config.model_fields.items():
+            if models and name not in models:
                 continue
 
-            if not models and field.title in exported_config_models:
+            if not models and name in exported_config_models:
                 continue
 
-            results += pydantic_model_from_model(field.annotation, field.title)
+            results += pydantic_model_from_model(field.annotation, name)
             results += '\n\n'
-
         return results
 
     def pydantic_model_from_model(model, name=None, heading=None, hide=[]):
-        fields = model.model_fields
+        if hasattr(model, 'model_fields'):
+            fields = model.model_fields
+        else:
+            fields = get_args(model)
         required_models = set()
         if not name:
-            exported_config_models.add(model.__name__)
-            name = model.__name__
+            exported_config_models.add(model.__name__)  # type: ignore
+            name = model.__name__  # type: ignore
 
         exported_config_models.add(name)
 
@@ -326,15 +338,15 @@ def define_env(env):
 
             return '</br>'.join(result)
 
-        def field_row(field):
-            if field.name.startswith('m_'):
+        def field_row(name: str, field: FieldInfo):
+            if name.startswith('m_') or field is None:
                 return ''
             type_name, classes = get_field_type_info(field)
             nonlocal required_models
             required_models |= {
                 cls for cls in classes if isclass(cls) and issubclass(cls, BaseModel)
             }
-            return f'|{field.name}|`{type_name}`|{content(field)}|\n'
+            return f'|{name}|`{type_name}`|{content(field)}|\n'
 
         if heading is None:
             result = f'### {name}\n'
@@ -346,14 +358,30 @@ def define_env(env):
 
         result += '|name|type| |\n'
         result += '|----|----|-|\n'
-        result += ''.join(
-            [field_row(field) for field in fields.values() if field.name not in hide]
-        )
+        if isinstance(fields, tuple):
+            # handling union types
+            results = []
+            for field in fields:
+                if hasattr(field, 'model_fields'):
+                    # if the field is a pydantic model, generate the documentation for that model
+                    results.append(pydantic_model_from_model(field, name))
+                elif "<class 'NoneType'>" not in str(field):
+                    # the check is a bit awkward but checking for None directly falls through
+                    results.append(field_row(name, field))
+            result = ''.join(results)
+        else:
+            result += ''.join(
+                [
+                    field_row(name, field)
+                    for name, field in fields.items()
+                    if name not in hide
+                ]
+            )
 
         for required_model in required_models:
             if required_model.__name__ not in exported_config_models:
                 result += '\n\n'
-                result += pydantic_model_from_model(required_model)
+                result += pydantic_model_from_model(required_model)  # type: ignore
 
         return result
 
