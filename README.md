@@ -46,11 +46,18 @@ Scheidgen et al., (2023). NOMAD: A distributed web-based platform for managing m
 
 For citation in academic works, you can use this [BibTeX file](docs/assets/joss_paper.bib).
 
-## Change log
+## Changelog
 
 Omitted versions are plain bugfix releases with only minor changes and fixes. The
 file [`CHANGELOG.md`](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/blob/develop/CHANGELOG.md)
 contains much more detailed information about changes and fixes in the released versions.
+
+### v1.3.14
+
+- Migrated code to use Pydantic v2
+- Migrated to DataCite metadata schema 4
+- Added support for visualizing coarse-grained systems
+- Improved graph API endpoint performance
 
 ### v1.3.11
 
