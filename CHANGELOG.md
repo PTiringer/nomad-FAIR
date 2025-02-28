@@ -1,3 +1,47 @@
+## 1.3.14 (2025-02-28)
+
+### Added (11 changes)
+
+- [Add nomad distro commit info](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/1a03bfa35ecc17b5040b2f1e5ee20b24d544d17e) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2329))
+- [Resolve "Generic xml parser"](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/3f2535f2443892ec71cc2d5881aeb50452052b30) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/1655))
+- [Resolve "create edges in the workflow"](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/fb04f4f163e61b94c0d088863a8ac8afb468cf53) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2318))
+- [Added implementation and documentation for DataFrames.](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/0696502401fc74a0b460ed3a37acf9f2b378cff9) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2211))
+- [Implement h5 ref for axes, aux signal](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/7f162a3be13ba454abfd69e2b364739b1b8166d0) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2276))
+- [Added support for targeting any NeXus search quantity in aggregations by...](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/bef33475c794afe9328b0e38e9986ae05be78aaf) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2288))
+- [Added support for custom atomic labels, radii and colors in the NGL-based structure viewer.](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/d26703add00be4c7b57764646aa4bfcf1f272e61) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2302))
+- [Added documentation about schema versioning.](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/dc5fe24bd18a4564ab0c9c3d73b948152377ef7e) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2297))
+- [Added annotation for controlling schema availability and naming in the GUI.](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/27f4b87bd937cab1163eb2498020c7aef097b805) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2298))
+- [Resolve "JSON to JSON model transformer"](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/573f53dcbb87be87134a26028cdf181d87dd1303) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/1806))
+- [Implement wildcard in paths](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/fa64155d93bfb2b39bc016a579d5af65a3f8b6f9) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2240))
+
+### Fixed (11 changes)
+
+- [Fixed issue with setting and reading boolean values in queries.](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/b37db79e23d15470981cfdd6ffdfe701269b5693) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2347))
+- [Fixed issue with resolving units when using full storage](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/b767f85f45377fd979950970234dc1448d1b4dd7) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2339))
+- [Fix properties normalization](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/f011e10cc5ad46d8c5d0276d33e429fff9c98f0c) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2337))
+- [Fixed issues with north config optional values](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/7ecbbb66ad6cb8b44f045a51deb93e7a77c4defa) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2336))
+- [Fixed issue with suggestions not being shown by default for terms menu items,...](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/3446265bf31e085b7659bf2446e88052d90a08b2) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2330))
+- [Updated nomad install documentation and fixed broken links.](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/c47bacc6754f7713247c17d1e90a99dd75be6ed0) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2297))
+- [Migrated to datacite kernel-4. Fixes #2245.](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/5529523b0af7f81004e3501d430f1d441f753590) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2285))
+- [Merge branch 'fix-gui-archive-browser-for-readonly-archives' into 'develop'](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/9cba8ca3e63082e275242c2dac62f22f1f9477bf) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2280))
+- [bug fix if no tasks](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/561b12a50c27ae3b203ded11466ee17d5351b39c) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2270))
+- [Fix early return in PubChemPureSubstanceSection to prevent unnecessary processing](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/6ab989cef19ad1a5da810c6a7050339dd38b8b23) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2258))
+- [Fixes and improvements](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/6b6cbc54920fa58e5e31b200ca65d824d380bcfc) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2234))
+
+### Changed (11 changes)
+
+- [Workflow visualizer](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/2db3bee03270dbdd4f1222353925279c385c5208) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2340))
+- [Enable ruff rule F401, remove unused import](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/73fb0bb0298b414ec2557cee1de4933593932443) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2325))
+- [Patch h5web in postinstall](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/e98b6000cb49556c1c1f74cb593c699219604f57) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2319))
+- [Merge branch 'pydantic-v2' into 'develop'](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/5b5acfba8fa96aa746d411ecc0464a556a9cc935) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2304))
+- [Migrate from Pydantic v1 to v2](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/07b51f2ea57dbcc6c380fea962e4b7e4e5488950) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2304))
+- [Resolve "Simplification of System/CompositeSystem/PureSubstance base sections"](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/4c4a35aa494983b662e41e030416c6b334dbd903) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2300))
+- [Resolve "Simplification of System/CompositeSystem/PureSubstance base sections"](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/237115a8963f01fe783eb0f3f1f97b5ac6213eda) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2300))
+- [Reduced RichTextEdit height for BaseSection description](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/ef14f78325b12bd992f9ad40db323908ed7b1303) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2264))
+- [Update jupyter image](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/2a367112e219581d2faea063a064a763df1ffb63) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2252))
+- [Respect host and port in nomad config](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/1302e4efbfe877bbb0107d260e217271938d9fa9) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2243))
+- [Restrict httpx version in dependencies](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/543756f04922dd877ad6ccf82c9729019d54ace2) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2237))
+
 ## 1.3.13 (2024-11-29)
 
 No changes.
