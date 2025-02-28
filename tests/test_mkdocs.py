@@ -55,20 +55,20 @@ class MyIntEnum(int, Enum):
         pytest.param(Enum, 'Enum', {Enum}, id='class'),
         pytest.param(
             Optional[WidgetHistogram],  # noqa
-            'Optional[WidgetHistogram, NoneType]',
-            {WidgetHistogram, Union, type(None)},
+            'WidgetHistogram | None',
+            {WidgetHistogram, type(None)},
             id='optional-ignored',
         ),
         pytest.param(
             Union[str, WidgetHistogram],  # noqa
-            'Union[str, WidgetHistogram]',
-            {Union, str, WidgetHistogram},
+            'str | WidgetHistogram',
+            {str, WidgetHistogram},
             id='union',
         ),
         pytest.param(
             list[Union[str, WidgetHistogram]],  # noqa
-            'list[Union[str, WidgetHistogram]]',
-            {list, Union, str, WidgetHistogram},
+            'list[str | WidgetHistogram]',
+            {list, str, WidgetHistogram},
             id='list-with-union',
         ),
         pytest.param(
@@ -87,8 +87,8 @@ class MyIntEnum(int, Enum):
                     Union[WidgetTerms, WidgetHistogram], Field(discriminator='type')  # noqa
                 ]
             ],  # type: ignore
-            'list[Union[WidgetTerms, WidgetHistogram]]',
-            {list, Union, WidgetTerms, WidgetHistogram},
+            'list[WidgetTerms | WidgetHistogram]',
+            {list, WidgetTerms, WidgetHistogram},
             id='annotated-ignored',
         ),
     ],
