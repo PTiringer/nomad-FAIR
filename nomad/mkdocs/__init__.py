@@ -23,17 +23,29 @@ Definitions that are used in the documentation via mkdocs-macro-plugin.
 import yaml
 import json
 import os.path
+from typing import get_args
 
+from inspect import isclass
+
+from pydantic.fields import FieldInfo
+
+from pydantic import BaseModel
+
+from markdown.extensions.toc import slugify
+
+from nomad.utils import strip
 from nomad.config import config
 from nomad.app.v1.models import query_documentation, owner_documentation
 from nomad.app.v1.routers.entries import archive_required_documentation
 from nomad import utils
 
-from nomad.mkdocs.pydantic import pydantic_model_from_model, exported_config_models
+from nomad.mkdocs.pydantic import exported_config_models, get_field_default, get_field_deprecated, get_field_description, get_field_options, get_field_type_info
 from nomad.mkdocs.metainfo import (
     section_markdown_from_section_cls,
     package_markdown_from_package,
 )
+
+from nomad.config.models.plugins import ParserEntryPoint, EntryPointType
 
 
 class MyYamlDumper(yaml.Dumper):
@@ -43,7 +55,7 @@ class MyYamlDumper(yaml.Dumper):
     """
 
     def represent_mapping(self, *args, **kwargs):
-        node = super(MyYamlDumper, self).represent_mapping(*args, **kwargs)
+        node = super().represent_mapping(*args, **kwargs)
         node.flow_style = False
         return node
 
@@ -75,7 +87,7 @@ def define_env(env):
 
     @env.macro
     def file_contents(path):  # pylint: disable=unused-variable
-        with open(path, 'r') as f:
+        with open(path) as f:
             return f.read()
 
     @env.macro
@@ -97,7 +109,7 @@ def define_env(env):
         file_path, json_path = path.split(':')
         file_path = os.path.join(os.path.dirname(__file__), '..', file_path)
 
-        with open(file_path, 'rt') as f:
+        with open(file_path) as f:
             if file_path.endswith('.yaml'):
                 data = yaml.load(f, Loader=yaml.SafeLoader)
             elif file_path.endswith('.json'):
@@ -115,7 +127,7 @@ def define_env(env):
             data = data[segment]
 
         if filter is not None:
-            filter = set([item.strip() for item in filter.split(',')])
+            filter = {item.strip() for item in filter.split(',')}
             to_remove = []
             for key in data.keys():
                 if key in filter:
@@ -133,17 +145,94 @@ def define_env(env):
         from nomad.config.models.config import Config
 
         results = ''
-        for field in Config.__fields__.values():
-            if models and field.name not in models:
+        for name, field in Config.model_fields.items():
+            if models and name not in models:
                 continue
 
-            if not models and field.name in exported_config_models:
+            if not models and name in exported_config_models:
                 continue
 
-            results += pydantic_model_from_model(field.type_, field.name)
+            results += pydantic_model_from_model(field.annotation, name)
             results += '\n\n'
-
         return results
+
+    def pydantic_model_from_model(model, name=None, heading=None, hide=[]):
+        if hasattr(model, 'model_fields'):
+            fields = model.model_fields
+        else:
+            fields = get_args(model)
+        required_models = set()
+        if not name:
+            exported_config_models.add(model.__name__)  # type: ignore
+            name = model.__name__  # type: ignore
+
+        exported_config_models.add(name)
+
+        def content(field):
+            result = []
+            description = get_field_description(field)
+            if description:
+                result.append(description)
+            default = get_field_default(field)
+            if default:
+                result.append(f'*default:* {default}')
+            options = get_field_options(field)
+            if options:
+                option_list = '*options:*<br/>'
+                for name, desc in options.items():
+                    option_list += f' - `{name}{f": {desc}" if desc else ""}`<br/>'
+                result.append(option_list)
+            if get_field_deprecated(field):
+                result.append('**deprecated**')
+
+            return '</br>'.join(result)
+
+        def field_row(name: str, field: FieldInfo):
+            if name.startswith('m_') or field is None:
+                return ''
+            type_name, classes = get_field_type_info(field)
+            nonlocal required_models
+            required_models |= {
+                cls for cls in classes if isclass(cls) and issubclass(cls, BaseModel)
+            }
+            return f'|{name}|`{type_name}`|{content(field)}|\n'
+
+        if heading is None:
+            result = f'### {name}\n'
+        else:
+            result = heading + '\n'
+
+        if model.__doc__ and model.__doc__ != '':
+            result += utils.strip(model.__doc__) + '\n\n'
+
+        result += '|name|type| |\n'
+        result += '|----|----|-|\n'
+        if isinstance(fields, tuple):
+            # handling union types
+            results = []
+            for field in fields:
+                if hasattr(field, 'model_fields'):
+                    # if the field is a pydantic model, generate the documentation for that model
+                    results.append(pydantic_model_from_model(field, name))
+                elif "<class 'NoneType'>" not in str(field):
+                    # the check is a bit awkward but checking for None directly falls through
+                    results.append(field_row(name, field))
+            result = ''.join(results)
+        else:
+            result += ''.join(
+                [
+                    field_row(name, field)
+                    for name, field in fields.items()
+                    if name not in hide
+                ]
+            )
+
+        for required_model in required_models:
+            if required_model.__name__ not in exported_config_models:
+                result += '\n\n'
+                result += pydantic_model_from_model(required_model)  # type: ignore
+
+        return result
 
     @env.macro
     def pydantic_model(path, heading=None, hide=[]):  # pylint: disable=unused-variable
@@ -162,21 +251,120 @@ def define_env(env):
         return pydantic_model_from_model(model, heading=heading, hide=hide)
 
     @env.macro
-    def section_def(path, heading=None, hide=[]):  # pylint: disable=unused-variable
-        """
-        Produces markdown code for the given section definition.
+    def default_apps_list():  # pylint: disable=unused-variable
+        result = ''
+        for key, value in config.ui.apps.filtered_items():
+            result += f' - `{key}`: {value.description}\n'
+        return result
 
-        Arguments:
-            path: The python qualified name of the section class.
-        """
-        import importlib
+    @env.macro
+    def parser_list():  # pylint: disable=unused-variable
+        parsers = [
+            plugin
+            for _, plugin in config.plugins.entry_points.filtered_items()
+            if isinstance(plugin, ParserEntryPoint) and hasattr(plugin, 'code_name')
+        ]
+        packages = config.plugins.plugin_packages
 
-        module_name, name = path.rsplit('.', 1)
-        module = importlib.import_module(module_name)
-        section_cls = getattr(module, name)
+        def render_parser(parser) -> str:
+            # TODO this should be added, once the metadata typography gets
+            # fixed. At the moment the MD is completely broken in most cases.
+            # more_description = None
+            # if parser.metadata and 'parserSpecific' in parser.metadata:
+            #     more_description = strip(parser.metadata['parserSpecific'])
+            repo_url = packages[parser.plugin_package].homepage
 
-        return section_markdown_from_section_cls(
-            section_cls, heading=heading, hide=hide
+            metadata = strip(
+                f"""
+                ### {parser.code_name}
+
+                {parser.description or ''}
+
+                - format homepage: [{parser.code_homepage}]({parser.code_homepage})
+                - parser name: `{parser.id}`
+                - plugin: `{parser.plugin_package}`
+                - parser class: `{parser.parser_class_name}`
+                - parser code: [{repo_url}]({repo_url})
+            """
+            )
+
+            if (
+                parser.metadata
+                and parser.metadata.get('tableOfFiles', '').strip(' \t\n') != ''
+            ):
+                metadata += f'\n\n{strip(parser.metadata["tableOfFiles"])}'
+
+            return metadata
+
+        categories: dict[str, list[ParserEntryPoint]] = {}
+        for parser in parsers:
+            category_name = getattr(parser, 'code_category', None)
+            category = categories.setdefault(category_name, [])
+            category.append(parser)
+
+        def render_category(name: str, category: list[ParserEntryPoint]) -> str:
+            return f'## {name}s\n\n' + '\n\n'.join(
+                [render_parser(parser) for parser in category]
+            )
+
+        return (
+            ', '.join(
+                [
+                    f'[{parser.code_name}](#{slugify(parser.code_name, "-")})'
+                    for parser in parsers
+                ]
+            )
+            + '\n\n'
+            + '\n\n'.join(
+                [
+                    render_category(name, category)
+                    for name, category in categories.items()
+                ]
+            )
+        )
+
+    @env.macro
+    def plugin_entry_point_list():  # pylint: disable=unused-variable
+        plugin_entry_points = [
+            plugin for plugin in config.plugins.entry_points.options.values()
+        ]
+        plugin_packages = config.plugins.plugin_packages
+
+        def render_plugin(plugin: EntryPointType) -> str:
+            result = plugin.id
+            docs_or_code_url = None
+            package = plugin_packages.get(getattr(plugin, 'plugin_package'))
+            if package is not None:
+                for field in [
+                    'repository',
+                    'homepage',
+                    'documentation',
+                ]:
+                    value = getattr(package, field, None)
+                    if value:
+                        docs_or_code_url = value
+                        break
+            if docs_or_code_url:
+                result = f'[{plugin.id}]({docs_or_code_url})'
+
+            return result
+
+        categories = {}
+        for plugin_entry_point in plugin_entry_points:
+            category = getattr(
+                plugin_entry_point,
+                'plugin_type',
+                getattr(plugin_entry_point, 'entry_point_type', None),
+            )
+            if category == 'schema':
+                category = 'schema package'
+            categories.setdefault(category, []).append(plugin_entry_point)
+
+        return '\n\n'.join(
+            [
+                f'**{category}**: {", ".join([render_plugin(plugin) for plugin in plugins])}'
+                for category, plugins in categories.items()
+            ]
         )
 
     @env.macro

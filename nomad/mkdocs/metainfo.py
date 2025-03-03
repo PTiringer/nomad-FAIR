@@ -14,22 +14,6 @@
 # limitations under the License.
 #
 
-import yaml
-import json
-from enum import Enum
-from pydantic import BaseModel
-from pydantic.fields import ModelField
-import os.path
-from typing import List, Set, Tuple, Any, Optional, Dict
-from typing_extensions import Literal, _AnnotatedAlias  # type: ignore
-from inspect import isclass
-from markdown.extensions.toc import slugify
-
-from nomad.utils import strip
-from nomad.config import config
-from nomad.config.models.plugins import Parser, EntryPointType
-from nomad.app.v1.models import query_documentation, owner_documentation
-from nomad.app.v1.routers.entries import archive_required_documentation
 from nomad import utils
 from nomad.metainfo import Property, Quantity, Datatype, Reference, SubSection
 from nomad.datamodel.data import ArchiveSection
@@ -59,7 +43,7 @@ def get_property_type_info(property: Property, pkg=None) -> str:
     return '*unknown type*'
 
 
-def get_property_description(property: Property) -> Optional[str]:
+def get_property_description(property: Property) -> str | None:
     value = property.description
     if value:
         value = utils.strip(value)
@@ -76,7 +60,7 @@ def get_quantity_default(quantity: Quantity) -> str:
 
 
 def get_property_options(property: Property) -> str:
-    options: List[str] = []
+    options: list[str] = []
     if isinstance(property, Quantity):
         if property.shape != []:
             options.append(f'**shape**=`{property.shape}`')

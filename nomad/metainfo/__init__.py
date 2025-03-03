@@ -85,7 +85,6 @@ from .data_type import (
     Capitalized,
     Bytes,
     JSON,
-    HDF5Reference,
     Dimension,
     Unit,
     Callable,
