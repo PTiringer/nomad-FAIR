@@ -450,13 +450,7 @@ class EntityReference(SectionReference):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `EntityReference` class.
         Will attempt to fill the `reference` from the `lab_id` or vice versa.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         super().normalize(archive, logger)
         if self.reference is None and self.lab_id is not None:
@@ -513,15 +507,9 @@ class ExperimentStep(ActivityStep):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `ExperimentStep` class.
         Will attempt to fill the `activity` from the `lab_id` or vice versa.
         If the activity reference is filled but the start time is not the time will be
         taken from the `datetime` property of the referenced activity.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         super().normalize(archive, logger)
         if self.activity is None and self.lab_id is not None:
@@ -618,17 +606,12 @@ class ElementalComposition(ArchiveSection):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `ElementalComposition` class. Will add a
+        Will add a
         results.material subsection if none exists. Will append the element to the
         elements property of that subsection and a
         nomad.datamodel.results.ElementalComposition instances to the
         elemental_composition property  using the element and atomic fraction from this
         section.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         super().normalize(archive, logger)
 
@@ -740,13 +723,8 @@ class System(Entity):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `System` class. Will attempt to fill mass fractions or
+        Will attempt to fill mass fractions or
         atomic fractions if left blank.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         super().normalize(archive, logger)
 
@@ -827,14 +805,9 @@ class SystemComponent(Component):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `SystemComponent` class. If none is set, the normalizer
+        If none is set, the normalizer
         will set the name of the component to be that of the referenced system if it has
         one.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         super().normalize(archive, logger)
         if self.name is None and self.system is not None:
@@ -950,14 +923,9 @@ class PureSubstanceComponent(Component):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `PureSubstanceComponent` class. If none is set, the
+        If none is set, the
         normalizer will set the name of the component to be the molecular formula of the
         substance.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         super().normalize(archive, logger)
         if self.substance_name and self.pure_substance is None:
@@ -1076,18 +1044,13 @@ class CompositeSystem(System):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `CompositeSystem` class. If the elemental composition list is
+        If the elemental composition list is
         empty, the normalizer will iterate over the components and extract all the
         elements for populating the elemental composition list. If masses are provided for
         all components and the elemental composition of all components contain atomic
         fractions the normalizer will also calculate the atomic fractions for the
         composite system. The populated elemental composition list is added to the results
         by the normalizer in the `System` super class.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         if logger is None:
             logger = utils.get_logger(__name__)
@@ -1420,13 +1383,8 @@ class PureSubstance(System):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer method for the `Substance` class.
         This method will populate the results.material section and the elemental
         composition sub section using the molecular formula.
-
-        Args:
-            archive (EntryArchive): The archive that is being normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         super().normalize(archive, logger)
         if logger is None:
@@ -1625,11 +1583,11 @@ class PubChemPureSubstanceSection(PureSubstanceSection):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer method for the `PubChemSubstanceSection` class.
         This method will attempt to get data on the substance instance from the PubChem
         PUG REST API: https://pubchem.ncbi.nlm.nih.gov/docs/pug-rest
         If a PubChem CID is specified the details are retrieved directly.
         Otherwise a search query is made for the filled attributes in the following order:
+
         1. `smile`
         2. `canonical_smile`
         3. `inchi_key`
@@ -1637,10 +1595,6 @@ class PubChemPureSubstanceSection(PureSubstanceSection):
         5. `name`
         6. `molecular_formula`
         7. `cas_number`
-
-        Args:
-            archive (EntryArchive): The archive that is being normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         if logger is None:
             logger = utils.get_logger(__name__)
@@ -1881,7 +1835,6 @@ class CASPureSubstanceSection(PureSubstanceSection):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer method for the `CASPureSubstanceSection` class.
         This method will attempt to get data on the pure substance instance from the CAS
         API: https://commonchemistry.cas.org/api-overview
         If a CAS number is specified the details are retrieved directly.
@@ -1893,10 +1846,6 @@ class CASPureSubstanceSection(PureSubstanceSection):
         4. `smile`
         5. `canonical_smile`
         6. `name`
-
-        Args:
-            archive (EntryArchive): The archive that is being normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         if logger is None:
             logger = utils.get_logger(__name__)
@@ -1968,23 +1917,19 @@ class ReadableIdentifiers(ArchiveSection):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `ReadableIdentifiers` class.
         If owner is not filled the field will be filled by the first two letters of
         the first name joined with the first two letters of the last name of the author.
         If the institute is not filled a institute abreviations will be constructed from
         the author's affiliation.
+
         If no datetime is filled, the datetime will be taken from the `datetime`
         property of the parent, if it exists, otherwise the current date and time will be
         used.
+
         If no short name is filled, the name will be taken from the parent name, if it
         exists, otherwise it will be taken from the archive metadata entry name, if it
         exists, and finally if no other options are available it will use the name of the
         mainfile.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         super().normalize(archive, logger)
 
