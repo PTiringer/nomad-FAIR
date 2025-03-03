@@ -140,7 +140,7 @@ def section_markdown_from_section_cls(
     if section_cls.normalize and section_cls.normalize.__doc__ != ArchiveSection.normalize.__doc__:
         if section_cls.normalize.__doc__:
             result += (
-                f'**normalization**: {utils.strip(section_cls.normalize.__doc__)}\n\n'
+                f'**normalization**: \n\n{utils.strip(section_cls.normalize.__doc__)}\n\n'
             )
         else:
             result += f'**normalization** without further documentation\n\n'

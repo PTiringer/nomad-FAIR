@@ -233,12 +233,12 @@ class BaseSection(ArchiveSection):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `BaseSection` class.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
+        - If the instance is of type `EntryData`, it sets the archive's entry name based on the instance's name.
+        - Sets the `datetime` field to the current time if it is not already set.
+        - Manages the `lab_id` field and updates the archive's `results.eln.lab_ids` list.
+        - Adds the instance's `name` and `description` to the archive's `results.eln.names` and `results.eln.descriptions` lists, respectively.
+        - Handles the `tags` attribute, if present, and updates the archive's `results.eln.tags` list.
+        - Appends the section's name to the archive's `results.eln.sections` list.
         """
         super().normalize(archive, logger)
 
@@ -385,12 +385,8 @@ class Activity(BaseSection):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `Activity` class.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
+        - Ensures the `results.eln.methods` list is initialized and appends the method or section name.
+        - Converts each step in `self.steps` to a task, using the steps `to_task()` method, and assigns it to `archive.workflow2.tasks`.
         """
         super().normalize(archive, logger)
 
@@ -739,12 +735,7 @@ class Instrument(Entity):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `Instrument` class.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
+        Adds the name of the instrument to the `results.eln.instruments` list.
         """
         super().normalize(archive, logger)
 
@@ -1192,12 +1183,9 @@ class Process(Activity):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `Process` class.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
+        - Sets the start time for each step in `self.steps` if not already set, based on the `datetime` and `duration` fields.
+        - Sets the `end_time` field to the calculated end time if it is not already set.
+        - Updates the `archive.workflow2.outputs` list with links to the samples processed.
         """
         super().normalize(archive, logger)
         if (
@@ -1260,12 +1248,8 @@ class Analysis(Activity):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `Analysis` section.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
+        - Updates the `archive.workflow2.inputs` list with links to the input data.
+        - Updates the `archive.workflow2.outputs` list with links to the output data.
         """
         super().normalize(archive, logger)
         archive.workflow2.inputs = [
@@ -1327,12 +1311,8 @@ class Measurement(Activity):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `Measurement` section.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
+        - Updates the `archive.workflow2.inputs` list with links to the input samples.
+        - Updates the `archive.workflow2.outputs` list with links to the measurement results.
         """
         super().normalize(archive, logger)
         archive.workflow2.inputs = [
@@ -2051,12 +2031,10 @@ class PublicationReference(ArchiveSection):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `PublicationReference` class.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
+        - If a DOI number is provided, retrieves publication details from the CrossRef API.
+        - Populates the `publication_authors`, `journal`, `publication_title`, and `publication_date` fields based on the CrossRef response.
+        - Ensures the DOI number has the prefix `https://doi.org/`.
+        - Updates the archive's metadata references with the DOI number if it is not already present.
         """
         super().normalize(archive, logger)
         import dateutil.parser
