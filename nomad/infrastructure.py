@@ -71,6 +71,7 @@ def setup():
     """
     setup_files()
     setup_mongo()
+    check_mongo()
     setup_elastic()
 
 
@@ -97,6 +98,25 @@ def setup_mongo(client=False):
 
     logger.info('setup mongo connection')
     return mongo_client
+
+
+def check_mongo():
+    db = mongo_client.get_database(config.mongo.db_name)
+    names = db.list_collection_names()
+
+    expected_names = {'upload', 'user_group', 'entry', 'dataset', 'archive'}
+    if names != expected_names:
+        logger.warning(
+            f'Expected MongoDB collections: {expected_names} but found: {names}'
+        )
+
+    # regression https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/issues/2281
+    if 'mongo_user_group' in names:
+        logger.warning("""
+            The collection 'mongo_user_group' was found in MongoDB. It should be merged
+            into 'user_group'. This is a known issue. Please ask the NOMAD team
+            (support@nomad-lab.eu) if you need help with this.
+        """)
 
 
 def setup_elastic():

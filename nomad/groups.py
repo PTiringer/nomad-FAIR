@@ -39,7 +39,10 @@ class MongoUserGroup(Document):
     owner = StringField(required=True)
     members = ListField(StringField())
 
-    meta = {'indexes': ['group_name', 'owner', 'members']}
+    meta = {
+        'collection': 'user_group',
+        'indexes': ['group_name', 'owner', 'members'],
+    }
 
     @classmethod
     def q_by_ids(cls, group_ids: str | Iterable[str]) -> Q:

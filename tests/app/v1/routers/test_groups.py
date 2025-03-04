@@ -1,8 +1,9 @@
 import pytest
-from .common import assert_response, perform_get, perform_post
-from nomad.app.v1.models.groups import UserGroup, UserGroupResponse
-from nomad.groups import get_user_group, user_group_exists
 
+from nomad.app.v1.models.groups import UserGroup, UserGroupResponse
+from nomad.groups import MongoUserGroup, get_user_group, user_group_exists
+
+from .common import assert_response, perform_get, perform_post
 
 base_url = 'groups'
 
@@ -31,6 +32,10 @@ def assert_group(group, ref_group, keys=None):
         val = get_val(group, 'members')
         ref_val = get_val(ref_group, 'members')
         assert_unordered_lists(val, ref_val)
+
+
+def test_group_collection_name(groups_module):
+    MongoUserGroup._get_collection_name() == 'user_group'
 
 
 @pytest.mark.parametrize(
