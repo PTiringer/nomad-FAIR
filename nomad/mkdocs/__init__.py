@@ -39,7 +39,14 @@ from nomad.app.v1.models import query_documentation, owner_documentation
 from nomad.app.v1.routers.entries import archive_required_documentation
 from nomad import utils
 
-from nomad.mkdocs.pydantic import exported_config_models, get_field_default, get_field_deprecated, get_field_description, get_field_options, get_field_type_info
+from nomad.mkdocs.pydantic import (
+    exported_config_models,
+    get_field_default,
+    get_field_deprecated,
+    get_field_description,
+    get_field_options,
+    get_field_type_info,
+)
 from nomad.mkdocs.metainfo import (
     section_markdown_from_section_cls,
     package_markdown_from_package,
