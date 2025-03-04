@@ -107,7 +107,7 @@ def define_env(env):
             path = f'{path}:'
 
         file_path, json_path = path.split(':')
-        file_path = os.path.join(os.path.dirname(__file__), '..', file_path)
+        file_path = os.path.join(os.path.dirname(__file__), '../..', file_path)
 
         with open(file_path) as f:
             if file_path.endswith('.yaml'):
