@@ -20,190 +20,39 @@
 Definitions that are used in the documentation via mkdocs-macro-plugin.
 """
 
-from types import UnionType
-from pydantic.fields import FieldInfo
 import yaml
 import json
-from enum import Enum
-from pydantic import BaseModel
 import os.path
-from typing import Annotated, Any, Union, get_args, get_origin
-from typing import Literal
+from typing import get_args
+
 from inspect import isclass
+
+from pydantic.fields import FieldInfo
+
+from pydantic import BaseModel
+
 from markdown.extensions.toc import slugify
 
 from nomad.utils import strip
 from nomad.config import config
-from nomad.config.models.plugins import ParserEntryPoint, EntryPointType
 from nomad.app.v1.models import query_documentation, owner_documentation
 from nomad.app.v1.routers.entries import archive_required_documentation
 from nomad import utils
 
+from nomad.mkdocs.pydantic import (
+    exported_config_models,
+    get_field_default,
+    get_field_deprecated,
+    get_field_description,
+    get_field_options,
+    get_field_type_info,
+)
+from nomad.mkdocs.metainfo import (
+    section_markdown_from_section_cls,
+    package_markdown_from_package,
+)
 
-exported_config_models = set()  # type: ignore
-
-
-doc_snippets = {
-    'query': query_documentation,
-    'owner': owner_documentation,
-    'archive-required': archive_required_documentation,
-}
-
-
-def get_field_type_info(field: FieldInfo) -> tuple[str, set[Any]]:
-    """Used to recursively walk through a type definition, building up a cleaned
-    up type name and returning all of the classes that were used.
-
-    Args:
-        type_: The type to inspect. Can be any valid type definition.
-
-    Returns:
-        Tuple containing the cleaned up type name and a set of classes
-        found inside.
-    """
-    classes = set()
-    annotation = field.annotation
-
-    def get_class_name(ann: Any) -> str:
-        if hasattr(ann, '__name__'):
-            name = ann.__name__
-            return 'None' if name == 'NoneType' else name
-        return str(ann)
-
-    def _recursive_extract(ann: Any, type_str: str = '') -> str:
-        nonlocal classes
-
-        origin = get_origin(ann)
-        args = get_args(ann)
-
-        if origin is None and issubclass(ann, Enum):
-            classes.add(ann)
-            # Determine base type for Enums
-            if issubclass(ann, str):
-                return get_class_name(str)
-            elif issubclass(ann, int):
-                return get_class_name(int)
-            else:
-                return get_class_name(ann)
-        elif origin is None:
-            classes.add(ann)
-            return get_class_name(ann)
-        if origin is list:
-            classes.add(origin)
-            if type_str:
-                type_str += '[' + _recursive_extract(args[0]) + ']'
-            else:
-                type_str = 'list[' + _recursive_extract(args[0]) + ']'
-        elif origin is dict:
-            classes.add(origin)
-            if type_str:
-                type_str += (
-                    '['
-                    + _recursive_extract(args[0])
-                    + ', '
-                    + _recursive_extract(args[1])
-                    + ']'
-                )
-            else:
-                type_str = (
-                    'dict['
-                    + _recursive_extract(args[0])
-                    + ', '
-                    + _recursive_extract(args[1])
-                    + ']'
-                )
-
-        elif origin is UnionType or origin is Union:
-            # Handle Union types (e.g., Optional[str] is equivalent to Union[str, None])
-            union_types = []
-            for arg in args:
-                union_types.append(_recursive_extract(arg))
-            type_str = ' | '.join(union_types)
-        elif origin is Literal:
-            classes.add(origin)
-            return get_class_name(
-                type(args[0])
-            )  # Add name of the literal value (e.g., str)
-        elif origin is Annotated:
-            # Extract the underlying type from Annotated
-            return _recursive_extract(args[0])
-        else:
-            # Handle generic types
-            classes.add(origin)
-            return get_class_name(ann)
-
-        return type_str
-
-    type_name = _recursive_extract(annotation)
-    return type_name, classes
-
-
-def get_field_description(field: FieldInfo) -> str | None:
-    """Retrieves the description for a pydantic field as a markdown string.
-
-    Args:
-        field: The pydantic field to inspect.
-
-    Returns:
-        Markdown string for the description.
-    """
-    value = field.description
-    if value:
-        value = utils.strip(value)
-        value = value.replace('\n\n', '<br/>').replace('\n', ' ')
-
-    return value
-
-
-def get_field_default(field: FieldInfo) -> str | None:
-    """Retrieves the default value from a pydantic field as a markdown string.
-
-    Args:
-        field: The pydantic field to inspect.
-
-    Returns:
-        Markdown string for the default value.
-    """
-    default_value = field.default
-    if default_value is not None:
-        if isinstance(default_value, dict | BaseModel):
-            default_value = 'Complex object, default value not displayed.'
-        elif default_value == '':
-            default_value = '""'
-        else:
-            default_value = f'`{default_value}`'
-    return default_value
-
-
-def get_field_options(field: FieldInfo) -> dict[str, str | None]:
-    """Retrieves a dictionary of value-description pairs from a pydantic field.
-
-    Args:
-        field: The pydantic field to inspect.
-
-    Returns:
-        Dictionary containing the possible options and their description for
-        this field. The description may be None indicating that it does not exist.
-    """
-    options: dict[str, str | None] = {}
-    if isclass(field.annotation) and issubclass(field.annotation, Enum):
-        for x in field.annotation:
-            options[str(x.value)] = None
-    return options
-
-
-def get_field_deprecated(field: FieldInfo) -> bool:
-    """Returns whether the given pydantic field is deprecated or not.
-
-    Args:
-        field: The pydantic field to inspect.
-
-    Returns:
-        Whether the field is deprecated.
-    """
-    if field.deprecated:
-        return True
-    return False
+from nomad.config.models.plugins import ParserEntryPoint, EntryPointType
 
 
 class MyYamlDumper(yaml.Dumper):
@@ -216,6 +65,13 @@ class MyYamlDumper(yaml.Dumper):
         node = super().represent_mapping(*args, **kwargs)
         node.flow_style = False
         return node
+
+
+doc_snippets = {
+    'query': query_documentation,
+    'owner': owner_documentation,
+    'archive-required': archive_required_documentation,
+}
 
 
 def define_env(env):
@@ -258,7 +114,7 @@ def define_env(env):
             path = f'{path}:'
 
         file_path, json_path = path.split(':')
-        file_path = os.path.join(os.path.dirname(__file__), '..', file_path)
+        file_path = os.path.join(os.path.dirname(__file__), '../..', file_path)
 
         with open(file_path) as f:
             if file_path.endswith('.yaml'):
@@ -517,3 +373,19 @@ def define_env(env):
                 for category, plugins in categories.items()
             ]
         )
+
+    @env.macro
+    def metainfo_package(path, heading=None, hide=[]):  # pylint: disable=unused-variable
+        """
+        Produces markdown code for the given metainfo package.
+
+        Arguments:
+            path: The python qualified name of the package.
+        """
+        import importlib
+
+        module_name, name = path.rsplit('.', 1)
+        module = importlib.import_module(path)
+        pkg = getattr(module, 'm_package')
+
+        return package_markdown_from_package(pkg)

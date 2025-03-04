@@ -22,7 +22,7 @@ from typing import Union, Optional
 from typing import Literal, Annotated  # type: ignore
 from pydantic import BaseModel, Field
 from nomad.config.models.ui import WidgetHistogram, WidgetTerms
-from nomad.mkdocs import (
+from nomad.mkdocs.pydantic import (
     get_field_type_info,
     get_field_description,
     get_field_default,
