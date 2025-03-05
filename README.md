@@ -73,7 +73,7 @@ contains much more detailed information about changes and fixes in the released 
 
 ### v1.3.7
 
-- Added group assignment to the uploa user management dialog
+- Added group assignment to the upload user management dialog
 - Replaced sub-modules with plugins
 
 ### v1.3.6
