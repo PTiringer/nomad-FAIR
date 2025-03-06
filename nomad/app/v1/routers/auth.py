@@ -130,7 +130,7 @@ def create_user_dependency(
             except Exception as e:
                 logger = utils.get_logger(__name__)
                 logger.error(
-                    'Api usage by unknown user. Possible missconfiguration', exc_info=e
+                    'API usage by unknown user. Possible misconfiguration', exc_info=e
                 )
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -288,8 +288,8 @@ def _get_user_signature_token_auth(signature_token: str, request: Request) -> Us
     corresponding user object, or None, if no upload_token provided.
     """
     if signature_token:
-        user = _get_user_from_simple_token(signature_token)
-        return user
+        return _get_user_from_simple_token(signature_token)
+
     elif request:
         auth_cookie = request.cookies.get('Authorization')
         if auth_cookie:
@@ -297,11 +297,11 @@ def _get_user_signature_token_auth(signature_token: str, request: Request) -> Us
                 auth_cookie = requests.utils.unquote(auth_cookie)  # type: ignore
                 if auth_cookie.startswith('Bearer '):
                     cookie_bearer_token = auth_cookie[7:]
-                    user = cast(
+                    return cast(
                         datamodel.User,
                         infrastructure.keycloak.tokenauth(cookie_bearer_token),
                     )
-                    return user
+
             except infrastructure.KeycloakError as e:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -390,11 +390,18 @@ async def get_token(form_data: OAuth2PasswordRequestForm = Depends()):
     summary='Get an access token',
     responses=create_responses(_bad_credentials_response),
     response_model=Token,
+    deprecated=True,
 )
 async def get_token_via_query(username: str, password: str):
     """
-    This is an convenience alternative to the **POST** version of this operation.
-    It allows you to retrieve an *access token* by providing username and password.
+    **[DEPRECATED]** This endpoint is **no longer recommended**.
+    Please use the **POST** endpoint instead.
+
+    This was a convenience alternative to the **POST** version, allowing retrieval of
+    an *access token* by providing a username and password via query parameters.
+
+    **Why is this deprecated?**
+        Query parameters expose credentials in URLs, which can be logged or cached.
     """
     try:
         access_token = infrastructure.keycloak.basicauth(username, password)
@@ -456,8 +463,7 @@ def generate_simple_token(user_id, expires_in: int):
     """
     expires_at = datetime.datetime.utcnow() + datetime.timedelta(seconds=expires_in)
     payload = dict(user=user_id, exp=expires_at)
-    token = jwt.encode(payload, config.services.api_secret, 'HS256')
-    return token
+    return jwt.encode(payload, config.services.api_secret, 'HS256')
 
 
 def generate_upload_token(user):
