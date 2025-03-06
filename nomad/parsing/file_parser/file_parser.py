@@ -12,20 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC, abstractmethod
-import os
-import pint
-from typing import Any, IO
-from collections.abc import Callable
-import gzip
 import bz2
+import gzip
 import lzma
+import os
 import tarfile
+from abc import ABC, abstractmethod
+from collections.abc import Callable
 from contextlib import contextmanager
+from typing import IO, Any
 
+import pint
+
+from nomad.datamodel import EntryArchive
 from nomad.metainfo import MSection, SubSection
 from nomad.utils import get_logger
-from nomad.datamodel import EntryArchive
 
 
 class FileParser(ABC):

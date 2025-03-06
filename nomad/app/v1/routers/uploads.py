@@ -15,92 +15,79 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import os
 import io
+import os
 import shutil
-import zipfile
 import tarfile
-from enum import Enum
+import zipfile
 from datetime import datetime
+from enum import Enum
 from typing import Any, cast
-from pydantic import (
-    field_validator,
-    ConfigDict,
-    BaseModel,
-    Field,
-    model_validator,
-)
-from mongoengine.queryset.visitor import Q
 from urllib.parse import unquote
+
 from fastapi import (
     APIRouter,
-    Request,
+    Body,
+    Depends,
     File,
+    HTTPException,
+    Path,
+    Request,
     UploadFile,
     status,
-    Depends,
-    Body,
-    Path,
-    Query as FastApiQuery,
-    HTTPException,
 )
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi import Query as FastApiQuery
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, StreamingResponse
+from mongoengine.queryset.visitor import Q
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
-from nomad import utils, files
-from nomad.common import is_safe_relative_path, is_safe_basename
-from nomad.config import config
-from nomad.config.models.plugins import ExampleUploadEntryPoint
-from nomad.files import (
-    StagingUploadFiles,
-    PublicUploadFiles,
-)
+from nomad import files, utils
 from nomad.bundles import BundleExporter, BundleImporter
+from nomad.common import get_compression_format, is_safe_basename, is_safe_relative_path
+from nomad.config import config
 from nomad.config.models.config import Reprocess
+from nomad.config.models.plugins import ExampleUploadEntryPoint
+from nomad.files import PublicUploadFiles, StagingUploadFiles
 from nomad.groups import get_group_ids
 from nomad.processing import (
-    Upload,
     Entry,
+    MetadataEditRequestHandler,
     ProcessAlreadyRunning,
     ProcessStatus,
-    MetadataEditRequestHandler,
+    Upload,
 )
-from nomad.common import get_compression_format
+from nomad.search import QueryValidationError, search, search_iterator
+from nomad.search import refresh as search_refresh
 from nomad.utils import strip
-from nomad.search import (
-    search,
-    search_iterator,
-    refresh as search_refresh,
-    QueryValidationError,
-)
 
-from .auth import create_user_dependency, generate_upload_token
 from ..models import (
-    MetadataPagination,
-    User,
     Direction,
+    Files,
+    HTTPExceptionModel,
+    MetadataEditRequest,
+    MetadataPagination,
+    MetadataRequired,
+    Owner,
     Pagination,
     PaginationResponse,
-    HTTPExceptionModel,
-    Files,
-    files_parameters,
-    Owner,
+    User,
     WithQuery,
-    MetadataRequired,
-    MetadataEditRequest,
+    files_parameters,
     restrict_query_to_upload,
 )
-from .entries import EntryArchiveResponse, answer_entry_archive_request
 from ..utils import (
-    parameter_dependency_from_model,
-    create_responses,
     DownloadItem,
     browser_download_headers,
-    create_download_stream_zipped,
     create_download_stream_raw_file,
+    create_download_stream_zipped,
+    create_responses,
     create_stream_from_string,
+    parameter_dependency_from_model,
 )
+from .auth import create_user_dependency, generate_upload_token
+from .entries import EntryArchiveResponse, answer_entry_archive_request
 
 router = APIRouter()
 

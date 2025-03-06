@@ -16,16 +16,16 @@
 # limitations under the License.
 #
 
-import pytest
-from urllib.parse import urlencode
 from datetime import datetime
+from urllib.parse import urlencode
 
-from nomad.datamodel import Dataset
+import pytest
+
 from nomad import processing
+from nomad.app.v1.models import Any_, Query
+from nomad.datamodel import Dataset
 from nomad.search import search
-from nomad.app.v1.models import Query, Any_
 from nomad.utils.exampledata import ExampleData
-
 from tests.fixtures.users import admin_user_id
 
 from .common import assert_response

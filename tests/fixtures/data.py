@@ -17,7 +17,6 @@ from nomad.datamodel.datamodel import SearchableQuantity
 from nomad.metainfo.elasticsearch_extension import schema_separator
 from nomad.processing import ProcessStatus
 from nomad.utils.exampledata import ExampleData
-from tests.variables import python_schema_name, yaml_schema_name, yaml_schema_root
 from tests.normalizing.conftest import run_normalize
 from tests.parsing import test_parsing
 from tests.processing import test_data as test_processing
@@ -27,6 +26,7 @@ from tests.utils import (
     create_template_upload_file,
     set_upload_entry_metadata,
 )
+from tests.variables import python_schema_name, yaml_schema_name, yaml_schema_root
 
 
 @pytest.fixture(scope='session')

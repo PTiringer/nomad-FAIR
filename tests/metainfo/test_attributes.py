@@ -18,20 +18,20 @@
 
 import datetime
 
-import pytest
 import numpy as np
+import pytest
 import pytz
 
 from nomad.metainfo import (
+    Attribute,
+    Datetime,
+    MEnum,
     MSection,
     Quantity,
-    Attribute,
-    MEnum,
     Reference,
-    Datetime,
     Section,
 )
-from nomad.metainfo.metainfo import MQuantity, Definition
+from nomad.metainfo.metainfo import Definition, MQuantity
 from nomad.metainfo.util import validate_allowable_unit
 from nomad.units import ureg
 

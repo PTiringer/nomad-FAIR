@@ -1,16 +1,17 @@
-from nomad.metainfo import (
-    Quantity,
-    Package,
-    Section,
-    MEnum,
-    Datetime,
-    MSection,
-    SubSection,
-    SectionProxy,
-)
+import numpy as np
+
 from nomad.datamodel.data import EntryData
 from nomad.datamodel.metainfo.annotations import ELNAnnotation, ELNComponentEnum
-import numpy as np
+from nomad.metainfo import (
+    Datetime,
+    MEnum,
+    MSection,
+    Package,
+    Quantity,
+    Section,
+    SectionProxy,
+    SubSection,
+)
 
 m_package = Package()
 

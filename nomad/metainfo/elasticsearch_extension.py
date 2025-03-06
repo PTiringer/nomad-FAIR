@@ -159,19 +159,15 @@ sub-sections as if they were direct sub-sections.
 import math
 import re
 from collections import defaultdict
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Optional,
-    cast,
-)
 from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from elasticsearch_dsl import Q
+from pint import Quantity as PintQuantity
+
 from nomad import utils
 from nomad.config import config
 from nomad.config.models.plugins import Parser, Schema, SchemaPackageEntryPoint
-from pint import Quantity as PintQuantity
 
 from . import DefinitionAnnotation
 from .data_type import Datatype, to_elastic_type

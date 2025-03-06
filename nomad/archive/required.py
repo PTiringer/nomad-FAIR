@@ -28,24 +28,25 @@ from fastapi import HTTPException
 from nomad import utils
 from nomad.metainfo import (
     Definition,
-    Section,
-    Quantity,
-    SubSection,
-    Reference,
-    QuantityReference,
-    SectionReference,
     Package,
+    Quantity,
+    QuantityReference,
+    Reference,
+    Section,
+    SectionReference,
+    SubSection,
 )
+
+from ..datamodel.context import ServerContext, parse_path
 from .query import (
     ArchiveQueryError,
-    to_json,
-    _query_archive_key_pattern,
-    _extract_key_and_index,
     _extract_child,
+    _extract_key_and_index,
+    _query_archive_key_pattern,
+    to_json,
 )
-from .storage import ArchiveReader, ArchiveList, ArchiveError, ArchiveDict
+from .storage import ArchiveDict, ArchiveError, ArchiveList, ArchiveReader
 from .storage_v2 import ArchiveDict as NewArchiveDict
-from ..datamodel.context import parse_path, ServerContext
 
 
 class RequiredValidationError(Exception):

@@ -15,29 +15,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from io import StringIO, BytesIO
 import sys
 from collections import OrderedDict
 from enum import Enum
+from io import BytesIO, StringIO
 
-import numpy as np
-from fastapi import APIRouter, Depends, Path, Query, status, HTTPException
-from fastapi.responses import Response
-import ase.io
 import ase.build
+import ase.io
+import numpy as np
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi.responses import Response
 
-from nomad.units import ureg
-from nomad.utils import strip, deep_get, query_list_to_dict
-from nomad.atomutils import Formula, wrap_positions, unwrap_positions
-from nomad.normalizing.common import (
-    ase_atoms_from_nomad_atoms,
-)
+from nomad.atomutils import Formula, unwrap_positions, wrap_positions
 from nomad.datamodel.metainfo.system import Atoms as NOMADAtoms
-from .entries import answer_entry_archive_request
+from nomad.normalizing.common import ase_atoms_from_nomad_atoms
+from nomad.units import ureg
+from nomad.utils import deep_get, query_list_to_dict, strip
 
-from .auth import create_user_dependency
+from ..models import HTTPExceptionModel, User
 from ..utils import create_responses
-from ..models import User, HTTPExceptionModel
+from .auth import create_user_dependency
+from .entries import answer_entry_archive_request
 
 router = APIRouter()
 

@@ -22,13 +22,13 @@ from nomad.config.models.ui import (
     App,
     Axis,
     AxisQuantity,
-    Columns,
     Column,
-    Rows,
+    Columns,
     RowActions,
-    RowDetails,
-    RowSelection,
     RowActionURL,
+    RowDetails,
+    Rows,
+    RowSelection,
 )
 
 

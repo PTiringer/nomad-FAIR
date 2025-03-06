@@ -41,8 +41,8 @@ def upload_file(
 
     Returns: The upload_id if successful or None if not.
     """
-    from nomad.processing import ProcessStatus
     from nomad.client import api
+    from nomad.processing import ProcessStatus
 
     if local_path:
         response = api.post(

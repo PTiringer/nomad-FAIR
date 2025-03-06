@@ -18,19 +18,19 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 from asyncio import Semaphore
 from itertools import islice
-from typing import Any
 from time import monotonic
-import threading
+from typing import Any
 
 from click import progressbar
-from httpx import Timeout, AsyncClient
+from httpx import AsyncClient, Timeout
 from keycloak import KeycloakOpenID
 
 from nomad import metainfo as mi
 from nomad.config import config
-from nomad.datamodel import EntryArchive, ClientContext
+from nomad.datamodel import ClientContext, EntryArchive
 from nomad.utils import dict_to_dataframe
 
 

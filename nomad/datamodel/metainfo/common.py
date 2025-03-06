@@ -16,8 +16,7 @@
 # limitations under the License.
 #
 
-from nomad.metainfo import MCategory, Category
-from nomad.metainfo import MSection, Section, SubSection, Quantity
+from nomad.metainfo import Category, MCategory, MSection, Quantity, Section, SubSection
 from nomad.metainfo.elasticsearch_extension import Elasticsearch, material_entry_type
 
 

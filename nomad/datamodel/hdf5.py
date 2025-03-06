@@ -17,16 +17,16 @@
 #
 from __future__ import annotations
 
-from typing import Any
-import h5py
 import re
+from typing import Any
 
+import h5py
 import numpy as np
 import pint
 from h5py import File
 
-from nomad.metainfo.data_type import NonPrimitive
 from nomad.datamodel.metainfo.annotations import H5WebAnnotation
+from nomad.metainfo.data_type import NonPrimitive
 from nomad.utils import get_logger
 
 LOGGER = get_logger(__name__)
