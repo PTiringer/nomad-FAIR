@@ -1,26 +1,8 @@
 ## 1.3.15 (2025-03-05)
 
-### Fixed (6 changes)
+### Fixed (1 change)
 
 - [Fixed user group collection name in MongoDB](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/e8daac5fba118c3f2d013f97bc68753cb916754a) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2350))
-- [Fixed issue with setting and reading boolean values in queries.](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/b37db79e23d15470981cfdd6ffdfe701269b5693) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2347))
-- [Fixed issue with resolving units when using full storage](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/b767f85f45377fd979950970234dc1448d1b4dd7) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2339))
-- [Fix properties normalization](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/f011e10cc5ad46d8c5d0276d33e429fff9c98f0c) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2337))
-- [Fixed issues with north config optional values](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/7ecbbb66ad6cb8b44f045a51deb93e7a77c4defa) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2336))
-- [Fixed issue with suggestions not being shown by default for terms menu items,...](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/3446265bf31e085b7659bf2446e88052d90a08b2) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2330))
-
-### Added (5 changes)
-
-- [Added mkdocs function to add schema section and package reference](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/bd2d5c84824cc1a4bbd2c40e1d9c1871c1a41aa6) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2116))
-- [Add nomad distro commit info](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/1a03bfa35ecc17b5040b2f1e5ee20b24d544d17e) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2329))
-- [Resolve "Generic xml parser"](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/3f2535f2443892ec71cc2d5881aeb50452052b30) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/1655))
-- [Resolve "create edges in the workflow"](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/fb04f4f163e61b94c0d088863a8ac8afb468cf53) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2318))
-- [Added implementation and documentation for DataFrames.](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/0696502401fc74a0b460ed3a37acf9f2b378cff9) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2211))
-
-### Changed (2 changes)
-
-- [Workflow visualizer](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/2db3bee03270dbdd4f1222353925279c385c5208) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2340))
-- [Enable ruff rule F401, remove unused import](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/73fb0bb0298b414ec2557cee1de4933593932443) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2325))
 
 ## 1.3.14 (2025-02-28)
 
