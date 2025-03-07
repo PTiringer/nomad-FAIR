@@ -102,12 +102,13 @@ def setup_mongo(client=False):
 
 def check_mongo():
     db = mongo_client.get_database(config.mongo.db_name)
-    names = db.list_collection_names()
+    names = set(db.list_collection_names())
 
     expected_names = {'upload', 'user_group', 'entry', 'dataset', 'archive'}
-    if names != expected_names:
+    if not expected_names.issuperset(names):
         logger.warning(
-            f'Expected MongoDB collections: {expected_names} but found: {names}'
+            f'Expected MongoDB collections: {sorted(expected_names)}; '
+            f'but found: {sorted(names)}'
         )
 
     # regression https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/issues/2281
