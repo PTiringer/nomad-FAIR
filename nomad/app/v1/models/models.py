@@ -916,7 +916,7 @@ class HistogramAggregation(BucketAggregation):
         """
         ),
     )
-    offset: float | None = Field(None, ge=0)
+    offset: float | None = Field(None)
     extended_bounds: Bounds | None = None
 
     @model_validator(mode='before')
