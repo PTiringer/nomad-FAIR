@@ -35,8 +35,6 @@ from markdown.extensions.toc import slugify
 
 from nomad.utils import strip
 from nomad.config import config
-from nomad.app.v1.models import query_documentation, owner_documentation
-from nomad.app.v1.routers.entries import archive_required_documentation
 from nomad import utils
 
 from nomad.mkdocs.pydantic import (
@@ -67,13 +65,6 @@ class MyYamlDumper(yaml.Dumper):
         return node
 
 
-doc_snippets = {
-    'query': query_documentation,
-    'owner': owner_documentation,
-    'archive-required': archive_required_documentation,
-}
-
-
 def define_env(env):
     @env.macro
     def nomad_url():  # pylint: disable=unused-variable
@@ -81,6 +72,14 @@ def define_env(env):
 
     @env.macro
     def doc_snippet(key):  # pylint: disable=unused-variable
+        from nomad.app.v1.models import query_documentation, owner_documentation
+        from nomad.app.v1.routers.entries import archive_required_documentation
+
+        doc_snippets = {
+            'query': query_documentation,
+            'owner': owner_documentation,
+            'archive-required': archive_required_documentation,
+        }
         return doc_snippets[key]
 
     @env.macro
