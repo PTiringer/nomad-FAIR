@@ -23,17 +23,16 @@ from fastapi import FastAPI, Response, status
 from fastapi.exception_handlers import (
     http_exception_handler as default_http_exception_handler,
 )
-from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from nomad import infrastructure
 from nomad.config import config
 from nomad.config.models.plugins import APIEntryPoint
 
-from .static import GuiFiles
-from .static import app as static_files_app
 from .v1.main import app as v1_app
+from .static import app as static_files_app, GuiFiles
 
 
 class OasisAuthenticationMiddleware(BaseHTTPMiddleware):
@@ -165,10 +164,11 @@ async def http_exception_handler(request, exc):
 
 @app.on_event('startup')
 async def startup_event():
-    from nomad import infrastructure
-    from nomad.cli.dev import get_gui_artifacts_js, get_gui_config
-    from nomad.metainfo.elasticsearch_extension import entry_type
+    from nomad.cli.dev import get_gui_artifacts_js
+    from nomad.cli.dev import get_gui_config
     from nomad.parsing.parsers import import_all_parsers
+    from nomad import infrastructure
+    from nomad.metainfo.elasticsearch_extension import entry_type
 
     import_all_parsers()
 

@@ -24,10 +24,11 @@ import functools
 import itertools
 import os
 import re
-from collections.abc import AsyncIterator, Callable, Iterator
+from collections.abc import AsyncIterator, Iterator
 from contextlib import contextmanager
 from threading import Lock
 from typing import Any
+from collections.abc import Callable
 
 import orjson
 from cachetools import TTLCache
@@ -54,10 +55,23 @@ from nomad.app.v1.routers.uploads import (
     get_upload_with_read_access,
     upload_to_pydantic,
 )
-from nomad.archive import ArchiveDict, ArchiveList, to_json
-from nomad.archive.storage_v2 import ArchiveDict as ArchiveDictNew
-from nomad.archive.storage_v2 import ArchiveList as ArchiveListNew
-from nomad.datamodel import Dataset, EntryArchive, ServerContext, User
+from nomad.archive import (
+    ArchiveDict,
+    ArchiveList,
+    to_json,
+)
+from nomad.archive.storage_v2 import (
+    ArchiveDict as ArchiveDictNew,
+)
+from nomad.archive.storage_v2 import (
+    ArchiveList as ArchiveListNew,
+)
+from nomad.datamodel import (
+    Dataset,
+    EntryArchive,
+    ServerContext,
+    User,
+)
 from nomad.datamodel.util import parse_path
 from nomad.files import RawPathInfo, UploadFiles
 from nomad.graph.lazy_wrapper import (
@@ -88,8 +102,8 @@ from nomad.metainfo import (
     SectionReference,
     SubSection,
 )
-from nomad.metainfo.data_type import JSON, Datatype
 from nomad.metainfo.data_type import Any as AnyType
+from nomad.metainfo.data_type import JSON, Datatype
 from nomad.metainfo.util import MSubSectionList, split_python_definition
 from nomad.processing import Entry, ProcessStatus, Upload
 from nomad.utils import timer

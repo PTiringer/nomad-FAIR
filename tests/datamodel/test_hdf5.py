@@ -16,17 +16,18 @@
 # limitations under the License.
 #
 
-import os
-
-import h5py
-import numpy as np
 import pytest
+import numpy as np
+import os
+import h5py
 
 from nomad import files, processing
-from nomad.datamodel import EntryArchive, EntryData, EntryMetadata
+from nomad.datamodel import EntryData, EntryArchive, EntryMetadata
 from nomad.datamodel.context import ServerContext
-from nomad.datamodel.hdf5 import HDF5Dataset, HDF5Reference
 from nomad.metainfo import Quantity
+
+from nomad.datamodel.hdf5 import HDF5Reference, HDF5Dataset
+
 
 external_file = 'tests/data/datamodel/context.h5'
 

@@ -22,7 +22,7 @@
 import pytest
 
 from nomad.metainfo import MSection
-from nomad.metainfo.metainfo import Package, Quantity, Section, SubSection
+from nomad.metainfo.metainfo import Package, Quantity, SubSection, Section
 
 
 def test_base_section():
@@ -251,7 +251,7 @@ def test_path():
     assert SubSection.used_sections[ChildSection.m_def] == [EntryArchive.child]
     assert ChildSection.m_def.path == 'child'
 
-    from nomad.datamodel.metainfo.workflow import Task, Workflow
+    from nomad.datamodel.metainfo.workflow import Workflow, Task
 
     assert Workflow.m_def.path == 'workflow2'
     assert Task.m_def.path == '__no_archive_path__'

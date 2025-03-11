@@ -16,35 +16,34 @@
 # limitations under the License.
 #
 
-from collections import defaultdict
-
 import numpy as np
+from collections import defaultdict
 import pytest
-
 from nomad.datamodel.metainfo import runschema
+
 from nomad.units import ureg
 from tests.normalizing.conftest import (  # noqa: F401
-    boron_nitride,
-    boron_nitride_topology,
-    check_template_active_orbitals,
-    conv_bcc,
-    conv_fcc,
-    get_template_active_orbitals,
-    get_template_computation,
     get_template_for_structure,
     get_template_topology,
-    graphene,
-    graphene_topology,
-    mos2,
-    mos2_topology,
+    conv_bcc,
+    conv_fcc,
     rattle,
     run_normalize,
-    single_cr_surface_topology,
-    single_cu_surface_topology,
     stack,
-    stacked_cu_ni_surface_topology,
-    stacked_graphene_boron_nitride_topology,
     surf,
+    single_cu_surface_topology,
+    single_cr_surface_topology,
+    stacked_cu_ni_surface_topology,
+    graphene,
+    graphene_topology,
+    boron_nitride,
+    boron_nitride_topology,
+    mos2,
+    mos2_topology,
+    stacked_graphene_boron_nitride_topology,
+    get_template_active_orbitals,
+    check_template_active_orbitals,
+    get_template_computation,
 )
 
 

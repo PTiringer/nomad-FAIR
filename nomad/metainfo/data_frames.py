@@ -1,13 +1,19 @@
-import inspect
 import types
-from collections.abc import Iterable
 from typing import Union, cast
-
+from collections.abc import Iterable
 import numpy as np
-import xarray as xr
+import inspect
 from pydantic import BaseModel
+import xarray as xr
 
-from nomad.metainfo import MSection, Package, Quantity, Section, SubSection, constraint
+from nomad.metainfo import (
+    MSection,
+    Section,
+    Quantity,
+    SubSection,
+    Package,
+    constraint,
+)
 from nomad.metainfo.metainfo import _placeholder_quantity
 from nomad.units import ureg
 

@@ -34,7 +34,7 @@ from urllib.parse import urlsplit, urlunsplit
 import docstring_parser
 import jmespath
 import pint
-from pydantic import BaseModel, TypeAdapter, ValidationError
+from pydantic import TypeAdapter, ValidationError, BaseModel
 
 from nomad.config import config
 from nomad.metainfo.data_type import JSON as JSONType
@@ -43,20 +43,14 @@ from nomad.metainfo.data_type import Any as AnyType
 from nomad.metainfo.data_type import Bytes as BytesType
 from nomad.metainfo.data_type import Callable as CallableType
 from nomad.metainfo.data_type import Capitalized as CapitalizedType
-from nomad.metainfo.data_type import (
-    Datatype,
-    Enum,
-    ExactNumber,
-    InexactNumber,
-    Number,
-    check_dimensionality,
-    m_str,
-    normalize_type,
-)
+from nomad.metainfo.data_type import Datatype
 from nomad.metainfo.data_type import Datetime as DatetimeType
 from nomad.metainfo.data_type import Dimension as DimensionType
+from nomad.metainfo.data_type import Enum, ExactNumber
 from nomad.metainfo.data_type import File as FileType
+from nomad.metainfo.data_type import InexactNumber, Number
 from nomad.metainfo.data_type import Unit as UnitType
+from nomad.metainfo.data_type import check_dimensionality, m_str, normalize_type
 from nomad.metainfo.util import (
     MQuantity,
     MSubSectionList,
@@ -68,6 +62,7 @@ from nomad.metainfo.util import (
     to_dict,
 )
 from nomad.units import ureg as units
+from pydantic import TypeAdapter, ValidationError
 
 from .annotation import (
     Annotation,

@@ -19,20 +19,20 @@
 import numpy as np
 import pytest
 
-from nomad.datamodel.metainfo import SCHEMA_IMPORT_ERROR, simulationworkflowschema
 from nomad.units import ureg
 
 from .conftest import (
-    add_template_band_structure,
-    add_template_dos,
-    add_template_magnetic_shielding,
-    add_template_magnetic_susceptibility,
-    add_template_spin_spin_coupling,
-    get_template_band_structure,
     get_template_dft,
+    add_template_dos,
     get_template_dos,
+    add_template_band_structure,
+    get_template_band_structure,
+    add_template_magnetic_shielding,
+    add_template_spin_spin_coupling,
+    add_template_magnetic_susceptibility,
     run_normalize,
 )
+from nomad.datamodel.metainfo import simulationworkflowschema, SCHEMA_IMPORT_ERROR
 
 
 def test_eels(eels):

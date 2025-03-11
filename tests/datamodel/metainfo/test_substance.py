@@ -16,13 +16,12 @@
 # limitations under the License.
 #
 
-import json
 from collections.abc import Iterable
-
 import pytest
+import json
 
-from nomad.datamodel.metainfo.basesections import v1 as basesections
 from tests.normalizing.conftest import run_processing
+from nomad.datamodel.metainfo.basesections import v1 as basesections
 
 
 class MockResponse:

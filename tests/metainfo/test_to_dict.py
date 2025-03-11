@@ -16,16 +16,16 @@
 # limitations under the License.
 #
 
-import numpy as np
 import pytest
+import numpy as np
 import yaml
 
 from nomad.app.v1.routers.metainfo import (
     get_package_by_section_definition_id,
     store_package_definition,
 )
-from nomad.metainfo import MCategory, MSection, Quantity, SubSection
-from nomad.metainfo.metainfo import Definition, MEnum, Package, Reference
+from nomad.metainfo import MSection, MCategory, Quantity, SubSection
+from nomad.metainfo.metainfo import Package, MEnum, Reference, Definition
 
 # resolve_references are tested in .test_references
 # type specific serialization is tested in .test_quantities

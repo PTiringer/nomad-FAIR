@@ -16,42 +16,42 @@
 # limitations under the License.
 #
 
-import functools
-import logging
-import os
-import time
-from collections import defaultdict
-from datetime import datetime
 from typing import Any, NamedTuple
-
-import billiard
-from billiard.exceptions import WorkerLostError
+import logging
+import time
+import os
+from collections import defaultdict
 from celery import Celery, Task
-from celery.exceptions import SoftTimeLimitExceeded
+from celery.worker.request import Request
 from celery.signals import (
-    after_setup_logger,
     after_setup_task_logger,
-    celeryd_after_setup,
+    after_setup_logger,
     worker_process_init,
+    celeryd_after_setup,
     worker_process_shutdown,
 )
 from celery.utils import worker_direct
-from celery.worker.request import Request
+from celery.exceptions import SoftTimeLimitExceeded
+import billiard
+from billiard.exceptions import WorkerLostError
 from mongoengine import (
-    DateTimeField,
     Document,
-    IntField,
-    ListField,
     StringField,
+    ListField,
+    DateTimeField,
+    IntField,
     ValidationError,
 )
 from mongoengine.connection import ConnectionFailure
+from datetime import datetime
+import functools
 
-import nomad.patch  # noqa: F401
-from nomad import infrastructure, utils
-from nomad.app.v1.routers.info import statistics
+from nomad import utils, infrastructure
 from nomad.config import config
 from nomad.config.models.config import CELERY_WORKER_ROUTING
+from nomad.app.v1.routers.info import statistics
+import nomad.patch  # noqa: F401
+
 
 if config.logstash.enabled:
     from nomad.utils import structlogging

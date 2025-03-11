@@ -15,75 +15,89 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import io
-import json
-import os.path
-from collections.abc import Iterator
 from datetime import datetime
+
 from enum import Enum
 from typing import Any
-
-import orjson
-import yaml
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Request, status
-from fastapi import Query as QueryParameter
+from collections.abc import Iterator
+from fastapi import (
+    APIRouter,
+    Depends,
+    Path,
+    status,
+    HTTPException,
+    Request,
+    Query as QueryParameter,
+    Body,
+)
+from fastapi.responses import StreamingResponse, ORJSONResponse
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import ORJSONResponse, StreamingResponse
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    ConfigDict,
+    field_validator,
+    BaseModel,
+    Field,
+)
+import os.path
+import io
+import json
+import orjson
 from pydantic.main import create_model
 from starlette.responses import Response
+import yaml
 
-from nomad import datamodel, files, metainfo, utils
-from nomad import processing as proc
-from nomad.archive import ArchiveQueryError, RequiredReader, RequiredValidationError
+from nomad import files, utils, metainfo, processing as proc
+from nomad import datamodel
 from nomad.config import config
 from nomad.config.models.config import Reprocess
 from nomad.datamodel import EditableUserMetadata
 from nomad.datamodel.context import ServerContext
 from nomad.files import StreamedFile, create_zipstream_async
-from nomad.groups import get_group_ids
-from nomad.metainfo.elasticsearch_extension import entry_type
 from nomad.processing.data import Upload
+from nomad.utils import strip
+from nomad.archive import RequiredReader, RequiredValidationError, ArchiveQueryError
+from nomad.groups import get_group_ids
 from nomad.search import (
     AuthenticationRequiredError,
     QueryValidationError,
     SearchError,
     search,
+    update_metadata as es_update_metadata,
 )
-from nomad.search import update_metadata as es_update_metadata
-from nomad.utils import strip
+from nomad.metainfo.elasticsearch_extension import entry_type
 
-from ..models import (
-    Aggregation,
-    Files,
-    HTTPExceptionModel,
-    Metadata,
-    MetadataEditRequest,
-    MetadataPagination,
-    MetadataRequired,
-    MetadataResponse,
-    Owner,
-    Pagination,
-    PaginationResponse,
-    Query,
-    QueryParameters,
-    TermsAggregation,
-    User,
-    WithQuery,
-    WithQueryAndPagination,
-    files_parameters,
-    metadata_pagination_parameters,
-    metadata_required_parameters,
-)
+from .auth import create_user_dependency
 from ..utils import (
-    DownloadItem,
-    browser_download_headers,
-    create_download_stream_raw_file,
     create_download_stream_zipped,
+    create_download_stream_raw_file,
+    browser_download_headers,
+    DownloadItem,
     create_responses,
     log_query,
 )
-from .auth import create_user_dependency
+from ..models import (
+    Aggregation,
+    Pagination,
+    PaginationResponse,
+    MetadataPagination,
+    TermsAggregation,
+    WithQuery,
+    WithQueryAndPagination,
+    MetadataRequired,
+    MetadataResponse,
+    Metadata,
+    MetadataEditRequest,
+    Files,
+    Query,
+    User,
+    Owner,
+    QueryParameters,
+    metadata_required_parameters,
+    files_parameters,
+    metadata_pagination_parameters,
+    HTTPExceptionModel,
+)
+
 
 router = APIRouter()
 

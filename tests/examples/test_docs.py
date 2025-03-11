@@ -1,12 +1,12 @@
+import yaml
 import json
 import os.path
 
-import yaml
-
 from nomad.metainfo import Package
 from nomad.units import ureg
-from tests.normalizing.conftest import run_normalize
+
 from tests.parsing.test_parsing import run_singular_parser
+from tests.normalizing.conftest import run_normalize
 
 
 def _file(path):

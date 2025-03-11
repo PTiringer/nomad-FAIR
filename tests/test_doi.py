@@ -15,12 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from unittest.mock import MagicMock
-
-import pytest
-
 from nomad.config import config
 from nomad.doi import DOI, DOIException
+import pytest
+from unittest.mock import MagicMock
 
 
 def test_create(mongo_function, user1, no_warn):

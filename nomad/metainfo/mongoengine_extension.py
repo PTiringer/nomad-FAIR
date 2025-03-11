@@ -35,9 +35,12 @@ sections from mongoengine. The annotation key is 'mongo'.
 
 from typing import Any
 
-from . import Annotation, DefinitionAnnotation, SectionAnnotation
 from .data_type import Datatype, to_mongo_type
-from .metainfo import MSection, Quantity
+from .metainfo import (
+    MSection,
+    Quantity,
+)
+from . import Annotation, DefinitionAnnotation, SectionAnnotation
 
 
 class Mongo(DefinitionAnnotation):

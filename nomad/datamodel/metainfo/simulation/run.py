@@ -22,22 +22,22 @@
 
 import numpy as np  # noqa: F401
 
-from nomad.datamodel.data import ArchiveSection
-from nomad.datamodel.metainfo.common import FastAccess
-from nomad.datamodel.metainfo.simulation.calculation import Calculation
-from nomad.datamodel.metainfo.simulation.method import Method
-from nomad.datamodel.metainfo.simulation.system import System
 from nomad.metainfo import (  # noqa: F401
-    Category,
-    MCategory,
     MSection,
+    MCategory,
+    Category,
     Package,
     Quantity,
-    Reference,
     Section,
-    SectionProxy,
     SubSection,
+    SectionProxy,
+    Reference,
 )
+from nomad.datamodel.metainfo.simulation.method import Method
+from nomad.datamodel.metainfo.simulation.system import System
+from nomad.datamodel.metainfo.simulation.calculation import Calculation
+from nomad.datamodel.metainfo.common import FastAccess
+from nomad.datamodel.data import ArchiveSection
 
 m_package = Package()
 

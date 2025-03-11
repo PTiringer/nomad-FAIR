@@ -16,9 +16,8 @@
 # limitations under the License.
 #
 
-import os
-
 import pytest
+import os
 
 from nomad.config import config
 

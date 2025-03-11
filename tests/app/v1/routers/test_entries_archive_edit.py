@@ -17,7 +17,6 @@
 #
 
 import json
-
 import pytest
 
 from nomad.datamodel.datamodel import EntryArchive, EntryMetadata

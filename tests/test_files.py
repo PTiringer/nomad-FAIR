@@ -16,32 +16,30 @@
 # limitations under the License.
 #
 
-import itertools
-import os
-import os.path
-import pathlib
-import re
-import shutil
-import zipfile
+from typing import Any
 from collections.abc import Generator, Iterable
 from datetime import datetime
-from typing import Any
-
+import os
+import os.path
+import shutil
 import pytest
+import itertools
+import zipfile
+import re
+import pathlib
 
 from nomad import datamodel, utils
-from nomad.archive import to_json
 from nomad.config import config
+from nomad.archive import to_json
 from nomad.files import (
     DirectoryObject,
     PathObject,
-    PublicUploadFiles,
-    StagingUploadFiles,
-    UploadFiles,
-    empty_archive_file_size,
     empty_zip_file_size,
+    empty_archive_file_size,
 )
+from nomad.files import StagingUploadFiles, PublicUploadFiles, UploadFiles
 from nomad.processing import Upload
+
 
 EntryWithFiles = tuple[datamodel.EntryMetadata, str]
 UploadWithFiles = tuple[str, list[datamodel.EntryMetadata], UploadFiles]

@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 
-from nomad.metainfo import MSection, Package
+from nomad.metainfo import Package, MSection
 
 m_package = Package(aliases=['nomad.datamodel.test_package'])
 

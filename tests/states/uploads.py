@@ -16,12 +16,11 @@
 # limitations under the License.
 #
 
-from nomad import files, infrastructure
+from nomad import infrastructure, files
 from nomad.processing import Upload
 from nomad.utils.exampledata import ExampleData
-
 from .archives.create_archives import archive_dft_bulk
-from .groups import delete_group, init_gui_test_groups
+from .groups import init_gui_test_groups, delete_group
 
 default_access = {'coauthors': ['scooper'], 'reviewers': ['ttester']}
 twin_access = {

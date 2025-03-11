@@ -20,15 +20,18 @@
 Definitions that are used in the documentation via mkdocs-macro-plugin.
 """
 
-from enum import Enum
-from inspect import isclass
 from types import UnionType
-from typing import Annotated, Any, Literal, Union, get_args, get_origin
-
-from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 
+from enum import Enum
+from pydantic import BaseModel
+
+from typing import Annotated, Any, Union, get_args, get_origin
+from typing import Literal
+from inspect import isclass
+
 from nomad import utils
+
 
 exported_config_models = set()  # type: ignore
 

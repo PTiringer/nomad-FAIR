@@ -16,15 +16,17 @@
 # limitations under the License.
 #
 
-from cachetools import cached
 from elasticsearch_dsl import Q
+from cachetools import cached
+
 from optimade.filterparser import LarkParser
-from optimade.filtertransformers.elasticsearch import ElasticsearchQuantity as Quantity
 from optimade.filtertransformers.elasticsearch import (
+    ElasticsearchQuantity as Quantity,
     ElasticTransformer as OPTElasticTransformer,
 )
 
 from .common import provider_specific_fields
+
 
 _parser = LarkParser(version=(1, 0, 1))
 

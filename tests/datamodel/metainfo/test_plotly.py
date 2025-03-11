@@ -1,5 +1,4 @@
 import json
-
 from tests.normalizing.conftest import run_processing
 
 

@@ -20,7 +20,7 @@ from typing import Any
 
 import jmespath
 
-from nomad.datamodel.metainfo.annotations import Condition, Rule, Rules
+from nomad.datamodel.metainfo.annotations import Rules, Rule, Condition
 
 
 class Transformer:
