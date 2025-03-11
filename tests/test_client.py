@@ -15,27 +15,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import json
 import os
 
-from httpx import AsyncClient
 import pytest
-import json
-
+from httpx import AsyncClient
 from pydantic import ValidationError
 
 from nomad.app.main import app
 from nomad.client.archive import ArchiveQuery
 from nomad.datamodel import EntryArchive, User
-from nomad.datamodel.metainfo import runschema, SCHEMA_IMPORT_ERROR
-from nomad.datamodel.metainfo.annotations import (
-    Rule,
-    Rules,
-)
+from nomad.datamodel.metainfo import SCHEMA_IMPORT_ERROR, runschema
+from nomad.datamodel.metainfo.annotations import Rule, Rules
 from nomad.metainfo import MSection, SubSection
 from nomad.utils.json_transformer import Transformer
 from tests.fixtures.users import users
 from tests.processing import test_data as test_processing
-
 
 # TODO: more tests
 

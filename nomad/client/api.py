@@ -16,9 +16,10 @@
 # limitations under the License.
 #
 
+import time
+
 import requests
 from keycloak import KeycloakOpenID
-import time
 
 from nomad.config import config
 

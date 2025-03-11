@@ -1,7 +1,7 @@
-import runpy
-import pytest
 import os
+import runpy
 
+import pytest
 
 prefix = os.path.join(__file__, '../../../examples/metainfo')
 

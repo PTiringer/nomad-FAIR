@@ -22,7 +22,7 @@ import importlib
 import re
 import typing
 from base64 import b64decode, b64encode
-from datetime import datetime, date
+from datetime import date, datetime
 from functools import reduce
 from inspect import isclass
 from typing import Any as TypingAny
@@ -1248,12 +1248,12 @@ def to_optimade_type(in_type: Datatype):
 
 def to_mongo_type(in_type: Datatype):
     from mongoengine import (
-        IntField,
-        FloatField,
         BooleanField,
-        StringField,
         DateTimeField,
         DictField,
+        FloatField,
+        IntField,
+        StringField,
     )
 
     standard_type = in_type.standard_type()

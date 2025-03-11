@@ -19,16 +19,16 @@ import copy
 import datetime
 from typing import Any
 
-from fastapi import APIRouter, Path, status, HTTPException
+from fastapi import APIRouter, HTTPException, Path, status
 from pydantic import BaseModel, Field
 
 from nomad.app.v1.models import HTTPExceptionModel
 from nomad.app.v1.utils import create_responses
-from nomad.metainfo import Package
-from nomad.metainfo.metainfo import MSection, Section, Quantity, Datetime, JSON
-from nomad.metainfo.mongoengine_extension import MongoDocument, Mongo
-from nomad.utils import strip, get_logger
 from nomad.config import config
+from nomad.metainfo import Package
+from nomad.metainfo.metainfo import JSON, Datetime, MSection, Quantity, Section
+from nomad.metainfo.mongoengine_extension import Mongo, MongoDocument
+from nomad.utils import get_logger, strip
 
 logger = get_logger(__name__)
 

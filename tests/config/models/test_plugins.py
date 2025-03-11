@@ -18,12 +18,13 @@
 
 import os
 import tempfile
-import pytest
-from nomad.config import Config
 
+import pytest
+
+from nomad.config import Config
 from nomad.config.models.plugins import (
-    ExampleUploadEntryPoint,
     APIEntryPoint,
+    ExampleUploadEntryPoint,
     UploadResource,
 )
 

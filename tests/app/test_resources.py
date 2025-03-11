@@ -15,21 +15,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import pytest
 import json
-from fastapi.testclient import TestClient
-import httpx
-from urllib.parse import urlencode
 import time
-import dateutil.parser
+from urllib.parse import urlencode
 
-from nomad.config import config
+import dateutil.parser
+import httpx
+import pytest
+from fastapi.testclient import TestClient
+
 from nomad.app.resources.main import app, remove_mongo
 from nomad.app.resources.routers.resources import (
     aflow_prototypes_db,
-    springer_materials_db,
     optimade_providers,
+    springer_materials_db,
 )
+from nomad.config import config
 
 
 def _to_datetime(datetime_str):

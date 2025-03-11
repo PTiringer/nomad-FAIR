@@ -15,8 +15,9 @@
 
 import os
 import re
-import numpy as np
 from xml.etree import ElementTree
+
+import numpy as np
 from lxml import etree
 
 from nomad.parsing.file_parser import FileParser

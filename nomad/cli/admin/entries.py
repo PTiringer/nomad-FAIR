@@ -33,7 +33,8 @@ def entries():
 )
 @click.option('--skip-mongo', help='Keep uploads and entries in mongo.', is_flag=True)
 def rm(entries, skip_es, skip_mongo):
-    from nomad import processing as proc, infrastructure, search
+    from nomad import infrastructure, search
+    from nomad import processing as proc
 
     infrastructure.setup_mongo()
     infrastructure.setup_elastic()

@@ -17,32 +17,33 @@
 #
 
 from __future__ import annotations
+
+import sys
+from collections.abc import Callable
+from datetime import datetime
+from types import UnionType
 from typing import (
-    Optional,
-    Literal,
-    Union,
     Any,
     ForwardRef,
-    get_type_hints,
-    get_origin,
-    get_args,
+    Literal,
+    Optional,
+    Union,
     cast,
+    get_args,
+    get_origin,
+    get_type_hints,
 )
-from collections.abc import Callable
-from types import UnionType
-from datetime import datetime
+
 from pydantic import (
     BaseModel,
     ConfigDict,
-    TypeAdapter,
-    create_model,
     Field,
-    model_validator,
+    TypeAdapter,
     ValidationError,
+    create_model,
+    model_validator,
 )
 from pydantic.config import ConfigDict as BaseConfigDict
-import sys
-
 
 ref_prefix = '#/components/schemas'
 request_suffix = 'Request'

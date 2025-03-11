@@ -20,18 +20,18 @@ import numpy as np
 import pytest
 import yaml
 
-from nomad.utils import strip
 from nomad.metainfo import (
-    Package,
+    Context,
+    MetainfoError,
+    MProxy,
     MSection,
+    Package,
     Quantity,
     Reference,
-    SubSection,
     Section,
-    MProxy,
-    MetainfoError,
-    Context,
+    SubSection,
 )
+from nomad.utils import strip
 
 m_package = Package()
 

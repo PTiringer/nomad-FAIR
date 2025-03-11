@@ -15,15 +15,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import pytest
 import os
+
 import h5py
+import pytest
 from fastapi.testclient import TestClient
 
 from nomad.app import h5grove_app
-from nomad.utils.exampledata import ExampleData
-from nomad.files import StagingUploadFiles
 from nomad.config import config
+from nomad.files import StagingUploadFiles
+from nomad.utils.exampledata import ExampleData
 
 
 @pytest.fixture

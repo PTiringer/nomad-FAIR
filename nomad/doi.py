@@ -21,17 +21,18 @@ This module contains all functions necessary to manage DOI via datacite.org and 
 MDS API (https://support.datacite.org/docs/mds-api-guide).
 """
 
-import xml.etree.ElementTree as ET
 import datetime
-import requests
-from requests.auth import HTTPBasicAuth
-from mongoengine import Document, StringField, DateTimeField
-from mongoengine.errors import NotUniqueError
+import xml.etree.ElementTree as ET
 
-from nomad.datamodel import User
-from nomad.config import config
-from nomad import utils
+import requests
 from fastapi import HTTPException
+from mongoengine import DateTimeField, Document, StringField
+from mongoengine.errors import NotUniqueError
+from requests.auth import HTTPBasicAuth
+
+from nomad import utils
+from nomad.config import config
+from nomad.datamodel import User
 
 
 class DOIException(Exception):

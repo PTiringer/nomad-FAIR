@@ -16,9 +16,8 @@
 # limitations under the License.
 #
 
-from nomad.metainfo import Quantity, SubSection, Section
-
 from nomad.datamodel.data import ArchiveSection, EntryData, WorkflowsElnCategory
+from nomad.metainfo import Quantity, Section, SubSection
 
 
 class Link(ArchiveSection):

@@ -21,26 +21,26 @@
 # https://github.com/nomad-coe/nomad-schema-plugin-run.git
 
 import numpy as np  # noqa: F401
+
+from nomad.datamodel.data import ArchiveSection
+from nomad.datamodel.metainfo.common import PropertySection, ProvenanceTracker
+from nomad.datamodel.metainfo.simulation.method import HoppingMatrix, Method
+from nomad.datamodel.metainfo.simulation.system import AtomsGroup, System
 from nomad.metainfo import (  # noqa: F401
-    MSection,
-    MCategory,
     Category,
+    MCategory,
+    MEnum,
+    MSection,
     Package,
     Quantity,
-    Section,
-    SubSection,
-    SectionProxy,
     Reference,
-    MEnum,
+    Section,
+    SectionProxy,
+    SubSection,
     derived,
 )
-from nomad.datamodel.metainfo.common import ProvenanceTracker, PropertySection
-from nomad.datamodel.metainfo.simulation.system import System, AtomsGroup
-from nomad.datamodel.metainfo.simulation.method import Method, HoppingMatrix
-from nomad.datamodel.data import ArchiveSection
 
 from ..common import FastAccess
-
 
 m_package = Package()
 

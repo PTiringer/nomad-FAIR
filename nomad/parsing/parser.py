@@ -16,19 +16,20 @@
 # limitations under the License.
 #
 
-from typing import Any, IO
-from collections.abc import Iterable
-from abc import ABCMeta, abstractmethod
-import re
+import importlib
+import json
 import os
 import os.path
+import re
+from abc import ABCMeta, abstractmethod
+from collections.abc import Iterable
 from functools import lru_cache
-import importlib
-from pydantic import BaseModel, Extra  # noqa: F401
-import yaml
+from typing import IO, Any
+
 import h5py
 import numpy as np
-import json
+import yaml
+from pydantic import BaseModel, Extra  # noqa: F401
 
 from nomad import utils
 from nomad.config import config
