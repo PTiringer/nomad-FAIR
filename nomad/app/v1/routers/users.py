@@ -16,20 +16,24 @@
 # limitations under the License.
 #
 
-from typing import List, Union, Optional
-from fastapi import Depends, APIRouter, status, HTTPException, Query
+from enum import Enum
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic.main import BaseModel
 
-from nomad import infrastructure, datamodel
+from nomad import datamodel, infrastructure
 from nomad.config import config
 from nomad.utils import strip
 
-from .auth import create_user_dependency
-from ..models import User, HTTPExceptionModel
+from ..models import HTTPExceptionModel, User
 from ..utils import create_responses
+from .auth import create_user_dependency
 
 router = APIRouter()
-default_tag = 'users'
+
+
+class APITag(str, Enum):
+    DEFAULT = 'users'
 
 
 _authentication_required_response = (
@@ -62,7 +66,7 @@ class Users(BaseModel):
 
 @router.get(
     '/me',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Get your account data',
     description='Returns the account data of the authenticated user.',
     responses=create_responses(_authentication_required_response),
@@ -83,7 +87,7 @@ async def read_users_me(
 
 @router.get(
     '',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Get existing users',
     description='Get existing users for given criteria',
     response_model_exclude_unset=True,
@@ -163,7 +167,7 @@ class PublicUserInfo(BaseModel):
 
 @router.get(
     '/{user_id}',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Get existing users',
     description='Get the user using the given user_id',
     response_model_exclude_unset=True,
@@ -178,7 +182,7 @@ async def get_user(user_id: str):
 
 @router.put(
     '/invite',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Invite a new user',
     responses=create_responses(_authentication_required_response, _bad_invite_response),
     response_model=User,

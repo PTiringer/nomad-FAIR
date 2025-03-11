@@ -21,18 +21,19 @@ import functools
 import re
 from enum import Enum
 from hashlib import sha1
-from typing import Annotated, Optional, Union
+from typing import Annotated, Union
 
 from pydantic import (
     AfterValidator,
-    field_validator,
-    ConfigDict,
     BaseModel,
+    ConfigDict,
     Field,
     ValidationError,
+    field_validator,
 )
 
 from nomad.app.v1.models import Direction, Metadata, MetadataPagination, Pagination
+from nomad.app.v1.models.groups import UserGroupPagination, UserGroupQuery
 from nomad.app.v1.routers.datasets import DatasetPagination
 from nomad.app.v1.routers.uploads import (
     EntryProcDataPagination,
@@ -40,7 +41,6 @@ from nomad.app.v1.routers.uploads import (
     UploadProcDataPagination,
     UploadProcDataQuery,
 )
-from nomad.app.v1.models.groups import UserGroupQuery, UserGroupPagination
 
 
 class DatasetQuery(BaseModel):

@@ -17,9 +17,9 @@
 #
 
 import json
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Any, Dict, List, Union
-from collections.abc import Iterable, Sequence
+from typing import Any
 
 import pytest
 
@@ -41,15 +41,8 @@ from nomad.metainfo.elasticsearch_extension import (
 )
 from nomad.metainfo.metainfo import Datetime, Quantity
 from nomad.metainfo.util import MEnum
-from nomad.search import (
-    AuthenticationRequiredError as ARE,
-)
-from nomad.search import (
-    quantity_values,
-    refresh,
-    search,
-    update_by_query,
-)
+from nomad.search import AuthenticationRequiredError as ARE
+from nomad.search import quantity_values, refresh, search, update_by_query
 from nomad.utils import deep_get
 from nomad.utils.exampledata import ExampleData
 from tests.variables import python_schema_name, yaml_schema_name

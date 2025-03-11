@@ -15,98 +15,91 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import os
 import io
+import os
 import shutil
-from enum import Enum
+import tarfile
+import zipfile
 from datetime import datetime
-from typing import Tuple, List, Set, Dict, Any, Optional, Union, cast
-from pydantic import (
-    field_validator,
-    ConfigDict,
-    BaseModel,
-    Field,
-    model_validator,
-)
-from mongoengine.queryset.visitor import Q
+from enum import Enum
+from typing import Any, cast
 from urllib.parse import unquote
+
 from fastapi import (
     APIRouter,
-    Request,
+    Body,
+    Depends,
     File,
+    HTTPException,
+    Path,
+    Request,
     UploadFile,
     status,
-    Depends,
-    Body,
-    Path,
-    Query as FastApiQuery,
-    HTTPException,
 )
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi import Query as FastApiQuery
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, StreamingResponse
+from mongoengine.queryset.visitor import Q
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
-from nomad import utils, files
-from nomad.common import is_safe_relative_path, is_safe_basename
-from nomad.config import config
-from nomad.config.models.plugins import ExampleUploadEntryPoint
-from nomad.files import (
-    StagingUploadFiles,
-    PublicUploadFiles,
-)
+from nomad import files, utils
 from nomad.bundles import BundleExporter, BundleImporter
+from nomad.common import get_compression_format, is_safe_basename, is_safe_relative_path
+from nomad.config import config
 from nomad.config.models.config import Reprocess
+from nomad.config.models.plugins import ExampleUploadEntryPoint
+from nomad.files import PublicUploadFiles, StagingUploadFiles
 from nomad.groups import get_group_ids
 from nomad.processing import (
-    Upload,
     Entry,
+    MetadataEditRequestHandler,
     ProcessAlreadyRunning,
     ProcessStatus,
-    MetadataEditRequestHandler,
+    Upload,
 )
-from nomad.common import get_compression_format
+from nomad.search import QueryValidationError, search, search_iterator
+from nomad.search import refresh as search_refresh
 from nomad.utils import strip
-from nomad.search import (
-    search,
-    search_iterator,
-    refresh as search_refresh,
-    QueryValidationError,
-)
 
-from .auth import create_user_dependency, generate_upload_token
 from ..models import (
-    MetadataPagination,
-    User,
     Direction,
+    Files,
+    HTTPExceptionModel,
+    MetadataEditRequest,
+    MetadataPagination,
+    MetadataRequired,
+    Owner,
     Pagination,
     PaginationResponse,
-    HTTPExceptionModel,
-    Files,
-    files_parameters,
-    Owner,
+    User,
     WithQuery,
-    MetadataRequired,
-    MetadataEditRequest,
+    files_parameters,
     restrict_query_to_upload,
 )
-from .entries import EntryArchiveResponse, answer_entry_archive_request
 from ..utils import (
-    parameter_dependency_from_model,
-    create_responses,
     DownloadItem,
     browser_download_headers,
-    create_download_stream_zipped,
     create_download_stream_raw_file,
+    create_download_stream_zipped,
+    create_responses,
     create_stream_from_string,
+    parameter_dependency_from_model,
 )
+from .auth import create_user_dependency, generate_upload_token
+from .entries import EntryArchiveResponse, answer_entry_archive_request
 
 router = APIRouter()
-default_tag = 'uploads'
-metadata_tag = 'uploads/metadata'
-raw_tag = 'uploads/raw'
-archive_tag = 'uploads/archive'
-action_tag = 'uploads/action'
-bundle_tag = 'uploads/bundle'
+
+
+class APITag(str, Enum):
+    DEFAULT = 'uploads'
+    METADATA = 'uploads/metadata'
+    RAW = 'uploads/raw'
+    ARCHIVE = 'uploads/archive'
+    ACTION = 'uploads/action'
+    BUNDLE = 'uploads/bundle'
+
 
 logger = utils.get_logger(__name__)
 
@@ -139,7 +132,7 @@ class ProcData(BaseModel):
         'process is currently running.',
     )
     errors: list[str] = Field(
-        descriptions='A list of error messages that occurred during the last processing'
+        description='A list of error messages that occurred during the last processing'
     )
     warnings: list[str] = Field(
         description='A list of warning messages that occurred during the last processing'
@@ -737,7 +730,7 @@ and publish your data."""
 
 @router.get(
     '/command-examples',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Get example commands for shell based uploads.',
     response_model=UploadCommandExamplesResponse,
     responses=create_responses(_not_authorized),
@@ -768,7 +761,7 @@ async def get_command_examples(
 
 @router.get(
     '',
-    tags=[metadata_tag],
+    tags=[APITag.METADATA],
     summary='List uploads of authenticated user.',
     response_model=UploadProcDataQueryResponse,
     responses=create_responses(_not_authorized, _bad_pagination),
@@ -835,7 +828,7 @@ async def get_uploads(
 
 @router.get(
     '/{upload_id}',
-    tags=[metadata_tag],
+    tags=[APITag.METADATA],
     summary='Get a specific upload',
     response_model=UploadProcDataResponse,
     responses=create_responses(_upload_not_found, _not_authorized_to_upload),
@@ -857,7 +850,7 @@ async def get_upload(
 
 @router.get(
     '/{upload_id}/entries',
-    tags=[metadata_tag],
+    tags=[APITag.METADATA],
     summary='Get the entries of the specific upload as a list',
     response_model=EntryProcDataQueryResponse,
     responses=create_responses(
@@ -934,7 +927,7 @@ async def get_upload_entries(
 
 @router.get(
     '/{upload_id}/entries/{entry_id}',
-    tags=[metadata_tag],
+    tags=[APITag.METADATA],
     summary='Get a specific entry for a specific upload',
     response_model=EntryProcDataResponse,
     responses=create_responses(_entry_not_found, _not_authorized_to_entry),
@@ -970,7 +963,7 @@ async def get_upload_entry(
 
 @router.get(
     '/{upload_id}/rawdir/{path:path}',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Get the metadata for the raw file or folder located at the specified path in the specified upload.',
     response_model=RawDirResponse,
     responses=create_responses(
@@ -1085,7 +1078,7 @@ async def get_upload_rawdir_path(
 
 @router.get(
     '/{upload_id}/raw',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Downloads the published upload .zip file with all the raw files of the upload.',
     response_class=StreamingResponse,
     responses=create_responses(
@@ -1133,7 +1126,7 @@ async def get_upload_raw(
 
 @router.get(
     '/{upload_id}/raw/{path:path}',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Download the raw file or folder located at the specified path in the specified upload.',
     response_class=StreamingResponse,
     responses=create_responses(
@@ -1308,7 +1301,7 @@ async def get_upload_raw_path(
 
 @router.put(
     '/{upload_id}/raw/{path:path}',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Upload a raw file to the specified path (directory) in the specified upload.',
     response_class=StreamingResponse,
     responses=create_responses(
@@ -1625,7 +1618,7 @@ async def put_upload_raw_path(
 
 @router.delete(
     '/{upload_id}/raw/{path:path}',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Delete the raw file or folder located at the specified path in the specified upload.',
     response_model=UploadProcDataResponse,
     responses=create_responses(
@@ -1674,7 +1667,7 @@ async def delete_upload_raw_path(
 
 @router.post(
     '/{upload_id}/raw-create-dir/{path:path}',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Create a new empty directory with the specified path in the specified upload.',
     response_model=UploadProcDataResponse,
     responses=create_responses(
@@ -1721,7 +1714,7 @@ async def post_upload_raw_create_dir_path(
 
 @router.get(
     '/{upload_id}/archive/mainfile/{mainfile:path}',
-    tags=[archive_tag],
+    tags=[APITag.ARCHIVE],
     summary='Get the full archive for the given upload and mainfile path.',
     response_model=EntryArchiveResponse,
     response_model_exclude_unset=True,
@@ -1751,7 +1744,7 @@ async def get_upload_entry_archive_mainfile(
 
 @router.get(
     '/{upload_id}/archive/{entry_id}',
-    tags=[archive_tag],
+    tags=[APITag.ARCHIVE],
     summary='Get the full archive for the given upload and entry.',
     response_model=EntryArchiveResponse,
     response_model_exclude_unset=True,
@@ -1775,7 +1768,7 @@ async def get_upload_entry_archive(
 
 @router.post(
     '',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Submit a new upload',
     response_class=StreamingResponse,
     responses=create_responses(_post_upload_response, _not_authorized, _bad_request),
@@ -1961,7 +1954,7 @@ async def post_upload(
 
 @router.post(
     '/{upload_id}/edit',
-    tags=[metadata_tag],
+    tags=[APITag.METADATA],
     summary='Updates the metadata of the specified upload.',
     response_model=UploadProcDataResponse,
     responses=create_responses(
@@ -2008,7 +2001,7 @@ async def post_upload_edit(
 
 @router.delete(
     '/{upload_id}',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Delete an upload',
     response_model=UploadProcDataResponse,
     responses=create_responses(
@@ -2054,7 +2047,7 @@ async def delete_upload(
 
 @router.post(
     '/{upload_id}/action/publish',
-    tags=[action_tag],
+    tags=[APITag.ACTION],
     summary='Publish an upload',
     response_model=UploadProcDataResponse,
     responses=create_responses(
@@ -2162,7 +2155,7 @@ async def post_upload_action_publish(
 
 @router.post(
     '/{upload_id}/action/process',
-    tags=[action_tag],
+    tags=[APITag.ACTION],
     summary='Manually triggers processing of an upload.',
     response_model=UploadProcDataResponse,
     responses=create_responses(
@@ -2191,7 +2184,7 @@ async def post_upload_action_process(
 
 @router.post(
     '/{upload_id}/action/delete-entry-files',
-    tags=[action_tag],
+    tags=[APITag.ACTION],
     summary='Deletes the files of the entries specified by a query.',
     response_model=UploadProcDataResponse,
     responses=create_responses(
@@ -2262,7 +2255,7 @@ async def post_upload_action_delete_entry_files(
 
 @router.post(
     '/{upload_id}/action/lift-embargo',
-    tags=[action_tag],
+    tags=[APITag.ACTION],
     summary='Lifts the embargo of an upload.',
     response_model=UploadProcDataResponse,
     responses=create_responses(
@@ -2314,7 +2307,7 @@ async def post_upload_action_lift_embargo(
 
 @router.get(
     '/{upload_id}/bundle',
-    tags=[bundle_tag],
+    tags=[APITag.BUNDLE],
     summary='Gets an *upload bundle* for the specified upload.',
     response_class=StreamingResponse,
     responses=create_responses(
@@ -2388,7 +2381,7 @@ async def get_upload_bundle(
 
 @router.post(
     '/bundle',
-    tags=[bundle_tag],
+    tags=[APITag.BUNDLE],
     summary='Posts an *upload bundle* to this NOMAD deployment.',
     response_model=UploadProcDataResponse,
     responses=create_responses(_not_authorized, _bad_request),
@@ -2691,9 +2684,9 @@ async def _get_files_if_provided(
         # Only ok if uploaded file is a zip or a tar archive.
         ext = (
             '.zip'
-            if files.zipfile.is_zipfile(upload_path)
+            if zipfile.is_zipfile(upload_path)
             else '.tar'
-            if files.tarfile.is_tarfile(upload_path)
+            if tarfile.is_tarfile(upload_path)
             else None
         )
         if not ext:

@@ -26,6 +26,7 @@ Different wrappers are catered for different types of objects/operations.
 """
 
 from __future__ import annotations
+
 from functools import cached_property
 
 from nomad.datamodel import User

@@ -1,6 +1,6 @@
 # How to use the API
 
-This guide is about using NOMAD's REST APIs directly, e.g. via Python's *request*.
+This guide is about using NOMAD's REST APIs directly, e.g. via Python's `requests` library.
 
 To access the processed data with our client library `nomad-lab` follow
 [How to access processed data](archive_query.md). You can also watch our
@@ -8,14 +8,17 @@ To access the processed data with our client library `nomad-lab` follow
 
 ## Different options to use the API
 
-NOMAD offers all its functionality through application
-programming interfaces (APIs). More specifically [RESTful HTTP APIs](https://en.wikipedia.org/wiki/Representational_state_transfer){:target="_blank"} that allows you
-to use NOMAD as a set of resources (think data) that can be uploaded, accessed, downloaded,
-searched for, etc. via [HTTP requests](https://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol){:target="_blank"}.
+NOMAD offers all its functionality through application programming interfaces (APIs). More
+specifically
+[RESTful HTTP APIs](https://en.wikipedia.org/wiki/Representational_state_transfer){:target="_blank"}
+that allows you to use NOMAD as a set of resources (think data) that can be uploaded,
+accessed, downloaded, searched for, etc. via
+[HTTP requests](https://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol){:target="_blank"}.
 
-You can get an overview on all NOMAD APIs on the [API page]({{ nomad_url() }}../../gui/analyze/apis).
-We will focus here on NOMAD's main API (v1). In fact, this API is also used by
-the web interface and should provide everything you need.
+You can get an overview on all NOMAD APIs on the
+[API page]({{ nomad_url() }}../../gui/analyze/apis). We will focus here on NOMAD's main
+API (v1). In fact, this API is also used by the web interface and should provide
+everything you need.
 
 There are different tools and libraries to use the NOMAD API that come with different
 trade-offs between expressiveness, learning curve, and convenience.
@@ -25,24 +28,25 @@ trade-offs between expressiveness, learning curve, and convenience.
 For example to see the metadata for all entries with elements *Ti* and *O* go here:
 [{{ nomad_url() }}/v1/entries?elements=Ti&elements=O]({{ nomad_url() }}/v1/entries?elements=Ti&elements=O)
 
-#### Use *curl* or *wget*
+#### Use `curl` or `wget`
 
-REST API's use resources located via URLs. You access URLs with *curl* or *wget*. Same
+REST API's use resources located via URLs. You access URLs with `curl` or `wget`. Same
 *Ti*, *O* example as before:
+
 ```sh
 curl "{{ nomad_url() }}/v1/entries?results.material.elements=Ti&results.material.elements=O" | python -m json.tool
 ```
 
-####  Use Python and requests
+####  Use Python and `requests`
 
-Requests is a popular Python library to use the internets HTTP protocol that is used to
+`Requests` is a popular Python library to use the internet's HTTP protocol that is used to
 communicate with REST APIs. Install with `pip install requests`.
 See [the initial example](#using-request).
 
 #### Use our dashboard
 
-The NOMAD API has an [OpenAPI dashboard]({{ nomad_url() }}/v1). This is an interactive documentation of all
-API functions that allows you to try these functions in the browser.
+The NOMAD API has an [OpenAPI dashboard]({{ nomad_url() }}/v1). This is an interactive
+documentation of all API functions that allows you to try these functions in the browser.
 
 #### Use NOMAD's Python package
 
@@ -50,7 +54,7 @@ Install the [NOMAD Python client library](./pythonlib.md) and use it's `ArchiveQ
 functionality for a more convenient query based access of archive data following the
 [How-to access the processed data](archive_query.md) guide.
 
-## Using request
+## Using `requests`
 
 If you are comfortable with REST APIs and using Pythons `requests` library, this example
 demonstrates the basic concepts of NOMAD's main API. You can get more documentation and
@@ -118,10 +122,10 @@ This will give you something like this:
 }
 ```
 
-The `entry_id` is a unique identifier for, well, entries. You can use it to access
-other entry data. For example, you want to access the entry's archive. More
-precisely, you want to gather the formula and energies from the main workflow result.
-The following requests the archive based on the `entry_id` and only requires some archive sections.
+The `entry_id` is a unique identifier for, well, entries. You can use it to access other
+entry data. For example, you want to access the entry's archive. More precisely, you want
+to gather the formula and energies from the main workflow result. The following requests
+the archive based on the `entry_id` and only requires some archive sections.
 
 ```py
 first_entry_id = response_json['data'][0]['entry_id']
@@ -222,11 +226,13 @@ The result will look like this:
 }
 ```
 
-You can work with the results in the given JSON (or respective Python dict/list) data already.
-If you have [NOMAD's Python library](./pythonlib.md) installed ,
-you can take the archive data and use the Python interface.
-The [Python interface](../plugins/schema_packages.md#wrap-data-with-python-schema-classes) will help with code-completion (e.g. in notebook environments),
-resolve archive references (e.g. from workflow to calculation to system), and allow unit conversion:
+You can work with the results in the given JSON (or respective Python dict/list) data
+already. If you have [NOMAD's Python library](./pythonlib.md) installed, you can take the
+archive data and use the Python interface. The
+[Python interface](../plugins/schema_packages.md#wrap-data-with-python-schema-classes)
+will help with code-completion (e.g. in notebook environments), resolve archive references
+(e.g. from workflow to calculation to system), and allow unit conversion:
+
 ```py
 from nomad.datamodel import EntryArchive
 from nomad.metainfo import units
@@ -238,6 +244,7 @@ print(result.energy.total.value.to(units('eV')))
 ```
 
 This will give you an output like this:
+
 ```
 OOSrTiOOOSrTiOOOSrTiOFF
 -355626.93095025205 electron_volt
@@ -252,7 +259,8 @@ the API:
 - Raw files, the files as they were uploaded to NOMAD.
 - Archive data, all of the extracted data for an entry.
 
-There are also different entities (see also [Datamodel](../../explanation/basics.md)) with different functions in the API:
+There are also different entities (see also [Datamodel](../../explanation/basics.md))
+with different functions in the API:
 
 - Entries
 - Uploads
@@ -275,17 +283,20 @@ Let's discuss some of the common concepts.
 
 ### Response layout
 
-Functions that have a JSON response, will have a common layout. First, the response will contain all keys and values of the request. The request is not repeated verbatim, but
-in a normalized form. Abbreviations in search queries might be expanded, default values for optional parameters are added, or additional response specific information
-is included. Second, the response will contain the results under the key `data`.
+Functions that have a JSON response, will have a common layout. First, the response will
+contain all keys and values of the request. The request is not repeated verbatim, but
+in a normalized form. Abbreviations in search queries might be expanded, default values
+for optional parameters are added, or additional response specific information is
+included. Second, the response will contain the results under the key `data`.
 
 ### Owner
 
-All functions that allow a query will also allow to specify the `owner`. Depending on
-the API function, its default value will be mostly `visible`. Some values are only
-available if you are [logged in](#authentication).
+All functions that allow a query will also allow to specify the `owner`. Depending on the
+API function, its default value will be mostly `visible`. Some values are only available
+if you are [logged in](#authentication).
 
 {{ doc_snippet('owner')}}
+
 ### Queries
 
 {{ doc_snippet('query') }}
@@ -293,10 +304,11 @@ available if you are [logged in](#authentication).
 ### Pagination
 
 When you issue a query, usually not all results can be returned. Instead, an API returns
-only one *page*. This behavior is controlled through pagination parameters,
-like `page_site`, `page`, `page_offset`, or `page_after_value`.
+only one *page*. This behavior is controlled through pagination parameters, like
+`page_site`, `page`, `page_offset`, or `page_after_value`.
 
 Let's consider a search for entries as an example.
+
 ```py
 response = requests.post(
     f'{base_url}/entries/query',
@@ -313,8 +325,9 @@ response = requests.post(
 )
 ```
 
-This will only result in a response with a maximum of 10 entries. The response will contain a
-`pagination` object like this:
+This will only result in a response with a maximum of 10 entries. The response will
+contain a `pagination` object like this:
+
 ```json
 {
     "page_size": 10,
@@ -345,10 +358,11 @@ response = requests.post(
     }
 )
 ```
+
 You will get the next 10 results.
 
-Here is a full example that collects the first 100 formulas from entries that match
-a certain query by paginating.
+Here is a full example that collects the first 100 formulas from entries that match a
+certain query by paginating.
 
 ```python
 --8<-- "examples/docs/api/pagination.py"
@@ -357,16 +371,21 @@ a certain query by paginating.
 ### Authentication
 
 Most of the API operations do not require any authorization and can be freely used
-without a user or credentials. However, to upload, edit, or view your own and potentially unpublished data, the API needs to authenticate you.
+without a user or credentials. However, to upload, edit, or view your own and potentially
+unpublished data, the API needs to authenticate you.
 
 The NOMAD API uses OAuth and tokens to authenticate users. We provide simple operations
 that allow you to acquire an *access token* via username and password:
 
 ```py
+import os
+
 import requests
 
-response = requests.get(
-    '{{ nomad_url() }}/v1/auth/token', params=dict(username='myname', password='mypassword'))
+response = requests.post(
+    '{{ nomad_url() }}/v1/auth/token',
+    data={'username': os.getenv('NOMAD_USERNAME'), 'password': os.getenv('NOMAD_PASSWORD')},
+)
 token = response.json()['access_token']
 
 response = requests.get(
@@ -379,12 +398,14 @@ If you have the [NOMAD Python package](./pythonlib.md) installed. You can use it
 implementation:
 
 ```py
+import os
+
 import requests
 from nomad.client import Auth
 
 response = requests.get(
     '{{ nomad_url() }}/v1/uploads',
-    auth=Auth(user='myname or email', password='mypassword'))
+    auth=Auth(user=os.getenv('NOMAD_USERNAME'), password=os.getenv('NOMAD_PASSWORD')))
 uploads = response.json()['data']
 ```
 
@@ -426,9 +447,9 @@ curl "{{ nomad_url() }}/v1/entries/raw?results.material.elements=Ti&results.mate
 ```
 
 ## Access processed data (archives)
-Above under [using requests](#using-request), you've already learned how to access
-archive data. A special feature of the archive API functions is that you can define what is `required`
-from the archives.
+Above under [using requests](#using-request), you've already learned how to access archive
+data. A special feature of the archive API functions is that you can define what is
+`required` from the archives.
 
 ```py
 response = requests.post(
@@ -476,13 +497,14 @@ or 10 concurrent requests.
 
 Consider to use endpoints that allow you to retrieve full
 pages of resources, instead of endpoints that force you to access resources one at a time.
-See also the sections on [types of data](#different-kinds-of-data) and [pagination](#pagination).
+See also the sections on [types of data](#different-kinds-of-data) and
+[pagination](#pagination).
 
 However, pagination also has its limits and you might ask for pages that are too large.
-If you get responses in the 400 range, e.g. **422 Unprocessable Content** or **400 Bad request**,
-you might hit an api limit. Those responses are typically accompanied by an error message
-in the response body that will inform you about the limit, e.g. the maximum allowed
-page size.
+If you get responses in the 400 range, e.g. **422 Unprocessable Content** or
+**400 Bad request**, you might hit an api limit. Those responses are typically accompanied
+by an error message in the response body that will inform you about the limit, e.g. the
+maximum allowed page size.
 
 ## User Groups
 

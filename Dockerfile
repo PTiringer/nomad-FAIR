@@ -20,8 +20,9 @@
 # If you need more help, visit the Dockerfile reference guide at
 # https://docs.docker.com/engine/reference/builder/
 
-FROM node:20 AS base_node
-FROM python:3.12-slim AS base_python
+# node20 image local copy
+FROM gitlab-registry.mpcdf.mpg.de/nomad-lab/nomad-fair:node AS base_node
+FROM ghcr.io/astral-sh/uv:0.5-python3.12-bookworm-slim AS base_python
 # Keeps Python from buffering stdout and stderr to avoid situations where
 # the application crashes without emitting any logs due to buffering.
 ENV PYTHONUNBUFFERED=1
@@ -61,8 +62,6 @@ RUN apt-get update \
 
 WORKDIR /app
 
-# Install UV
-COPY --from=ghcr.io/astral-sh/uv:0.4 /uv /bin/uv
 
 # Python environment
 COPY requirements.txt .
@@ -91,9 +90,6 @@ RUN apt-get update \
       unzip \
       git \
  && rm -rf /var/lib/apt/lists/*
-
-# Install UV
-COPY --from=ghcr.io/astral-sh/uv:0.4 /uv /bin/uv
 
 # Python environment
 COPY requirements-dev.txt .

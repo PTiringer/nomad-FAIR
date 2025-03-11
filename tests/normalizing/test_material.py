@@ -16,18 +16,18 @@
 # limitations under the License.
 #
 
+import ase.build
 import numpy as np
 import pytest
 from ase import Atoms
-import ase.build
 from matid.symmetry.wyckoffset import WyckoffSet  # pylint: disable=import-error
 
-from nomad.units import ureg
 from nomad import atomutils
 from nomad.config import config
-from nomad.utils import hash
-from nomad.normalizing.common import ase_atoms_from_nomad_atoms
 from nomad.datamodel.results import ElementalComposition
+from nomad.normalizing.common import ase_atoms_from_nomad_atoms
+from nomad.units import ureg
+from nomad.utils import hash
 from tests.normalizing.conftest import get_template_for_structure
 
 

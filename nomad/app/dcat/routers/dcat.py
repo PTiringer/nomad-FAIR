@@ -16,22 +16,27 @@
 # limitations under the License.
 #
 
-from typing import Union
-from fastapi import APIRouter, Query, Path, HTTPException, status, Depends
-from datetime import datetime, date
+from datetime import date, datetime
+from enum import Enum
+
 from elasticsearch_dsl import Q
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 
 from nomad import utils
-from nomad.utils import strip
-from nomad.search import search
-from nomad.app.v1.models import MetadataPagination, HTTPExceptionModel
+from nomad.app.v1.models import HTTPExceptionModel, MetadataPagination
 from nomad.app.v1.utils import create_responses
+from nomad.search import search
+from nomad.utils import strip
 
 from ..common import rdf_response
 from ..mapping import Mapping
 
 router = APIRouter()
-default_tag = 'dcat'
+
+
+class APITag(str, Enum):
+    DEFAULT = 'dcat'
+
 
 logger = utils.get_logger(__name__)
 
@@ -58,7 +63,7 @@ _raw_response = (
 
 @router.get(
     '/datasets/{entry_id}',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Returns a DCAT dataset for a given NOMAD entry id.',
     responses=create_responses(_bad_id_response, _raw_response),
 )
@@ -83,7 +88,7 @@ async def get_dataset(
 
 @router.get(
     '/catalog/',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Returns a DCAT dataset for a given NOMAD entry id.',
     responses=create_responses(_raw_response),
 )

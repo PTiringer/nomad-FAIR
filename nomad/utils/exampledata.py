@@ -16,16 +16,16 @@
 # limitations under the License.
 #
 
-from typing import List, Optional, Union, Dict, Any
-from datetime import datetime, timedelta
 import os
+from datetime import datetime, timedelta
+from typing import Any
 
-from nomad import search, files
-from nomad.datamodel import EntryMetadata, EntryArchive, Results
-from nomad.datamodel.metainfo.workflow import Workflow
-from nomad.processing.data import mongo_upload_metadata
-from nomad.normalizing import normalizers
+from nomad import files, search
+from nomad.datamodel import EntryArchive, EntryMetadata, Results
 from nomad.datamodel.metainfo import runschema
+from nomad.datamodel.metainfo.workflow import Workflow
+from nomad.normalizing import normalizers
+from nomad.processing.data import mongo_upload_metadata
 
 
 class ExampleData:
@@ -61,8 +61,8 @@ class ExampleData:
         es_nomad_version: str = None,
         archive_nomad_version: str = None,
     ):
-        from tests.test_files import create_test_upload_files
         from nomad import processing as proc
+        from tests.test_files import create_test_upload_files
 
         errors = None
 
@@ -145,8 +145,8 @@ class ExampleData:
         parser_name: str | None = None,
     ):
         """Creates an entry from a mainfile which then gets parsed and normalized."""
-        from nomad.parsing import parsers
         from nomad import parsing
+        from nomad.parsing import parsers
 
         assert upload_id in self.uploads, 'Must create the upload first'
 

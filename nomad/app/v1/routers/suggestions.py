@@ -16,19 +16,18 @@
 # limitations under the License.
 #
 
-from typing import List, Dict, Optional, Set
 from collections import defaultdict
-from pydantic import BaseModel, Field
-from fastapi import APIRouter, Depends, Request, HTTPException, status
+
+from elasticsearch.exceptions import RequestError
 from elasticsearch_dsl import Search
 from elasticsearch_dsl.utils import AttrList
-from elasticsearch.exceptions import RequestError
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel, Field
 
 from nomad.metainfo.elasticsearch_extension import entry_index, entry_type
 
-from .auth import create_user_dependency
 from ..models import User
-
+from .auth import create_user_dependency
 
 router = APIRouter()
 

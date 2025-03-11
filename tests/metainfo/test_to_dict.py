@@ -16,16 +16,16 @@
 # limitations under the License.
 #
 
-import pytest
 import numpy as np
+import pytest
 import yaml
 
 from nomad.app.v1.routers.metainfo import (
     get_package_by_section_definition_id,
     store_package_definition,
 )
-from nomad.metainfo import MSection, MCategory, Quantity, SubSection
-from nomad.metainfo.metainfo import Datetime, Package, MEnum, Reference, Definition
+from nomad.metainfo import MCategory, MSection, Quantity, SubSection
+from nomad.metainfo.metainfo import Definition, MEnum, Package, Reference
 
 # resolve_references are tested in .test_references
 # type specific serialization is tested in .test_quantities
@@ -66,7 +66,7 @@ expected_child = dict(**values)
 expected_root = dict(
     child=expected_child,
     children=[expected_child, expected_child],
-    abstract=dict(m_def='tests.metainfo.test_to_dict.Child', **expected_child),
+    abstract=dict(m_def='tests.metainfo.test_to_dict.Child', **expected_child),  # type: ignore
     **values,
 )
 

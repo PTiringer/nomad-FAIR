@@ -34,18 +34,9 @@ partially implemented.
 
 import json
 import math
+from collections.abc import Callable, Generator, Iterable, Iterator
 from enum import Enum
-from typing import (
-    Any,
-    Dict,
-    List,
-    Optional,
-    Tuple,
-    Union,
-    cast,
-)
-from collections.abc import Callable
-from collections.abc import Generator, Iterable, Iterator
+from typing import Any, cast
 
 import elasticsearch.helpers
 from elasticsearch.exceptions import RequestError, TransportError
@@ -85,12 +76,7 @@ from nomad.app.v1.models.models import (
     Value,
 )
 from nomad.config import config
-from nomad.datamodel import (
-    EntryArchive,
-    EntryMetadata,
-    AuthorReference,
-    UserReference,
-)
+from nomad.datamodel import AuthorReference, EntryArchive, EntryMetadata, UserReference
 from nomad.groups import MongoUserGroup
 from nomad.metainfo import Datetime, Package, Quantity
 from nomad.metainfo.elasticsearch_extension import (

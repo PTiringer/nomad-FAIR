@@ -16,18 +16,19 @@
 # limitations under the License.
 #
 
-from typing import List, Any, Union, Dict, Optional
-from enum import Enum
-from pydantic import field_validator, ConfigDict, Field, validator
 import re
+from enum import Enum
+from typing import Any
 
+from pydantic import ConfigDict, Field, field_validator, model_validator
 from pydantic.main import BaseModel
 
+from nomad.metainfo import AnnotationModel, Datetime, MEnum, Quantity, Reference
 from nomad.utils import strip
-from nomad.metainfo import AnnotationModel, MEnum, Datetime, Reference, Quantity
-from .plot import PlotlyError
-from ..data import Query
+
 from ...metainfo.data_type import Datatype
+from ..data import Query
+from .plot import PlotlyError
 
 
 class ELNComponentEnum(str, Enum):
@@ -1140,6 +1141,69 @@ class SchemaAnnotation(AnnotationModel):
     )
 
 
+class Mapper(BaseModel):
+    """
+    Specifications to map the contents from a source specified by mapper. If string,
+    will be a path to the data following the jmespath grammar
+    (see https://jmespath.org/specification.html) eg:
+
+        'length(.array.set.set)'
+
+    If additional transformation is required to the data before assignment, one can
+    provide a tuple of function name and list of paths to the source data. The data are
+    resolved then passed to the function which should be implemented in the parser
+    class method.
+
+        For example:
+
+        ('get_eigenvalues_energies',
+            [
+                '.array.set.set[].set[].r',
+                'length(.array.set.set)',
+                'length(.array.set.set[0].set)'
+            ]
+        )
+    """
+
+    mapper: str | tuple[str, list[str]] | tuple[str, list[str], dict[str, Any]] = Field(
+        '',
+        description="""Mapper from dictionary to archive property either as path"""
+        """ or Tuple of name of transformer function and list of paths to be resolved"""
+        """ as argument to the function.""",
+    )
+    remove: bool = Field(None, description="""Removes data from source.""")
+    cache: bool = Field(None, description="""Store value.""")
+    path_parser: str = Field(
+        'jmespath', description="""Name of the parser for paths."""
+    )
+    unit: str = Field(None, description="""Pint unit to be applied to value.""")
+    indices: str = Field(
+        None, description="""Name of function to evaluate indices to include in data"""
+    )
+    search: str = Field(None, description="""Path to search on value.""")
+
+
+class MappingAnnotation(AnnotationModel):
+    """
+    Annotation model used with mapping parser.
+
+    class MySection(MSection):
+
+        m_def = Section(a_mapping={'hdf5': {mapper: 'data'}})
+    """
+
+    @model_validator(mode='before')
+    def validate_mapper(cls, values):
+        for name, value in values.items():
+            if name in cls.model_fields:
+                continue
+            values[name] = Mapper.model_validate(value)
+        return values
+
+    class Config:
+        extra = 'allow'
+
+
 AnnotationModel.m_registry['eln'] = ELNAnnotation
 AnnotationModel.m_registry['browser'] = BrowserAnnotation
 AnnotationModel.m_registry['tabular_parser'] = TabularParserAnnotation
@@ -1148,3 +1212,4 @@ AnnotationModel.m_registry['hdf5'] = HDF5Annotation
 AnnotationModel.m_registry['plot'] = PlotAnnotation
 AnnotationModel.m_registry['h5web'] = H5WebAnnotation
 AnnotationModel.m_registry['schema'] = SchemaAnnotation
+AnnotationModel.m_registry['mapping'] = MappingAnnotation

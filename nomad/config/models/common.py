@@ -16,9 +16,9 @@
 # limitations under the License.
 #
 
-import logging
-from typing import List, Dict, Tuple, Any, Optional, Union, cast, TypeVar
-from pydantic import ConfigDict, model_validator, BaseModel, Field  # pylint: disable=unused-import
+from typing import Any, TypeVar, cast
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator  # noqa: F401
 
 ConfigBaseModelBound = TypeVar('ConfigBaseModelBound', bound='ConfigBaseModel')
 

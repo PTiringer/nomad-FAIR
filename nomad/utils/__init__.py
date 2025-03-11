@@ -38,7 +38,7 @@ Depending on the configuration all logs will also be send to a central logstash.
 .. autofunc::nomad.utils.strip
 """
 
-from typing import List, Union, Any, Dict, Optional
+from typing import Any
 from collections.abc import Iterable
 from collections import OrderedDict
 from functools import reduce
@@ -54,6 +54,7 @@ from datetime import timedelta
 import collections
 import logging
 import inspect
+from importlib.metadata import PackageNotFoundError, metadata, version
 
 import orjson
 import os
@@ -1147,3 +1148,46 @@ def dict_to_dataframe(
         filtered_df = filter_df_columns_by_prefix(df, keys_to_filter)
         filtered_dict = dataframe_to_dict(filtered_df)
         return pd.json_normalize(filtered_dict, errors='ignore')
+
+
+def nomad_distro_metadata() -> str | None:
+    """
+    Retrieves metadata for the 'nomad-distribution' package, including the
+    repository URL with latest commit hash.
+
+    Returns:
+        The repo url with commit hash or None if unavailable.
+    """
+    try:
+        distro_metadata = metadata('nomad-distribution')
+
+        # Extract repository URL from Project-URL metadata
+        project_urls: list[str] = distro_metadata.get_all('Project-URL', [])
+        repo_url = next(
+            (
+                url.split(', ', 1)[1]
+                for url in project_urls
+                if url.startswith('repository, ')
+            ),
+            None,
+        )
+
+        distro_version = version('nomad-distribution')
+        if '+g' in distro_version:
+            # Split on '+g' to extract the commit hash from the version string, as 'g' is a Git-specific prefix.
+            commit = distro_version.split('+g')[
+                -1
+            ]  # Extract commit hash if present (setuptools_scm format)
+        else:
+            commit = (
+                f'v{distro_version}'  # Otherwise, assume it's a tag and prefix with 'v'
+            )
+
+        if not repo_url or not commit:
+            return None
+
+        commit_url = f'{repo_url}/tree/{commit}'
+
+        return commit_url
+    except (PackageNotFoundError, IndexError, StopIteration, KeyError):
+        return None

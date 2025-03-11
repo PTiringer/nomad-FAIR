@@ -1,23 +1,23 @@
-from typing import List, Dict, Set, Any
-from elasticsearch_dsl import Q
+from typing import Any
 
+from elasticsearch_dsl import Q
 from optimade.filterparser import LarkParser
+from optimade.models import StructureResource
 from optimade.server.entry_collections import EntryCollection
 from optimade.server.exceptions import BadRequest
 from optimade.server.mappers import StructureMapper
 from optimade.server.mappers.entries import classproperty
-from optimade.models import StructureResource
 
-from nomad.units import ureg
-from nomad.atomutils import Formula
-from nomad.search import search
-from nomad.app.v1.models import MetadataPagination, MetadataRequired
-from nomad.config import config
 from nomad import datamodel, files, utils
+from nomad.app.v1.models import MetadataPagination, MetadataRequired
+from nomad.atomutils import Formula
+from nomad.config import config
+from nomad.search import search
+from nomad.units import ureg
 
-from .filterparser import _get_transformer as get_transformer
-from .common import provider_specific_fields
 from ...archive import to_json
+from .common import provider_specific_fields
+from .filterparser import _get_transformer as get_transformer
 
 logger = utils.get_logger(__name__)
 

@@ -20,24 +20,28 @@
 API endpoint that deliver backend configuration details.
 """
 
-from typing import Dict, Any, List, Optional
 from datetime import datetime
+from enum import Enum
+from typing import Any
+
 from fastapi.routing import APIRouter
 from pydantic.fields import Field
 from pydantic.main import BaseModel
 
 from nomad import normalizing
+from nomad.app.v1.models import Aggregation, StatisticsAggregation
 from nomad.config import config
-from nomad.utils import strip
-from nomad.search import search
+from nomad.metainfo.elasticsearch_extension import entry_type
 from nomad.parsing import parsers
 from nomad.parsing.parsers import code_metadata
-from nomad.app.v1.models import Aggregation, StatisticsAggregation
-from nomad.metainfo.elasticsearch_extension import entry_type
-
+from nomad.search import search
+from nomad.utils import strip
 
 router = APIRouter()
-default_tag = 'info'
+
+
+class APITag(str, Enum):
+    DEFAULT = 'info'
 
 
 class MetainfoModel(BaseModel):
@@ -89,11 +93,11 @@ class InfoModel(BaseModel):
     normalizers: list[str]
     plugin_entry_points: list[dict] = Field(
         None,
-        desciption='List of plugin entry points that are activated in this deployment.',
+        description='List of plugin entry points that are activated in this deployment.',
     )
     plugin_packages: list[dict] = Field(
         None,
-        desciption='List of plugin packages that are installed in this deployment.',
+        description='List of plugin packages that are installed in this deployment.',
     )
     statistics: StatisticsModel = Field(None, description='General NOMAD statistics')
     search_quantities: dict
@@ -145,7 +149,7 @@ def statistics():
 
 @router.get(
     '',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Get information about the nomad backend and its configuration',
     response_model_exclude_unset=True,
     response_model_exclude_none=True,

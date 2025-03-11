@@ -16,39 +16,44 @@
 # limitations under the License.
 #
 
-import re
-import os
-import io
-import bs4
 import asyncio
-import httpx
-from fastapi import APIRouter, Query as FastApiQuery
-from pydantic import BaseModel, Field
-from typing import List, Any, Dict, Optional
+import io
+import os
+import re
 from datetime import datetime
+from enum import Enum
+from typing import Any
+
 import ase.io
+import bs4
+import httpx
+from asgiref.sync import async_to_sync
+from fastapi import APIRouter
+from fastapi import Query as FastApiQuery
 from mongoengine import (
-    Document,
-    StringField,
+    BooleanField,
     DateTimeField,
+    Document,
     IntField,
     ListField,
-    BooleanField,
+    StringField,
 )
 from mongoengine.queryset.visitor import Q
-from asgiref.sync import async_to_sync
+from pydantic import BaseModel, Field
 
 from nomad import utils
-from nomad.config import config
 from nomad.atomutils import Formula
+from nomad.config import config
 from nomad.processing.base import app
-
 
 logger = utils.get_logger(__name__)
 
 router = APIRouter()
 
-default_tag = 'resources'
+
+class APITag(str, Enum):
+    DEFAULT = 'resources'
+
 
 # TODO generate list from optimade api
 optimade_providers = {
@@ -664,7 +669,7 @@ def retrieve_resources(
 
 @router.get(
     '/',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Get a list of external resources.',
     response_model=ResourcesModel,
     response_model_exclude_unset=True,

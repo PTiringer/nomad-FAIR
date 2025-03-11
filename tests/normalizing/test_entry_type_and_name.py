@@ -16,8 +16,10 @@
 # limitations under the License.
 #
 import pytest
+
 import tests
-from .conftest import run_normalize, run_processing
+
+from .conftest import run_normalize
 
 
 @pytest.fixture(scope='session')

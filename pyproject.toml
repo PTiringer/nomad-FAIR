@@ -26,6 +26,7 @@ dependencies = [
     'httpx>=0.23.3,<0.28',
     'importlib_metadata~=7.1.0',
     'jmespath>=0.10.0',
+    'jsonpath-ng',
     'kaleido==0.2.1',
     'lxml-html-clean>=0.1.0',
     'lxml>=5.2',
@@ -78,7 +79,7 @@ infrastructure = [
     'celery>=5.0',
     'dockerspawner==13.0.0',
     'elasticsearch>=7.0,<8',
-    'fastapi>0.100',              # later versions pending pydantic v2 upgrade
+    'fastapi>0.100',
     'filelock==3.3.1',
     'gitpython>=3.0',
     'gunicorn>=21.2.0,<22.0.0',
@@ -121,7 +122,7 @@ dev = [
     'mkdocs-material>=9.0',
     'mkdocs-redirects>=1.0',
     'mkdocs>=1.0',
-    'mypy==1.0.1',                                    # bug: incompatible with derived models of pydantic v1
+    'mypy>=1.15',
     'names==0.3.0',
     'uv>=0.2.35',
     'pytest-asyncio>=0.23',
@@ -151,10 +152,12 @@ indent-width = 4
 
 [tool.ruff.lint]
 select = [
-    "E",  # pycodestyle
-    "W",  # pycodestyle
-    "PL", # pylint
-    "UP", # pyupgrade
+    "E",    # pycodestyle
+    "F401", # remove unused import
+    "I001", # sort imports
+    "PL",   # pylint
+    "UP",   # pyupgrade
+    "W",    # pycodestyle
 ]
 ignore = [
     "E501",    # Line too long ({width} > {limit} characters)
@@ -170,11 +173,12 @@ ignore = [
     "PLW2901", # redefined-loop-name
     "PLR1714", # consider-using-in
     "PLR5501", # else-if-used
-    "UP035",   # deprecated-import
 ]
 fixable = ["ALL"]
+isort.split-on-trailing-comma = false
 
 [tool.ruff.lint.extend-per-file-ignores]
+"__init__.py" = ["F401", "I001"]
 "nomad/app/v1/models/graph/utils.py" = [
     "UP007",
 ] # causes pydantic model building errors
@@ -203,7 +207,7 @@ ignore_missing_imports = true
 follow_imports = "silent"
 no_strict_optional = true
 disable_error_code = "import, annotation-unchecked"
-
+plugins = ["pydantic.mypy"]
 
 [tool.setuptools_scm]
 

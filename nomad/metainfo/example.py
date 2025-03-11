@@ -18,21 +18,22 @@
 
 """An example metainfo package."""
 
-import numpy as np
 from datetime import datetime
 
-from nomad.units import ureg
+import numpy as np
+
 from nomad.metainfo import (
-    MSection,
-    MCategory,
-    Section,
-    Quantity,
-    Package,
-    SubSection,
-    MEnum,
     Datetime,
+    MCategory,
+    MEnum,
+    MSection,
+    Package,
+    Quantity,
+    Section,
+    SubSection,
     constraint,
 )
+from nomad.units import ureg
 
 m_package = Package(links=['https://nomad-lab.eu/prod/rae/docs/metainfo.html'])
 

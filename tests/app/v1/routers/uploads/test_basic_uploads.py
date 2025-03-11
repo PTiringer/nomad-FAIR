@@ -18,12 +18,12 @@
 
 import io
 import os
+import tempfile
 import time
 import zipfile
-from datetime import datetime
-import tempfile
-from typing import Any, Dict, List
 from collections.abc import Iterable
+from datetime import datetime
+from typing import Any
 
 import pytest
 import requests
@@ -41,19 +41,18 @@ from tests.app.v1.routers.common import (
     assert_response,
     perform_get,
 )
+from tests.config.models.test_plugins import (
+    mock_example_upload_entry_point,
+    mock_plugin_package,
+)
 from tests.processing.test_edit_metadata import (
     all_admin_metadata,
     all_coauthor_metadata,
     assert_metadata_edited,
 )
-from tests.config.models.test_plugins import (
-    mock_plugin_package,
-    mock_example_upload_entry_point,
-)
 from tests.test_files import (
     assert_upload_files,
     empty_file,
-    example_directory,
     example_file_aux,
     example_file_corrupt_zip,
     example_file_mainfile_different_atoms,

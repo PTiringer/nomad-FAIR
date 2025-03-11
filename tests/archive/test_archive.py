@@ -15,42 +15,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from datetime import datetime
-from typing import Dict, Any, Union
-import pytest
-import msgpack
-from io import BytesIO
-import os.path
 import json
+import os.path
+from datetime import datetime
+from io import BytesIO
+from typing import Any
 
+import msgpack
+import pytest
 import yaml
 
 from nomad import utils
-from nomad.config import config
-from nomad.archive.converter import convert_archive
-from nomad.metainfo import (
-    MSection,
-    Quantity,
-    Reference,
-    SubSection,
-    QuantityReference,
-    MetainfoError,
-    Context,
-    MProxy,
-)
-from nomad.datamodel import EntryArchive, ClientContext
-from nomad.archive.storage import _decode, _entries_per_block, to_json
 from nomad.archive import (
-    write_archive,
-    read_archive,
     ArchiveQueryError,
+    RequiredReader,
+    compute_required_with_referenced,
+    create_partial_archive,
     query_archive,
-    write_partial_archive_to_mongo,
+    read_archive,
     read_partial_archive_from_mongo,
     read_partial_archives_from_mongo,
-    create_partial_archive,
-    compute_required_with_referenced,
-    RequiredReader,
+    write_archive,
+    write_partial_archive_to_mongo,
+)
+from nomad.archive.converter import convert_archive
+from nomad.archive.storage import _decode, _entries_per_block, to_json
+from nomad.config import config
+from nomad.datamodel import ClientContext, EntryArchive
+from nomad.metainfo import (
+    Context,
+    MetainfoError,
+    MProxy,
+    MSection,
+    Quantity,
+    QuantityReference,
+    Reference,
+    SubSection,
 )
 from nomad.utils.exampledata import ExampleData
 

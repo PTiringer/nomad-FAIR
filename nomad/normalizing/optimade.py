@@ -16,19 +16,18 @@
 # limitations under the License.
 #
 
-from typing import Any, Dict
-import numpy as np
 import re
+from typing import Any
+
 import ase.data
 import ase.formula
+import numpy as np
 import pint.quantity
 
-from nomad.datamodel import EntryArchive
 from nomad.atomutils import Formula
+from nomad.datamodel import EntryArchive, EntryMetadata, OptimadeEntry, Species
 from nomad.normalizing.normalizer import SystemBasedNormalizer
 from nomad.units import ureg
-from nomad.datamodel import OptimadeEntry, Species, EntryMetadata
-
 
 species_re = re.compile(r'^([A-Z][a-z]?)(\d*)$')
 atom_label_re = re.compile(

@@ -15,95 +15,85 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from datetime import datetime
-
-from enum import Enum
-from typing import Any
-from collections.abc import Iterator
-from fastapi import (
-    APIRouter,
-    Depends,
-    Path,
-    status,
-    HTTPException,
-    Request,
-    Query as QueryParameter,
-    Body,
-)
-from fastapi.responses import StreamingResponse, ORJSONResponse
-from fastapi.exceptions import RequestValidationError
-from pydantic import (
-    ConfigDict,
-    field_validator,
-    BaseModel,
-    Field,
-)
-import os.path
 import io
 import json
+import os.path
+from collections.abc import Iterator
+from datetime import datetime
+from enum import Enum
+from typing import Any
+
 import orjson
+import yaml
+from fastapi import APIRouter, Body, Depends, HTTPException, Path, Request, status
+from fastapi import Query as QueryParameter
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import ORJSONResponse, StreamingResponse
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.main import create_model
 from starlette.responses import Response
-import yaml
 
-from nomad import files, utils, metainfo, processing as proc
-from nomad import datamodel
+from nomad import datamodel, files, metainfo, utils
+from nomad import processing as proc
+from nomad.archive import ArchiveQueryError, RequiredReader, RequiredValidationError
 from nomad.config import config
 from nomad.config.models.config import Reprocess
 from nomad.datamodel import EditableUserMetadata
 from nomad.datamodel.context import ServerContext
 from nomad.files import StreamedFile, create_zipstream_async
-from nomad.processing.data import Upload
-from nomad.utils import strip
-from nomad.archive import RequiredReader, RequiredValidationError, ArchiveQueryError
 from nomad.groups import get_group_ids
+from nomad.metainfo.elasticsearch_extension import entry_type
+from nomad.processing.data import Upload
 from nomad.search import (
     AuthenticationRequiredError,
     QueryValidationError,
     SearchError,
     search,
-    update_metadata as es_update_metadata,
 )
-from nomad.metainfo.elasticsearch_extension import entry_type
+from nomad.search import update_metadata as es_update_metadata
+from nomad.utils import strip
 
-from .auth import create_user_dependency
+from ..models import (
+    Aggregation,
+    Files,
+    HTTPExceptionModel,
+    Metadata,
+    MetadataEditRequest,
+    MetadataPagination,
+    MetadataRequired,
+    MetadataResponse,
+    Owner,
+    Pagination,
+    PaginationResponse,
+    Query,
+    QueryParameters,
+    TermsAggregation,
+    User,
+    WithQuery,
+    WithQueryAndPagination,
+    files_parameters,
+    metadata_pagination_parameters,
+    metadata_required_parameters,
+)
 from ..utils import (
-    create_download_stream_zipped,
-    create_download_stream_raw_file,
-    browser_download_headers,
     DownloadItem,
+    browser_download_headers,
+    create_download_stream_raw_file,
+    create_download_stream_zipped,
     create_responses,
     log_query,
 )
-from ..models import (
-    Aggregation,
-    Pagination,
-    PaginationResponse,
-    MetadataPagination,
-    TermsAggregation,
-    WithQuery,
-    WithQueryAndPagination,
-    MetadataRequired,
-    MetadataResponse,
-    Metadata,
-    MetadataEditRequest,
-    Files,
-    Query,
-    User,
-    Owner,
-    QueryParameters,
-    metadata_required_parameters,
-    files_parameters,
-    metadata_pagination_parameters,
-    HTTPExceptionModel,
-)
-
+from .auth import create_user_dependency
 
 router = APIRouter()
-default_tag = 'entries'
-metadata_tag = 'entries/metadata'
-raw_tag = 'entries/raw'
-archive_tag = 'entries/archive'
+
+
+class APITag(str, Enum):
+    DEFAULT = 'entries'
+    METADATA = 'entries/metadata'
+    RAW = 'entries/raw'
+    ARCHIVE = 'entries/archive'
+
 
 logger = utils.get_logger(__name__)
 
@@ -277,19 +267,21 @@ class EntryMetadataResponse(BaseModel):
 
 
 class EntryMetadataEditActionField(BaseModel):
-    value: str = Field(None, description='The value/values that is set as a string.')
+    value: str | None = Field(
+        None, description='The value/values that is set as a string.'
+    )
     success: bool | None = Field(
         None, description='If this can/could be done. Only in API response.'
     )
     message: str | None = Field(
         None,
-        descriptin='A message that details the action result. Only in API response.',
+        description='A message that details the action result. Only in API response.',
     )
 
 
-EntryMetadataEditActions = create_model(
-    'EntryMetadataEditActions',
-    **{  # type: ignore
+EntryMetadataEditActions: Any = create_model(
+    'EntryMetadataEditActions',  # type: ignore
+    **{
         quantity.name: (
             EntryMetadataEditActionField | None
             if quantity.is_scalar
@@ -307,7 +299,7 @@ class EntryMetadataEdit(WithQuery):
     actions: EntryMetadataEditActions = Field(  # type: ignore
         None,
         description='Each action specifies a single value (even for multi valued quantities).',
-    )
+    )  # type: ignore
 
     @field_validator('owner')
     @classmethod
@@ -495,7 +487,7 @@ def perform_search(*args, **kwargs):
 
 @router.post(
     '/query',
-    tags=[metadata_tag],
+    tags=[APITag.METADATA],
     summary='Search entries and retrieve their metadata',
     response_model=MetadataResponse,
     responses=create_responses(_bad_owner_response),
@@ -536,7 +528,7 @@ async def post_entries_metadata_query(
 
 @router.get(
     '',
-    tags=[metadata_tag],
+    tags=[APITag.METADATA],
     summary='Search entries and retrieve their metadata',
     response_model=MetadataResponse,
     responses=create_responses(_bad_owner_response),
@@ -574,17 +566,32 @@ async def get_entries_metadata(
 
 
 def _do_exhaustive_search(
-    owner: Owner, query: Query, include: list[str], user: User
+    owner: Owner,
+    query: Query,
+    required: MetadataRequired,
+    user: User,
+    page_size: int = 100,
 ) -> Iterator[dict[str, Any]]:
-    page_after_value = None
+    """Perform a paginated search.
+
+    Args:
+        owner (Owner): The owner defining the search scope.
+        query (Query): The query specifying search filters and conditions.
+        required (MetadataRequired): Includes and excludes for the response.
+        user (User): The user performing the search, used for authorization.
+        page_size (int): The number of results per page.
+    """
+    page_after_value: str | None = None
     while True:
         response = perform_search(
             owner=owner,
             query=query,
             pagination=MetadataPagination(
-                page_size=100, page_after_value=page_after_value, order_by='upload_id'
+                page_size=page_size,
+                page_after_value=page_after_value,
+                order_by='upload_id',
             ),
-            required=MetadataRequired(include=include),
+            required=required,
             user_id=user.user_id if user is not None else None,
         )
 
@@ -719,7 +726,10 @@ def _answer_entries_raw_request(owner: Owner, query: Query, files: Files, user: 
         def download_items_generator():
             # go through all entries that match the query
             for entry_metadata in _do_exhaustive_search(
-                owner, query, include=search_includes, user=user
+                owner,
+                query,
+                required=MetadataRequired(include=search_includes),
+                user=user,
             ):
                 upload_id = entry_metadata['upload_id']
                 mainfile = entry_metadata['mainfile']
@@ -770,7 +780,7 @@ _entries_rawdir_query_docstring = strip(
 
 @router.post(
     '/rawdir/query',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Search entries and get their raw files metadata',
     description=_entries_rawdir_query_docstring,
     response_model=EntriesRawDirResponse,
@@ -790,7 +800,7 @@ async def post_entries_rawdir_query(
 
 @router.get(
     '/rawdir',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Search entries and get their raw files metadata',
     description=_entries_rawdir_query_docstring,
     response_model=EntriesRawDirResponse,
@@ -834,7 +844,7 @@ _entries_raw_query_docstring = strip(
 
 @router.post(
     '/raw/query',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Search entries and download their raw files',
     description=_entries_raw_query_docstring,
     response_class=StreamingResponse,
@@ -850,7 +860,7 @@ async def post_entries_raw_query(
 
 @router.get(
     '/raw',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Search entries and download their raw files',
     description=_entries_raw_query_docstring,
     response_class=StreamingResponse,
@@ -991,7 +1001,7 @@ _entries_archive_docstring = strip(
 
 @router.post(
     '/archive/query',
-    tags=[archive_tag],
+    tags=[APITag.ARCHIVE],
     summary='Search entries and access their archives',
     description=_entries_archive_docstring,
     response_model=EntriesArchiveResponse,
@@ -1025,7 +1035,7 @@ async def post_entries_archive_query(
 
 @router.get(
     '/archive',
-    tags=[archive_tag],
+    tags=[APITag.ARCHIVE],
     summary='Search entries and access their archives',
     description=_entries_archive_docstring,
     response_model=EntriesArchiveResponse,
@@ -1090,7 +1100,7 @@ def _answer_entries_archive_download_request(
     def streamed_files():
         # go through all entries that match the query
         for entry_metadata in _do_exhaustive_search(
-            owner, query, include=search_includes, user=user
+            owner, query, required=MetadataRequired(include=search_includes), user=user
         ):
             path = os.path.join(
                 entry_metadata['upload_id'], f'{entry_metadata["entry_id"]}.json'
@@ -1142,7 +1152,7 @@ _entries_archive_download_docstring = strip(
 
 @router.post(
     '/archive/download/query',
-    tags=[archive_tag],
+    tags=[APITag.ARCHIVE],
     summary='Search entries and download their archives',
     description=_entries_archive_download_docstring,
     response_class=StreamingResponse,
@@ -1164,7 +1174,7 @@ async def post_entries_archive_download_query(
 
 @router.get(
     '/archive/download',
-    tags=[archive_tag],
+    tags=[APITag.ARCHIVE],
     summary='Search entries and download their archives',
     description=_entries_archive_download_docstring,
     response_class=StreamingResponse,
@@ -1188,7 +1198,7 @@ async def get_entries_archive_download(
 
 @router.get(
     '/{entry_id}',
-    tags=[metadata_tag],
+    tags=[APITag.METADATA],
     summary='Get the metadata of an entry by its id',
     response_model=EntryMetadataResponse,
     responses=create_responses(_bad_id_response),
@@ -1225,7 +1235,7 @@ async def get_entry_metadata(
 
 @router.get(
     '/{entry_id}/rawdir',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Get the raw files metadata for an entry by its id',
     response_model=EntryRawDirResponse,
     responses=create_responses(_bad_id_response),
@@ -1264,7 +1274,7 @@ async def get_entry_rawdir(
 
 @router.get(
     '/{entry_id}/raw',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Get the raw data of an entry by its id',
     response_class=StreamingResponse,
     responses=create_responses(_bad_id_response, _raw_response),
@@ -1300,7 +1310,7 @@ async def get_entry_raw(
 
 @router.get(
     '/{entry_id}/raw/{path}',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Get the raw data of an entry by its id',
     response_class=StreamingResponse,
     responses=create_responses(
@@ -1430,7 +1440,7 @@ def answer_entry_archive_request(
 
 @router.post(
     '/{entry_id}/edit',
-    tags=[raw_tag],
+    tags=[APITag.RAW],
     summary='Edit a raw mainfile in archive format.',
     response_model=EntryEditResponse,
     response_model_exclude_unset=True,
@@ -1561,7 +1571,7 @@ async def post_entry_edit(
 
 @router.get(
     '/{entry_id}/archive',
-    tags=[archive_tag],
+    tags=[APITag.ARCHIVE],
     summary='Get the archive for an entry by its id',
     response_model=EntryArchiveResponse,
     response_model_exclude_unset=True,
@@ -1585,7 +1595,7 @@ async def get_entry_archive(
 
 @router.get(
     '/{entry_id}/archive/download',
-    tags=[archive_tag],
+    tags=[APITag.ARCHIVE],
     summary='Get the archive for an entry by its id as plain archive json',
     responses=create_responses(_bad_id_response, _archive_download_response),
 )
@@ -1607,7 +1617,7 @@ async def get_entry_archive_download(
 
 @router.post(
     '/{entry_id}/archive/query',
-    tags=[archive_tag],
+    tags=[APITag.ARCHIVE],
     summary='Get the archive for an entry by its id',
     response_model=EntryArchiveResponse,
     response_model_exclude_unset=True,
@@ -1641,7 +1651,10 @@ def edit(
     upload_ids: set[str] = set()
     with utils.timer(logger, 'edit query executed'):
         all_entries = _do_exhaustive_search(
-            owner=Owner.user, query=query, include=['entry_id', 'upload_id'], user=user
+            owner=Owner.user,
+            query=query,
+            required=MetadataRequired(include=['entry_id', 'upload_id']),
+            user=user,
         )
 
         for entry_dict in all_entries:
@@ -1705,7 +1718,7 @@ _editable_quantities = {
 
 @router.post(
     '/edit_v0',
-    tags=[metadata_tag],
+    tags=[APITag.METADATA],
     summary='Edit the user metadata of a set of entries',
     response_model=EntryMetadataEditResponse,
     response_model_exclude_unset=True,
@@ -1896,7 +1909,7 @@ async def post_entry_metadata_edit(
 
 @router.post(
     '/edit',
-    tags=[metadata_tag],
+    tags=[APITag.METADATA],
     summary='Edit the user metadata of a set of entries',
     response_model=MetadataEditRequest,
     response_model_exclude_unset=True,

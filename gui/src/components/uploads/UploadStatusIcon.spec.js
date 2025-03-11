@@ -30,7 +30,7 @@ describe('test different states', function() {
     ['published, embargo, viewer', 'Published with embargo and accessible by you as a reviewer', {published: true, with_embargo: true, main_author: 'a', viewers: [{user_id: 'b'}]}, {sub: 'b'}],
     ['published, embargo, external', 'Published with embargo and not accessible by you', {published: true, with_embargo: true, main_author: 'a', viewers: [{user_id: 'b'}]}, {sub: 'c'}],
     ['published, embargo, no user data', 'Published with embargo and might become accessible after login', {published: true, with_embargo: true, main_author: 'a', viewers: [{user_id: 'b'}]}, undefined],
-    ['unpublished, main author', 'Unpublished, accessible by you, coauthors and reviewers', {published: false, main_author: 'a'}, {sub: 'a'}],
+    ['unpublished, main author', 'Unpublished, accessible only by you', {published: false, main_author: 'a'}, {sub: 'a'}],
     ['unpublished, coauthor', 'Unpublished, accessible by you as a coauthor', {published: false, main_author: 'a', coauthors: ['b']}, {sub: 'b'}],
     ['unpublished, author', 'Unpublished, accessible by you as a coauthor', {published: false, main_author: 'a', authors: [{user_id: 'b'}]}, {sub: 'b'}],
     ['unpublished, reviewer', 'Unpublished, accessible by you as a reviewer', {published: false, main_author: 'a', reviewers: ['b']}, {sub: 'b'}],

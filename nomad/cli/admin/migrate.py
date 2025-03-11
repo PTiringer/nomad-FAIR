@@ -18,16 +18,16 @@
 
 import time
 from datetime import datetime
-from typing import List, Dict, Set, Any, Optional
-from pydantic import BaseModel
+from typing import Any
 
+from pydantic import BaseModel
 from pymongo import ReplaceOne
-from pymongo.database import Database, Collection
+from pymongo.database import Collection, Database
+
 from nomad import utils
-from nomad.processing import ProcessStatus, Upload, Entry
 from nomad.datamodel import Dataset
 from nomad.parsing.parsers import parser_dict
-
+from nomad.processing import Entry, ProcessStatus, Upload
 
 _upload_keys_to_remove_v0 = (
     'published',
@@ -69,10 +69,10 @@ class _CollectionStatistics(BaseModel):
 
 
 class _UpgradeStatistics(BaseModel):
-    uploads = _CollectionStatistics(collection_name='Uploads')
-    entries = _CollectionStatistics(collection_name='Entries')
-    datasets = _CollectionStatistics(collection_name='Datasets')
-    dois = _CollectionStatistics(collection_name='DOIs')
+    uploads: _CollectionStatistics = _CollectionStatistics(collection_name='Uploads')
+    entries: _CollectionStatistics = _CollectionStatistics(collection_name='Entries')
+    datasets: _CollectionStatistics = _CollectionStatistics(collection_name='Datasets')
+    dois: _CollectionStatistics = _CollectionStatistics(collection_name='DOIs')
 
 
 class _DatasetCacheItem(BaseModel):

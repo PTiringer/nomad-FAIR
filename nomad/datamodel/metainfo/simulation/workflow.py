@@ -20,7 +20,6 @@
 # Only for purpose of compatibility. Use simulation workflow schema plugin.
 # https://github.com/nomad-coe/nomad-schema-plugin-simulation-workflow.git
 
-from typing import List
 import numpy as np
 from ase import Atoms
 from ase.eos import EquationOfState as aseEOS
@@ -28,45 +27,48 @@ from nptyping import NDArray
 
 from nomad.atomutils import get_volume
 from nomad.datamodel.data import ArchiveSection
-from nomad.units import ureg
-from nomad.metainfo import (
-    MSection,
-    SubSection,
-    Section,
-    Quantity,
-    MEnum,
-    Reference,
-    Package,
-    derived,
-)
 from nomad.datamodel.metainfo.common import FastAccess
-from nomad.datamodel.metainfo.workflow import Workflow, Link, Task
-from nomad.datamodel.metainfo.simulation.system import System, AtomsGroup
-from nomad.datamodel.metainfo.simulation.method import (
-    Method,
-    XCFunctional,
-    BasisSetContainer,
-    GW as GWMethodology,
-    TB as TBMethodology,
-    DMFT as DMFTMethodology,
-    BSE as BSEMethodology,
-)
 from nomad.datamodel.metainfo.simulation.calculation import (
-    Calculation,
-    BandGap,
-    Dos,
-    BandStructure,
     BandEnergies,
+    BandGap,
+    BandStructure,
+    Calculation,
     Density,
+    Dos,
+    ElectronicStructureProvenance,
+    EnergyEntry,
+    GreensFunctions,
     Potential,
     Spectra,
-    ElectronicStructureProvenance,
-    GreensFunctions,
-    RadiusOfGyration as RadiusOfGyrationCalculation,
-    RadiusOfGyrationValues as RadiusOfGyrationValuesCalculation,
-    EnergyEntry,
 )
-
+from nomad.datamodel.metainfo.simulation.calculation import (
+    RadiusOfGyration as RadiusOfGyrationCalculation,
+)
+from nomad.datamodel.metainfo.simulation.calculation import (
+    RadiusOfGyrationValues as RadiusOfGyrationValuesCalculation,
+)
+from nomad.datamodel.metainfo.simulation.method import BSE as BSEMethodology
+from nomad.datamodel.metainfo.simulation.method import DMFT as DMFTMethodology
+from nomad.datamodel.metainfo.simulation.method import GW as GWMethodology
+from nomad.datamodel.metainfo.simulation.method import TB as TBMethodology
+from nomad.datamodel.metainfo.simulation.method import (
+    BasisSetContainer,
+    Method,
+    XCFunctional,
+)
+from nomad.datamodel.metainfo.simulation.system import AtomsGroup, System
+from nomad.datamodel.metainfo.workflow import Link, Task, Workflow
+from nomad.metainfo import (
+    MEnum,
+    MSection,
+    Package,
+    Quantity,
+    Reference,
+    Section,
+    SubSection,
+    derived,
+)
+from nomad.units import ureg
 
 # TODO remove this after reprocessing with the new schema defined in
 # simulationworkflowschema plug in https://github.com/nomad-coe/nomad-schema-plugin-simulation-workflow.git
@@ -2203,11 +2205,11 @@ class MolecularDynamicsResults(ThermodynamicsResults):
         super().normalize(archive, logger)
 
         try:
-            from simulationworkflowschema.molecular_dynamics import archive_to_universe
             from simulationworkflowschema.molecular_dynamics import (
-                calc_molecular_rdf,
+                archive_to_universe,
                 calc_molecular_mean_squared_displacements,
                 calc_molecular_radius_of_gyration,
+                calc_molecular_rdf,
             )
 
             universe = archive_to_universe(archive)

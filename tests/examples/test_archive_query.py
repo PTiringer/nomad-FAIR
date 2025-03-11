@@ -16,15 +16,14 @@
 # limitations under the License.
 #
 
-import os.path
 import importlib
+import os.path
 import sys
 
 from nomad.utils.exampledata import ExampleData
-
-from tests.parsing.test_parsing import run_singular_parser
 from tests.normalizing.conftest import run_normalize
-from tests.test_client import async_api_v1
+from tests.parsing.test_parsing import run_singular_parser
+from tests.test_client import async_api_v1  # noqa: F401
 
 
 def test_archive_query(

@@ -20,24 +20,24 @@
 # Only for purpose of compatibility. Use run schema plugin.
 # https://github.com/nomad-coe/nomad-schema-plugin-run.git
 
-import numpy as np  # pylint: disable=unused-import
+import numpy as np  # noqa: F401
 
-from nomad.metainfo import (  # pylint: disable=unused-import
-    MSection,
-    MCategory,
-    Category,
-    Package,
-    Quantity,
-    Section,
-    SubSection,
-    SectionProxy,
-    Reference,
-)
+from nomad.datamodel.data import ArchiveSection
+from nomad.datamodel.metainfo.common import FastAccess
+from nomad.datamodel.metainfo.simulation.calculation import Calculation
 from nomad.datamodel.metainfo.simulation.method import Method
 from nomad.datamodel.metainfo.simulation.system import System
-from nomad.datamodel.metainfo.simulation.calculation import Calculation
-from nomad.datamodel.metainfo.common import FastAccess
-from nomad.datamodel.data import ArchiveSection
+from nomad.metainfo import (  # noqa: F401
+    Category,
+    MCategory,
+    MSection,
+    Package,
+    Quantity,
+    Reference,
+    Section,
+    SectionProxy,
+    SubSection,
+)
 
 m_package = Package()
 

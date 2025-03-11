@@ -18,8 +18,7 @@
 
 from nomad.datamodel import EntryArchive
 from nomad.datamodel.data import ArchiveSection
-from nomad.datamodel import EntryArchive
-from typing import Optional
+
 from . import Normalizer
 
 

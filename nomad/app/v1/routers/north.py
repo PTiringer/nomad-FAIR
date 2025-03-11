@@ -17,29 +17,32 @@
 #
 
 import os
-import requests
-
-from typing import List, Dict, Optional
 from enum import Enum
-from nomad.groups import get_group_ids
-from pydantic import BaseModel
-from fastapi import APIRouter, Depends, status, HTTPException
-from mongoengine.queryset.visitor import Q
 
+import requests
+from fastapi import APIRouter, Depends, HTTPException, status
+from mongoengine.queryset.visitor import Q
+from pydantic import BaseModel
+
+from nomad.app.v1.routers.auth import generate_simple_token
 from nomad.config import config
 from nomad.config.models.north import NORTHTool
-from nomad.utils import strip, get_logger, slugify
+from nomad.groups import get_group_ids
 from nomad.processing import Upload
-from nomad.app.v1.routers.auth import generate_simple_token
-from .auth import create_user_dependency, oauth2_scheme
-from ..models import User, HTTPExceptionModel
-from ..utils import create_responses
+from nomad.utils import get_logger, slugify, strip
 
+from ..models import HTTPExceptionModel, User
+from ..utils import create_responses
+from .auth import create_user_dependency
 
 TOOLS = {k: v for k, v in config.north.tools.filtered_items()}
 
-default_tag = 'north'
 router = APIRouter()
+
+
+class APITag(str, Enum):
+    DEFAULT = 'north'
+
 
 hub_api_headers = {'Authorization': f'Bearer {config.north.hub_service_api_token}'}
 logger = get_logger(__name__)
@@ -108,7 +111,7 @@ def _get_status(tool: ToolModel, user: User) -> ToolModel:
 
 @router.get(
     '/',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     response_model=ToolsResponseModel,
     summary='Get a list of all configured tools and their current state.',
     response_model_exclude_unset=True,
@@ -135,7 +138,7 @@ async def tool(name: str) -> ToolModel:
 
 @router.get(
     '/{name}',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Get information for a specific tool.',
     response_model=ToolResponseModel,
     responses=create_responses(_bad_tool_response),
@@ -153,7 +156,7 @@ async def get_tool(
 
 @router.post(
     '/{name}',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     response_model=ToolResponseModel,
     summary='Start a tool.',
     response_model_exclude_unset=True,
@@ -301,7 +304,7 @@ async def start_tool(
 
 @router.delete(
     '/{name}',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     response_model=ToolResponseModel,
     summary='Stop a tool.',
     response_model_exclude_unset=True,

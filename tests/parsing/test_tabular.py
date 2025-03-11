@@ -15,27 +15,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from io import StringIO
-from unittest.mock import MagicMock, patch
 
-import pandas as pd
-import pytest
+import datetime
 import os
 import os.path
 import re
-import datetime
+
+import pytest
 import yaml
 
-from nomad.config import config
-from nomad.datamodel.datamodel import EntryArchive, EntryMetadata
-from nomad.datamodel.context import ClientContext
-from nomad.parsing.tabular import read_table_data
-from nomad.utils import generate_entry_id, strip
-from nomad.parsing.parser import ArchiveParser
-from tests.normalizing.conftest import run_normalize
-from nomad.processing import Upload, Entry
-from nomad.processing import ProcessStatus
 from nomad import files
+from nomad.config import config
+from nomad.datamodel.context import ClientContext
+from nomad.datamodel.datamodel import EntryArchive, EntryMetadata
+from nomad.parsing.parser import ArchiveParser
+from nomad.parsing.tabular import read_table_data
+from nomad.processing import Entry, ProcessStatus, Upload
+from nomad.utils import generate_entry_id, strip
+from tests.normalizing.conftest import run_normalize
 
 
 def quantity_generator(quantity_name, header_name, shape, to_dict=False):

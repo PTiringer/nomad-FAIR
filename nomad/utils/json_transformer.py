@@ -16,11 +16,11 @@
 # limitations under the License.
 #
 import re
-from typing import Union, Any, Optional
+from typing import Any
 
 import jmespath
 
-from nomad.datamodel.metainfo.annotations import Rules, Rule, Condition
+from nomad.datamodel.metainfo.annotations import Condition, Rule, Rules
 
 
 class Transformer:

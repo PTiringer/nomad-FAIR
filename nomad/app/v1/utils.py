@@ -16,19 +16,21 @@
 # limitations under the License.
 #
 
-from typing import List, Dict, Tuple, Set, Iterator, Any, Optional, Union
-from collections.abc import Iterator
-from types import FunctionType
-import urllib
+import gzip
+import inspect
 import io
 import json
-import os
-import inspect
-from fastapi import Request, Query, HTTPException, status  # pylint: disable=unused-import
-from pydantic import ValidationError, BaseModel  # pylint: disable=unused-import
-import gzip
 import lzma
-from nomad.files import UploadFiles, StreamedFile, create_zipstream
+import os
+import urllib
+from collections.abc import Iterator
+from types import FunctionType
+from typing import Any
+
+from fastapi import HTTPException, Query, Request, status  # noqa: F401
+from pydantic import BaseModel, ValidationError  # noqa: F401
+
+from nomad.files import StreamedFile, UploadFiles, create_zipstream
 
 
 def parameter_dependency_from_model(

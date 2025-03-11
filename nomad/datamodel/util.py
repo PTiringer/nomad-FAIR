@@ -17,19 +17,19 @@
 #
 import math
 import re
-from typing import Any
 from collections.abc import Callable
+from typing import Any
 
 import numpy as np
 
 from nomad import utils
 from nomad.metainfo import (
-    Section,
     AnnotationModel,
-    MSection,
-    SubSection,
-    Property,
     MetainfoError,
+    MSection,
+    Property,
+    Section,
+    SubSection,
 )
 from nomad.units import ureg
 

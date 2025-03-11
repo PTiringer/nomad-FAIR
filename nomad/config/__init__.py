@@ -37,7 +37,7 @@ import sys
 import yaml
 import logging
 import os.path
-from typing import Dict, Any
+from typing import Any
 from nomad.config.models.config import Config
 
 # use std python logger, since logging is not configured while loading configuration
@@ -94,7 +94,7 @@ def _load_config_env() -> dict[str, Any]:
         # Some environment variables starting with NOMAD_ are unavoidable
         # in docker/kubernetes environments. We should ignore them here,
         # before they cause a warning later when the config is validated.
-        if all([not key.startswith(field) for field in Config.__fields__.keys()]):
+        if all([not key.startswith(field) for field in Config.model_fields.keys()]):
             continue
 
         add_deep(config_data, key, value)
@@ -156,6 +156,6 @@ config = load_config()
 
 # Expose config fields under this module for backwards compatibility
 _module = sys.modules[__name__]
-_fields = Config.__fields__
+_fields = Config.model_fields
 for field_name in _fields.keys():
     setattr(_module, field_name, getattr(config, field_name))

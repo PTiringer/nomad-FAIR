@@ -16,24 +16,30 @@
 # limitations under the License.
 #
 
-from fastapi import Depends, APIRouter, Body, HTTPException
+from enum import Enum
+
+from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.responses import ORJSONResponse
 
+from nomad.app.v1.models.graph import GraphRequest, GraphResponse
 from nomad.graph.graph_reader import (
-    MongoReader,
     ConfigError,
     GeneralReader,
-    UserReader,
+    MongoReader,
     Token,
+    UserReader,
 )
 from nomad.graph.lazy_wrapper import LazyWrapper
+
+from ..models import User
 from .auth import create_user_dependency
 from .entries import EntriesArchive
-from ..models import User
-from nomad.app.v1.models.graph import GraphRequest, GraphResponse
 
 router = APIRouter()
-default_tag = 'graph'
+
+
+class APITag(str, Enum):
+    DEFAULT = 'graph'
 
 
 def unwrap_response(result):
@@ -69,7 +75,7 @@ def relocate_children(request):
 
 @router.post(
     '/raw_query',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Query the database with a graph style without verification.',
     description='Query the database with a graph style without verification.',
     response_class=GraphJSONResponse,
@@ -84,7 +90,7 @@ async def raw_query(
 
 @router.post(
     '/query',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Query the database with a graph style.',
     description='Query the database with a graph style.',
     response_model=GraphResponse,
@@ -112,7 +118,7 @@ async def basic_query(
 
 @router.post(
     '/archive/query',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Search entries and access their archives',
     response_class=GraphJSONResponse,
 )

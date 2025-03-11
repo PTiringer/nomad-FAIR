@@ -11,6 +11,7 @@ Values:
 """
 
 from collections.abc import Sequence
+
 import pytest
 
 from nomad.utils.exampledata import ExampleData

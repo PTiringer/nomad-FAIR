@@ -72,3 +72,22 @@ from .annotation import (
     SectionAnnotation,
     AnnotationModel,
 )
+from .data_type import (
+    Datatype,
+    Primitive,
+    Number,
+    ExactNumber,
+    InexactNumber,
+    NonPrimitive,
+    URL,
+    File,
+    Any,
+    Capitalized,
+    Bytes,
+    JSON,
+    Dimension,
+    Unit,
+    Callable,
+    Datetime,
+    Enum,
+)

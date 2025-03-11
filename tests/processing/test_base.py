@@ -15,21 +15,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import pytest
-import json
 import random
-import time
 import threading
-from typing import List, Any, Union
+import time
+from typing import Any
 
-from mongoengine import StringField, IntField, ListField
+import pytest
+from mongoengine import IntField, ListField, StringField
 
 from nomad.processing.base import (
     Proc,
     ProcessAlreadyRunning,
+    ProcessStatus,
     process,
     process_local,
-    ProcessStatus,
 )
 
 random.seed(0)

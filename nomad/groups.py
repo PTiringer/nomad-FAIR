@@ -18,7 +18,6 @@
 
 from __future__ import annotations
 
-from typing import Optional, Union
 from collections.abc import Iterable
 
 from mongoengine import Document, ListField, Q, QuerySet, StringField

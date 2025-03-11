@@ -22,7 +22,7 @@ import { makeStyles, Tooltip, IconButton, TextField, FormControl } from '@materi
 import { Replay, Undo, Label, LabelOff, PlayArrowSharp, StopSharp, Clear } from '@material-ui/icons'
 import { useHistory } from 'react-router-dom'
 import { isPlainObject } from 'lodash'
-import { PropertyCard, PropertyGrid } from './PropertyCard'
+import { PropertyCard } from './PropertyCard'
 import { resolveNomadUrl, resolveInternalRef, createEntryUrl } from '../../../utils'
 import { useApi } from '../../api'
 import { getUrl } from '../../nav/Routes'
@@ -203,6 +203,15 @@ const getLinks = async (source, query) => {
   const isLinked = (source, target) => {
     if (source.url === target.url) return false
 
+    const inputs = []
+    if (target.type === 'tasks' && target.nodes) {
+      inputs.push(...target.nodes.filter(node => node.type && node.type.startsWith('inputs')).map(node => node.url))
+    } else {
+      inputs.push(target.url)
+    }
+
+    if (inputs.includes(source.url)) return true
+
     const outputs = []
     if (source.type === 'tasks' && source.nodes) {
       outputs.push(...source.nodes.filter(node => node.type === 'outputs').map(node => node.url))
@@ -210,12 +219,7 @@ const getLinks = async (source, query) => {
       outputs.push(source.url)
     }
 
-    const inputs = []
-    if (target.type === 'tasks' && target.nodes) {
-      inputs.push(...target.nodes.filter(node => node.type && node.type.startsWith('inputs')).map(node => node.url))
-    } else {
-      inputs.push(target.url)
-    }
+    if (outputs.includes(target.url)) return true
 
     let linked = false
     for (const output of outputs) {
@@ -287,9 +291,10 @@ const Graph = React.memo(({
   const svgRef = useRef()
   const history = useHistory()
   const asyncError = useAsyncError()
+  const width = document.getElementById('container')?.clientWidth || 675
   const finalLayout = useMemo(() => {
     const defaultLayout = {
-      width: 700,
+      width: width,
       margin: {top: 60, bottom: 60, left: 40, right: 40},
       circleRadius: 30,
       markerWidth: 4,
@@ -313,7 +318,7 @@ const Graph = React.memo(({
       }
     }
     return {...defaultLayout, ...layout}
-  }, [layout])
+  }, [layout, width])
   const [tooltipContent, setTooltipContent] = useState('')
   const [tooltipPosition, setTooltipPosition] = useState({x: undefined, y: undefined})
   const [showTooltip, setShowTooltip] = useState(false)
@@ -328,6 +333,7 @@ const Graph = React.memo(({
 
     const svg = d3.select(svgRef.current)
     svg.selectAll('g').remove()
+    svg.selectAll('defs').remove()
 
     const inOutColor = d3.interpolateRgb(color.input, color.output)(0.5)
 
@@ -349,6 +355,11 @@ const Graph = React.memo(({
       if (d.sectionType && d.sectionType.startsWith('workflow')) return true
       const tasks = (d.nodes || []).filter(n => n.type === 'tasks')
       return tasks.length > 0
+    }
+
+    const isRoot = (d) => {
+      const rootSections = ['data']
+      return rootSections.includes(d.sectionType)
     }
 
     const nodeColor = (d) => {
@@ -434,29 +445,21 @@ const Graph = React.memo(({
         .style('alignment-baseline', 'middle')
 
       gLegend
-        .on('mouseover', () => {
+        .on('mouseenter', () => {
           let tooltip = ''
           if (label === 'input') {
-            tooltip = <p>
-              Input to a task or workflow.
-            </p>
+            tooltip = 'Input to a task or workflow.'
           } else if (label === 'output') {
-            tooltip = <p>
-              Output from a task or workflow.
-            </p>
+            tooltip = 'Output from a task or workflow.'
           } else if (label === 'workflow') {
-            tooltip = <p>
-              Task containing further sub-tasks.
-            </p>
+            tooltip = 'Task containing further sub-tasks.'
           } else if (label === 'task') {
-            tooltip = <p>
-              Elementary task with inputs and outputs.
-            </p>
+            tooltip = 'Elementary task with inputs and outputs.'
           }
           setShowTooltip(true && legend.attr('visibility') === 'visible')
           setTooltipContent(tooltip)
         })
-        .on('mouseout', () => {
+        .on('mouseleave', () => {
           setShowTooltip(false)
         })
     }
@@ -887,15 +890,15 @@ const Graph = React.memo(({
         d3.select(`#icon-${d.id}`).style('stroke-opacity', 1).style('stroke', color.outlineHigh)
         if (d.id === source.id) {
           if (!previousNode || previousNode === 'root') return
-          // setShowTooltip(true)
-          setTooltipContent(<p>Click to go back up</p>)
+          setShowTooltip(true)
+          setTooltipContent('Click to go back up')
         } else if (['inputs', 'outputs'].includes(d.type)) {
           setShowTooltip(true)
-          setTooltipContent(<p>Click to switch {d.type} filter</p>)
+          setTooltipContent(`Click to switch ${d.type} filter`)
         } else if (d.type === 'tasks') {
           const sectionType = d.sectionType === 'tasks' ? 'task' : 'workflow'
           setShowTooltip(true)
-          setTooltipContent(<p>Click to expand {sectionType}</p>)
+          setTooltipContent(`Click to expand ${sectionType}`)
         }
       }
 
@@ -961,8 +964,8 @@ const Graph = React.memo(({
           if (d.id === source.id) return 0.2
           return 1
         })
-        .on('mouseover', handleMouseOverIcon)
-        .on('mouseout', handleMouseOutIcon)
+        .on('mouseenter', handleMouseOverIcon)
+        .on('mouseleave', handleMouseOutIcon)
         .on('click', handleClickIcon)
 
       node
@@ -972,8 +975,8 @@ const Graph = React.memo(({
         .attr('id', d => `icon-${d.id}`)
         .attr('stroke', color.outline)
         .attr('fill', d => nodeColor(d))
-        .on('mouseover', handleMouseOverIcon)
-        .on('mouseout', handleMouseOutIcon)
+        .on('mouseenter', handleMouseOverIcon)
+        .on('mouseleave', handleMouseOutIcon)
         .on('click', handleClickIcon)
 
       node.append('text')
@@ -988,22 +991,22 @@ const Graph = React.memo(({
           if (!d.entryId || !d.parent) return
           let path = `entry/id/${d.entryId}`
           const sectionPath = d.path ? d.path.replace(/\/(?=\d)/g, ':') : null
-          path = isWorkflow(d) ? path : sectionPath ? `${path}/data${sectionPath}` : path
+          path = isWorkflow(d) || isRoot(d) ? path : sectionPath ? `${path}/data${sectionPath}` : path
           const url = getUrl(path)
           history.push(url)
         })
-        .on('mouseover', d => {
+        .on('mouseenter', d => {
           if (!d.type || !d.parent) return
           if (!d.sectionType) return
           d3.select(`#text-${d.id}`).style('font-weight', 'bold')
             .text(d.name)
-          const text = isWorkflow(d) ? 'overview page' : 'archive section'
+          const text = isWorkflow(d) || isRoot(d) ? 'overview page' : 'archive section'
           if (d.entryId) {
             setShowTooltip(true)
-            setTooltipContent(<p>Click to go to {text}</p>)
+            setTooltipContent(`Click to go to ${text}`)
           }
         })
-        .on('mouseout', d => {
+        .on('mouseleave', d => {
           setShowTooltip(false)
           d3.select(`#text-${d.id}`).style('font-weight', null)
             .text(d => trimName(d.name))
@@ -1142,15 +1145,15 @@ const Graph = React.memo(({
             setNodesPosition(linkNode)
         })
         })
-        .on('mouseover', d => {
+        .on('mouseenter', d => {
           d3.select(`#link-${d.id}`).style('stroke-opacity', 1.0).style('stroke', color.linkHigh)
           svg.select(`.marker-${d.id}`).attr('fill-opacity', 1.0).style('stroke', color.linkHigh).style('fill', color.linkHigh)
           d3.select(`#icon-${d.source.id}`).style('stroke', color.linkHigh).style('stroke-opacity', 1.0)
           d3.select(`#icon-${d.target.id}`).style('stroke', color.linkHigh).style('stroke-opacity', 1.0)
           setShowTooltip(d.label)
-          setTooltipContent(<p>{d.label}</p>)
+          setTooltipContent(d.label)
         })
-        .on('mouseout', d => {
+        .on('mouseleave', d => {
           d3.select(`#link-${d.id}`).style('stroke-opacity', 0.5).style('stroke', color.link)
           svg.select(`.marker-${d.id}`).attr('fill-opacity', 0.5).style('stroke', color.link).style('fill', color.link)
           d3.select(`#icon-${d.source.id}`).style('stroke', color.outline).style('stroke-opacity', 0.5)
@@ -1194,8 +1197,6 @@ const Graph = React.memo(({
     <Tooltip
       title={tooltipContent}
       open={showTooltip}
-      enterDelay={1000}
-      enterNextDelay={0}
       onMouseMove={event => setTooltipPosition({x: event.pageX, y: event.pageY})}
       PopperProps={
         {anchorEl: {
@@ -1212,7 +1213,7 @@ const Graph = React.memo(({
         }}
       }
     >
-      <div id='tooltip'>
+      <div>
         <svg className={classes.root} ref={svgRef}></svg>
       </div>
       </Tooltip>
@@ -1316,9 +1317,9 @@ const WorkflowCard = React.memo(({archive}) => {
   </div>
 
   return graph && <PropertyCard title='Workflow Graph' action={actions}>
-    <PropertyGrid>
+    <div id='container'>
       {graph}
-    </PropertyGrid>
+    </div>
   </PropertyCard>
 })
 

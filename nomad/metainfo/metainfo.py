@@ -24,19 +24,17 @@ import json
 import re
 import sys
 import warnings
+from collections.abc import Callable as TypingCallable
 from collections.abc import Iterable
 from copy import deepcopy
 from functools import wraps
-from typing import Any
-from typing import Callable as TypingCallable
-from typing import Literal, TypeVar, cast
+from typing import Any, Literal, TypeVar, cast
 from urllib.parse import urlsplit, urlunsplit
 
 import docstring_parser
 import jmespath
 import pint
-from pydantic import TypeAdapter, ValidationError
-from typing_extensions import deprecated  # type: ignore
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from nomad.config import config
 from nomad.metainfo.data_type import JSON as JSONType
@@ -45,14 +43,20 @@ from nomad.metainfo.data_type import Any as AnyType
 from nomad.metainfo.data_type import Bytes as BytesType
 from nomad.metainfo.data_type import Callable as CallableType
 from nomad.metainfo.data_type import Capitalized as CapitalizedType
-from nomad.metainfo.data_type import Datatype
+from nomad.metainfo.data_type import (
+    Datatype,
+    Enum,
+    ExactNumber,
+    InexactNumber,
+    Number,
+    check_dimensionality,
+    m_str,
+    normalize_type,
+)
 from nomad.metainfo.data_type import Datetime as DatetimeType
 from nomad.metainfo.data_type import Dimension as DimensionType
-from nomad.metainfo.data_type import Enum, ExactNumber
 from nomad.metainfo.data_type import File as FileType
-from nomad.metainfo.data_type import InexactNumber, Number
 from nomad.metainfo.data_type import Unit as UnitType
-from nomad.metainfo.data_type import check_dimensionality, m_str, normalize_type
 from nomad.metainfo.util import (
     MQuantity,
     MSubSectionList,
@@ -64,8 +68,6 @@ from nomad.metainfo.util import (
     to_dict,
 )
 from nomad.units import ureg as units
-from pydantic import ValidationError, parse_obj_as
-from typing_extensions import deprecated  # type: ignore
 
 from .annotation import (
     Annotation,
@@ -1348,9 +1350,6 @@ class MSection(metaclass=MObjectMeta):
             if not definition.repeats or target is None:
                 return _wrap(target)
 
-            # this practically does nothing only to make mypy happy
-            # it is guaranteed to be a MSubSectionList
-            target = cast(MSubSectionList, target)
             if isinstance(index, str) and target.has_duplicated_key():
                 raise MetainfoError(f'Multiple sections with key {index} exist.')
 
@@ -2016,6 +2015,9 @@ class MSection(metaclass=MObjectMeta):
         def serialize_annotation(annotation):
             if isinstance(annotation, Annotation):
                 return annotation.m_to_dict()
+
+            if isinstance(annotation, BaseModel):
+                return annotation.dict()
 
             if not isinstance(annotation, dict):
                 return str(annotation)
@@ -2758,7 +2760,7 @@ class Definition(MSection):
             Python references, e.g. in `m_def`.
 
         variable:
-            A boolean that indicates this property as variable parts in its name.
+            A boolean that indicates this property has variable parts in its name.
             If this is set to true, all capital letters in the name can be
             replaced with arbitrary strings. However, variable names work similar to
             aliases and can be considered on-demand aliases. Other aliases and the

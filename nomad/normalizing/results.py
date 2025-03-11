@@ -17,77 +17,78 @@
 #
 
 import re
-import numpy as np
-from typing import Union, Any, Optional
+from typing import Any
+
 import ase.data
-from matid import SymmetryAnalyzer  # pylint: disable=import-error
 import matid.geometry  # pylint: disable=import-error
+import numpy as np
+from matid import SymmetryAnalyzer  # pylint: disable=import-error
 
 from nomad import atomutils
-from nomad.config import config
-from nomad.utils import traverse_reversed, extract_section
 from nomad.atomutils import Formula
-from nomad.normalizing.normalizer import Normalizer
-from nomad.normalizing.method import MethodNormalizer
-from nomad.normalizing.material import MaterialNormalizer
+from nomad.config import config
 from nomad.datamodel import EntryArchive
-from nomad.datamodel.metainfo.workflow import Workflow
 from nomad.datamodel.data import ArchiveSection
-from nomad.normalizing.common import structures_2d
+from nomad.datamodel.metainfo.workflow import Workflow
 from nomad.datamodel.results import (
     BandGap,
     BandGapDeprecated,
-    RadialDistributionFunction,
-    RadiusOfGyration,
-    MeanSquaredDisplacement,
-    Results,
-    Material,
-    Method,
-    GeometryOptimization,
-    Trajectory,
-    MolecularDynamics,
-    MDProvenance,
-    TemperatureDynamic,
-    VolumeDynamic,
-    PressureDynamic,
-    EnergyDynamic,
-    Properties,
-    StructuralProperties,
-    DynamicalProperties,
-    EnergyVolumeCurve,
-    BulkModulus,
-    ShearModulus,
-    MechanicalProperties,
-    ElectronicProperties,
-    VibrationalProperties,
-    ThermodynamicProperties,
     BandStructureElectronic,
     BandStructurePhonon,
+    BulkModulus,
+    DensityCharge,
     DOSElectronic,
-    DOSNew,
     DOSElectronicNew,
+    DOSNew,
     DOSPhonon,
-    GreensFunctionsElectronic,
-    EnergyFreeHelmholtz,
-    HeatCapacityConstantVolume,
-    SpectroscopicProperties,
+    DynamicalProperties,
     EELSMethodology,
-    SpectraProvenance,
-    Spectra,
+    ElectricFieldGradient,
+    ElectronicProperties,
+    EnergyDynamic,
+    EnergyFreeHelmholtz,
+    EnergyVolumeCurve,
+    GeometryOptimization,
+    GreensFunctionsElectronic,
+    HeatCapacityConstantVolume,
     MagneticProperties,
     MagneticShielding,
     MagneticSusceptibility,
-    ElectricFieldGradient,
+    Material,
+    MDProvenance,
+    MeanSquaredDisplacement,
+    MechanicalProperties,
+    Method,
+    MolecularDynamics,
+    PressureDynamic,
+    Properties,
+    RadialDistributionFunction,
+    RadiusOfGyration,
+    Results,
+    ShearModulus,
+    Spectra,
+    SpectraProvenance,
+    SpectroscopicProperties,
     SpinSpinCoupling,
-    DensityCharge,
+    StructuralProperties,
+    TemperatureDynamic,
+    ThermodynamicProperties,
+    Trajectory,
+    VibrationalProperties,
+    VolumeDynamic,
 )
+from nomad.normalizing.common import structures_2d
+from nomad.normalizing.material import MaterialNormalizer
+from nomad.normalizing.method import MethodNormalizer
+from nomad.normalizing.normalizer import Normalizer
+from nomad.utils import extract_section, traverse_reversed
 
 try:
     import runschema
 
     runschema.run_schema_entry_point.load()
-    import runschema.method
     import runschema.calculation
+    import runschema.method
     import runschema.system
 except Exception as e:
     runschema, simulationworkflowschema = None, None
@@ -288,11 +289,12 @@ class ResultsNormalizer(Normalizer):
             else:
                 self.entry_archive.metadata.entry_name = f'{type_tag}'
 
-    def resolve_band_gap(self) -> list[BandGap]:
+    def resolve_band_gap(
+        self, path: list[str] = ['run', 'calculation', 'band_gap']
+    ) -> list[BandGap]:
         """Extract all band gaps from the given `path` and return them in a list along
         with their provenance.
         """
-        path = ['run', 'calculation', 'band_gap']
         bg_root: list[BandGap] = []
         if band_gaps := traverse_reversed(self.entry_archive, path):
             for bg in band_gaps:
@@ -306,7 +308,9 @@ class ResultsNormalizer(Normalizer):
                 bg_root.insert(0, bg_results)
         return bg_root
 
-    def resolve_band_structure(self) -> list[BandStructureElectronic]:
+    def resolve_band_structure(
+        self, path: list[str] = ['run', 'calculation', 'band_structure_electronic']
+    ) -> list[BandStructureElectronic]:
         """Returns a new section containing an electronic band structure. In
         the case of multiple valid band structures, only the latest one is
         considered.
@@ -315,7 +319,6 @@ class ResultsNormalizer(Normalizer):
             - There is a non-empty array of kpoints.
             - There is a non-empty array of energies.
         """
-        path = ['run', 'calculation', 'band_structure_electronic']
         bs_root: list[BandStructureElectronic] = []
         if band_structures := traverse_reversed(self.entry_archive, path):
             for bs in band_structures:
@@ -346,7 +349,9 @@ class ResultsNormalizer(Normalizer):
                     bs_root.insert(0, bs_results)
         return bs_root
 
-    def resolve_dos_deprecated(self) -> list[DOSElectronic]:
+    def resolve_dos_deprecated(
+        self, path: list[str] = ['run', 'calculation', 'dos_electronic']
+    ) -> list[DOSElectronic]:
         """Returns a reference to the section containing an electronic dos. In
         the case of multiple valid DOSes, only the latest one is reported.
 
@@ -358,7 +363,6 @@ class ResultsNormalizer(Normalizer):
         to an old schema which will be deleted. The new function `resolve_dos` should be the
         one which persists over time.
         """
-        path = ['run', 'calculation', 'dos_electronic']
         dos_sections = extract_section(self.entry_archive, path, full_list=True)
         # The old mapping does not work for the new spin-polarized schema
         if (
@@ -376,7 +380,9 @@ class ResultsNormalizer(Normalizer):
             dos_results.energy_fermi = dos.energy_fermi
         return [dos_results] if dos_results else []
 
-    def resolve_dos(self) -> list[DOSElectronicNew]:
+    def resolve_dos(
+        self, path: list[str] = ['run', 'calculation', 'dos_electronic']
+    ) -> list[DOSElectronicNew]:
         """Returns a section containing the references for an electronic DOS. This section
         is then stored under `archive.results.properties.electronic.dos_electronic_new`.
 
@@ -393,7 +399,6 @@ class ResultsNormalizer(Normalizer):
         Returns:
             List[DOSElectronicNew]: the mapped DOS.
         """
-        path = ['run', 'calculation', 'dos_electronic']
         dos_result = None  # only instantiate `dos_results` if the tests below pass
         if dos_sections := extract_section(self.entry_archive, path, full_list=True):
             for dos_section in dos_sections:
@@ -434,7 +439,7 @@ class ResultsNormalizer(Normalizer):
         return [dos_result] if dos_result else []
 
     def resolve_greens_functions(
-        self, path: list[str]
+        self, path: list[str] = ['run', 'calculation', 'greens_functions']
     ) -> list[GreensFunctionsElectronic]:
         """Returns a section containing the references of the electronic Greens functions.
         This section is then stored under `archive.results.properties.electronic`.
@@ -496,8 +501,9 @@ class ResultsNormalizer(Normalizer):
                 gfs_root.append(gfs_results)
         return gfs_root
 
-    def fetch_charge_density(self) -> list[DensityCharge]:
-        path = ['run', 'calculation', 'density_charge', 'value_hdf5']
+    def fetch_charge_density(
+        self, path: list[str] = ['run', 'calculation', 'density_charge', 'value_hdf5']
+    ) -> list[DensityCharge]:
         return_list: list[DensityCharge] = []
         if runschema and (
             hdf5_wrappers := list(traverse_reversed(self.entry_archive, path))
@@ -508,7 +514,9 @@ class ResultsNormalizer(Normalizer):
                 return_list.append(d)
         return return_list
 
-    def resolve_electric_field_gradient(self) -> list[ElectricFieldGradient]:
+    def resolve_electric_field_gradient(
+        self, path: list[str] = ['run', 'calculation', 'electric_field_gradient']
+    ) -> list[ElectricFieldGradient]:
         """Returns a section containing the references for the Electric Field Gradient.
         This section is then stored under `archive.results.properties.electronic`.
 
@@ -522,7 +530,6 @@ class ResultsNormalizer(Normalizer):
         Returns:
             list[ElectricFieldGradient]: the mapped Electric Field Gradient.
         """
-        path = ['run', 'calculation', 'electric_field_gradient']
         mapped_data: list[ElectricFieldGradient] = []
         if stored_data := traverse_reversed(self.entry_archive, path):
             for data in stored_data:
@@ -671,6 +678,10 @@ class ResultsNormalizer(Normalizer):
             methods (list[str]): the list of methods from which the properties are resolved.
             properties (list[str]): the list of properties to be resolved from `workflow2.results`.
         """
+        properties_map = {
+            'dos': 'dos_electronic_new',
+            'band_structure': 'band_structure_electronic',
+        }
         for method in methods:
             name = (
                 'MaxEnt'
@@ -680,7 +691,9 @@ class ResultsNormalizer(Normalizer):
                 else method.upper()
             )
             for prop in properties:
-                property_list = self.electronic_properties.get(prop)
+                property_list = self.electronic_properties.get(
+                    properties_map.get(prop, prop)
+                )
                 method_property_resolved = getattr(self, f'resolve_{prop}')(
                     ['workflow2', 'results', f'{method}_outputs', prop]
                 )
@@ -1147,9 +1160,7 @@ class ResultsNormalizer(Normalizer):
             'dos_electronic': self.resolve_dos_deprecated(),
             'dos_electronic_new': self.resolve_dos(),
             'band_structure_electronic': self.resolve_band_structure(),
-            'greens_functions_electronic': self.resolve_greens_functions(
-                ['run', 'calculation', 'greens_functions']
-            ),
+            'greens_functions_electronic': self.resolve_greens_functions(),
             'density_charge': self.fetch_charge_density(),
             'electric_field_gradient': self.resolve_electric_field_gradient(),
         }

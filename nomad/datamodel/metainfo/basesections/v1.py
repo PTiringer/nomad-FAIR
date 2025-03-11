@@ -20,8 +20,8 @@ import os
 import random
 import re
 import time
-from typing import TYPE_CHECKING, Dict, List
 from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
 import h5py
 import numpy as np
@@ -29,22 +29,17 @@ import requests
 from ase.data import atomic_masses, atomic_numbers, chemical_symbols
 from unidecode import unidecode
 
-from nomad.metainfo import SchemaPackage
 from nomad.datamodel.metainfo.workflow import Link, Task, TaskReference, Workflow
+from nomad.metainfo import SchemaPackage
 from nomad.metainfo.data_type import m_str
 
 if TYPE_CHECKING:
-    from structlog.stdlib import (
-        BoundLogger,
-    )
+    from structlog.stdlib import BoundLogger
 
 from nomad import utils
 from nomad.atomutils import Formula
 from nomad.datamodel.data import ArchiveSection, EntryData
-from nomad.datamodel.metainfo.annotations import (
-    ELNAnnotation,
-    HDF5Annotation,
-)
+from nomad.datamodel.metainfo.annotations import ELNAnnotation, HDF5Annotation
 from nomad.datamodel.results import ELN, Material, Results
 from nomad.datamodel.results import ElementalComposition as ResultsElementalComposition
 from nomad.datamodel.util import create_custom_mapping
@@ -233,12 +228,12 @@ class BaseSection(ArchiveSection):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `BaseSection` class.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
+        - If the instance is of type `EntryData`, it sets the archive's entry name based on the instance's name.
+        - Sets the `datetime` field to the current time if it is not already set.
+        - Manages the `lab_id` field and updates the archive's `results.eln.lab_ids` list.
+        - Adds the instance's `name` and `description` to the archive's `results.eln.names` and `results.eln.descriptions` lists, respectively.
+        - Handles the `tags` attribute, if present, and updates the archive's `results.eln.tags` list.
+        - Appends the section's name to the archive's `results.eln.sections` list.
         """
         super().normalize(archive, logger)
 
@@ -385,12 +380,8 @@ class Activity(BaseSection):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `Activity` class.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
+        - Ensures the `results.eln.methods` list is initialized and appends the method or section name.
+        - Converts each step in `self.steps` to a task, using the steps `to_task()` method, and assigns it to `archive.workflow2.tasks`.
         """
         super().normalize(archive, logger)
 
@@ -450,13 +441,7 @@ class EntityReference(SectionReference):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `EntityReference` class.
         Will attempt to fill the `reference` from the `lab_id` or vice versa.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         super().normalize(archive, logger)
         if self.reference is None and self.lab_id is not None:
@@ -513,15 +498,9 @@ class ExperimentStep(ActivityStep):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `ExperimentStep` class.
         Will attempt to fill the `activity` from the `lab_id` or vice versa.
         If the activity reference is filled but the start time is not the time will be
         taken from the `datetime` property of the referenced activity.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         super().normalize(archive, logger)
         if self.activity is None and self.lab_id is not None:
@@ -618,17 +597,12 @@ class ElementalComposition(ArchiveSection):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `ElementalComposition` class. Will add a
+        Will add a
         results.material subsection if none exists. Will append the element to the
         elements property of that subsection and a
         nomad.datamodel.results.ElementalComposition instances to the
         elemental_composition property  using the element and atomic fraction from this
         section.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         super().normalize(archive, logger)
 
@@ -740,13 +714,8 @@ class System(Entity):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `System` class. Will attempt to fill mass fractions or
+        Will attempt to fill mass fractions or
         atomic fractions if left blank.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         super().normalize(archive, logger)
 
@@ -761,12 +730,7 @@ class Instrument(Entity):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `Instrument` class.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
+        Adds the name of the instrument to the `results.eln.instruments` list.
         """
         super().normalize(archive, logger)
 
@@ -827,14 +791,9 @@ class SystemComponent(Component):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `SystemComponent` class. If none is set, the normalizer
+        If none is set, the normalizer
         will set the name of the component to be that of the referenced system if it has
         one.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         super().normalize(archive, logger)
         if self.name is None and self.system is not None:
@@ -950,14 +909,9 @@ class PureSubstanceComponent(Component):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `PureSubstanceComponent` class. If none is set, the
+        If none is set, the
         normalizer will set the name of the component to be the molecular formula of the
         substance.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         super().normalize(archive, logger)
         if self.substance_name and self.pure_substance is None:
@@ -1076,18 +1030,13 @@ class CompositeSystem(System):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `CompositeSystem` class. If the elemental composition list is
+        If the elemental composition list is
         empty, the normalizer will iterate over the components and extract all the
         elements for populating the elemental composition list. If masses are provided for
         all components and the elemental composition of all components contain atomic
         fractions the normalizer will also calculate the atomic fractions for the
         composite system. The populated elemental composition list is added to the results
         by the normalizer in the `System` super class.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         if logger is None:
             logger = utils.get_logger(__name__)
@@ -1229,12 +1178,9 @@ class Process(Activity):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `Process` class.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
+        - Sets the start time for each step in `self.steps` if not already set, based on the `datetime` and `duration` fields.
+        - Sets the `end_time` field to the calculated end time if it is not already set.
+        - Updates the `archive.workflow2.outputs` list with links to the samples processed.
         """
         super().normalize(archive, logger)
         if (
@@ -1297,12 +1243,8 @@ class Analysis(Activity):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `Analysis` section.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
+        - Updates the `archive.workflow2.inputs` list with links to the input data.
+        - Updates the `archive.workflow2.outputs` list with links to the output data.
         """
         super().normalize(archive, logger)
         archive.workflow2.inputs = [
@@ -1364,12 +1306,8 @@ class Measurement(Activity):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `Measurement` section.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
+        - Updates the `archive.workflow2.inputs` list with links to the input samples.
+        - Updates the `archive.workflow2.outputs` list with links to the measurement results.
         """
         super().normalize(archive, logger)
         archive.workflow2.inputs = [
@@ -1420,13 +1358,8 @@ class PureSubstance(System):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer method for the `Substance` class.
         This method will populate the results.material section and the elemental
         composition sub section using the molecular formula.
-
-        Args:
-            archive (EntryArchive): The archive that is being normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         super().normalize(archive, logger)
         if logger is None:
@@ -1625,11 +1558,11 @@ class PubChemPureSubstanceSection(PureSubstanceSection):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer method for the `PubChemSubstanceSection` class.
         This method will attempt to get data on the substance instance from the PubChem
         PUG REST API: https://pubchem.ncbi.nlm.nih.gov/docs/pug-rest
         If a PubChem CID is specified the details are retrieved directly.
         Otherwise a search query is made for the filled attributes in the following order:
+
         1. `smile`
         2. `canonical_smile`
         3. `inchi_key`
@@ -1637,10 +1570,6 @@ class PubChemPureSubstanceSection(PureSubstanceSection):
         5. `name`
         6. `molecular_formula`
         7. `cas_number`
-
-        Args:
-            archive (EntryArchive): The archive that is being normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         if logger is None:
             logger = utils.get_logger(__name__)
@@ -1881,7 +1810,6 @@ class CASPureSubstanceSection(PureSubstanceSection):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer method for the `CASPureSubstanceSection` class.
         This method will attempt to get data on the pure substance instance from the CAS
         API: https://commonchemistry.cas.org/api-overview
         If a CAS number is specified the details are retrieved directly.
@@ -1893,10 +1821,6 @@ class CASPureSubstanceSection(PureSubstanceSection):
         4. `smile`
         5. `canonical_smile`
         6. `name`
-
-        Args:
-            archive (EntryArchive): The archive that is being normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         if logger is None:
             logger = utils.get_logger(__name__)
@@ -1968,23 +1892,19 @@ class ReadableIdentifiers(ArchiveSection):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `ReadableIdentifiers` class.
         If owner is not filled the field will be filled by the first two letters of
         the first name joined with the first two letters of the last name of the author.
         If the institute is not filled a institute abreviations will be constructed from
         the author's affiliation.
+
         If no datetime is filled, the datetime will be taken from the `datetime`
         property of the parent, if it exists, otherwise the current date and time will be
         used.
+
         If no short name is filled, the name will be taken from the parent name, if it
         exists, otherwise it will be taken from the archive metadata entry name, if it
         exists, and finally if no other options are available it will use the name of the
         mainfile.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
         """
         super().normalize(archive, logger)
 
@@ -2106,16 +2026,15 @@ class PublicationReference(ArchiveSection):
 
     def normalize(self, archive, logger: 'BoundLogger') -> None:
         """
-        The normalizer for the `PublicationReference` class.
-
-        Args:
-            archive (EntryArchive): The archive containing the section that is being
-            normalized.
-            logger ('BoundLogger'): A structlog logger.
+        - If a DOI number is provided, retrieves publication details from the CrossRef API.
+        - Populates the `publication_authors`, `journal`, `publication_title`, and `publication_date` fields based on the CrossRef response.
+        - Ensures the DOI number has the prefix `https://doi.org/`.
+        - Updates the archive's metadata references with the DOI number if it is not already present.
         """
         super().normalize(archive, logger)
         import dateutil.parser
         import requests
+
         from nomad.datamodel.datamodel import EntryMetadata
 
         # Parse journal name, lead author and publication date from crossref

@@ -1,27 +1,33 @@
-# default installed image for docker executor is: python:3.6
+# Syntax reference: https://docs.gitlab.com/ci/yaml/
+
+# Overview:
+# Pipelines run only on merge requests, schedules, tags, or the develop branch (default).
+# - A schedule pipeline (e.g. nightly build) runs all the jobs.
+# - A tag pipeline runs most of the jobs but skips some (also, v#.#.# tags are special).
+# - Merge requests and pushes to develop will run
+#   - few jobs if only `docs/` files changed,
+#   - all jobs if any other files changed.
+
+.anchors:
+  .non-docs-changes: &non-docs-changes
+    changes:
+      - examples
+      - gui
+      - nomad
+      - ops
+      - scripts
+      - tests
+      - "*"  # all files in root
+  .manual-allow_failure: &manual-allow_failure
+    when: manual
+    allow_failure: true
+
 # using an image that can do git, docker, docker-compose
 image: gitlab-registry.mpcdf.mpg.de/nomad-lab/nomad-fair/ci-runner:latest
 
-# build directory inside
-# https://gitlab.mpcdf.mpg.de/help/ci/runners/configure_runners.md#custom-build-directories
-
-# https://docs.gitlab.com/ee/ci/yaml/workflow.html
-# https://docs.gitlab.com/ee/ci/variables/predefined_variables.html
-# if: CI_COMMIT_BRANCH && CI_COMMIT_BEFORE_SHA == "0000000000000000000000000000000000000000"
-# A branch pipeline, but it is the first commit for that branch
-# if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"
-# For an existing workflow section to switch from branch pipelines to merge request pipelines when a merge request is created.
-# if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
-# A branch pipeline, but a merge request is open for that branch, do not run the branch pipeline.
-# if: $CI_PIPELINE_SOURCE == "merge_request_event"
-# A merge request pipeline, start the pipeline.
-# if: $CI_COMMIT_BRANCH
-# A branch pipeline, but there is no merge request open for the branch, run the branch pipeline.
-
 default:
   tags:
-    # Necessary to select the right CI runner
-    - cloud
+    - cloud  # Necessary to select the right CI runner
 
 variables:
   DOCKER_TAG: ${CI_COMMIT_REF_SLUG}
@@ -38,13 +44,14 @@ workflow:
     - if: $CI_COMMIT_TAG
       variables:
         DOCKER_TAG: ${CI_COMMIT_REF_NAME}
-    - when: never
 
 stages:
   - build
   - test
   - deploy
   - release
+
+# JOBS
 
 update changelog:
   stage: build
@@ -76,6 +83,9 @@ build gui:
   variables:
     TARGET: dev_node
     DESTINATION: "${CI_REGISTRY_IMAGE}/dev_node:${DOCKER_TAG}"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_TAG
+    - <<: *non-docs-changes
 
 # kaniko image doesn't contain pip, so we have to save the scm_pretend_version in an earlier job and reuse it later
 update_scm_pretend_version:
@@ -93,6 +103,9 @@ build python:
   variables:
     TARGET: dev_python
     DESTINATION: "${CI_REGISTRY_IMAGE}/dev_python:${DOCKER_TAG}"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_TAG
+    - <<: *non-docs-changes
 
 python linting:
   stage: test
@@ -105,7 +118,7 @@ python linting:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - when: on_success
+    - <<: *non-docs-changes
   artifacts:
     name: "nomad_code_quality"
     when: always
@@ -119,8 +132,9 @@ python package clean up:
   script:
     - python scripts/cleanup_packages.py
   rules:
-    - when: manual
-      allow_failure: true
+    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_TAG
+      <<: *manual-allow_failure
+    - <<: [*non-docs-changes, *manual-allow_failure]
 
 check python dependencies:
   stage: test
@@ -130,8 +144,9 @@ check python dependencies:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - when: manual
-      allow_failure: true
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      <<: *manual-allow_failure
+    - <<: [*non-docs-changes, *manual-allow_failure]
 
 .base_test:
   image: ${CI_REGISTRY_IMAGE}/dev_python:${DOCKER_TAG}
@@ -168,15 +183,14 @@ generate pytest timings:
     - python -m pytest --store-durations
   artifacts:
     expire_in: 1 days
-    when: on_success
     paths:
       - .test_durations
-
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - when: manual
-      allow_failure: true
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      <<: *manual-allow_failure
+    - <<: [*non-docs-changes, *manual-allow_failure]
 
 python tests:
   parallel: 3
@@ -187,13 +201,13 @@ python tests:
     - cp .coverage .coverage_${CI_NODE_INDEX}
   artifacts:
     expire_in: 1 days
-    when: on_success
     paths:
       - .coverage_${CI_NODE_INDEX}
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - when: on_success
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - <<: *non-docs-changes
 
 python coverage report:
   stage: test
@@ -213,7 +227,8 @@ python coverage report:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - when: on_success
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - <<: *non-docs-changes
 
 gui linting:
   stage: test
@@ -227,7 +242,8 @@ gui linting:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - when: on_success
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - <<: *non-docs-changes
 
 generate gui artifacts:
   stage: test
@@ -239,7 +255,8 @@ generate gui artifacts:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - when: on_success
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - <<: *non-docs-changes
   artifacts:
     paths:
       - gui/tests/env.js
@@ -278,7 +295,8 @@ gui tests:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - when: on_success
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - <<: *non-docs-changes
 
 build python package:
   stage: test
@@ -301,13 +319,12 @@ build python package:
     - cp /app/tests/data/examples/example.out $CI_PROJECT_DIR/
   artifacts:
     expire_in: 1 days
-    when: on_success
     paths:
       - dist/
       - archive.json
       - example.out
 
-install tests:
+python package install tests:
   stage: test
   parallel:
     matrix:
@@ -327,8 +344,11 @@ install tests:
     - python -m nomad.cli parse --skip-normalizers archive.json
     - uv pip install git+https://github.com/nomad-coe/nomad-parser-example.git@ba6027fdd4cda0cf9e0b32546bd809c8fdda79e6
     - python -m exampleparser example.out
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_TAG
+    - <<: *non-docs-changes
 
-python package:
+release python package:
   stage: release
   image: ghcr.io/astral-sh/uv:$UV_VERSION-python$PYTHON_VERSION-bookworm
   variables:
@@ -336,12 +356,11 @@ python package:
   script: uv publish -u gitlab-ci-token -p ${CI_JOB_TOKEN} --publish-url https://gitlab.mpcdf.mpg.de/api/v4/projects/${CI_PROJECT_ID}/packages/pypi dist/nomad-lab-*.tar.gz
   rules:
     - if: $CI_COMMIT_BRANCH == "develop" && $NIGHTLY
-      when: on_success
-    - when: manual
-      allow_failure: true
     - if: $CI_COMMIT_TAG
+      <<: *manual-allow_failure
+    - <<: [*non-docs-changes, *manual-allow_failure]
 
-pypi package:
+release pypi package:
   stage: release
   variables:
     GIT_STRATEGY: none
@@ -350,9 +369,8 @@ pypi package:
   script: twine upload -u $CI_TWINE_USER -p $CI_TWINE_PASSWORD dist/nomad-lab-*.tar.gz
   rules:
     - if: $CI_COMMIT_TAG
-      when: manual
-      allow_failure: true
-    - when: never
+      <<: *manual-allow_failure
+    - <<: [*non-docs-changes, *manual-allow_failure]
 
 push to github:
   stage: release

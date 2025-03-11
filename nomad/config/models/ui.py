@@ -17,18 +17,17 @@
 #
 
 from enum import Enum
-from typing import List, Dict, Union, Optional
-from typing import Literal
-from typing import Annotated
-from pydantic import BaseModel, ConfigDict, model_validator, Field
+from typing import Annotated, Literal, Union
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .common import (
     ConfigBaseModel,
     Options,
-    OptionsSingle,
-    OptionsMulti,
-    OptionsGlob,
     OptionsBase,
+    OptionsGlob,
+    OptionsMulti,
+    OptionsSingle,
 )
 
 
@@ -116,8 +115,9 @@ class UnitSystem(ConfigBaseModel):
             values = values.model_dump(exclude_none=True)
         """Adds SI defaults for dimensions that are missing a unit."""
         units = values.get('units', {})
-        from nomad.units import ureg
         from pint import UndefinedUnitError
+
+        from nomad.units import ureg
 
         # Check that only supported dimensions and units are used
         for key in units.keys():

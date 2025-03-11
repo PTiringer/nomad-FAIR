@@ -24,11 +24,11 @@ source code without circular imports.
 import os
 import pkgutil
 import shutil
-import zipfile
 import tarfile
-from typing import Optional
-from typing import Literal
+import zipfile
 from tempfile import TemporaryDirectory
+from typing import Literal
+
 import httpx
 
 

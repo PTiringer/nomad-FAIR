@@ -144,9 +144,7 @@ export class Filter {
     this.parent = parent
     this.group = params.group
     this.placeholder = params?.placeholder
-    this.multiple = params?.multiple === undefined
-      ? multiTypes.has(this.dtype)
-      : params?.multiple
+    this.multiple = params?.multiple ?? multiTypes.has(this.dtype)
     this.exclusive = params?.exclusive === undefined ? true : params?.exclusive
     this.queryMode = params?.queryMode || (this.multiple ? 'any' : undefined)
     this.options = params?.options || getEnumOptions(this.quantity)

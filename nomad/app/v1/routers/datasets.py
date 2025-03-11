@@ -17,46 +17,44 @@
 #
 
 import re
-from typing import cast, Optional, List
-from fastapi import (
-    APIRouter,
-    Request,
-    Depends,
-    Query as FastApiQuery,
-    Path,
-    HTTPException,
-    status,
-)
-from pydantic import field_validator, BaseModel, Field, validator
 from datetime import datetime
-import enum
+from enum import Enum
+from typing import cast
 
-from nomad import utils, datamodel, processing
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
+from fastapi import Query as FastApiQuery
+from pydantic import BaseModel, Field, field_validator
+
+from nomad import datamodel, processing, utils
 from nomad.config import config
-from nomad.metainfo.elasticsearch_extension import entry_type
-from nomad.utils import strip, create_uuid
 from nomad.datamodel import Dataset as DatasetDefinitionCls
 from nomad.doi import DOI, DOIException
+from nomad.metainfo.elasticsearch_extension import entry_type
 from nomad.search import search, update_by_query
+from nomad.utils import create_uuid, strip
 
-from .auth import create_user_dependency
-from .entries import _do_exhaustive_search
-from ..utils import create_responses, parameter_dependency_from_model
 from ..models import (
+    Any_,
+    Direction,
+    HTTPExceptionModel,
+    MetadataPagination,
+    MetadataRequired,
+    Owner,
     Pagination,
     PaginationResponse,
-    MetadataPagination,
     Query,
-    HTTPExceptionModel,
     User,
-    Direction,
-    Owner,
-    Any_,
 )
-
+from ..utils import create_responses, parameter_dependency_from_model
+from .auth import create_user_dependency
+from .entries import _do_exhaustive_search
 
 router = APIRouter()
-default_tag = 'datasets'
+
+
+class APITag(str, Enum):
+    DEFAULT = 'datasets'
+
 
 logger = utils.get_logger(__name__)
 
@@ -178,7 +176,10 @@ Dataset = datamodel.Dataset.m_def.a_pydantic.model
 def _delete_dataset(user: User, dataset_id, dataset):
     es_query = cast(Query, {'datasets.dataset_id': dataset_id})
     entries = _do_exhaustive_search(
-        owner=Owner.user, query=es_query, user=user, include=['entry_id']
+        owner=Owner.user,
+        query=es_query,
+        user=user,
+        required=MetadataRequired(include=['entry_id']),
     )
     entry_ids = [entry['entry_id'] for entry in entries]
     mongo_query = {'_id': {'$in': entry_ids}}
@@ -257,7 +258,7 @@ class DatasetResponse(BaseModel):
     data: Dataset = Field()  # type: ignore
 
 
-class DatasetType(str, enum.Enum):
+class DatasetType(str, Enum):
     owned = 'owned'
     foreign = 'foreign'
 
@@ -271,7 +272,7 @@ class DatasetCreate(BaseModel):  # type: ignore
 
 @router.get(
     '/',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Get a list of datasets',
     response_model=DatasetsResponse,
     response_model_exclude_unset=True,
@@ -318,7 +319,7 @@ async def get_datasets(
 
 @router.get(
     '/{dataset_id}',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Get a list of datasets',
     response_model=DatasetResponse,
     responses=create_responses(_bad_id_response),
@@ -347,7 +348,7 @@ async def get_dataset(
 
 @router.post(
     '/',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Create a new dataset',
     response_model=DatasetResponse,
     responses=create_responses(_existing_name_response),
@@ -408,7 +409,10 @@ async def post_datasets(
             empty = True
         else:
             entries = _do_exhaustive_search(
-                owner=Owner.user, query=es_query, user=user, include=['entry_id']
+                owner=Owner.user,
+                query=es_query,
+                user=user,
+                required=MetadataRequired(include=['entry_id']),
             )
             entry_ids = [entry['entry_id'] for entry in entries]
             mongo_query = {'_id': {'$in': entry_ids}}
@@ -436,7 +440,7 @@ async def post_datasets(
 
 @router.delete(
     '/{dataset_id}',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Delete a dataset',
     response_model=DatasetResponse,
     responses=create_responses(
@@ -482,7 +486,7 @@ async def delete_dataset(
 
 @router.post(
     '/{dataset_id}/action/doi',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Assign a DOI to a dataset',
     response_model=DatasetResponse,
     responses=create_responses(

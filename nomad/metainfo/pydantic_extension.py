@@ -32,16 +32,13 @@
 Allows to create pydantic models from section definitions.
 """
 
-from typing import Optional, cast, Type
-from pydantic import create_model, Field, BaseModel
+from typing import cast
 
-from .data_type import to_pydantic_type
-from .metainfo import (
-    Definition,
-    Section,
-    Quantity,
-)
+from pydantic import BaseModel, Field, create_model
+
 from . import DefinitionAnnotation
+from .data_type import to_pydantic_type
+from .metainfo import Definition, Quantity, Section
 
 
 class PydanticModel(DefinitionAnnotation):

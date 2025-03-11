@@ -18,13 +18,13 @@
 
 import functools
 import re
-from typing import Any, Dict, Union, Tuple
 from collections.abc import Callable
 from io import BytesIO
+from typing import Any
 
 from nomad import utils
 
-from .storage import ArchiveReader, ArchiveList, ArchiveDict, to_json, read_archive
+from .storage import ArchiveDict, ArchiveList, ArchiveReader, read_archive, to_json
 
 _query_archive_key_pattern = re.compile(r'^([\s\w\-]+)(\[([-?0-9]*)(:([-?0-9]*))?])?$')
 

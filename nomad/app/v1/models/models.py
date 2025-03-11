@@ -16,31 +16,30 @@
 # limitations under the License.
 #
 import datetime
-import enum
 import fnmatch
 import json
 import re
-from typing import Any
 from collections.abc import Mapping
+from enum import Enum
+from typing import Annotated, Any
 
-import pydantic
 from fastapi import Body, HTTPException, Request
 from fastapi import Query as FastApiQuery
-from pydantic import (  # pylint: disable=unused-import
-    field_validator,
-    model_validator,
-    StringConstraints,
-    ConfigDict,
+from pydantic import (  # noqa: F401
     BaseModel,
+    ConfigDict,
     Field,
     StrictBool,
     StrictFloat,
     StrictInt,
+    StringConstraints,
+    field_validator,
+    model_validator,
 )
 from pydantic.main import create_model
 from pydantic_core import PydanticCustomError
 
-from nomad import datamodel, metainfo  # pylint: disable=unused-import
+from nomad import datamodel, metainfo  # noqa: F401
 from nomad.app.v1.utils import parameter_dependency_from_model
 from nomad.metainfo.elasticsearch_extension import (
     DocumentType,
@@ -50,8 +49,6 @@ from nomad.metainfo.elasticsearch_extension import (
 from nomad.utils import strip
 
 from .pagination import Pagination, PaginationResponse
-from typing import Annotated
-
 
 User: Any = datamodel.User.m_def.a_pydantic.model
 # It is important that datetime.datetime comes last. Otherwise, number valued strings
@@ -81,7 +78,7 @@ owner_documentation = strip(
 )
 
 
-class Owner(str, enum.Enum):
+class Owner(str, Enum):
     __doc__ = owner_documentation
 
     # There seems to be a slight bug in fast API. When it creates the example in OpenAPI
@@ -917,7 +914,7 @@ class HistogramAggregation(BucketAggregation):
         """
         ),
     )
-    offset: float | None = Field(None, gte=0)
+    offset: float | None = Field(None)
     extended_bounds: Bounds | None = None
 
     @model_validator(mode='before')

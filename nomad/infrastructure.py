@@ -23,33 +23,34 @@ is run once for each *api* and *worker* process. Individual functions for partia
 exist to facilitate testing, aspects of :py:mod:`nomad.cli`, etc.
 """
 
-import os.path
+import json
 import os
+import os.path
+import re
 import shutil
+import smtplib
+
+# TODO put somemore thought into warnings
+import warnings
+from datetime import datetime
+from email.mime.text import MIMEText
+
+import jwt
+import unidecode
 from elasticsearch_dsl import connections
+from keycloak import KeycloakAdmin, KeycloakOpenID
+from keycloak.exceptions import KeycloakAuthenticationError, KeycloakGetError
 from mongoengine import connect, disconnect
 from mongoengine.connection import ConnectionFailure
-import smtplib
-from email.mime.text import MIMEText
-from keycloak import KeycloakOpenID, KeycloakAdmin
-from keycloak.exceptions import KeycloakAuthenticationError, KeycloakGetError
-import json
-import jwt
-from datetime import datetime
-import re
-import unidecode
 
 from nomad import utils
 from nomad.config import config
-from nomad.utils.structlogging import get_logger
 
 # The metainfo is defined and used during imports. This is problematic.
 # We import all parsers very early in the infrastructure setup. This will populate
 # the metainfo with parser specific definitions, before the metainfo might be used.
-from nomad.parsing import parsers  # pylint: disable=unused-import
-
-# TODO put somemore thought into warnings
-import warnings
+from nomad.parsing import parsers  # noqa: F401
+from nomad.utils.structlogging import get_logger
 
 warnings.filterwarnings('ignore')
 
@@ -102,12 +103,13 @@ def setup_mongo(client=False):
 
 def check_mongo():
     db = mongo_client.get_database(config.mongo.db_name)
-    names = db.list_collection_names()
+    names = set(db.list_collection_names())
 
     expected_names = {'upload', 'user_group', 'entry', 'dataset', 'archive'}
-    if names != expected_names:
+    if not expected_names.issuperset(names):
         logger.warning(
-            f'Expected MongoDB collections: {expected_names} but found: {names}'
+            f'Expected MongoDB collections: {sorted(expected_names)}; '
+            f'but found: {sorted(names)}'
         )
 
     # regression https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/issues/2281

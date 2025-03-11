@@ -16,17 +16,16 @@
 # limitations under the License.
 #
 
-import pytest
-from typing import Set, Literal, Optional, List, Any
 import json
 import re
-from devtools import debug
+from typing import Any, Literal
 from urllib.parse import urlencode
 
-from nomad.utils import deep_get
+import pytest
+from devtools import debug
 
 from nomad.datamodel import results
-
+from nomad.utils import deep_get
 from tests.utils import assert_at_least, assert_url_query_args, build_url
 
 n_code_names = results.Simulation.program_name.a_elasticsearch[

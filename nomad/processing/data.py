@@ -29,103 +29,84 @@ entries, and files
 """
 
 import base64
-from typing import (
-    Optional,
-    cast,
-    Any,
-    List,
-    Tuple,
-    Set,
-    Dict,
-    Union,
-)
-from collections.abc import Iterator, Iterable, Sequence
-from pydantic import ValidationError
-from pydantic_core import InitErrorDetails, PydanticCustomError
+import copy
+import hashlib
+import os.path
+from collections.abc import Iterable, Iterator, Sequence
+from contextlib import contextmanager
+from datetime import datetime
+from typing import Any, Union, cast
+
+import requests
 import rfc3161ng
+import validators
+from fastapi.exceptions import RequestValidationError
 from mongoengine import (
-    StringField,
-    DateTimeField,
     BooleanField,
-    IntField,
-    ListField,
+    DateTimeField,
     DictField,
     EmbeddedDocument,
     EmbeddedDocumentField,
+    IntField,
+    ListField,
+    StringField,
 )
 from pymongo import UpdateOne
 from structlog import wrap_logger
-from contextlib import contextmanager
-import copy
-import os.path
-from datetime import datetime
-import hashlib
-from structlog.processors import StackInfoRenderer, format_exc_info, TimeStamper
-import requests
-from fastapi.exceptions import RequestValidationError
-import validators
+from structlog.processors import StackInfoRenderer, TimeStamper, format_exc_info
 
-from nomad import (
-    utils,
-    infrastructure,
-    search,
-    datamodel,
-    metainfo,
-    parsing,
-    client,
-)
-from nomad.config import config
-from nomad.common import is_safe_relative_path
-from nomad.config.models.plugins import ExampleUploadEntryPoint
-
-from nomad.datamodel.datamodel import RFC3161Timestamp
-from nomad.files import (
-    RawPathInfo,
-    PathObject,
-    UploadFiles,
-    PublicUploadFiles,
-    StagingUploadFiles,
-    create_tmp_dir,
-)
-from nomad.groups import user_group_exists, get_group_ids
-from nomad.metainfo.data_type import Datatype, Datetime
-from nomad.processing.base import (
-    Proc,
-    process,
-    process_local,
-    ProcessStatus,
-    ProcessFailure,
-    ProcessAlreadyRunning,
-)
-from nomad.parsing import Parser
-from nomad.parsing.parsers import parser_dict, match_parser
-from nomad.normalizing import normalizers
-from nomad.datamodel import (
-    EntryArchive,
-    EntryMetadata,
-    MongoUploadMetadata,
-    MongoEntryMetadata,
-    MongoSystemMetadata,
-    EditableUserMetadata,
-    AuthLevel,
-    ServerContext,
-)
-from nomad.archive import (
-    write_partial_archive_to_mongo,
-    delete_partial_archives_from_mongo,
-    to_json,
-)
+from nomad import client, datamodel, infrastructure, metainfo, parsing, search, utils
 from nomad.app.v1.models import (
-    MetadataEditRequest,
     Aggregation,
-    TermsAggregation,
+    MetadataEditRequest,
     MetadataPagination,
     MetadataRequired,
+    TermsAggregation,
     restrict_query_to_upload,
 )
 from nomad.app.v1.routers.metainfo import store_package_definition
-from nomad.search import update_metadata as es_update_metadata
+from nomad.archive import (
+    delete_partial_archives_from_mongo,
+    to_json,
+    write_partial_archive_to_mongo,
+)
+from nomad.common import is_safe_relative_path
+from nomad.config import config
 from nomad.config.models.config import Reprocess
+from nomad.config.models.plugins import ExampleUploadEntryPoint
+from nomad.datamodel import (
+    AuthLevel,
+    EditableUserMetadata,
+    EntryArchive,
+    EntryMetadata,
+    MongoEntryMetadata,
+    MongoSystemMetadata,
+    MongoUploadMetadata,
+    ServerContext,
+)
+from nomad.datamodel.datamodel import RFC3161Timestamp
+from nomad.files import (
+    PathObject,
+    PublicUploadFiles,
+    RawPathInfo,
+    StagingUploadFiles,
+    UploadFiles,
+    create_tmp_dir,
+)
+from nomad.groups import get_group_ids, user_group_exists
+from nomad.metainfo.data_type import Datatype, Datetime
+from nomad.normalizing import normalizers
+from nomad.parsing import Parser
+from nomad.parsing.parsers import match_parser, parser_dict
+from nomad.processing.base import (
+    Proc,
+    ProcessAlreadyRunning,
+    ProcessFailure,
+    ProcessStatus,
+    process,
+    process_local,
+)
+from nomad.search import update_metadata as es_update_metadata
 from nomad.utils.pydantic import CustomErrorWrapper
 
 section_metadata = datamodel.EntryArchive.metadata.name
@@ -916,6 +897,7 @@ class Entry(Proc):
             external database where the data was imported from
         nomad_version: the NOMAD version used for the last processing
         nomad_commit: the NOMAD commit used for the last processing
+        nomad_distro_commit_url: the NOMAD distro commit url used for the last processing
         comment: a user provided comment for this entry
         references: user provided references (URLs) for this entry
         entry_coauthors: a user provided list of co-authors specific for this entry. Note
@@ -936,6 +918,7 @@ class Entry(Proc):
     external_id = StringField()
     nomad_version = StringField()
     nomad_commit = StringField()
+    nomad_distro_commit_url = StringField()
     comment = StringField()
     references = ListField(StringField())
     entry_coauthors = ListField()
@@ -1019,8 +1002,11 @@ class Entry(Proc):
         In this case, the timestamp stored in the archive is used.
         If no previous timestamp is available, a new timestamp is generated.
         """
+        distro_commit_url = utils.nomad_distro_metadata()
+        entry_metadata.nomad_version = config.meta.version
         entry_metadata.nomad_version = config.meta.version
         entry_metadata.nomad_commit = ''
+        entry_metadata.nomad_distro_commit_url = distro_commit_url or ''
         entry_metadata.entry_hash = self.upload_files.entry_hash(
             self.mainfile, self.mainfile_key
         )

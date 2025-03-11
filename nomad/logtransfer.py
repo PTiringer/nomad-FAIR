@@ -16,15 +16,15 @@
 # limitations under the License.
 #
 
-import requests
-import zlib
-import os.path
 import os
+import os.path
 import time
+import zlib
 
+import requests
 
-from nomad.config import config
 from nomad import utils
+from nomad.config import config
 
 logger = utils.get_logger(__name__)
 

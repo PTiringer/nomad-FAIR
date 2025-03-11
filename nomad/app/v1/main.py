@@ -18,9 +18,9 @@
 
 import traceback
 
-from fastapi import FastAPI, status, Request
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse, ORJSONResponse
+from fastapi.responses import JSONResponse, ORJSONResponse, RedirectResponse
 from pyinstrument import Profiler
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -29,22 +29,23 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from nomad import utils
 from nomad.config import config
+
 from .common import root_path
 from .routers import (
-    users,
-    entries,
-    materials,
     auth,
-    info,
     datasets,
-    uploads,
-    suggestions,
-    metainfo,
-    north,
-    systems,
+    entries,
     federation,
     graph,
     groups,
+    info,
+    materials,
+    metainfo,
+    north,
+    suggestions,
+    systems,
+    uploads,
+    users,
 )
 
 logger = utils.get_logger(__name__)
@@ -123,18 +124,18 @@ async def unicorn_exception_handler(request: Request, e: Exception):
     )
 
 
-app.include_router(info.router, prefix='/info')
 app.include_router(auth.router, prefix='/auth')
-app.include_router(federation.router, prefix='/federation')
-app.include_router(materials.router, prefix='/materials')
-app.include_router(entries.router, prefix='/entries')
 app.include_router(datasets.router, prefix='/datasets')
-app.include_router(uploads.router, prefix='/uploads')
-app.include_router(metainfo.router, prefix='/metainfo')
-app.include_router(users.router, prefix='/users')
-app.include_router(suggestions.router, prefix='/suggestions')
-if config.north.enabled:
-    app.include_router(north.router, prefix='/north')
-app.include_router(systems.router, prefix='/systems')
+app.include_router(entries.router, prefix='/entries')
+app.include_router(federation.router, prefix='/federation')
 app.include_router(graph.router, prefix='/graph')
 app.include_router(groups.router, prefix='/groups')
+app.include_router(info.router, prefix='/info')
+app.include_router(materials.router, prefix='/materials')
+app.include_router(metainfo.router, prefix='/metainfo')
+if config.north.enabled:
+    app.include_router(north.router, prefix='/north')
+app.include_router(suggestions.router, prefix='/suggestions')
+app.include_router(systems.router, prefix='/systems')
+app.include_router(uploads.router, prefix='/uploads')
+app.include_router(users.router, prefix='/users')

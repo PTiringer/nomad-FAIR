@@ -20,28 +20,27 @@
 # code will fail.
 # TODO The metadata should not be set via API, but added to the uploads as nomad.json.
 
-from typing import List
-import requests
+import io
+import json
+import os
 import re
 import subprocess
-from urllib import parse as urllib_parse
-import os
 import tarfile
 import threading
 import time
-import typing
-import io
-import re
 import uuid
-import json
-import numpy as np
+from urllib import parse as urllib_parse
+
 import ase
 import bs4
 import matid  # pylint: disable=import-error
+import numpy as np
+import requests
 
-from nomad import atomutils, client, processing as proc
-from nomad.config import config
+from nomad import atomutils, client
+from nomad import processing as proc
 from nomad.client import api, upload_file
+from nomad.config import config
 
 
 class DbUpdater:

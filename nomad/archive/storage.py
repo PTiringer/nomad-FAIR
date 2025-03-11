@@ -17,12 +17,10 @@
 #
 from __future__ import annotations
 
-from typing import Any, Tuple, Dict, Union, cast
-from collections.abc import Generator
-from io import BytesIO, BufferedReader
-from collections.abc import Mapping, Sequence
-
 import struct
+from collections.abc import Generator, Mapping, Sequence
+from io import BufferedReader, BytesIO
+from typing import Any, cast
 
 import msgspec
 
@@ -328,10 +326,8 @@ def read_archive(file_or_path: str | BytesIO, **kwargs) -> ArchiveReader:
         will lazily load data as it is used. The mapping needs to be closed or used within
         a 'with' statement to free the underlying file resource after use.
     """
-    from .storage_v2 import (
-        ArchiveWriter as ArchiveWriterNew,
-        ArchiveReader as ArchiveReaderNew,
-    )
+    from .storage_v2 import ArchiveReader as ArchiveReaderNew
+    from .storage_v2 import ArchiveWriter as ArchiveWriterNew
 
     # todo: replace implementation to enable automatic conversion
     # if isinstance(file_or_path, str):

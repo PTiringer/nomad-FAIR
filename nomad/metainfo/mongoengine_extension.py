@@ -33,14 +33,11 @@ Adds mongoengine supports to the metainfo. Allows to create, save, and get metai
 sections from mongoengine. The annotation key is 'mongo'.
 """
 
-from typing import Any, Dict, List
+from typing import Any
 
-from .data_type import Datatype, to_mongo_type
-from .metainfo import (
-    MSection,
-    Quantity,
-)
 from . import Annotation, DefinitionAnnotation, SectionAnnotation
+from .data_type import Datatype, to_mongo_type
+from .metainfo import MSection, Quantity
 
 
 class Mongo(DefinitionAnnotation):

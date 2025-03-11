@@ -17,11 +17,10 @@
 #
 
 from abc import ABCMeta, abstractmethod
-from typing import List, Optional
 
-from nomad.utils import get_logger
-from nomad.metainfo import MSection
 from nomad.datamodel import EntryArchive
+from nomad.metainfo import MSection
+from nomad.utils import get_logger
 
 
 class Normalizer(metaclass=ABCMeta):

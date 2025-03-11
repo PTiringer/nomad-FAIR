@@ -67,6 +67,18 @@ test.each([
     undefined,
     'mm',
     '3500 mm'
+  ],
+  [
+    'full storage',
+    {
+      m_value: 3.5,
+      m_unit: 'm',
+      m_original_unit: 'm'
+    },
+    undefined,
+    undefined,
+    'm',
+    '3.50000 m'
   ]
 ])('Test QuantityItemPreview %s', async (name, value, unit, displayUnit, elnUnit, expected) => {
   const def = {
@@ -85,7 +97,7 @@ test.each([
 
   render(
     <QuantityItemPreview
-      def={{name: 'value1', shape: [], type: {type_kind: 'python', type_data: 'float'}, ...def}}
+      def={{name: 'value1', shape: [], type: {type_kind: 'python', type_data: 'float'}, variable: !!value?.m_value, ...def}}
       value={value}
     />
   )
@@ -182,6 +194,22 @@ describe("Test QuantityValue", () => {
       false,
       '(1)',
       'mm'
+    ],
+    [
+      'full storage',
+      {
+        m_value: [3.5],
+        m_unit: 'm',
+        m_original_unit: 'm'
+      },
+      [1],
+      undefined,
+      undefined,
+      undefined,
+      '3.50000',
+      false,
+      '(1)',
+      'm'
     ]
   ])('%s', async (name, value, shape, unit, displayUnit, elnUnit, expectedValue, scientific, expectedDim, expectedUnit) => {
     const def = {
@@ -201,7 +229,7 @@ describe("Test QuantityValue", () => {
 
     const screen = render(
       <QuantityValue
-        def={{name: 'value1', type: {type_kind: 'python', type_data: 'float'}, ...def}}
+        def={{name: 'value1', type: {type_kind: 'python', type_data: 'float'}, variable: !!value?.m_value, ...def}}
         value={value}
       />
     )

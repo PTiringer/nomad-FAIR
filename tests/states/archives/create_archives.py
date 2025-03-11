@@ -17,6 +17,7 @@
 #
 
 import math
+
 from nomad.utils.exampledata import create_entry_archive
 
 

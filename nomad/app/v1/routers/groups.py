@@ -16,6 +16,8 @@
 # limitations under the License.
 #
 
+from enum import Enum
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from nomad.app.v1.models.groups import (
@@ -27,11 +29,6 @@ from nomad.app.v1.models.groups import (
 )
 from nomad.app.v1.models.pagination import PaginationResponse
 from nomad.app.v1.utils import parameter_dependency_from_model
-from typing import List, Optional, Set
-
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import ConfigDict, BaseModel, Field
-
 from nomad.datamodel import User as UserDataModel
 from nomad.groups import MongoUserGroup
 from nomad.groups import create_user_group as create_mongo_user_group
@@ -41,7 +38,10 @@ from ..models import User
 from .auth import create_user_dependency
 
 router = APIRouter()
-default_tag = 'groups'
+
+
+class APITag(str, Enum):
+    DEFAULT = 'groups'
 
 
 user_group_query_parameters = parameter_dependency_from_model(
@@ -93,7 +93,7 @@ def check_user_may_edit_user_group(user: User, user_group: MongoUserGroup):
 
 @router.get(
     '',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='List user groups. Use at most one filter.',
     response_model=UserGroupResponse,
 )
@@ -118,7 +118,7 @@ async def get_user_groups(
 
 @router.get(
     '/{group_id}',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Get data about user group.',
     response_model=UserGroup,
 )
@@ -131,7 +131,7 @@ async def get_user_group(group_id: str):
 
 @router.post(
     '',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     status_code=status.HTTP_201_CREATED,
     summary='Create user group.',
     response_model=UserGroup,
@@ -153,7 +153,7 @@ async def create_user_group(
 
 @router.post(
     '/{group_id}/edit',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     summary='Update user group.',
     response_model=UserGroup,
 )
@@ -179,7 +179,7 @@ async def update_user_group(
 
 @router.delete(
     '/{group_id}',
-    tags=[default_tag],
+    tags=[APITag.DEFAULT],
     status_code=status.HTTP_204_NO_CONTENT,
     summary='Delete user group.',
 )
