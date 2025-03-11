@@ -11,12 +11,12 @@
 .anchors:
   .non-docs-changes: &non-docs-changes
     changes:
-      - examples
-      - gui
-      - nomad
-      - ops
-      - scripts
-      - tests
+      - examples/**/*
+      - gui/**/*
+      - nomad/**/*
+      - ops/**/*
+      - scripts/**/*
+      - tests/**/*
       - "*"  # all files in root
   .manual-allow_failure: &manual-allow_failure
     when: manual
