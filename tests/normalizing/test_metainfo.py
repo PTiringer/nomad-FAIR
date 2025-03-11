@@ -17,9 +17,9 @@
 #
 import numpy as np
 
-from nomad.datamodel import EntryData, EntryArchive
-from nomad.metainfo import Quantity, SubSection
 from nomad.client import normalize_all
+from nomad.datamodel import EntryArchive, EntryData
+from nomad.metainfo import Quantity, SubSection
 
 
 def test_normalizer_level():

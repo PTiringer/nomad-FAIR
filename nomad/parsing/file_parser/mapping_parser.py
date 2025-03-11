@@ -11,6 +11,8 @@ import jmespath.visitor
 import numpy as np
 from jsonpath_ng.parser import JsonPathParser
 from lxml import etree
+from pydantic import BaseModel, Field, model_validator
+
 from nomad.datamodel import EntryArchive
 from nomad.datamodel.metainfo.annotations import Mapper as MapperAnnotation
 from nomad.metainfo import MSection, SubSection
@@ -18,7 +20,6 @@ from nomad.parsing.file_parser import TextParser as TextFileParser
 from nomad.parsing.parser import ArchiveParser
 from nomad.units import ureg
 from nomad.utils import get_logger
-from pydantic import BaseModel, Field, model_validator
 
 MAPPING_ANNOTATION_KEY = 'mapping'
 

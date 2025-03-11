@@ -29,9 +29,6 @@ from nomad.app.v1.models.groups import (
 )
 from nomad.app.v1.models.pagination import PaginationResponse
 from nomad.app.v1.utils import parameter_dependency_from_model
-
-from fastapi import APIRouter, Depends, HTTPException, status
-
 from nomad.datamodel import User as UserDataModel
 from nomad.groups import MongoUserGroup
 from nomad.groups import create_user_group as create_mongo_user_group

@@ -2,21 +2,12 @@ import datetime
 
 import numpy as np
 import pandas as pd
-import xarray as xr
 import pytest
+import xarray as xr
 
-from nomad.metainfo.metainfo import (
-    MSection,
-    Package,
-    MEnum,
-    Datetime,
-)
-from nomad.metainfo.data_frames import (
-    ValuesTemplate,
-    DataFrameTemplate,
-)
+from nomad.metainfo.data_frames import DataFrameTemplate, ValuesTemplate
+from nomad.metainfo.metainfo import Datetime, MEnum, MSection, Package
 from nomad.units import ureg
-
 
 m_package = Package()
 

@@ -17,44 +17,37 @@
 #
 
 import re
+from datetime import datetime
 from enum import Enum
 from typing import cast
-from fastapi import (
-    APIRouter,
-    Request,
-    Depends,
-    Query as FastApiQuery,
-    Path,
-    HTTPException,
-    status,
-)
-from pydantic import field_validator, BaseModel, Field
-from datetime import datetime
 
-from nomad import utils, datamodel, processing
+from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
+from fastapi import Query as FastApiQuery
+from pydantic import BaseModel, Field, field_validator
+
+from nomad import datamodel, processing, utils
 from nomad.config import config
-from nomad.metainfo.elasticsearch_extension import entry_type
-from nomad.utils import strip, create_uuid
 from nomad.datamodel import Dataset as DatasetDefinitionCls
 from nomad.doi import DOI, DOIException
+from nomad.metainfo.elasticsearch_extension import entry_type
 from nomad.search import search, update_by_query
+from nomad.utils import create_uuid, strip
 
-from .auth import create_user_dependency
-from .entries import _do_exhaustive_search
-from ..utils import create_responses, parameter_dependency_from_model
 from ..models import (
+    Any_,
+    Direction,
+    HTTPExceptionModel,
+    MetadataPagination,
+    MetadataRequired,
+    Owner,
     Pagination,
     PaginationResponse,
-    MetadataPagination,
     Query,
-    HTTPExceptionModel,
     User,
-    Direction,
-    Owner,
-    Any_,
-    MetadataRequired,
 )
-
+from ..utils import create_responses, parameter_dependency_from_model
+from .auth import create_user_dependency
+from .entries import _do_exhaustive_search
 
 router = APIRouter()
 

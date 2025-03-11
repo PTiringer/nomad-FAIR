@@ -45,40 +45,35 @@ original mainfile, and vice versa.
 
 from __future__ import annotations
 
-from abc import ABCMeta
-from typing import (
-    IO,
-    Any,
-    NamedTuple,
-)
-from collections.abc import Callable
-from collections.abc import Iterable, Iterator
-from pydantic import BaseModel
-from datetime import datetime
-import os.path
-import os
-import shutil
-import zipstream
 import hashlib
 import io
 import json
-import yaml
-import magic
+import os
+import os.path
+import shutil
 import tarfile  # noqa: F401
 import zipfile
+from abc import ABCMeta
+from collections.abc import Callable, Iterable, Iterator
+from datetime import datetime
+from typing import IO, Any, NamedTuple
 
+import magic
+import yaml
+import zipstream
+from pydantic import BaseModel
 
-from nomad import utils, datamodel
+from nomad import datamodel, utils
+from nomad.archive import ArchiveReader, read_archive, to_json, write_archive
+from nomad.archive.storage_v2 import combine_archive
 from nomad.common import (
-    get_compression_format,
     extract_file,
+    get_compression_format,
     is_safe_basename,
     is_safe_relative_path,
 )
 from nomad.config import config
-from nomad.archive.storage_v2 import combine_archive
-from nomad.config.models.config import BundleImportSettings, BundleExportSettings
-from nomad.archive import write_archive, read_archive, ArchiveReader, to_json
+from nomad.config.models.config import BundleExportSettings, BundleImportSettings
 
 bundle_info_filename = 'bundle_info.json'
 

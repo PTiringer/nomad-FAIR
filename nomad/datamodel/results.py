@@ -18,43 +18,40 @@
 
 from logging import Logger
 from typing import TYPE_CHECKING
+
 import numpy as np
+from ase.data import chemical_symbols
 from elasticsearch_dsl import Text
 
-from ase.data import chemical_symbols
-
 from nomad.config import config
-from nomad.datamodel.metainfo.common import ProvenanceTracker, PropertySection
+from nomad.datamodel.metainfo.annotations import H5WebAnnotation
+from nomad.datamodel.metainfo.common import PropertySection, ProvenanceTracker
 from nomad.datamodel.metainfo.simulation.method import CoreHole as CoreHoleRun
-from nomad.metainfo.elasticsearch_extension import (
-    Elasticsearch,
-    material_type,
-    material_entry_type,
-    get_tokenizer,
-)
-
+from nomad.datamodel.optimade import Species as OptimadeSpecies  # noqa
 from nomad.metainfo import (
+    Datetime,
+    MEnum,
     MSection,
+    Package,
+    Quantity,
+    Reference,
     Section,
     SubSection,
-    Quantity,
-    MEnum,
-    Package,
-    Datetime,
-    Reference,
 )
-from nomad.datamodel.metainfo.common import ProvenanceTracker, PropertySection
-from nomad.datamodel.optimade import Species as OptimadeSpecies  # noqa
-from nomad.datamodel.metainfo.annotations import H5WebAnnotation
+from nomad.metainfo.elasticsearch_extension import (
+    Elasticsearch,
+    get_tokenizer,
+    material_entry_type,
+    material_type,
+)
 
 try:
     import runschema
 
     runschema.run_schema_entry_point.load()
-    import runschema.method
     import runschema.calculation
+    import runschema.method
     import runschema.system
-
     import simulationworkflowschema
 
     simulationworkflowschema.simulationworkflow_schema_entry_point.load()

@@ -16,20 +16,20 @@
 # limitations under the License.
 #
 
-import os
-
-import pytest
 import json
+import os
 import re
 
-from nomad import utils, files, processing
+import pytest
+
+from nomad import files, processing, utils
+from nomad.datamodel import Context
+from nomad.datamodel.context import ClientContext, ServerContext, parse_path
+from nomad.datamodel.datamodel import EntryArchive, EntryMetadata
+from nomad.datamodel.metainfo import runschema
 from nomad.metainfo.metainfo import MSection
 from nomad.parsing.parser import ArchiveParser
-from nomad.datamodel import Context
-from nomad.datamodel.context import ServerContext, ClientContext, parse_path
-from nomad.datamodel.datamodel import EntryArchive, EntryMetadata
-from nomad.processing import Upload, Entry, ProcessStatus
-from nomad.datamodel.metainfo import runschema
+from nomad.processing import Entry, ProcessStatus, Upload
 
 
 @pytest.fixture(scope='module')

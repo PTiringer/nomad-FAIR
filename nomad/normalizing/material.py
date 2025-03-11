@@ -16,24 +16,24 @@
 #
 
 import re
-from nptyping import NDArray
 
 import ase.data
 from matid.classification.classifications import (
-    Class0D,
     Atom,
+    Class0D,
     Class1D,
     Class2D,
+    Class3D,
     Material2D,
     Surface,
-    Class3D,
 )
+from nptyping import NDArray
 
 from nomad import atomutils
 from nomad.atomutils import Formula
-from nomad.normalizing.common import material_id_bulk, material_id_2d, material_id_1d
+from nomad.datamodel.results import Material, Symmetry, structure_name_map
+from nomad.normalizing.common import material_id_1d, material_id_2d, material_id_bulk
 from nomad.normalizing.topology import TopologyNormalizer
-from nomad.datamodel.results import Symmetry, Material, structure_name_map
 
 
 class MaterialNormalizer:

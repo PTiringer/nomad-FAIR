@@ -13,16 +13,17 @@
 # limitations under the License.
 
 
-import mmap
 import io
+import mmap
 import re
+from collections.abc import Callable
+from typing import Any
+
 import numpy as np
 import pint
-from typing import Any
-from collections.abc import Callable
 
-from nomad.parsing.file_parser import FileParser
 from nomad.metainfo import Quantity as mQuantity
+from nomad.parsing.file_parser import FileParser
 from nomad.utils import get_logger
 
 

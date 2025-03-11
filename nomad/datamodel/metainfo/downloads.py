@@ -18,10 +18,8 @@
 
 import os.path
 
-from nomad.metainfo import MSection, Package, Quantity, SubSection
-
 from nomad.datamodel.data import ArchiveSection
-
+from nomad.metainfo import MSection, Package, Quantity, SubSection
 
 m_package = Package(name='downloads')
 
@@ -137,7 +135,8 @@ class Downloads(ArchiveSection):
 
         import pathlib
         import urllib.request
-        from nomad.common import get_compression_format, extract_file
+
+        from nomad.common import extract_file, get_compression_format
 
         # download and extract files
         skip_download = True

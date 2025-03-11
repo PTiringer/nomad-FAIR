@@ -18,16 +18,16 @@
 
 from enum import Enum
 
-from fastapi import Depends, APIRouter, status, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic.main import BaseModel
 
-from nomad import infrastructure, datamodel
+from nomad import datamodel, infrastructure
 from nomad.config import config
 from nomad.utils import strip
 
-from .auth import create_user_dependency
-from ..models import User, HTTPExceptionModel
+from ..models import HTTPExceptionModel, User
 from ..utils import create_responses
+from .auth import create_user_dependency
 
 router = APIRouter()
 

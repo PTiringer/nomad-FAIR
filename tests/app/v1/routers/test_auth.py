@@ -16,8 +16,9 @@
 # limitations under the License.
 #
 
-import pytest
 from urllib.parse import urlencode
+
+import pytest
 
 
 def perform_get_token_test(client, http_method, status_code, username, password):
