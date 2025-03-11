@@ -20,9 +20,12 @@
 Definitions that are used in the documentation via mkdocs-macro-plugin.
 """
 
+from types import UnionType
+from pydantic.fields import FieldInfo
 import yaml
 import json
 import os.path
+
 from typing import get_args
 
 from inspect import isclass
