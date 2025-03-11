@@ -17,35 +17,37 @@
 #
 
 from __future__ import annotations
+
 from typing import Any, Literal
-from pydantic import BaseModel, ConfigDict, Field, Extra
 
-from ..groups import UserGroup, UserGroupPagination, UserGroupQuery
-
-from nomad.graph.model import (
-    RequestConfig,
-    DatasetQuery,
-    MetainfoQuery,
-    MetainfoPagination,
-)
-from nomad.metainfo.pydantic_extension import PydanticModel
-from nomad.datamodel.data import User as UserModel
-from nomad.app.v1.models.models import Metadata, MetadataResponse
-from nomad.app.v1.routers.datasets import Dataset as DatasetV1, DatasetPagination
-from nomad.app.v1.routers.uploads import (
-    UploadProcData,
-    UploadProcDataPagination,
-    UploadProcDataQuery,
-    PaginationResponse,
-    EntryProcData,
-    EntryProcDataPagination,
-)
+from pydantic import BaseModel, ConfigDict, Extra, Field
 
 from nomad.app.v1.models.graph.utils import (
     generate_request_model,
     generate_response_model,
     mapped,
 )
+from nomad.app.v1.models.models import Metadata, MetadataResponse
+from nomad.app.v1.routers.datasets import Dataset as DatasetV1
+from nomad.app.v1.routers.datasets import DatasetPagination
+from nomad.app.v1.routers.uploads import (
+    EntryProcData,
+    EntryProcDataPagination,
+    PaginationResponse,
+    UploadProcData,
+    UploadProcDataPagination,
+    UploadProcDataQuery,
+)
+from nomad.datamodel.data import User as UserModel
+from nomad.graph.model import (
+    DatasetQuery,
+    MetainfoPagination,
+    MetainfoQuery,
+    RequestConfig,
+)
+from nomad.metainfo.pydantic_extension import PydanticModel
+
+from ..groups import UserGroup, UserGroupPagination, UserGroupQuery
 
 
 class Error(BaseModel):

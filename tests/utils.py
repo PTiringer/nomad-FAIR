@@ -23,6 +23,7 @@ import urllib.parse
 import zipfile
 from logging import LogRecord
 from typing import Any
+
 import pytest
 
 

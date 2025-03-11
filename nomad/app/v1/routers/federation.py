@@ -24,7 +24,7 @@ import socket
 import zlib
 from enum import Enum
 
-from fastapi import Request, HTTPException
+from fastapi import HTTPException, Request
 from fastapi.routing import APIRouter
 
 from nomad import utils

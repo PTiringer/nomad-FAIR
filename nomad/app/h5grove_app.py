@@ -17,23 +17,24 @@
 #
 from __future__ import annotations
 
-from fastapi import FastAPI, status, Request, Depends
+import re
+import traceback
+import urllib.parse
+from collections.abc import Callable
+from typing import IO, Any
+
+import h5py
+from fastapi import Depends, FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-import traceback
-import re
-import urllib.parse
-import h5py
-from typing import Any, IO
-from collections.abc import Callable
-
-from h5grove import fastapi_utils as h5grove_router, utils as h5grove_utils
+from h5grove import fastapi_utils as h5grove_router
+from h5grove import utils as h5grove_utils
 
 from nomad import utils
-from nomad.files import UploadFiles, PublicUploadFiles
 from nomad.app.v1.models import User
 from nomad.app.v1.routers.auth import create_user_dependency
 from nomad.app.v1.routers.uploads import get_upload_with_read_access
+from nomad.files import PublicUploadFiles, UploadFiles
 
 logger = utils.get_logger(__name__)
 
@@ -43,8 +44,9 @@ def open_zipped_h5_file(
     create_error: Callable[[int, str], Exception],
     h5py_options: dict[str, Any] = {},
 ) -> h5py.File:
-    import re
     import io
+    import re
+
     from nomad import files
 
     """

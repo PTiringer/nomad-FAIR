@@ -20,16 +20,16 @@ from typing import Any
 
 from nomad import infrastructure
 from nomad.config import config
-from nomad.metainfo import (
-    MSection,
-    Definition,
-    Quantity,
-    Reference,
-    SubSection,
-    Section,
-)
 from nomad.datamodel import EntryArchive
 from nomad.datamodel.metainfo.common import FastAccess
+from nomad.metainfo import (
+    Definition,
+    MSection,
+    Quantity,
+    Reference,
+    Section,
+    SubSection,
+)
 
 
 def create_partial_archive(archive: EntryArchive) -> dict:

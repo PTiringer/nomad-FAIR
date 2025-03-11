@@ -16,19 +16,19 @@
 # limitations under the License.
 #
 
-from ase.data import chemical_symbols
 import numpy as np
+from ase.data import chemical_symbols
 
-from nomad.units import ureg
 from nomad.metainfo import (
-    MSection,
-    Section,
-    Quantity,
-    SubSection,
-    MEnum,
     DefinitionAnnotation,
+    MEnum,
+    MSection,
+    Quantity,
+    Section,
+    SubSection,
 )
 from nomad.metainfo.elasticsearch_extension import Elasticsearch
+from nomad.units import ureg
 
 
 def optimade_links(section: str):

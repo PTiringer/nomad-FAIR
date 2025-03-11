@@ -16,15 +16,16 @@
 # limitations under the License.
 #
 
-import pytest
-import numpy as np
 from datetime import datetime
+
+import numpy as np
+import pytest
 import pytz
 
-from nomad.metainfo import Quantity, MSection, SubSection, Datetime, MEnum
-from nomad.datamodel.datamodel import EntryMetadata, SearchableQuantity, EntryArchive
-from nomad.metainfo.elasticsearch_extension import schema_separator
 from nomad.datamodel import EntryData
+from nomad.datamodel.datamodel import EntryArchive, EntryMetadata, SearchableQuantity
+from nomad.metainfo import Datetime, MEnum, MSection, Quantity, SubSection
+from nomad.metainfo.elasticsearch_extension import schema_separator
 from tests.variables import python_schema_name
 
 

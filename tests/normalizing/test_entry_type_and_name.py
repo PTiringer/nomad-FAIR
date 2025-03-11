@@ -16,7 +16,9 @@
 # limitations under the License.
 #
 import pytest
+
 import tests
+
 from .conftest import run_normalize
 
 

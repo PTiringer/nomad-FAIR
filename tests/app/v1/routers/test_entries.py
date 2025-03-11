@@ -16,37 +16,37 @@
 # limitations under the License.
 #
 
-import pytest
-from urllib.parse import urlencode
-import zipfile
 import io
 import json
+import zipfile
+from urllib.parse import urlencode
+
+import pytest
 
 from nomad.metainfo.elasticsearch_extension import entry_type, schema_separator
 from nomad.utils.exampledata import ExampleData
-
-from tests.test_files import example_mainfile_contents, append_raw_files  # noqa: F401
+from tests.test_files import append_raw_files, example_mainfile_contents  # noqa: F401
 from tests.variables import python_schema_name
 
 from .common import (
     aggregation_exclude_from_search_test_parameters,
-    assert_response,
-    assert_base_metadata_response,
-    assert_query_response,
-    assert_metadata_response,
-    assert_required,
-    assert_aggregations,
-    assert_pagination,
-    assert_browser_download_headers,
-    post_query_test_parameters,
-    get_query_test_parameters,
-    perform_owner_test,
-    owner_test_parameters,
-    pagination_test_parameters,
     aggregation_test_parameters,
     aggregation_test_parameters_default,
     assert_aggregation_response,
+    assert_aggregations,
+    assert_base_metadata_response,
+    assert_browser_download_headers,
+    assert_metadata_response,
+    assert_pagination,
+    assert_query_response,
+    assert_required,
+    assert_response,
+    get_query_test_parameters,
+    owner_test_parameters,
+    pagination_test_parameters,
     perform_entries_metadata_test,
+    perform_owner_test,
+    post_query_test_parameters,
 )
 
 """

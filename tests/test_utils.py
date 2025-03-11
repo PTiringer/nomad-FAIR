@@ -16,24 +16,24 @@
 # limitations under the License.
 #
 
-from importlib.metadata import PackageNotFoundError
 import time
-import pytest
-import pandas as pd
+from importlib.metadata import PackageNotFoundError
 
-from nomad import utils
+import pandas as pd
+import pytest
+
+from nomad import files, utils
 from nomad.metainfo.metainfo import MSection, Quantity, SubSection
-from nomad import files
 from nomad.processing import Upload
 from nomad.utils import (
-    nomad_distro_metadata,
-    structlogging,
-    flatten_dict,
-    rebuild_dict,
-    prune_dict,
+    dataframe_to_dict,
     deep_get,
     dict_to_dataframe,
-    dataframe_to_dict,
+    flatten_dict,
+    nomad_distro_metadata,
+    prune_dict,
+    rebuild_dict,
+    structlogging,
 )
 
 

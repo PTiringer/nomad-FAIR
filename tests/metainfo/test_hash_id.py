@@ -1,4 +1,4 @@
-from nomad.metainfo import Quantity, MSection, MEnum
+from nomad.metainfo import MEnum, MSection, Quantity
 
 
 def simple_quantity():

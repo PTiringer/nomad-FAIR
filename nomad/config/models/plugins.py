@@ -16,15 +16,16 @@
 # limitations under the License.
 #
 
-import os
-import sys
-import shutil
-from abc import ABCMeta, abstractmethod
 import importlib
-from typing import Union, Literal, cast, TYPE_CHECKING
-from pydantic import model_validator, BaseModel, Field
+import os
+import shutil
+import sys
+from abc import ABCMeta, abstractmethod
+from typing import TYPE_CHECKING, Literal, Union, cast
 
-from nomad.common import get_package_path, download_file, is_url, is_safe_relative_path
+from pydantic import BaseModel, Field, model_validator
+
+from nomad.common import download_file, get_package_path, is_safe_relative_path, is_url
 
 from .common import Options
 from .ui import App
@@ -32,10 +33,11 @@ from .ui import App
 example_prefix = '__examples__'
 
 if TYPE_CHECKING:
+    from fastapi import FastAPI
+
     from nomad.metainfo import SchemaPackage
     from nomad.normalizing import Normalizer as NormalizerBaseClass
     from nomad.parsing import Parser as ParserBaseClass
-    from fastapi import FastAPI
 
 
 class EntryPoint(BaseModel):
@@ -762,8 +764,8 @@ def add_plugin(plugin: Schema) -> None:
 def remove_plugin(plugin) -> None:
     """Function for removing a plugin."""
     from nomad.config import config
-    from nomad.metainfo.elasticsearch_extension import entry_type
     from nomad.metainfo import Package
+    from nomad.metainfo.elasticsearch_extension import entry_type
 
     # Remove from path
     try:

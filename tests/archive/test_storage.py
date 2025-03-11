@@ -5,10 +5,7 @@ import msgpack
 import msgspec.msgpack
 import pytest
 
-from nomad.archive.storage_v2 import (
-    ArchiveList,
-    ArchiveDict,
-)
+from nomad.archive.storage_v2 import ArchiveDict, ArchiveList
 
 
 def generate_random_json(depth=10, width=4, simple=False):

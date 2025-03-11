@@ -20,26 +20,28 @@
 # Only for purpose of compatibility. Use run schema plugin.
 # https://github.com/nomad-coe/nomad-schema-plugin-run.git
 
-import numpy as np  # noqa: F401
 import typing  # noqa: F401
+
+import numpy as np  # noqa: F401
+
+from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import (  # noqa: F401
-    MSection,
-    MCategory,
     Category,
+    MCategory,
+    MEnum,
+    MSection,
     Package,
     Quantity,
-    Section,
-    SubSection,
-    SectionProxy,
     Reference,
-    MEnum,
+    Section,
+    SectionProxy,
+    SubSection,
     derived,
 )
-from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo.data_type import m_float64
+from nomad.units import ureg
 
 from ..common import FastAccess
-from nomad.units import ureg
 
 m_package = Package()
 

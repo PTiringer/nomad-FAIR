@@ -15,32 +15,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import os
-from typing import Any
-from collections.abc import Callable
-from collections.abc import Iterator, Iterable
-
-import pandas as pd
-import re
-import math
-import numpy as np
 import json
+import math
+import os
+import re
+from collections.abc import Callable, Iterable, Iterator
+from typing import Any
+
+import numpy as np
+import pandas as pd
 import yaml
-from cachetools import cached, LRUCache
+from cachetools import LRUCache, cached
 
 from nomad import utils
-from nomad.parsing import MatchingParser
-from nomad.units import ureg
 from nomad.datamodel.data import ArchiveSection
-from nomad.metainfo import Section, Quantity, Package, Reference, MSection, Property
-from nomad.metainfo.metainfo import MetainfoError, SubSection, MProxy
 from nomad.datamodel.metainfo.annotations import (
     TabularAnnotation,
-    TabularParserAnnotation,
     TabularFileModeEnum,
     TabularMode,
+    TabularParserAnnotation,
 )
+from nomad.metainfo import MSection, Package, Property, Quantity, Reference, Section
+from nomad.metainfo.metainfo import MetainfoError, MProxy, SubSection
 from nomad.metainfo.util import MSubSectionList
+from nomad.parsing import MatchingParser
+from nomad.units import ureg
 from nomad.utils import generate_entry_id
 
 # We define a simple base schema for tabular data. The parser will then generate more

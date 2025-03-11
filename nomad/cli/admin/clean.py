@@ -39,13 +39,13 @@ from .admin import admin
 def clean(dry, skip_entries, skip_fs, skip_es, staging_too, force):
     import os
     import shutil
-    import tabulate
+
     import elasticsearch_dsl
+    import tabulate
 
     from nomad import infrastructure, processing
     from nomad.config import config as nomad_config
-    from nomad.search import delete_by_query
-    from nomad.search import quantity_values
+    from nomad.search import delete_by_query, quantity_values
 
     mongo_client = infrastructure.setup_mongo()
     infrastructure.setup_elastic()

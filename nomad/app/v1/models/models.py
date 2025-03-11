@@ -16,25 +16,25 @@
 # limitations under the License.
 #
 import datetime
-from enum import Enum
 import fnmatch
 import json
 import re
-from typing import Any
 from collections.abc import Mapping
+from enum import Enum
+from typing import Annotated, Any
 
 from fastapi import Body, HTTPException, Request
 from fastapi import Query as FastApiQuery
 from pydantic import (  # noqa: F401
-    field_validator,
-    model_validator,
-    StringConstraints,
-    ConfigDict,
     BaseModel,
+    ConfigDict,
     Field,
     StrictBool,
     StrictFloat,
     StrictInt,
+    StringConstraints,
+    field_validator,
+    model_validator,
 )
 from pydantic.main import create_model
 from pydantic_core import PydanticCustomError
@@ -49,8 +49,6 @@ from nomad.metainfo.elasticsearch_extension import (
 from nomad.utils import strip
 
 from .pagination import Pagination, PaginationResponse
-from typing import Annotated
-
 
 User: Any = datamodel.User.m_def.a_pydantic.model
 # It is important that datetime.datetime comes last. Otherwise, number valued strings

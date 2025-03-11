@@ -18,8 +18,8 @@
 
 import click
 
-from nomad.config import config
 from nomad.cli.cli import cli
+from nomad.config import config
 
 
 @cli.group(
@@ -68,7 +68,8 @@ def reset(remove, i_am_really_sure):
 def reset_processing(zero_complete_time):
     from datetime import datetime
 
-    from nomad import infrastructure, processing as proc
+    from nomad import infrastructure
+    from nomad import processing as proc
 
     infrastructure.setup_mongo()
 
@@ -109,9 +110,11 @@ def reset_processing(zero_complete_time):
 )
 def lift_embargo(dry, parallel):
     from datetime import datetime
+
     from dateutil.relativedelta import relativedelta
 
-    from nomad import infrastructure, processing as proc
+    from nomad import infrastructure
+    from nomad import processing as proc
     from nomad.search import quantity_values
 
     infrastructure.setup_mongo()
@@ -415,6 +418,7 @@ def migrate_mongo(
     import sys
 
     from pymongo.database import Database
+
     from nomad import infrastructure
     from nomad.cli.admin import migrate
 
@@ -490,9 +494,10 @@ def migrate_mongo(
 )
 def rewrite_doi_urls(dois, dry, save_existing_records):
     import json
+
     import requests
 
-    from nomad.doi import edit_doi_url, _create_dataset_url
+    from nomad.doi import _create_dataset_url, edit_doi_url
 
     existing_records = []
 
