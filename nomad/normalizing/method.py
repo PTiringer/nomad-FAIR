@@ -15,33 +15,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import re
 from abc import ABC, abstractmethod
+from ase.dft.kpoints import monkhorst_pack, get_monkhorst_pack_size_and_offset
 from collections import OrderedDict
-
+import re
 import numpy as np
-from ase.dft.kpoints import get_monkhorst_pack_size_and_offset, monkhorst_pack
 
+from nomad.datamodel import EntryArchive, ArchiveSection
+from nomad.metainfo import MSection
+from nomad.metainfo.data_type import Number
+from nomad.units import ureg
+from nomad.metainfo import Section
+from nomad.utils import RestrictedDict
 from nomad.config import config
-from nomad.datamodel import ArchiveSection, EntryArchive
 from nomad.datamodel.results import (
-    BSE,
-    DFT,
-    DMFT,
-    GW,
-    TB,
-    HubbardKanamoriModel,
-    Material,
     Method,
-    Precision,
     Simulation,
+    HubbardKanamoriModel,
+    DFT,
+    TB,
+    GW,
+    BSE,
+    DMFT,
+    Precision,
+    Material,
     xc_treatments,
     xc_treatments_extended,
 )
-from nomad.metainfo import MSection, Section
-from nomad.metainfo.data_type import Number
-from nomad.units import ureg
-from nomad.utils import RestrictedDict
 
 
 class MethodNormalizer:  # TODO: add normalizer for atom_parameters.label

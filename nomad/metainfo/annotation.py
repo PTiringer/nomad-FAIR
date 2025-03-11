@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar, ForwardRef
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, BaseModel, Field
 
 
 class Annotation:

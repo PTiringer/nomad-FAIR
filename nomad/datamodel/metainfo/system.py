@@ -15,11 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import ase
 import numpy as np
+import ase
 
+from nomad.metainfo import Package, Quantity, Section, SubSection, SectionProxy
 from nomad.datamodel.data import ArchiveSection
-from nomad.metainfo import Package, Quantity, Section, SectionProxy, SubSection
 from nomad.units import ureg
 
 # TODO System should be redefined from base section

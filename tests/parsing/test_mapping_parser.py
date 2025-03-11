@@ -1,27 +1,28 @@
-from copy import deepcopy
-from typing import Any
-
-import numpy as np
 import pytest
+import numpy as np
+from typing import Any
+from copy import deepcopy
 
-from nomad.datamodel import ArchiveSection
-from nomad.datamodel.metainfo.annotations import Mapper as MapperAnnotation
 from nomad.metainfo import Quantity, SubSection
+from nomad.datamodel.metainfo.annotations import Mapper as MapperAnnotation
 from nomad.parsing.file_parser.mapping_parser import (
-    MAPPING_ANNOTATION_KEY,
-    Data,
-    HDF5Parser,
-    Mapper,
     MappingParser,
-    MetainfoParser,
-    Path,
-    PathParser,
-    TextParser,
-    Transformer,
     XMLParser,
+    MetainfoParser,
+    HDF5Parser,
+    TextParser,
+    Path,
+    Transformer,
+    Data,
+    Mapper,
+    PathParser,
+    MAPPING_ANNOTATION_KEY,
 )
-from nomad.parsing.file_parser.text_parser import Quantity as TextQuantity
-from nomad.parsing.file_parser.text_parser import TextParser as TextFileParser
+from nomad.parsing.file_parser.text_parser import (
+    TextParser as TextFileParser,
+    Quantity as TextQuantity,
+)
+from nomad.datamodel import ArchiveSection
 
 
 class BSection(ArchiveSection):

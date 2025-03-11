@@ -24,14 +24,14 @@ import pytest
 import pytz
 
 from nomad.metainfo.metainfo import (
-    JSON,
-    URL,
     Bytes,
     Capitalized,
     Datetime,
     Dimension,
+    JSON,
     MSection,
     Quantity,
+    URL,
     Unit,
     units,
 )

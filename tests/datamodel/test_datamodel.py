@@ -21,12 +21,11 @@ A generator for random test calculations.
 """
 
 import random
-
-import pytest
 from essential_generators import DocumentGenerator
+import pytest
 
-from nomad.datamodel.metainfo import SCHEMA_IMPORT_ERROR, runschema
 from nomad.parsing.parsers import parser_dict
+from nomad.datamodel.metainfo import runschema, SCHEMA_IMPORT_ERROR
 
 number_of = 20
 
@@ -73,7 +72,7 @@ low_numbers_for_geometries = [1, 2, 2, 3, 3, 4, 4]
 @pytest.mark.skipif(runschema is None, reason=SCHEMA_IMPORT_ERROR)
 def test_common_metainfo():
     from runschema.run import Run
-    from runschema.system import Atoms, System
+    from runschema.system import System, Atoms
 
     run = Run()
     system = run.m_create(System)
@@ -84,8 +83,8 @@ def test_common_metainfo():
 
 @pytest.mark.skipif(runschema is None, reason=SCHEMA_IMPORT_ERROR)
 def test_vasp_metainfo():
-    from electronicparsers.vasp.metainfo import vasp  # noqa: F401
     from runschema.run import Run
+    from electronicparsers.vasp.metainfo import vasp  # noqa: F401
 
     run = Run()
     assert 'vasp_src_date' in run.m_def.all_quantities

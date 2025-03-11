@@ -17,28 +17,28 @@
 #
 
 from datetime import date
-
-import numpy as np
 import pytest
+import numpy as np
 from elasticsearch_dsl import Keyword
 
 from nomad.config import config
+from nomad.utils.exampledata import ExampleData
 from nomad.datamodel.datamodel import SearchableQuantity
-from nomad.metainfo import Datetime, MEnum, MSection, Quantity, SubSection, Unit
+from nomad.metainfo import MSection, Quantity, SubSection, Datetime, Unit, MEnum
 from nomad.metainfo.elasticsearch_extension import (
     Elasticsearch,
     create_indices,
-    create_searchable_quantity,
-    entry_index,
-    entry_type,
     index_entries_with_materials,
-    material_entry_type,
-    material_index,
+    entry_type,
     material_type,
+    material_entry_type,
+    entry_index,
+    material_index,
+    create_searchable_quantity,
 )
-from nomad.utils.exampledata import ExampleData
-from tests.app.v1.routers.common import perform_quantity_search_test
+
 from tests.fixtures.infrastructure import clear_elastic_infra
+from tests.app.v1.routers.common import perform_quantity_search_test
 
 
 @pytest.fixture(scope='module')

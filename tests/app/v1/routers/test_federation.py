@@ -1,10 +1,9 @@
+import requests
 import json
+import pytest
+from copy import deepcopy
 import logging
 import zlib
-from copy import deepcopy
-
-import pytest
-import requests
 
 from nomad.config import config
 from nomad.utils.structlogging import LogstashFormatter

@@ -21,14 +21,15 @@ import functools
 import hashlib
 import os.path
 import signal
-from collections.abc import Callable, Iterable
 from concurrent.futures import ProcessPoolExecutor
 from multiprocessing import Manager
+from collections.abc import Callable
+from collections.abc import Iterable
 
-from nomad.archive import read_archive, to_json
-from nomad.archive.storage_v2 import ArchiveWriter as ArchiveWriterNew
 from nomad.config import config
-from nomad.files import PublicUploadFiles, StagingUploadFiles
+from nomad.archive import to_json, read_archive
+from nomad.archive.storage_v2 import ArchiveWriter as ArchiveWriterNew
+from nomad.files import StagingUploadFiles, PublicUploadFiles
 from nomad.infrastructure import setup
 from nomad.processing import Upload
 

@@ -21,9 +21,9 @@ A command that runs some example operations on a working nomad@FAIRDI installati
 as a final integration test.
 """
 
-import json
-import os
 import time
+import os
+import json
 
 from nomad.client import api
 

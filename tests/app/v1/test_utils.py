@@ -1,5 +1,4 @@
 import pytest
-
 from nomad.app.v1.utils import get_query_keys
 
 

@@ -8,36 +8,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import json
-import os
+from typing import cast, Any
 from collections.abc import Iterable
+import os
+import json
 from datetime import datetime, timedelta
-from typing import Any, cast
-
-from fastapi import HTTPException, status
 from packaging import version
 
-from nomad import datamodel, search, utils
+from nomad import utils, datamodel, search
 from nomad.config import config
-from nomad.config.models.config import BundleExportSettings, BundleImportSettings
+from nomad.config.models.config import BundleImportSettings, BundleExportSettings
 from nomad.files import (
-    BrowsableFileSource,
-    CombinedFileSource,
-    DiskFileSource,
-    FileSource,
+    zipfile,
     PathObject,
+    UploadFiles,
     PublicUploadFiles,
     StagingUploadFiles,
-    StandardJSONDecoder,
+    FileSource,
+    BrowsableFileSource,
+    CombinedFileSource,
     StreamedFileSource,
-    UploadFiles,
+    DiskFileSource,
     ZipFileSource,
-    bundle_info_filename,
     json_to_streamed_file,
-    zipfile,
+    bundle_info_filename,
+    StandardJSONDecoder,
 )
 from nomad.processing.base import ProcessStatus
-from nomad.processing.data import Entry, Upload, mongo_entry_metadata
+from nomad.processing.data import Upload, Entry, mongo_entry_metadata
+from fastapi import HTTPException, status
 
 
 class BundleExporter:

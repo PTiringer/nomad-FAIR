@@ -17,12 +17,10 @@
 #
 
 import json
-
-from nomad import files, infrastructure
-from nomad.processing import Upload
+from nomad import infrastructure, files
 from nomad.utils.exampledata import ExampleData, create_entry_archive
-
 from .archives.create_archives import archive_dft_bulk
+from nomad.processing import Upload
 
 
 def dft():

@@ -20,6 +20,7 @@ import typing
 
 from nomad.metainfo import MSection, Package, Quantity, SubSection
 
+
 m_package = Package(name='tabulartree')
 
 

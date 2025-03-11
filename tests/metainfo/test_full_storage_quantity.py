@@ -18,12 +18,12 @@
 import pytest
 
 from nomad.metainfo import (
-    Attribute,
-    MetainfoError,
     MSection,
     Quantity,
-    Section,
+    Attribute,
     SubSection,
+    MetainfoError,
+    Section,
 )
 from nomad.metainfo.util import MQuantity
 from nomad.units import ureg

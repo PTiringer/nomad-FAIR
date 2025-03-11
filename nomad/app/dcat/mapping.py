@@ -16,14 +16,14 @@
 # limitations under the License.
 #
 
-from rdflib import RDF, BNode, Graph, Literal, URIRef
-from rdflib.namespace import DCAT, FOAF, RDF, Namespace
-from rdflib.namespace import DCTERMS as DCT
+from rdflib import Graph, Literal, RDF, URIRef, BNode
+from rdflib.namespace import Namespace, DCAT, DCTERMS as DCT, FOAF, RDF
 
 from nomad.config import config
 from nomad.datamodel import User
 
 from .common import url
+
 
 VCARD = Namespace('http://www.w3.org/2006/vcard/ns#')
 HYDRA = Namespace('http://www.w3.org/ns/hydra/core#')

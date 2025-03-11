@@ -1,15 +1,14 @@
+import pytest
 import numpy as np
 import pint
-import pytest
-
-from nomad.datamodel.metainfo.system import Atoms
 from nomad.parsing.file_parser import (
-    FileParser,
-    ParsePattern,
-    Quantity,
     TextParser,
+    Quantity,
+    ParsePattern,
     XMLParser,
+    FileParser,
 )
+from nomad.datamodel.metainfo.system import Atoms
 
 
 class TestFileParser:

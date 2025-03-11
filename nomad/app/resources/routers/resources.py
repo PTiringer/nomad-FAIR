@@ -16,35 +16,34 @@
 # limitations under the License.
 #
 
-import asyncio
-import io
-import os
 import re
-from datetime import datetime
-from enum import Enum
-from typing import Any
-
-import ase.io
+import os
+import io
 import bs4
+import asyncio
 import httpx
-from asgiref.sync import async_to_sync
-from fastapi import APIRouter
-from fastapi import Query as FastApiQuery
+from enum import Enum
+from fastapi import APIRouter, Query as FastApiQuery
+from pydantic import BaseModel, Field
+from typing import Any
+from datetime import datetime
+import ase.io
 from mongoengine import (
-    BooleanField,
-    DateTimeField,
     Document,
+    StringField,
+    DateTimeField,
     IntField,
     ListField,
-    StringField,
+    BooleanField,
 )
 from mongoengine.queryset.visitor import Q
-from pydantic import BaseModel, Field
+from asgiref.sync import async_to_sync
 
 from nomad import utils
-from nomad.atomutils import Formula
 from nomad.config import config
+from nomad.atomutils import Formula
 from nomad.processing.base import app
+
 
 logger = utils.get_logger(__name__)
 

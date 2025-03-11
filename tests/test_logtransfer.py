@@ -1,12 +1,11 @@
-import json
 import logging
+import json
+import pytest
 import os.path
 
-import pytest
-
 from nomad import config, utils
-from nomad.logtransfer import transfer_logs
 from nomad.utils import structlogging
+from nomad.logtransfer import transfer_logs
 
 
 @pytest.fixture(scope='function')

@@ -17,8 +17,7 @@
 #
 
 import pytest
-
-from nomad.common import is_safe_path, is_safe_relative_path
+from nomad.common import is_safe_relative_path, is_safe_path
 
 
 @pytest.mark.parametrize(

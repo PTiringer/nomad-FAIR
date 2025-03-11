@@ -16,21 +16,19 @@
 # limitations under the License.
 #
 
-import gzip
-import inspect
-import io
-import json
-import lzma
-import os
-import urllib
+from typing import Any
 from collections.abc import Iterator
 from types import FunctionType
-from typing import Any
-
-from fastapi import HTTPException, Query, Request, status  # noqa: F401
-from pydantic import BaseModel, ValidationError  # noqa: F401
-
-from nomad.files import StreamedFile, UploadFiles, create_zipstream
+import urllib
+import io
+import json
+import os
+import inspect
+from fastapi import Request, Query, HTTPException, status  # noqa: F401
+from pydantic import ValidationError, BaseModel  # noqa: F401
+import gzip
+import lzma
+from nomad.files import UploadFiles, StreamedFile, create_zipstream
 
 
 def parameter_dependency_from_model(

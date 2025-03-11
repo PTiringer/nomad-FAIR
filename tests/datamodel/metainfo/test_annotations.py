@@ -19,13 +19,13 @@
 import pytest
 from pydantic import ValidationError
 
+from nomad.metainfo import Quantity
 from nomad.datamodel.metainfo.annotations import (
-    ELNAnnotation,
     PlotAnnotation,
+    ELNAnnotation,
     PlotlyGraphObjectAnnotation,
 )
 from nomad.datamodel.metainfo.plot import PlotlyError
-from nomad.metainfo import Quantity
 
 
 @pytest.mark.parametrize(
