@@ -25,7 +25,6 @@ import click
 from orjson import dumps
 
 from nomad.config import config
-
 from .admin import admin
 
 
@@ -35,8 +34,7 @@ def _run_parallel(
     import threading
     import time
 
-    from nomad import processing as proc
-    from nomad import utils
+    from nomad import utils, processing as proc
 
     if isinstance(uploads, tuple | list):
         uploads_count = len(uploads)
@@ -239,13 +237,11 @@ def _query_uploads(
     list of upoad ids and further filter parameters.
     """
 
-    import json
     from typing import cast
-
+    import json
     from mongoengine import Q
 
-    from nomad import infrastructure, search
-    from nomad import processing as proc
+    from nomad import infrastructure, processing as proc, search
     from nomad.app.v1 import models
 
     infrastructure.setup_mongo()
@@ -355,13 +351,12 @@ def _query_uploads(
 @click.pass_context
 def export(ctx, uploads, required, output: str):
     import sys
-    import time
-    import zipfile
-
-    from nomad.archive import ArchiveQueryError, RequiredReader
-    from nomad.files import UploadFiles
     from nomad.processing import Entry
     from nomad.utils import get_logger
+    from nomad.files import UploadFiles
+    from nomad.archive import ArchiveQueryError, RequiredReader
+    import time
+    import zipfile
 
     logger = get_logger(__name__)
 
@@ -634,8 +629,7 @@ def index(ctx, uploads, parallel, transformer, skip_materials, print_progress):
 def delete_upload(
     upload, skip_es: bool = False, skip_files: bool = False, skip_mongo: bool = False
 ):
-    from nomad import files, search, utils
-    from nomad import processing as proc
+    from nomad import search, files, utils, processing as proc
 
     # delete elastic
     if not skip_es:
@@ -788,8 +782,7 @@ def re_pack(ctx, uploads):
 def stop(ctx, uploads, entries: bool, kill: bool, no_celery: bool):
     import mongoengine
 
-    from nomad import processing as proc
-    from nomad import utils
+    from nomad import utils, processing as proc
 
     query, _ = _query_uploads(uploads, **ctx.obj.uploads_kwargs)
 
@@ -918,8 +911,9 @@ def integrity(
 ):
     from nomad.app.v1.models import MetadataPagination, MetadataRequired
     from nomad.archive.storage_v2 import ArchiveWriter
-    from nomad.files import PublicUploadFiles, StagingUploadFiles
-    from nomad.processing import Entry, Upload
+    from nomad.files import StagingUploadFiles, PublicUploadFiles
+    from nomad.processing import Entry
+    from nomad.processing import Upload
     from nomad.search import search
 
     def search_params(upload_id: str):
@@ -1306,8 +1300,8 @@ def export_bundle(
 def import_bundle(
     ctx, input_path, multi, settings, embargo_length, use_celery, ignore_errors
 ):
-    from nomad import infrastructure
     from nomad.bundles import BundleImporter
+    from nomad import infrastructure
 
     for key, value in ctx.obj.uploads_kwargs.items():
         if value:

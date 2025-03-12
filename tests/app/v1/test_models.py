@@ -17,16 +17,14 @@
 #
 
 from __future__ import annotations
-
+import pytest
+from pydantic import BaseModel, Field, ValidationError
+import yaml
 import sys
 
-import pytest
-import yaml
-from pydantic import BaseModel, Field, ValidationError
-
+from nomad.utils import strip
 from nomad.app.v1.models.graph import GraphRequest
 from nomad.app.v1.models.graph.utils import generate_request_model, mapped
-from nomad.utils import strip
 
 
 @pytest.fixture()

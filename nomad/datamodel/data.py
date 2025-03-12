@@ -17,23 +17,24 @@
 #
 
 import os.path
-from typing import Any
 
 from cachetools import TTLCache, cached
+
+from typing import Any
 from pydantic import Field
 
 from nomad.config import config
 from nomad.metainfo.elasticsearch_extension import Elasticsearch, material_entry_type
 from nomad.metainfo.metainfo import (
-    JSON,
-    Capitalized,
     Category,
-    Datetime,
     MCategory,
     MSection,
     Quantity,
-    Reference,
+    Capitalized,
     Section,
+    Datetime,
+    Reference,
+    JSON,
 )
 from nomad.metainfo.pydantic_extension import PydanticModel
 
@@ -95,8 +96,8 @@ class EntryData(ArchiveSection):
     def normalize(self, archive, logger):
         super().normalize(archive, logger)
 
-        from nomad.datamodel import EntryArchive
         from nomad.datamodel.results import Results
+        from nomad.datamodel import EntryArchive
 
         # TODO entry_type should only be assigned if not already defined (done to pass eln test)
         if archive.metadata:

@@ -22,26 +22,26 @@
 
 import numpy as np
 from nptyping import NDArray
-
-from nomad.datamodel.metainfo.common import FastAccess
-from nomad.datamodel.metainfo.simulation.calculation import (
-    BandStructure,
-    Calculation,
-    Dos,
-)
-from nomad.datamodel.metainfo.simulation.run import Run
-from nomad.datamodel.metainfo.simulation.system import Atoms, AtomsGroup, System
 from nomad.metainfo import (
-    MEnum,
     MSection,
-    Package,
+    MEnum,
     Quantity,
-    Reference,
     Section,
-    SectionProxy,
     SubSection,
+    SectionProxy,
+    Reference,
+    Package,
     derived,
 )
+from nomad.datamodel.metainfo.simulation.calculation import (
+    Calculation,
+    Dos,
+    BandStructure,
+)
+from nomad.datamodel.metainfo.simulation.run import Run
+from nomad.datamodel.metainfo.simulation.system import System, Atoms, AtomsGroup
+from nomad.datamodel.metainfo.common import FastAccess
+
 
 m_package = Package()
 

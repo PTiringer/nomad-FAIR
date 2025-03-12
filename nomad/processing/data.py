@@ -29,84 +29,96 @@ entries, and files
 """
 
 import base64
-import copy
-import hashlib
-import os.path
-from collections.abc import Iterable, Iterator, Sequence
-from contextlib import contextmanager
-from datetime import datetime
-from typing import Any, Union, cast
-
-import requests
+from typing import (
+    cast,
+    Any,
+    Union,
+)
+from collections.abc import Iterator, Iterable, Sequence
 import rfc3161ng
-import validators
-from fastapi.exceptions import RequestValidationError
 from mongoengine import (
-    BooleanField,
+    StringField,
     DateTimeField,
+    BooleanField,
+    IntField,
+    ListField,
     DictField,
     EmbeddedDocument,
     EmbeddedDocumentField,
-    IntField,
-    ListField,
-    StringField,
 )
 from pymongo import UpdateOne
 from structlog import wrap_logger
-from structlog.processors import StackInfoRenderer, TimeStamper, format_exc_info
+from contextlib import contextmanager
+import copy
+import os.path
+from datetime import datetime
+import hashlib
+from structlog.processors import StackInfoRenderer, format_exc_info, TimeStamper
+import requests
+from fastapi.exceptions import RequestValidationError
+import validators
 
-from nomad import client, datamodel, infrastructure, metainfo, parsing, search, utils
+from nomad import (
+    utils,
+    infrastructure,
+    search,
+    datamodel,
+    metainfo,
+    parsing,
+    client,
+)
+from nomad.config import config
+from nomad.common import is_safe_relative_path
+from nomad.config.models.plugins import ExampleUploadEntryPoint
+
+from nomad.datamodel.datamodel import RFC3161Timestamp
+from nomad.files import (
+    RawPathInfo,
+    PathObject,
+    UploadFiles,
+    PublicUploadFiles,
+    StagingUploadFiles,
+    create_tmp_dir,
+)
+from nomad.groups import user_group_exists, get_group_ids
+from nomad.metainfo.data_type import Datatype, Datetime
+from nomad.processing.base import (
+    Proc,
+    process,
+    process_local,
+    ProcessStatus,
+    ProcessFailure,
+    ProcessAlreadyRunning,
+)
+from nomad.parsing import Parser
+from nomad.parsing.parsers import parser_dict, match_parser
+from nomad.normalizing import normalizers
+from nomad.datamodel import (
+    EntryArchive,
+    EntryMetadata,
+    MongoUploadMetadata,
+    MongoEntryMetadata,
+    MongoSystemMetadata,
+    EditableUserMetadata,
+    AuthLevel,
+    ServerContext,
+)
+from nomad.archive import (
+    write_partial_archive_to_mongo,
+    delete_partial_archives_from_mongo,
+    to_json,
+)
 from nomad.app.v1.models import (
-    Aggregation,
     MetadataEditRequest,
+    Aggregation,
+    TermsAggregation,
     MetadataPagination,
     MetadataRequired,
-    TermsAggregation,
     restrict_query_to_upload,
 )
 from nomad.app.v1.routers.metainfo import store_package_definition
-from nomad.archive import (
-    delete_partial_archives_from_mongo,
-    to_json,
-    write_partial_archive_to_mongo,
-)
-from nomad.common import is_safe_relative_path
-from nomad.config import config
-from nomad.config.models.config import Reprocess
-from nomad.config.models.plugins import ExampleUploadEntryPoint
-from nomad.datamodel import (
-    AuthLevel,
-    EditableUserMetadata,
-    EntryArchive,
-    EntryMetadata,
-    MongoEntryMetadata,
-    MongoSystemMetadata,
-    MongoUploadMetadata,
-    ServerContext,
-)
-from nomad.datamodel.datamodel import RFC3161Timestamp
-from nomad.files import (
-    PathObject,
-    PublicUploadFiles,
-    RawPathInfo,
-    StagingUploadFiles,
-    UploadFiles,
-    create_tmp_dir,
-)
-from nomad.groups import get_group_ids, user_group_exists
-from nomad.metainfo.data_type import Datatype, Datetime
-from nomad.normalizing import normalizers
-from nomad.parsing import Parser
-from nomad.parsing.parsers import match_parser, parser_dict
-from nomad.processing.base import (
-    Proc,
-    ProcessAlreadyRunning,
-    ProcessFailure,
-    ProcessStatus,
-    process,
-    process_local,
-)
 from nomad.search import update_metadata as es_update_metadata
+from nomad.config.models.config import Reprocess
 from nomad.utils.pydantic import CustomErrorWrapper
 
 section_metadata = datamodel.EntryArchive.metadata.name

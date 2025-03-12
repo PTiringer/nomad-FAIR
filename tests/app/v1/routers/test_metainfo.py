@@ -21,11 +21,11 @@ from zipfile import ZipFile
 
 import pytest
 
-from nomad.app.v1.routers.metainfo import store_package_definition
 from nomad.config import config
-from nomad.datamodel import ClientContext, EntryArchive
-from nomad.metainfo import MetainfoReferenceError, MSection
-from nomad.utils import create_uuid, generate_entry_id
+from nomad.app.v1.routers.metainfo import store_package_definition
+from nomad.datamodel import EntryArchive, ClientContext
+from nomad.metainfo import MSection, MetainfoReferenceError
+from nomad.utils import generate_entry_id, create_uuid
 from tests.processing.test_data import run_processing
 
 

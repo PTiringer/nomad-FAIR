@@ -16,19 +16,18 @@
 # limitations under the License.
 #
 
-import re
-from enum import Enum
 from typing import Any
+from enum import Enum
+from pydantic import field_validator, ConfigDict, Field, model_validator
+import re
 
-from pydantic import ConfigDict, Field, field_validator, model_validator
 from pydantic.main import BaseModel
 
-from nomad.metainfo import AnnotationModel, Datetime, MEnum, Quantity, Reference
 from nomad.utils import strip
-
-from ...metainfo.data_type import Datatype
-from ..data import Query
+from nomad.metainfo import AnnotationModel, MEnum, Datetime, Reference, Quantity
 from .plot import PlotlyError
+from ..data import Query
+from ...metainfo.data_type import Datatype
 
 
 class ELNComponentEnum(str, Enum):

@@ -16,10 +16,9 @@
 # limitations under the License.
 #
 
+import click
 import logging
 import os
-
-import click
 
 from nomad import utils
 from nomad.config import config

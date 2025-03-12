@@ -19,13 +19,13 @@
 import json
 import os
 from shutil import copyfile
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch, MagicMock
 
 import pytest
 
 from nomad import files, utils
 from nomad.datamodel import EntryArchive
-from nomad.parsing import BrokenParser, MatchingParser, MatchingParserInterface
+from nomad.parsing import BrokenParser, MatchingParserInterface, MatchingParser
 from nomad.parsing.parsers import match_parser, parser_dict, parsers, run_parser
 from nomad.utils import dump_json
 

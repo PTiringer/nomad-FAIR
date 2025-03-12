@@ -18,9 +18,9 @@
 
 import traceback
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, status, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, ORJSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, ORJSONResponse
 from pyinstrument import Profiler
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -29,23 +29,22 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from nomad import utils
 from nomad.config import config
-
 from .common import root_path
 from .routers import (
-    auth,
-    datasets,
+    users,
     entries,
+    materials,
+    auth,
+    info,
+    datasets,
+    uploads,
+    suggestions,
+    metainfo,
+    north,
+    systems,
     federation,
     graph,
     groups,
-    info,
-    materials,
-    metainfo,
-    north,
-    suggestions,
-    systems,
-    uploads,
-    users,
 )
 
 logger = utils.get_logger(__name__)

@@ -20,28 +20,27 @@
 # Only for purpose of compatibility. Use run schema plugin.
 # https://github.com/nomad-coe/nomad-schema-plugin-run.git
 
-import typing
 from logging import Logger
-
 import numpy as np  # noqa: F401
-from pint.util import SharedRegistryObject  # noqa: F401
+import typing
 
+from pint.util import SharedRegistryObject  # noqa: F401
 from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import (  # noqa: F401
-    Category,
-    MCategory,
-    MEnum,
     MSection,
+    MCategory,
+    Category,
     Package,
     Quantity,
-    Reference,
     Section,
-    SectionProxy,
     SubSection,
+    SectionProxy,
+    Reference,
+    MEnum,
 )
 from nomad.quantum_states import RussellSaundersState
-
 from ..common import FastAccess
+
 
 m_package = Package()
 

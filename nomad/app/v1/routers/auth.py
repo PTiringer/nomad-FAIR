@@ -16,29 +16,34 @@
 # limitations under the License.
 #
 
-import datetime
-import hashlib
 import hmac
+import hashlib
 import uuid
-from collections.abc import Callable
-from enum import Enum
-from functools import wraps
-from inspect import Parameter, signature
-from typing import cast
-
-import jwt
 import requests
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi import Query as FastApiQuery
+from enum import Enum
+from typing import cast
+from collections.abc import Callable
+from inspect import Parameter, signature
+from functools import wraps
+from fastapi import (
+    APIRouter,
+    Depends,
+    Query as FastApiQuery,
+    Request,
+    HTTPException,
+    status,
+)
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
+import jwt
+import datetime
 
-from nomad import datamodel, infrastructure, utils
+from nomad import utils, infrastructure, datamodel
 from nomad.config import config
 from nomad.utils import get_logger, strip
 
 from ..common import root_path
-from ..models import HTTPExceptionModel, User
+from ..models import User, HTTPExceptionModel
 from ..utils import create_responses
 
 logger = get_logger(__name__)

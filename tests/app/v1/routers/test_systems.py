@@ -19,21 +19,21 @@
 import re
 from io import BytesIO, StringIO
 
-import ase.io
-import numpy as np
 import pytest
+import numpy as np
+import ase.io
 from ase import Atoms as ASEAtoms
 
-from nomad.app.v1.routers.systems import FormatFeature, WrapModeEnum, format_map
+from nomad.units import ureg
+from nomad.normalizing.common import ase_atoms_from_nomad_atoms
 from nomad.datamodel.datamodel import EntryArchive
+from nomad.datamodel.results import Results, Material, System
 from nomad.datamodel.metainfo import runschema
 from nomad.datamodel.metainfo.system import Atoms
-from nomad.datamodel.results import Material, Results, System
-from nomad.normalizing.common import ase_atoms_from_nomad_atoms
-from nomad.units import ureg
 from nomad.utils.exampledata import ExampleData
+from nomad.app.v1.routers.systems import format_map, FormatFeature, WrapModeEnum
 
-from .common import assert_browser_download_headers, assert_response
+from .common import assert_response, assert_browser_download_headers
 
 
 def ase_atoms(content, format):

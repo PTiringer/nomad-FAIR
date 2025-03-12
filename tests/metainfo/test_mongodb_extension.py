@@ -17,11 +17,9 @@
 #
 
 import json
-
 import numpy as np
-
-from nomad.metainfo import MSection, Quantity, Section, SubSection
-from nomad.metainfo.mongoengine_extension import Mongo, MongoDocument
+from nomad.metainfo import MSection, Section, Quantity, SubSection
+from nomad.metainfo.mongoengine_extension import MongoDocument, Mongo
 
 
 class B(MSection):

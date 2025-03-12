@@ -18,9 +18,9 @@
 
 from abc import ABCMeta, abstractmethod
 
-from nomad.datamodel import EntryArchive
-from nomad.metainfo import MSection
 from nomad.utils import get_logger
+from nomad.metainfo import MSection
+from nomad.datamodel import EntryArchive
 
 
 class Normalizer(metaclass=ABCMeta):

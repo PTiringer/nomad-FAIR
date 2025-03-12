@@ -15,24 +15,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from typing import Any
-
-import matid.geometry  # pylint: disable=import-error
 import numpy as np
 from ase import Atoms
-from matid import SymmetryAnalyzer  # pylint: disable=import-error
-from matid.symmetry.wyckoffset import (
-    WyckoffSet as WyckoffSetMatID,  # pylint: disable=import-error
-)
+from typing import Any
 from nptyping import NDArray
+from matid import SymmetryAnalyzer  # pylint: disable=import-error
+from matid.symmetry.wyckoffset import WyckoffSet as WyckoffSetMatID  # pylint: disable=import-error
+import matid.geometry  # pylint: disable=import-error
 
 from nomad import atomutils
 from nomad.config import config
+from nomad.utils import hash
+from nomad.units import ureg
 from nomad.datamodel.metainfo.system import Atoms as NOMADAtoms
 from nomad.datamodel.optimade import Species
-from nomad.datamodel.results import Cell, LatticeParameters, Structure, WyckoffSet
-from nomad.units import ureg
-from nomad.utils import hash
+from nomad.datamodel.results import (
+    Cell,
+    Structure,
+    LatticeParameters,
+    WyckoffSet,
+)
 
 
 def wyckoff_sets_from_matid(wyckoff_sets: list[WyckoffSetMatID]) -> list[WyckoffSet]:

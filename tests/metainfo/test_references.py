@@ -16,26 +16,25 @@
 # limitations under the License.
 #
 
-import os.path
 from typing import cast
-
 import pytest
+import os.path
 
-from nomad.datamodel import AuthorReference, UserReference
+from nomad.datamodel import UserReference, AuthorReference
 from nomad.metainfo import (
-    Context,
-    File,
-    MetainfoReferenceError,
-    MProxy,
     MSection,
-    Package,
     Quantity,
-    QuantityReference,
-    Reference,
     Section,
     SubSection,
+    MProxy,
+    Reference,
+    QuantityReference,
+    File,
+    MetainfoReferenceError,
+    Package as MetainfoPackage,
+    Context,
+    Package,
 )
-from nomad.metainfo import Package as MetainfoPackage
 
 
 class Referenced(MSection):
@@ -384,7 +383,7 @@ def test_def_reference():
 
 @pytest.mark.parametrize('mainfile', ['intra-entry', 'inter-entry'])
 def test_parse_with_references(mainfile):
-    from nomad.client import normalize_all, parse
+    from nomad.client import parse, normalize_all
 
     entry_archive = parse(
         os.path.join(

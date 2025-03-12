@@ -15,18 +15,17 @@
 # limitations under the License.
 #
 
+from typing import Any
+import sys
 import json
 import os
-import sys
-from typing import Any
-
 import click
+
 from pint import Unit
 from pint.errors import UndefinedUnitError
 
 from nomad.config import config
 from nomad.metainfo.elasticsearch_extension import schema_separator
-
 from .cli import cli
 
 
@@ -81,8 +80,8 @@ def gui_qa(skip_tests: bool):
 @dev.command(help='Export an API model in JSON schema.')
 @click.argument('model')
 def api_model(model):
-    import importlib
     import json
+    import importlib
 
     def remove_null_types(data):
         """
@@ -124,11 +123,11 @@ def api_model(model):
         'nomad.app.v1.models.graph.GraphRequest',
         'nomad.app.v1.models.graph.GraphResponse',
     ]:
-        from nomad.app.v1.models.graph.graph_models import Graph
         from nomad.app.v1.models.graph.utils import (
             generate_request_model,
             generate_response_model,
         )
+        from nomad.app.v1.models.graph.graph_models import Graph
 
         sys.modules['nomad.app.v1.models.graph.utils'].ref_prefix = '#/definitions'
         sys.modules['nomad.app.v1.models.graph.utils'].graph_model_export = True
@@ -189,8 +188,8 @@ def metainfo():
 
 def _generate_search_quantities():
     # Currently only quantities with "entry_type" are included.
+    from nomad.metainfo.elasticsearch_extension import entry_type, Elasticsearch
     from nomad.datamodel import EntryArchive
-    from nomad.metainfo.elasticsearch_extension import Elasticsearch, entry_type
 
     def to_dict(search_quantity, section=False, repeats=False):
         if section:
@@ -350,9 +349,8 @@ def gui_config():
     '--parser', help='Only updated the README of the given parsers subdirctory.'
 )
 def update_parser_readmes(parser):
-    import re
     from glob import glob
-
+    import re
     import yaml
 
     os.chdir(os.path.join(os.path.dirname(__file__), '../..'))
@@ -491,10 +489,8 @@ def example_data(username: str):
 
 
 def _generate_units_json() -> tuple[Any, Any]:
-    from collections import defaultdict
-
     from pint.converters import ScaleConverter
-
+    from collections import defaultdict
     from nomad.units import ureg
 
     # TODO: Check that all units are unambiguously defined, and that there are

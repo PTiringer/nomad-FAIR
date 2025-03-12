@@ -16,45 +16,46 @@
 # limitations under the License.
 #
 
-import json
-import pathlib
 from collections import defaultdict
+import pathlib
+import json
 
-import numpy as np
 from ase import Atoms
 from ase.data import chemical_symbols
-from matid.classification.classifications import (
-    Atom,
-    Class0D,
-    Class1D,
-    Class2D,
-    Class3D,
-    Material2D,
-    Surface,
-)
+import numpy as np
 from matid.clustering import SBC, Cluster
 from matid.symmetry.symmetryanalyzer import SymmetryAnalyzer
+from matid.classification.classifications import (
+    Class0D,
+    Atom,
+    Class1D,
+    Class2D,
+    Material2D,
+    Surface,
+    Class3D,
+)
 
-from nomad import atomutils, utils
+from nomad import utils
 from nomad.config import config
-from nomad.datamodel.datamodel import EntryArchive
+from nomad import atomutils
 from nomad.datamodel.results import (
     CoreHole,
+    SymmetryNew as Symmetry,
     Material,
-    Relation,
     System,
+    Relation,
     structure_name_map,
 )
-from nomad.datamodel.results import SymmetryNew as Symmetry
+from nomad.datamodel.datamodel import EntryArchive
 from nomad.normalizing.common import (
-    ase_atoms_from_nomad_atoms,
     cell_from_ase_atoms,
-    material_id_1d,
-    material_id_2d,
-    material_id_bulk,
+    ase_atoms_from_nomad_atoms,
     nomad_atoms_from_ase_atoms,
-    structures_2d,
     wyckoff_sets_from_matid,
+    structures_2d,
+    material_id_bulk,
+    material_id_2d,
+    material_id_1d,
 )
 
 conventional_description = 'The conventional cell of the material from which the subsystem is constructed from.'

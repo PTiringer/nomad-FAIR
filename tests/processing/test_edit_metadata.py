@@ -15,16 +15,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import pytest
 from datetime import datetime
 
-import pytest
 from fastapi.exceptions import RequestValidationError
 
 from nomad import datamodel, metainfo
 from nomad.metainfo.data_type import Datatype
-from nomad.processing import MetadataEditRequestHandler, Upload
+from nomad.processing import Upload, MetadataEditRequestHandler
 from nomad.processing.data import editable_metadata, mongo_upload_metadata
 from nomad.search import search
+
 
 all_coauthor_metadata = dict(
     # All attributes which a coauthor+ can edit

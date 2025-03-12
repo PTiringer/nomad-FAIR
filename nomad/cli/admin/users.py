@@ -29,10 +29,10 @@ def users():
 @users.command(help='Import users to keycloak from a JSON file.', name='import')
 @click.argument('PATH_TO_USERS_FILE', type=str, nargs=1)
 def import_command(path_to_users_file):
-    import datetime
     import json
+    import datetime
 
-    from nomad import datamodel, infrastructure, utils
+    from nomad import infrastructure, datamodel, utils
 
     with open(path_to_users_file) as f:
         users = json.load(f)

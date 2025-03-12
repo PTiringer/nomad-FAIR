@@ -16,9 +16,8 @@
 # limitations under the License.
 #
 
-import logging
-
 import pytest
+import logging
 
 
 @pytest.fixture()

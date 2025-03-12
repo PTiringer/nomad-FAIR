@@ -15,8 +15,8 @@
 #
 
 from nomad import utils
+from nomad.metainfo import Property, Quantity, Datatype, Reference, SubSection
 from nomad.datamodel.data import ArchiveSection
-from nomad.metainfo import Datatype, Property, Quantity, Reference, SubSection
 
 
 def get_reference(section_def, pkg) -> str:

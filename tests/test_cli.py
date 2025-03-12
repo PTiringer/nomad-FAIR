@@ -16,22 +16,20 @@
 # limitations under the License.
 #
 
-import datetime
+import pytest
+import click.testing
 import json
 import os
-import tempfile
+import datetime
 import time
+import tempfile
 
-import click.testing
-import pytest
-
-from nomad import files
-from nomad import processing as proc
+from nomad import processing as proc, files
+from nomad.config import config
+from nomad.search import search
 from nomad.cli import cli
 from nomad.cli.cli import POPO
-from nomad.config import config
-from nomad.processing import Entry, ProcessStatus, Upload
-from nomad.search import search
+from nomad.processing import Upload, Entry, ProcessStatus
 from nomad.utils.exampledata import ExampleData
 
 # TODO there is much more to test

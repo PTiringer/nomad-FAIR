@@ -15,47 +15,53 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import re
 from collections import defaultdict
-from typing import Any
-from warnings import warn
-
-import ase.build
 import numpy as np
+from typing import Any
 import pytest
 from ase import Atoms
+import ase.build
+import re
+from warnings import warn
 
-from nomad.datamodel import ArchiveSection, EntryArchive
-from nomad.datamodel.context import ServerContext
-from nomad.datamodel.datamodel import EntryArchive, EntryMetadata
-from nomad.datamodel.metainfo import runschema, simulationworkflowschema
-from nomad.datamodel.metainfo.measurements import (
-    EELSMeasurement,
-    Instrument,
-    Measurement,
-    Sample,
-    Spectrum,
-)
-from nomad.datamodel.metainfo.simulation.method import CoreHole
-from nomad.datamodel.metainfo.workflow import Workflow
-from nomad.datamodel.optimade import Species
-from nomad.datamodel.results import Cell, EELSInstrument, Relation, WyckoffSet
-from nomad.datamodel.results import SymmetryNew as Symmetry
-from nomad.datamodel.results import System as ResultSystem
-from nomad.metainfo import Quantity, SubSection
-from nomad.normalizing import normalizers
-from nomad.normalizing.common import cell_from_ase_atoms, nomad_atoms_from_ase_atoms
-from nomad.parsing.parser import ArchiveParser
-from nomad.processing.data import Upload
 from nomad.units import ureg
 from nomad.utils import get_logger
-from tests.parsing.test_parsing import (
-    parse_file,
-    parsed_example,  # noqa: F401
-    parsed_template_example,  # noqa: F401
-    parsed_vasp_example,  # noqa: F401
+from nomad.normalizing import normalizers
+from nomad.metainfo import SubSection, Quantity
+from nomad.datamodel import EntryArchive, ArchiveSection
+from nomad.datamodel.results import (
+    Relation,
+    SymmetryNew as Symmetry,
+    Cell,
+    WyckoffSet,
+    System as ResultSystem,
 )
+from nomad.datamodel.optimade import Species
+from nomad.normalizing.common import cell_from_ase_atoms, nomad_atoms_from_ase_atoms
+from nomad.datamodel.metainfo.simulation.method import CoreHole
+from nomad.datamodel.metainfo.workflow import Workflow
+from nomad.datamodel.metainfo.measurements import (
+    Measurement,
+    Sample,
+    EELSMeasurement,
+    Spectrum,
+    Instrument,
+)
+from nomad.datamodel.results import EELSInstrument
+
+from nomad.datamodel.context import ServerContext
+from nomad.datamodel.datamodel import EntryArchive, EntryMetadata
+from nomad.parsing.parser import ArchiveParser
+from nomad.processing.data import Upload
+from tests.parsing.test_parsing import parsed_vasp_example  # noqa: F401
+from tests.parsing.test_parsing import parsed_template_example  # noqa: F401
+from tests.parsing.test_parsing import parsed_example  # noqa: F401
+from tests.parsing.test_parsing import parse_file
 from tests.test_files import create_test_upload_files
+from nomad.datamodel.metainfo import (
+    simulationworkflowschema,
+    runschema,
+)
 
 
 def run_normalize(entry_archive: EntryArchive) -> EntryArchive:

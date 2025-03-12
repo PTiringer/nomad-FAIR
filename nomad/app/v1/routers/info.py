@@ -20,22 +20,22 @@
 API endpoint that deliver backend configuration details.
 """
 
-from datetime import datetime
 from enum import Enum
 from typing import Any
-
+from datetime import datetime
 from fastapi.routing import APIRouter
 from pydantic.fields import Field
 from pydantic.main import BaseModel
 
 from nomad import normalizing
-from nomad.app.v1.models import Aggregation, StatisticsAggregation
 from nomad.config import config
-from nomad.metainfo.elasticsearch_extension import entry_type
+from nomad.utils import strip
+from nomad.search import search
 from nomad.parsing import parsers
 from nomad.parsing.parsers import code_metadata
-from nomad.search import search
-from nomad.utils import strip
+from nomad.app.v1.models import Aggregation, StatisticsAggregation
+from nomad.metainfo.elasticsearch_extension import entry_type
+
 
 router = APIRouter()
 

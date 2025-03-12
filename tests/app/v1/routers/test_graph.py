@@ -18,11 +18,11 @@
 
 import pytest
 
-from nomad.datamodel import EntryArchive
-from nomad.datamodel.metainfo import SCHEMA_IMPORT_ERROR, simulationworkflowschema
 from nomad.graph.graph_reader import EntryReader, Token
+from nomad.datamodel import EntryArchive
 from nomad.utils.exampledata import ExampleData
 from tests.archive.test_archive import assert_dict
+from nomad.datamodel.metainfo import simulationworkflowschema, SCHEMA_IMPORT_ERROR
 
 # try:
 #     from rich.pretty import pprint

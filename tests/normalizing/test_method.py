@@ -17,9 +17,8 @@
 #
 
 import numpy as np
-import pytest
-
 from nomad.units import ureg
+import pytest
 
 
 def approx(value, abs=0, rel=1e-6):
