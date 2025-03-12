@@ -154,7 +154,6 @@ indent-width = 4
 select = [
     "E",    # pycodestyle
     "F401", # remove unused import
-    "I001", # sort imports
     "PL",   # pylint
     "UP",   # pyupgrade
     "W",    # pycodestyle
@@ -175,10 +174,9 @@ ignore = [
     "PLR5501", # else-if-used
 ]
 fixable = ["ALL"]
-isort.split-on-trailing-comma = false
 
 [tool.ruff.lint.extend-per-file-ignores]
-"__init__.py" = ["F401", "I001"]
+"__init__.py" = ["F401"]
 "nomad/app/v1/models/graph/utils.py" = [
     "UP007",
 ] # causes pydantic model building errors

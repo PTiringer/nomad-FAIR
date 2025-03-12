@@ -16,19 +16,24 @@
 # limitations under the License.
 #
 
-import os.path
-import re
 from urllib.parse import urlsplit, urlunsplit
+import re
+import os.path
 
 import requests
 
 from nomad import utils
 from nomad.config import config
-from nomad.datamodel import EntryArchive
-from nomad.datamodel.datamodel import EntryMetadata
 from nomad.datamodel.util import parse_path
-from nomad.metainfo import Context as MetainfoContext
-from nomad.metainfo import MetainfoReferenceError, MSection, Package, Quantity
+from nomad.datamodel.datamodel import EntryMetadata
+from nomad.metainfo import (
+    Context as MetainfoContext,
+    MSection,
+    Quantity,
+    MetainfoReferenceError,
+    Package,
+)
+from nomad.datamodel import EntryArchive
 
 
 class Context(MetainfoContext):

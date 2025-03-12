@@ -17,21 +17,21 @@
 #
 
 import os.path
-
 import pytest
 
-from nomad.datamodel.context import ServerContext
-from nomad.datamodel.data import AuthorReference, Query, UserReference
-from nomad.datamodel.datamodel import EntryArchive, EntryMetadata
-from nomad.datamodel.metainfo.annotations import valid_eln_components, valid_eln_types
 from nomad.metainfo import MetainfoError
+from nomad.datamodel.context import ServerContext
+from nomad.datamodel.datamodel import EntryArchive, EntryMetadata
+from nomad.datamodel.data import UserReference, AuthorReference, Query
+from nomad.datamodel.metainfo.annotations import valid_eln_types, valid_eln_components
 from nomad.metainfo.data_type import Datatype
 from nomad.parsing.parser import ArchiveParser
 from nomad.processing.data import Upload
 from nomad.utils import get_logger, strip
-from tests.metainfo.test_yaml_schema import yaml_to_package
+
 from tests.normalizing.conftest import run_normalize
 from tests.test_files import create_test_upload_files
+from tests.metainfo.test_yaml_schema import yaml_to_package
 
 
 def test_schema_processing(raw_files_function, no_warn):

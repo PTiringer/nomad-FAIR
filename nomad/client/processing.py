@@ -16,13 +16,14 @@
 # limitations under the License.
 #
 
-import io
 import os
-import sys
+import io
 import typing
+import sys
 
-from nomad import datamodel, utils
+from nomad import utils, datamodel
 from nomad.config import config
+
 
 from .api import Auth
 

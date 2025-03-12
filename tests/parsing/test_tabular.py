@@ -16,23 +16,23 @@
 # limitations under the License.
 #
 
-import datetime
+import pytest
 import os
 import os.path
 import re
-
-import pytest
+import datetime
 import yaml
 
-from nomad import files
 from nomad.config import config
-from nomad.datamodel.context import ClientContext
 from nomad.datamodel.datamodel import EntryArchive, EntryMetadata
-from nomad.parsing.parser import ArchiveParser
+from nomad.datamodel.context import ClientContext
 from nomad.parsing.tabular import read_table_data
-from nomad.processing import Entry, ProcessStatus, Upload
 from nomad.utils import generate_entry_id, strip
+from nomad.parsing.parser import ArchiveParser
 from tests.normalizing.conftest import run_normalize
+from nomad.processing import Upload, Entry
+from nomad.processing import ProcessStatus
+from nomad import files
 
 
 def quantity_generator(quantity_name, header_name, shape, to_dict=False):

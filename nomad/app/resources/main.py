@@ -16,17 +16,17 @@
 # limitations under the License.
 #
 
-import traceback
-
-from celery.signals import worker_process_init
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+import traceback
+from celery.signals import worker_process_init
 
 from nomad import utils
 from nomad.config import config
 
 from .routers import resources
+
 
 logger = utils.get_logger(__name__)
 

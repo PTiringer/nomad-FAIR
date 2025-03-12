@@ -22,7 +22,6 @@ import re
 from typing import Any
 
 import pint
-
 from nomad.metainfo.data_type import Enum
 from nomad.units import ureg
 

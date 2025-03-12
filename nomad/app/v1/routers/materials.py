@@ -17,36 +17,32 @@
 #
 
 from typing import Any
-
-from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
+from fastapi import APIRouter, Depends, Path, status, HTTPException, Request
 from fastapi.exception_handlers import RequestValidationError
 from pydantic import BaseModel, Field
 
 from nomad import utils
-from nomad.metainfo.elasticsearch_extension import material_index, material_type
-from nomad.search import (
-    AuthenticationRequiredError,
-    QueryValidationError,
-    SearchError,
-    search,
-)
 from nomad.utils import strip
+from nomad.search import AuthenticationRequiredError, SearchError
+from nomad.search import search, QueryValidationError
+from nomad.metainfo.elasticsearch_extension import material_type, material_index
 
+from .auth import create_user_dependency
+from ..utils import create_responses
 from ..models import (
-    HTTPExceptionModel,
+    User,
+    Owner,
+    WithQuery,
+    MetadataResponse,
     Metadata,
     MetadataPagination,
     MetadataRequired,
-    MetadataResponse,
-    Owner,
-    QueryParameters,
-    User,
-    WithQuery,
     metadata_pagination_parameters,
     metadata_required_parameters,
+    QueryParameters,
+    HTTPExceptionModel,
 )
-from ..utils import create_responses
-from .auth import create_user_dependency
+
 
 router = APIRouter()
 

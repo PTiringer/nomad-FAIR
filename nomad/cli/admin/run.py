@@ -75,9 +75,9 @@ def run_app(
     # port = port or config.services.api_port
 
     if with_gui:
-        import glob
         import os
         import os.path
+        import glob
         import shutil
 
         gui_folder = os.path.abspath(
@@ -122,9 +122,8 @@ def run_app(
     from nomad.utils import get_logger
 
     if gunicorn:
-        import logging.config
-
         from gunicorn.app.wsgiapp import WSGIApplication
+        import logging.config
 
         if log_config:
             logging.config.fileConfig(log_config)
@@ -153,7 +152,7 @@ def run_app(
         get_logger(__name__).info('created gunicorn server', data=str(gunicorn_app.cfg))
         gunicorn_app.run()
     else:
-        from uvicorn import Config, Server
+        from uvicorn import Server, Config
 
         kwargs['log_config'] = log_config
 
@@ -183,11 +182,10 @@ def run_worker(*, workers=None):
 
 
 def run_hub():
+    from jupyterhub.app import main
+    import sys
     import os
     import subprocess
-    import sys
-
-    from jupyterhub.app import main
 
     if 'JUPYTERHUB_CRYPT_KEY' not in os.environ:
         crypt_key = config.north.jupyterhub_crypt_key

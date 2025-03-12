@@ -16,11 +16,10 @@
 # limitations under the License.
 #
 from datetime import datetime, timedelta
-
 from nomad import infrastructure
-from nomad.atomutils import chemical_symbols
-from nomad.units import ureg
 from nomad.utils import create_uuid
+from nomad.units import ureg
+from nomad.atomutils import chemical_symbols
 from nomad.utils.exampledata import ExampleData
 
 material_h2o = {

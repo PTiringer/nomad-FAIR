@@ -16,38 +16,38 @@
 # limitations under the License.
 #
 
-import json
+from collections.abc import Generator
+import pytest
 import os.path
 import re
 import shutil
 import zipfile
-from collections.abc import Generator
-
-import pytest
+import json
 import yaml
 
-from nomad import infrastructure, utils
-from nomad.archive import read_partial_archive_from_mongo, to_json
+from nomad import utils, infrastructure
 from nomad.config import config
 from nomad.config.models.config import BundleImportSettings
+from nomad.archive import read_partial_archive_from_mongo, to_json
+from nomad.files import UploadFiles, StagingUploadFiles, PublicUploadFiles
+from nomad.parsing.parser import Parser
+from nomad.parsing import parsers
 from nomad.datamodel import ServerContext
 from nomad.datamodel.data import EntryData
-from nomad.datamodel.datamodel import ArchiveSection, EntryArchive, EntryData
-from nomad.files import PublicUploadFiles, StagingUploadFiles, UploadFiles
 from nomad.metainfo import Package, Quantity, Reference, SubSection
-from nomad.parsing import parsers
-from nomad.parsing.parser import Parser
-from nomad.processing import Entry, ProcessStatus, Upload
-from nomad.search import refresh as search_refresh
-from nomad.search import search
+from nomad.processing import Upload, Entry, ProcessStatus
+from nomad.search import search, refresh as search_refresh
 from nomad.utils.exampledata import ExampleData
+from nomad.datamodel.datamodel import EntryArchive, EntryData, ArchiveSection
+
+from tests.test_search import assert_search_upload
 from tests.test_files import (
     assert_upload_files,
-    example_file_aux,
     example_file_mainfile,
+    example_file_aux,
 )
-from tests.test_search import assert_search_upload
 from tests.utils import create_template_upload_file, set_upload_entry_metadata
+
 
 # Package with some metainfo schemas used only for testing.
 m_package = Package(name='test_schemas')

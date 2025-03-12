@@ -17,17 +17,17 @@
 #
 
 from collections import defaultdict
-
-from elasticsearch.exceptions import RequestError
+from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, Request, HTTPException, status
 from elasticsearch_dsl import Search
 from elasticsearch_dsl.utils import AttrList
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, Field
+from elasticsearch.exceptions import RequestError
 
 from nomad.metainfo.elasticsearch_extension import entry_index, entry_type
 
-from ..models import User
 from .auth import create_user_dependency
+from ..models import User
+
 
 router = APIRouter()
 

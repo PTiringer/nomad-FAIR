@@ -16,17 +16,17 @@
 # limitations under the License.
 #
 
-import traceback
-
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
+import traceback
 
 from nomad import utils
 from nomad.config import config
 
 from .common import root_path
 from .routers import dcat
+
 
 logger = utils.get_logger(__name__)
 

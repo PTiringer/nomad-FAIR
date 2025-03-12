@@ -25,22 +25,21 @@ take keyword arguments for structured data. Otherwise `get_logger` can
 be used similar to the standard `logging.getLogger`.
 """
 
-import json
+from typing import cast, Any
 import logging
-import os.path
-import re
 from logging.handlers import WatchedFileHandler
-from typing import Any, cast
-
-import logstash
 import structlog
 from structlog.processors import (
-    JSONRenderer,
     StackInfoRenderer,
-    TimeStamper,
     format_exc_info,
+    TimeStamper,
+    JSONRenderer,
 )
 from structlog.stdlib import LoggerFactory
+import logstash
+import json
+import re
+import os.path
 
 from nomad import utils
 from nomad.config import config

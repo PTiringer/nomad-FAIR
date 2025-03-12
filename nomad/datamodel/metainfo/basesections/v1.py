@@ -20,8 +20,8 @@ import os
 import random
 import re
 import time
-from collections.abc import Iterable
 from typing import TYPE_CHECKING
+from collections.abc import Iterable
 
 import h5py
 import numpy as np
@@ -29,17 +29,22 @@ import requests
 from ase.data import atomic_masses, atomic_numbers, chemical_symbols
 from unidecode import unidecode
 
-from nomad.datamodel.metainfo.workflow import Link, Task, TaskReference, Workflow
 from nomad.metainfo import SchemaPackage
+from nomad.datamodel.metainfo.workflow import Link, Task, TaskReference, Workflow
 from nomad.metainfo.data_type import m_str
 
 if TYPE_CHECKING:
-    from structlog.stdlib import BoundLogger
+    from structlog.stdlib import (
+        BoundLogger,
+    )
 
 from nomad import utils
 from nomad.atomutils import Formula
 from nomad.datamodel.data import ArchiveSection, EntryData
-from nomad.datamodel.metainfo.annotations import ELNAnnotation, HDF5Annotation
+from nomad.datamodel.metainfo.annotations import (
+    ELNAnnotation,
+    HDF5Annotation,
+)
 from nomad.datamodel.results import ELN, Material, Results
 from nomad.datamodel.results import ElementalComposition as ResultsElementalComposition
 from nomad.datamodel.util import create_custom_mapping
@@ -2034,7 +2039,6 @@ class PublicationReference(ArchiveSection):
         super().normalize(archive, logger)
         import dateutil.parser
         import requests
-
         from nomad.datamodel.datamodel import EntryMetadata
 
         # Parse journal name, lead author and publication date from crossref

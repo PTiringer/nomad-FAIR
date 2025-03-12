@@ -21,20 +21,19 @@ Parser for creating artificial test, brenchmark, and demonstration data.
 """
 
 import json
-import os
 import os.path
 import random
-import signal
+from ase.data import chemical_symbols
+import numpy
 import sys
 import time
-
-import numpy
-from ase.data import chemical_symbols
+import os
+import signal
 
 from nomad.datamodel import EntryArchive
 from nomad.datamodel.metainfo import runschema
 
-from .parser import MatchingParser, Parser
+from .parser import Parser, MatchingParser
 
 
 class EmptyParser(MatchingParser):

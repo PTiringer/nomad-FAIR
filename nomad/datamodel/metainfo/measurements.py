@@ -18,9 +18,10 @@
 
 import numpy as np
 
-from nomad.datamodel import Author
-from nomad.metainfo import Datetime, MSection, Package, Quantity, SubSection
+from nomad.metainfo import MSection, Package, Quantity, SubSection, Datetime
 from nomad.metainfo.metainfo import Reference, SectionProxy
+from nomad.datamodel import Author
+
 
 m_package = Package(name='measurements')
 

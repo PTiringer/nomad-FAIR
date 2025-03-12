@@ -16,9 +16,8 @@
 # limitations under the License.
 #
 
-from typing import Any, TypeVar, cast
-
-from pydantic import BaseModel, ConfigDict, Field, model_validator  # noqa: F401
+from typing import Any, cast, TypeVar
+from pydantic import ConfigDict, model_validator, BaseModel, Field  # noqa: F401
 
 ConfigBaseModelBound = TypeVar('ConfigBaseModelBound', bound='ConfigBaseModel')
 

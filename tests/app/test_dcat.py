@@ -16,15 +16,14 @@
 # limitations under the License.
 #
 
-from datetime import datetime
-
 import pytest
+from datetime import datetime
 from fastapi.testclient import TestClient
 
 from nomad.app.dcat.main import app
 from nomad.app.dcat.mapping import Mapping
-from nomad.datamodel import Dataset
 from nomad.datamodel.results import Material, Results
+from nomad.datamodel import Dataset
 from nomad.utils.exampledata import ExampleData
 
 
