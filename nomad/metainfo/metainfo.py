@@ -1132,6 +1132,7 @@ class MSection(metaclass=MObjectMeta):
 
     def m_parse_annotations(self):
         for annotation_name, annotation in self.m_annotations.items():
+            AnnotationModel.model_rebuild()
             annotation_model = AnnotationModel.m_registry.get(annotation_name)
             if not annotation_model:
                 continue
