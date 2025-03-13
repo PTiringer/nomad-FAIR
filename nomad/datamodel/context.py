@@ -345,7 +345,7 @@ class ServerContext(Context):
                 parser.parse_file(path, f, archive)
             if url:
                 self.cache_archive(url, archive)
-            parser.validate_defintions(archive)
+            parser.validate_definitions(archive)
             return archive
         except Exception:
             raise MetainfoReferenceError(f'Could not load {path}.')

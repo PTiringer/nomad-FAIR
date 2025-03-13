@@ -25,11 +25,11 @@ from nomad.datamodel import EntryArchive, EntryMetadata, results
 from nomad.datamodel.context import Context, ClientContext
 
 from .parser import (
-    MissingParser,
-    BrokenParser,
-    Parser,
     ArchiveParser,
+    BrokenParser,
     MatchingParserInterface,
+    MissingParser,
+    Parser,
 )
 from .artificial import EmptyParser, GenerateRandomParser, TemplateParser, ChaosParser
 from .tabular import TabularDataParser
@@ -290,7 +290,6 @@ parser_dict: dict[str, Parser] = {
 }
 # Register also aliases
 parser_dict.update({alias: parser for parser in parsers for alias in parser.aliases})
-
 
 # renamed parsers
 _renames = {

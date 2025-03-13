@@ -29,102 +29,102 @@ entries, and files
 """
 
 import base64
+import copy
+import hashlib
+import os.path
+from collections.abc import Iterable, Iterator, Sequence
+from contextlib import contextmanager
+from datetime import datetime
 from typing import (
-    cast,
     Any,
     Union,
+    cast,
 )
-from collections.abc import Iterator, Iterable, Sequence
+
+import requests
 import rfc3161ng
+import validators
+from fastapi.exceptions import RequestValidationError
 from mongoengine import (
-    StringField,
-    DateTimeField,
     BooleanField,
-    IntField,
-    ListField,
+    DateTimeField,
     DictField,
     EmbeddedDocument,
     EmbeddedDocumentField,
+    IntField,
+    ListField,
+    StringField,
 )
 from pymongo import UpdateOne
 from structlog import wrap_logger
-from contextlib import contextmanager
-import copy
-import os.path
-from datetime import datetime
-import hashlib
-from structlog.processors import StackInfoRenderer, format_exc_info, TimeStamper
-import requests
-from fastapi.exceptions import RequestValidationError
-import validators
+from structlog.processors import StackInfoRenderer, TimeStamper, format_exc_info
 
 from nomad import (
-    utils,
-    infrastructure,
-    search,
+    client,
     datamodel,
+    infrastructure,
     metainfo,
     parsing,
-    client,
-)
-from nomad.config import config
-from nomad.common import is_safe_relative_path
-from nomad.config.models.plugins import ExampleUploadEntryPoint
-
-from nomad.datamodel.datamodel import RFC3161Timestamp
-from nomad.files import (
-    RawPathInfo,
-    PathObject,
-    UploadFiles,
-    PublicUploadFiles,
-    StagingUploadFiles,
-    create_tmp_dir,
-)
-from nomad.groups import user_group_exists, get_group_ids
-from nomad.metainfo.data_type import Datatype, Datetime
-from nomad.processing.base import (
-    Proc,
-    process,
-    process_local,
-    ProcessStatus,
-    ProcessFailure,
-    ProcessAlreadyRunning,
-)
-from nomad.parsing import Parser
-from nomad.parsing.parsers import parser_dict, match_parser
-from nomad.normalizing import normalizers
-from nomad.datamodel import (
-    EntryArchive,
-    EntryMetadata,
-    MongoUploadMetadata,
-    MongoEntryMetadata,
-    MongoSystemMetadata,
-    EditableUserMetadata,
-    AuthLevel,
-    ServerContext,
-)
-from nomad.archive import (
-    write_partial_archive_to_mongo,
-    delete_partial_archives_from_mongo,
-    to_json,
+    search,
+    utils,
 )
 from nomad.app.v1.models import (
-    MetadataEditRequest,
     Aggregation,
-    TermsAggregation,
+    MetadataEditRequest,
     MetadataPagination,
     MetadataRequired,
+    TermsAggregation,
     restrict_query_to_upload,
 )
 from nomad.app.v1.routers.metainfo import store_package_definition
-from nomad.search import update_metadata as es_update_metadata
+from nomad.archive import (
+    delete_partial_archives_from_mongo,
+    to_json,
+    write_partial_archive_to_mongo,
+)
+from nomad.common import is_safe_relative_path
+from nomad.config import config
 from nomad.config.models.config import Reprocess
+from nomad.config.models.plugins import ExampleUploadEntryPoint
+from nomad.datamodel import (
+    AuthLevel,
+    EditableUserMetadata,
+    EntryArchive,
+    EntryMetadata,
+    MongoEntryMetadata,
+    MongoSystemMetadata,
+    MongoUploadMetadata,
+    ServerContext,
+)
+from nomad.datamodel.datamodel import RFC3161Timestamp
+from nomad.files import (
+    PathObject,
+    PublicUploadFiles,
+    RawPathInfo,
+    StagingUploadFiles,
+    UploadFiles,
+    create_tmp_dir,
+)
+from nomad.groups import get_group_ids, user_group_exists
+from nomad.metainfo.data_type import Datatype, Datetime
+from nomad.normalizing import normalizers
+from nomad.parsing import Parser
+from nomad.parsing.parsers import match_parser, parser_dict, parsers
+from nomad.processing.base import (
+    Proc,
+    ProcessAlreadyRunning,
+    ProcessFailure,
+    ProcessStatus,
+    process,
+    process_local,
+)
+from nomad.search import update_metadata as es_update_metadata
 from nomad.utils.pydantic import CustomErrorWrapper
 
 section_metadata = datamodel.EntryArchive.metadata.name
 section_workflow = datamodel.EntryArchive.workflow2.name
 section_results = datamodel.EntryArchive.results.name
-
+parser_min_level = min([parser.level for parser in parsers])
 
 mongo_upload_metadata = tuple(
     quantity.name for quantity in MongoUploadMetadata.m_def.definitions
@@ -1984,7 +1984,7 @@ class Upload(Proc):
         StagingUploadFiles(self.upload_id, create=True)
         upload_folder = self.staging_upload_files._raw_dir.os_path
 
-        # Add files using exaple upload entry point
+        # Add files using example upload entry point
         try:
             entry_point.load(upload_folder)
         except Exception as e:
@@ -2065,11 +2065,13 @@ class Upload(Proc):
                 'Settings do no allow reprocessing of a published upload'
             )
 
-        # All looks ok, process
+        # Perform matching
         updated_files = self.update_files(file_operations, only_updated_files)
         self.match_all(settings, path_filter, updated_files)
+
+        # Get the minimum level from the parsers and start processing at that level
         self.parser_level = None
-        if self.parse_next_level(0, path_filter, updated_files):
+        if self.parse_next_level(parser_min_level, path_filter, updated_files):
             self.set_last_status_message(
                 f'Waiting for results (level {self.parser_level})'
             )
@@ -2548,10 +2550,15 @@ class Upload(Proc):
                     parser = parser_dict.get(entry.parser_name)
                     if parser:
                         level = parser.level
-                        if level == 0 and not self._passes_process_filter(
-                            entry.mainfile, path_filter, updated_files
+                        # Ignore lowest level parsers if not matching path filter
+                        # TODO: why do we only ignore the lowest level parsers here?
+                        if (
+                            level == parser_min_level
+                            and not self._passes_process_filter(
+                                entry.mainfile, path_filter, updated_files
+                            )
                         ):
-                            continue  # Ignore level 0 parsers if not matching path filter
+                            continue
                         if level >= min_level:
                             if next_level is None or level < next_level:
                                 next_level = level

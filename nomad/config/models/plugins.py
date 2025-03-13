@@ -101,8 +101,9 @@ class NormalizerEntryPoint(EntryPoint, metaclass=ABCMeta):
     level: int = Field(
         0,
         description="""
-        Integer that determines the execution order of this normalizer. Normalizers are
-        run in order from lowest level to highest level.
+        Integer that determines the execution order of this normalizer within
+        the processing of an individual entry. Normalizers with the lowest level
+        is run first.
         """,
     )
 
@@ -123,8 +124,10 @@ class ParserEntryPoint(EntryPoint, metaclass=ABCMeta):
     level: int = Field(
         0,
         description="""
-        Integer that determines the execution order of this parser. Parser with lowest
-        level will attempt to match raw files first.
+        Integer that determines the execution order of this parser within an
+        upload. Parser with lowest level will be executed first. Note that this
+        only controls the order in which matched parsers are executed, but does
+        not affect the order in which parsers are matched to files.
     """,
     )
     aliases: list[str] = Field([], description="""List of alternative parser names.""")

@@ -501,11 +501,12 @@ class ArchiveParser(MatchingParser):
             name='parsers/archive',
             code_name=config.services.unavailable_value,
             domain=None,
+            level=-1,
             mainfile_mime_re='.*',
             mainfile_name_re=r'.*(archive|metainfo)\.(json|yaml|yml)$',
         )
 
-    def validate_defintions(self, archive, logger=None):
+    def validate_definitions(self, archive, logger=None):
         if not archive or not archive.definitions:
             return
         errors, warnings = archive.definitions.m_all_validate()
@@ -564,7 +565,7 @@ class ArchiveParser(MatchingParser):
         with open(mainfile) as f:
             self.parse_file(mainfile, f, archive, logger)
 
-        self.validate_defintions(archive, logger)
+        self.validate_definitions(archive, logger)
 
 
 class MissingParser(MatchingParser):
