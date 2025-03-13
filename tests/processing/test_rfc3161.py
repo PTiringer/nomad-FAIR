@@ -23,9 +23,9 @@ import httpx
 import pytest
 import rfc3161ng
 
-from nomad.archive import write_archive, read_archive, to_json
+from nomad.archive import read_archive, to_json, write_archive
 from nomad.datamodel.datamodel import RFC3161Timestamp
-from nomad.processing.data import get_rfc3161_token, Entry
+from nomad.processing.data import Entry, get_rfc3161_token
 
 
 @pytest.mark.parametrize(

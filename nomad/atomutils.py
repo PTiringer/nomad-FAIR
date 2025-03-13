@@ -23,14 +23,10 @@ import itertools
 import logging
 import math
 import re
+from collections.abc import Iterable
 from functools import reduce
 from string import ascii_uppercase
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    cast,
-)
-from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any, cast
 
 import ase.data
 import ase.geometry

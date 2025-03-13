@@ -1,9 +1,4 @@
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    field_validator,
-)
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_core import PydanticCustomError
 
 from .pagination import Direction, Pagination, PaginationResponse

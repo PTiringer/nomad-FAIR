@@ -18,21 +18,22 @@
 
 from enum import Enum
 
-from fastapi import Depends, APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.responses import ORJSONResponse
 
+from nomad.app.v1.models.graph import GraphRequest, GraphResponse
 from nomad.graph.graph_reader import (
-    MongoReader,
     ConfigError,
     GeneralReader,
-    UserReader,
+    MongoReader,
     Token,
+    UserReader,
 )
 from nomad.graph.lazy_wrapper import LazyWrapper
+
+from ..models import User
 from .auth import create_user_dependency
 from .entries import EntriesArchive
-from ..models import User
-from nomad.app.v1.models.graph import GraphRequest, GraphResponse
 
 router = APIRouter()
 

@@ -23,17 +23,18 @@ http://materials.springer.com. The database is stuctured as
 space_group_number : normalized_formula : springer_id : entry
 """
 
-from typing import Any
-import requests
-import re
-import bs4
-import time
 import os.path
+import re
+import time
+from typing import Any
+
+import bs4
+import requests
 
 import nomad.archive.storage_v2
 from nomad import archive
-from nomad.config import config
 from nomad.archive import read_archive
+from nomad.config import config
 
 required_items = {
     'Alphabetic Formula:': 'alphabetic_formula',

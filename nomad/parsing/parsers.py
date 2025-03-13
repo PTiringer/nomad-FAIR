@@ -20,10 +20,12 @@ import os.path
 from collections.abc import Iterable
 
 from nomad.config import config
-from nomad.config.models.plugins import Parser as ParserPlugin, ParserEntryPoint
+from nomad.config.models.plugins import Parser as ParserPlugin
+from nomad.config.models.plugins import ParserEntryPoint
 from nomad.datamodel import EntryArchive, EntryMetadata, results
-from nomad.datamodel.context import Context, ClientContext
+from nomad.datamodel.context import ClientContext, Context
 
+from .artificial import ChaosParser, EmptyParser, GenerateRandomParser, TemplateParser
 from .parser import (
     ArchiveParser,
     BrokenParser,
@@ -31,16 +33,16 @@ from .parser import (
     MissingParser,
     Parser,
 )
-from .artificial import EmptyParser, GenerateRandomParser, TemplateParser, ChaosParser
 from .tabular import TabularDataParser
 
 try:
     # these packages are not available without parsing extra, which is ok, if the
     # parsers are only initialized to load their metainfo definitions
-    import magic
-    import gzip
     import bz2
+    import gzip
     import lzma
+
+    import magic
 
     _compressions = {
         b'\x1f\x8b\x08': ('gz', gzip.open),

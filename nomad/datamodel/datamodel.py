@@ -18,39 +18,40 @@
 
 """All generic entry metadata and related classes."""
 
-from typing import Any
-from enum import Enum
 import os.path
+from enum import Enum
+from typing import Any
 
 import rfc3161ng
 from elasticsearch_dsl import analyzer, tokenizer
 
 from nomad import utils
 from nomad.datamodel.metainfo.common import FastAccess
-from nomad.metainfo.mongoengine_extension import Mongo, MongoDocument
-from nomad.metainfo.pydantic_extension import PydanticModel
 from nomad.metainfo.elasticsearch_extension import (
     Elasticsearch,
-    material_entry_type,
-    entry_type as es_entry_type,
     create_searchable_quantity,
+    material_entry_type,
 )
-from .util import parse_path
+from nomad.metainfo.elasticsearch_extension import entry_type as es_entry_type
+from nomad.metainfo.mongoengine_extension import Mongo, MongoDocument
+from nomad.metainfo.pydantic_extension import PydanticModel
+
 from ..metainfo import (
+    JSON,
     Bytes,
-    Package,
+    Datetime,
     Definition,
-    MSection,
     MCategory,
+    MEnum,
+    MSection,
+    Package,
+    Quantity,
     Section,
     SubSection,
-    Quantity,
-    MEnum,
-    Datetime,
-    JSON,
 )
 from ..metainfo.data_type import m_str
 from ..metainfo.metainfo import Reference
+from .util import parse_path
 
 # This is usually defined automatically when the first metainfo definition is evaluated, but
 # due to the next imports requiring the m_package already, this would be too late.

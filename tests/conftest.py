@@ -16,17 +16,17 @@
 # limitations under the License.
 #
 import builtins
-from pathlib import Path
-from io import StringIO
-import pytest
-import time
-import os
 import logging
-import warnings
-import tempfile
-
-from fastapi.testclient import TestClient
+import os
 import socketserver
+import tempfile
+import time
+import warnings
+from io import StringIO
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
 
 from nomad.config import config
 from nomad.config.models.plugins import Schema, add_plugin, remove_plugin
@@ -35,8 +35,8 @@ from nomad.config.models.plugins import Schema, add_plugin, remove_plugin
 config.logstash.enabled = False  # noqa: E402  # this must be set *before* the other modules are imported
 
 from nomad import utils
-from nomad.utils import structlogging
 from nomad.app.main import app
+from nomad.utils import structlogging
 
 # Set up pytest to pass control to the debugger on an exception.
 if os.getenv('_PYTEST_RAISE', '0') != '0':
@@ -68,8 +68,8 @@ pytest_plugins = (
 )
 
 
-from structlog.testing import LogCapture
 import structlog
+from structlog.testing import LogCapture
 
 
 @pytest.fixture(scope='function')

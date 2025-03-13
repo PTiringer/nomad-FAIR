@@ -15,14 +15,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from nomad.datamodel.data import ArchiveSection
-from nomad.metainfo import Quantity, SubSection, Package, MSection, JSON, Section
+from copy import deepcopy
+from datetime import datetime
+
+import numpy as np
 import plotly.express as px
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
-import numpy as np
-from copy import deepcopy
-from datetime import datetime
+
+from nomad.datamodel.data import ArchiveSection
+from nomad.metainfo import JSON, MSection, Package, Quantity, Section, SubSection
 
 
 class PlotlyError(Exception):

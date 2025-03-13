@@ -20,40 +20,33 @@
 # in-depth tests in test_* files of the same module.
 
 from math import isnan
-import pytest
+
 import numpy as np
 import pandas as pd
 import pint.quantity
+import pytest
 
-from nomad.metainfo.metainfo import (
-    MSection,
-    MCategory,
-    Section,
-    Quantity,
-    SubSection,
-    Definition,
-    Package,
-    DeriveError,
-    MetainfoError,
-    derived,
-)
 from nomad.metainfo import (
     Annotation,
+    AnnotationModel,
     DefinitionAnnotation,
     SectionAnnotation,
-    AnnotationModel,
 )
-from nomad.metainfo.example import (
-    Run,
-    VaspRun,
-    System,
-    SystemHash,
-    Parsing,
-    SCC,
-    m_package as example_package,
+from nomad.metainfo.example import SCC, Parsing, Run, System, SystemHash, VaspRun
+from nomad.metainfo.example import m_package as example_package
+from nomad.metainfo.metainfo import (
+    Definition,
+    DeriveError,
+    MCategory,
+    MetainfoError,
+    MSection,
+    Package,
+    Quantity,
+    Section,
+    SubSection,
+    derived,
 )
 from nomad.units import ureg
-
 from tests.metainfo import MTypes
 
 

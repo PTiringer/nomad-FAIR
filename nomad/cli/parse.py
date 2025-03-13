@@ -84,12 +84,12 @@ def _parse(
     save_plot_dir,
 ):
     import json
-    import sys
     import os
+    import sys
 
+    from nomad import utils
     from nomad.client import normalize_all, parse
     from nomad.datamodel.metainfo.plot import resolve_plot_references
-    from nomad import utils
 
     kwargs = dict(
         strict=not not_strict,

@@ -16,14 +16,15 @@
 # limitations under the License.
 #
 
-import pytest
 import json
 import os
 import os.path
 
+import pytest
+
 from nomad.config import config
+from nomad.datamodel import Context, EntryArchive
 from nomad.parsing.parser import ArchiveParser
-from nomad.datamodel import EntryArchive, Context
 
 
 def test_archive_parser(raw_files_function):
