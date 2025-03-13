@@ -22,17 +22,17 @@ from datetime import datetime
 import pytest
 import yaml
 
+from nomad.datamodel import EntryArchive
 from nomad.graph.graph_reader import (
     EntryReader,
+    FileSystemReader,
+    GeneralReader,
+    MongoReader,
+    Token,
     UploadReader,
     UserReader,
-    FileSystemReader,
-    MongoReader,
-    GeneralReader,
-    Token,
 )
 from nomad.graph.lazy_wrapper import LazyWrapper
-from nomad.datamodel import EntryArchive
 from nomad.utils.exampledata import ExampleData
 from tests.normalizing.conftest import simulationworkflowschema
 

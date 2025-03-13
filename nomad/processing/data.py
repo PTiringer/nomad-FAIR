@@ -35,11 +35,7 @@ import os.path
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from datetime import datetime
-from typing import (
-    Any,
-    Union,
-    cast,
-)
+from typing import Any, Union, cast
 
 import requests
 import rfc3161ng
@@ -59,15 +55,7 @@ from pymongo import UpdateOne
 from structlog import wrap_logger
 from structlog.processors import StackInfoRenderer, TimeStamper, format_exc_info
 
-from nomad import (
-    client,
-    datamodel,
-    infrastructure,
-    metainfo,
-    parsing,
-    search,
-    utils,
-)
+from nomad import client, datamodel, infrastructure, metainfo, parsing, search, utils
 from nomad.app.v1.models import (
     Aggregation,
     MetadataEditRequest,

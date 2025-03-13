@@ -17,77 +17,78 @@
 #
 
 import re
-import numpy as np
 from typing import Any
+
 import ase.data
-from matid import SymmetryAnalyzer  # pylint: disable=import-error
 import matid.geometry  # pylint: disable=import-error
+import numpy as np
+from matid import SymmetryAnalyzer  # pylint: disable=import-error
 
 from nomad import atomutils
-from nomad.config import config
-from nomad.utils import traverse_reversed, extract_section
 from nomad.atomutils import Formula
-from nomad.normalizing.normalizer import Normalizer
-from nomad.normalizing.method import MethodNormalizer
-from nomad.normalizing.material import MaterialNormalizer
+from nomad.config import config
 from nomad.datamodel import EntryArchive
-from nomad.datamodel.metainfo.workflow import Workflow
 from nomad.datamodel.data import ArchiveSection
-from nomad.normalizing.common import structures_2d
+from nomad.datamodel.metainfo.workflow import Workflow
 from nomad.datamodel.results import (
     BandGap,
     BandGapDeprecated,
-    RadialDistributionFunction,
-    RadiusOfGyration,
-    MeanSquaredDisplacement,
-    Results,
-    Material,
-    Method,
-    GeometryOptimization,
-    Trajectory,
-    MolecularDynamics,
-    MDProvenance,
-    TemperatureDynamic,
-    VolumeDynamic,
-    PressureDynamic,
-    EnergyDynamic,
-    Properties,
-    StructuralProperties,
-    DynamicalProperties,
-    EnergyVolumeCurve,
-    BulkModulus,
-    ShearModulus,
-    MechanicalProperties,
-    ElectronicProperties,
-    VibrationalProperties,
-    ThermodynamicProperties,
     BandStructureElectronic,
     BandStructurePhonon,
+    BulkModulus,
+    DensityCharge,
     DOSElectronic,
-    DOSNew,
     DOSElectronicNew,
+    DOSNew,
     DOSPhonon,
-    GreensFunctionsElectronic,
-    EnergyFreeHelmholtz,
-    HeatCapacityConstantVolume,
-    SpectroscopicProperties,
+    DynamicalProperties,
     EELSMethodology,
-    SpectraProvenance,
-    Spectra,
+    ElectricFieldGradient,
+    ElectronicProperties,
+    EnergyDynamic,
+    EnergyFreeHelmholtz,
+    EnergyVolumeCurve,
+    GeometryOptimization,
+    GreensFunctionsElectronic,
+    HeatCapacityConstantVolume,
     MagneticProperties,
     MagneticShielding,
     MagneticSusceptibility,
-    ElectricFieldGradient,
+    Material,
+    MDProvenance,
+    MeanSquaredDisplacement,
+    MechanicalProperties,
+    Method,
+    MolecularDynamics,
+    PressureDynamic,
+    Properties,
+    RadialDistributionFunction,
+    RadiusOfGyration,
+    Results,
+    ShearModulus,
+    Spectra,
+    SpectraProvenance,
+    SpectroscopicProperties,
     SpinSpinCoupling,
-    DensityCharge,
+    StructuralProperties,
+    TemperatureDynamic,
+    ThermodynamicProperties,
+    Trajectory,
+    VibrationalProperties,
+    VolumeDynamic,
 )
+from nomad.normalizing.common import structures_2d
+from nomad.normalizing.material import MaterialNormalizer
+from nomad.normalizing.method import MethodNormalizer
+from nomad.normalizing.normalizer import Normalizer
+from nomad.utils import extract_section, traverse_reversed
 
 try:
     import runschema
 
     runschema.run_schema_entry_point.load()
-    import runschema.method
     import runschema.calculation
+    import runschema.method
     import runschema.system
 except Exception as e:
     runschema, simulationworkflowschema = None, None

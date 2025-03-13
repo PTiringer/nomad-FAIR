@@ -16,8 +16,9 @@
 # limitations under the License.
 #
 import pytest
+
 from nomad.atomutils import Formula
-from nomad.datamodel.results import Material, ElementalComposition
+from nomad.datamodel.results import ElementalComposition, Material
 
 
 @pytest.mark.parametrize(

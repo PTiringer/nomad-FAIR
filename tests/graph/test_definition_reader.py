@@ -21,8 +21,8 @@ import pytest
 
 from nomad.graph.graph_reader import DefinitionReader
 from nomad.metainfo import (
-    Package,
     MSection,
+    Package,
     Quantity,
     Reference,
     SectionProxy,

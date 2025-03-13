@@ -18,12 +18,13 @@
 
 import os
 import re
+
 import pytest
 import yaml
 from pydantic import ValidationError
 
 from nomad.config import load_config
-from nomad.config.models.plugins import Parser, Schema, ParserEntryPoint
+from nomad.config.models.plugins import Parser, ParserEntryPoint, Schema
 from nomad.utils import flatten_dict
 
 from .utils import assert_log

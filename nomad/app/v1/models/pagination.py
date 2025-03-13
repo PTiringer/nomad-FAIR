@@ -1,12 +1,7 @@
 from enum import Enum
+
 from fastapi import HTTPException, Request
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    field_validator,
-    model_validator,
-)
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 from nomad.app.v1.utils import update_url_query_arguments

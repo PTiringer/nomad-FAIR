@@ -17,23 +17,23 @@
 #
 
 import os
-import requests
-
 from enum import Enum
-from nomad.groups import get_group_ids
-from pydantic import BaseModel
-from fastapi import APIRouter, Depends, status, HTTPException
-from mongoengine.queryset.visitor import Q
 
+import requests
+from fastapi import APIRouter, Depends, HTTPException, status
+from mongoengine.queryset.visitor import Q
+from pydantic import BaseModel
+
+from nomad.app.v1.routers.auth import generate_simple_token
 from nomad.config import config
 from nomad.config.models.north import NORTHTool
-from nomad.utils import strip, get_logger, slugify
+from nomad.groups import get_group_ids
 from nomad.processing import Upload
-from nomad.app.v1.routers.auth import generate_simple_token
-from .auth import create_user_dependency
-from ..models import User, HTTPExceptionModel
-from ..utils import create_responses
+from nomad.utils import get_logger, slugify, strip
 
+from ..models import HTTPExceptionModel, User
+from ..utils import create_responses
+from .auth import create_user_dependency
 
 TOOLS = {k: v for k, v in config.north.tools.filtered_items()}
 

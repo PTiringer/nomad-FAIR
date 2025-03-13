@@ -16,21 +16,21 @@
 # limitations under the License.
 #
 
-import pytest
 from datetime import datetime
 
-from nomad.search import search
-from nomad.datamodel import Dataset
-from nomad import processing as proc, utils
-from nomad.utils.exampledata import ExampleData
+import pytest
 
+from nomad import processing as proc
+from nomad import utils
+from nomad.datamodel import Dataset
+from nomad.search import search
+from nomad.utils.exampledata import ExampleData
 from tests.app.v1.routers.common import assert_response
 from tests.processing.test_edit_metadata import (
-    assert_metadata_edited,
-    all_coauthor_entry_metadata,
     all_admin_entry_metadata,
+    all_coauthor_entry_metadata,
+    assert_metadata_edited,
 )
-
 
 logger = utils.get_logger(__name__)
 

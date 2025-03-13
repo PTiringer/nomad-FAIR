@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 from nomad.datamodel.data import ArchiveSection
-from nomad.metainfo import Quantity, Package
+from nomad.metainfo import Package, Quantity
 
 m_package = Package()
 

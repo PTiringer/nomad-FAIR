@@ -15,62 +15,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import os
-from typing import TYPE_CHECKING
-from collections.abc import Iterable
-import random
-import time
 import datetime
+import os
+import random
 import re
+import time
+from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
-from unidecode import unidecode
-import numpy as np
 import h5py
-from ase.data import (
-    chemical_symbols,
-    atomic_numbers,
-    atomic_masses,
-)
+import numpy as np
 import requests
+from ase.data import atomic_masses, atomic_numbers, chemical_symbols
+from unidecode import unidecode
 
 from nomad.datamodel.metainfo.workflow import Link, Task, Workflow
 from nomad.metainfo.data_type import m_str
 
 if TYPE_CHECKING:
-    from structlog.stdlib import (
-        BoundLogger,
-    )
-from nomad import (
-    utils,
-)
-from nomad.units import (
-    ureg,
-)
-from nomad.metainfo import (
-    Quantity,
-    Datetime,
-    Section,
-    SectionProxy,
-    SubSection,
-)
-from nomad.metainfo.util import MEnum
-from nomad.datamodel.util import create_custom_mapping
-from nomad.datamodel.data import (
-    ArchiveSection,
-)
-from nomad.datamodel.results import (
-    Results,
-    ELN,
-    ElementalComposition as ResultsElementalComposition,
-    Material,
-)
+    from structlog.stdlib import BoundLogger
+from nomad import utils
+from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import (
     ELNAnnotation,
     Filter,
-    SectionProperties,
     HDF5Annotation,
+    SectionProperties,
 )
-
+from nomad.datamodel.results import ELN, Material, Results
+from nomad.datamodel.results import ElementalComposition as ResultsElementalComposition
+from nomad.datamodel.util import create_custom_mapping
+from nomad.metainfo import Datetime, Quantity, Section, SectionProxy, SubSection
+from nomad.metainfo.util import MEnum
+from nomad.units import ureg
 
 PUB_CHEM_PUG_PATH = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound'
 CAS_API_PATH = 'https://commonchemistry.cas.org/api'
@@ -408,7 +385,7 @@ class EntityReference(SectionReference):
         """
         super().normalize(archive, logger)
         if self.reference is None and self.lab_id is not None:
-            from nomad.search import search, MetadataPagination
+            from nomad.search import MetadataPagination, search
 
             query = {'results.eln.lab_ids': self.lab_id}
             search_result = search(
@@ -1595,9 +1572,10 @@ class PublicationReference(ArchiveSection):
             logger ('BoundLogger'): A structlog logger.
         """
         super().normalize(archive, logger)
-        from nomad.datamodel.datamodel import EntryMetadata
         import dateutil.parser
         import requests
+
+        from nomad.datamodel.datamodel import EntryMetadata
 
         # Parse journal name, lead author and publication date from crossref
         if self.DOI_number:

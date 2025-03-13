@@ -23,13 +23,7 @@ from importlib.metadata import version
 from typing import Any
 
 import yaml
-from pydantic import (
-    BaseModel,
-    field_validator,
-    model_validator,
-    Field,
-    ConfigDict,
-)
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 try:
     __version__ = version('nomad-lab')
@@ -39,15 +33,12 @@ except Exception:  # noqa
 
 from importlib.metadata import entry_points
 
+from nomad.common import get_package_path
 
-from .common import (
-    ConfigBaseModel,
-    Options,
-)
+from .common import ConfigBaseModel, Options
 from .north import NORTH
 from .plugins import EntryPointType, PluginPackage, Plugins
 from .ui import UI
-from nomad.common import get_package_path
 
 warnings.filterwarnings('ignore', message='numpy.dtype size changed')
 warnings.filterwarnings('ignore', message='numpy.ufunc size changed')

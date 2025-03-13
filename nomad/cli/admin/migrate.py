@@ -19,15 +19,15 @@
 import time
 from datetime import datetime
 from typing import Any
-from pydantic import BaseModel
 
+from pydantic import BaseModel
 from pymongo import ReplaceOne
-from pymongo.database import Database, Collection
+from pymongo.database import Collection, Database
+
 from nomad import utils
-from nomad.processing import ProcessStatus, Upload, Entry
 from nomad.datamodel import Dataset
 from nomad.parsing.parsers import parser_dict
-
+from nomad.processing import Entry, ProcessStatus, Upload
 
 _upload_keys_to_remove_v0 = (
     'published',
