@@ -114,6 +114,45 @@ export class Quantity {
   }
 
   /**
+   * Used for recalculating the normalized value when the unit is changing from
+   * a delta unit to a non-delta unit or vice versa.
+   *
+   * @param {*} unit New unit
+   */
+  renormalize(unit) {
+    // Determine if current and target units have delta values.
+    const sourceHasDelta = this.unit.mathjsUnit.units.some(u => u.delta)
+    const targetHasDelta = unit.mathjsUnit.units.some(u => u.delta)
+
+    if (sourceHasDelta !== targetHasDelta) {
+      // Helper to clone a mathjs unit and unset delta flags.
+      const cloneAndUnsetDelta = (mathjsUnit) => {
+        const cloned = mathjsUnit.clone()
+        cloned.units.forEach(u => {
+          u.delta = false
+        })
+        return new Unit(cloned).toSI()
+      }
+
+      let fromUnit, toUnit
+      if (sourceHasDelta && !targetHasDelta) {
+        // Converting from delta to regular: remove delta from the source unit.
+        fromUnit = cloneAndUnsetDelta(this.unit.mathjsUnit)
+        toUnit = unit
+      } else if (!sourceHasDelta && targetHasDelta) {
+        // Converting from regular to delta: remove delta from the target unit.
+        fromUnit = this.unit
+        toUnit = cloneAndUnsetDelta(unit.mathjsUnit)
+      }
+
+      const offset = new Quantity(0, fromUnit).to(toUnit).value()
+      this.normalized_value = mapDeep(this.normalized_value, (value) => {
+        return (value === null || value === undefined) ? value : value - offset
+      })
+    }
+  }
+
+  /**
    * Returns a set of conversion coefficients based on the currently set units.
    * @returns Array of conversion coefficients, one for each unit that is present.
    */
@@ -139,7 +178,9 @@ export class Quantity {
   }
 
   to(unit) {
-    return new Quantity(this.normalized_value, this.unit.to(unit), true)
+    const unitObj = new Unit(unit)
+    this.renormalize(unitObj)
+    return new Quantity(this.normalized_value, this.unit.to(unitObj), true)
   }
 
   toSI() {
