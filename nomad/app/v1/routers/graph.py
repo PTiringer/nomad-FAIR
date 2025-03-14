@@ -80,9 +80,7 @@ def relocate_children(request):
     description='Query the database with a graph style without verification.',
     response_class=GraphJSONResponse,
 )
-async def raw_query(
-    query=Body(...), user: User = Depends(create_user_dependency(required=True))
-):
+async def raw_query(query=Body(...), user: User = Depends(create_user_dependency())):
     relocate_children(query)
     with MongoReader(query, user=user) as reader:
         return GraphJSONResponse(await reader.read())
@@ -99,7 +97,7 @@ async def raw_query(
 )
 async def basic_query(
     query: GraphRequest = Body(...),
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(create_user_dependency()),
 ):
     try:
         query_dict = query.dict(

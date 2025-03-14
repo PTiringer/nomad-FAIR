@@ -876,6 +876,14 @@ class GeneralReader:
         for upload in self.upload_pool.values():
             upload.close()
 
+    @property
+    def auth_user_id(self) -> str:
+        return self.user.user_id if self.user else ''
+
+    @property
+    def auth_user_is_admin(self) -> bool:
+        return self.user.is_admin if self.user else False
+
     def _log(
         self,
         message: str,
@@ -918,7 +926,7 @@ class GeneralReader:
     async def retrieve_user(self, user_id: str) -> str | dict:
         # `me` is a convenient way to refer to the current user
         if user_id == 'me':
-            user_id = self.user.user_id
+            user_id = self.auth_user_id
 
         def _retrieve():
             return User.get(user_id=user_id)
@@ -1030,7 +1038,9 @@ class GeneralReader:
     async def retrieve_entry(self, entry_id: str) -> str | dict:
         def _search():
             return perform_search(
-                owner='all', query={'entry_id': entry_id}, user_id=self.user.user_id
+                owner='all',
+                query={'entry_id': entry_id},
+                user_id=self.auth_user_id or None,
             )
 
         if (await asyncio.to_thread(_search)).pagination.total == 0:
@@ -1056,7 +1066,7 @@ class GeneralReader:
             )
             return dataset_id
 
-        if dataset.user_id != self.user.user_id:
+        if dataset.user_id != self.auth_user_id:
             self._log(
                 f'No access to dataset {dataset_id}.', error_type=QueryError.NOACCESS
             )
@@ -1303,19 +1313,19 @@ class MongoReader(GeneralReader):
     @functools.cached_property
     def uploads(self):
         return Upload.objects(
-            Q(main_author=self.user.user_id)
-            | Q(reviewers=self.user.user_id)
-            | Q(coauthors=self.user.user_id)
+            Q(main_author=self.auth_user_id)
+            | Q(reviewers=self.auth_user_id)
+            | Q(coauthors=self.auth_user_id)
         )
 
     @functools.cached_property
     def datasets(self):
-        return Dataset.m_def.a_mongo.objects(user_id=self.user.user_id)
+        return Dataset.m_def.a_mongo.objects(user_id=self.auth_user_id)
 
     async def _query_es(self, config: RequestConfig):
         search_params: dict = {
-            'owner': 'user',
-            'user_id': self.user.user_id,
+            'owner': 'user' if self.auth_user_id else 'public',
+            'user_id': self.auth_user_id or None,
             'query': {},
             # 'required': MetadataRequired(include=['entry_id'])
         }
@@ -1410,9 +1420,9 @@ class MongoReader(GeneralReader):
             mongo_query &= Q(publish_time=None)
 
         if config.query.is_owned is True:
-            mongo_query &= Q(main_author=self.user.user_id)
+            mongo_query &= Q(main_author=self.auth_user_id)
         elif config.query.is_owned is False:
-            mongo_query &= Q(main_author__ne=self.user.user_id)
+            mongo_query &= Q(main_author__ne=self.auth_user_id)
 
         return config.query.dict(exclude_unset=True), self.uploads.filter(mongo_query)
 
@@ -2091,7 +2101,7 @@ class EntryReader(MongoReader):
 class ElasticSearchReader(EntryReader):
     async def retrieve_entry(self, entry_id: str) -> str | dict:
         search_response = perform_search(
-            owner='all', query={'entry_id': entry_id}, user_id=self.user.user_id
+            owner='all', query={'entry_id': entry_id}, user_id=self.auth_user_id or None
         )
 
         if search_response.pagination.total == 0:
@@ -2137,11 +2147,11 @@ class UserReader(MongoReader):
             | Q(coauthors=self.target_user_id)
         )
         # self.user must have access to the upload
-        if self.target_user_id != self.user.user_id and not self.user.is_admin:
+        if self.target_user_id != self.auth_user_id and not self.auth_user_is_admin:
             mongo_query &= (
-                Q(main_author=self.user.user_id)
-                | Q(reviewers=self.user.user_id)
-                | Q(coauthors=self.user.user_id)
+                Q(main_author=self.auth_user_id)
+                | Q(reviewers=self.auth_user_id)
+                | Q(coauthors=self.auth_user_id)
             )
 
         return Upload.objects(mongo_query)
@@ -2164,10 +2174,11 @@ class UserReader(MongoReader):
                 user_id: str = target_user['user_id']
             elif isinstance(user_id_or_dict, str):
                 if user_id_or_dict == 'me':
-                    user_id = self.user.user_id
+                    user_id = self.auth_user_id
                 else:
                     user_id = user_id_or_dict
-                target_user = await self.retrieve_user(user_id)
+                # if user_id == '' there is no auth user thus set to empty dict
+                target_user = await self.retrieve_user(user_id) if user_id else {}
             else:
                 # should not reach here
                 raise NotImplementedError
