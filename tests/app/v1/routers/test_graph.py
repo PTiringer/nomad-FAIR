@@ -41,6 +41,38 @@ def assert_path_exists(path, response):
         raise KeyError
 
 
+def contains(subset: dict, superset: dict) -> bool:
+    """
+    Recursively checks if the 'subset' dictionary is contained within the 'superset' dictionary.
+
+    For every key-value pair in 'subset', the same key must exist in 'superset'.
+    If the value is a dictionary, then the function checks recursively that the nested dictionary is also contained.
+
+    Parameters:
+        subset (dict): The dictionary to be checked for containment.
+        superset (dict): The dictionary that should contain the subset.
+
+    Returns:
+        bool: True if every key-value pair in subset is found in supserset, otherwise False.
+    """
+    for key, value in subset.items():
+        # Check if the key exists in haystack
+        if key not in superset:
+            return False
+
+        # If the value is a dictionary, perform a recursive check.
+        if isinstance(value, dict):
+            if not isinstance(superset[key], dict):
+                return False
+            if not contains(value, superset[key]):
+                return False
+        else:
+            # Direct comparison for non-dictionary values.
+            if superset[key] != value:
+                return False
+    return True
+
+
 def test_graph_query_random(auth_headers, client, example_data):
     user_auth = auth_headers['user1']
     response = client.post(
@@ -68,30 +100,130 @@ def test_graph_query_random(auth_headers, client, example_data):
 
 
 @pytest.mark.parametrize(
-    'upload_id,entry_id,user,status_code',
+    'upload_id,entry_id,user,expected_value,status_code',
     [
-        pytest.param('id_embargo', 'id_embargo_1', 'user1', 200, id='ok'),
+        pytest.param(
+            'id_embargo',
+            'id_embargo_1',
+            'user1',
+            {'uploads': {'id_embargo': {'entries': {'id_embargo_1': {}}}}},
+            200,
+            id='ok',
+        ),
         pytest.param(
             'id_child_entries',
             'id_child_entries_child1',
             'user1',
+            {
+                'uploads': {
+                    'id_child_entries': {'entries': {'id_child_entries_child1': {}}}
+                }
+            },
             200,
             id='child-entry',
         ),
-        pytest.param('id_embargo', 'id_embargo_1', 'user0', 200, id='admin-access'),
-        pytest.param('id_embargo', 'id_embargo_1', None, 401, id='no-credentials'),
         pytest.param(
-            'id_embargo', 'id_embargo_1', 'invalid', 401, id='invalid-credentials'
+            'id_embargo',
+            'id_embargo_1',
+            'user0',
+            {'uploads': {'id_embargo': {'entries': {'id_embargo_1': {}}}}},
+            200,
+            id='admin-access',
         ),
-        pytest.param('id_embargo', 'id_embargo_1', 'user2', 404, id='no-access'),
         pytest.param(
-            'silly_value', 'id_embargo_1', 'user1', 404, id='invalid-upload_id'
+            'id_embargo',
+            'id_embargo_1',
+            None,
+            {
+                'uploads': {
+                    'id_embargo': {
+                        'm_errors': [
+                            {
+                                'error_type': 'NOACCESS',
+                                'message': 'No access to upload id_embargo.',
+                            }
+                        ]
+                    }
+                }
+            },
+            200,
+            id='no-credentials',
         ),
-        pytest.param('id_embargo', 'silly_value', 'user1', 404, id='invalid-entry_id'),
+        pytest.param(
+            'id_embargo', 'id_embargo_1', 'invalid', {}, 401, id='invalid-credentials'
+        ),
+        pytest.param(
+            'id_embargo',
+            'id_embargo_1',
+            'user2',
+            {
+                'uploads': {
+                    'id_embargo': {
+                        'm_errors': [
+                            {
+                                'error_type': 'NOACCESS',
+                                'message': 'No access to upload id_embargo.',
+                            }
+                        ]
+                    }
+                }
+            },
+            200,
+            id='no-access',
+        ),
+        pytest.param(
+            'silly_value',
+            'id_embargo_1',
+            'user1',
+            {
+                'uploads': {
+                    'silly_value': {
+                        'm_errors': [
+                            {
+                                'error_type': 'NOTFOUND',
+                                'message': 'The value silly_value is not a valid upload id.',
+                            }
+                        ]
+                    }
+                }
+            },
+            200,
+            id='invalid-upload_id',
+        ),
+        pytest.param(
+            'id_embargo',
+            'silly_value',
+            'user1',
+            {
+                'uploads': {
+                    'id_embargo': {
+                        'entries': {
+                            'silly_value': {
+                                'm_errors': [
+                                    {
+                                        'error_type': 'NOACCESS',
+                                        'message': 'The value silly_value is not a valid entry id or not visible to current user.',
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            200,
+            id='invalid-entry_id',
+        ),
     ],
 )
 def test_graph_query(
-    auth_headers, client, example_data, upload_id, entry_id, user, status_code
+    auth_headers,
+    client,
+    example_data,
+    upload_id,
+    entry_id,
+    user,
+    expected_value,
+    status_code,
 ):
     user_auth = auth_headers[user]
     response = client.post(
@@ -99,14 +231,10 @@ def test_graph_query(
         json={Token.UPLOADS: {upload_id: {Token.ENTRIES: {entry_id: '*'}}}},
         headers={'Accept': 'application/json'} | (user_auth if user_auth else {}),
     )
-    target_path = (Token.UPLOADS, upload_id, Token.ENTRIES, entry_id)
-    if 200 == status_code:
-        assert_path_exists(target_path, response.json())
-    elif 401 == status_code:
-        assert response.status_code == 401
-    else:
-        with pytest.raises(KeyError):
-            assert_path_exists(target_path, response.json())
+
+    assert response.status_code == status_code
+    if status_code == 200:
+        assert contains(expected_value, response.json())
 
 
 @pytest.mark.parametrize(
@@ -257,7 +385,10 @@ def example_upload(example_archive, user1, mongo_function, elastic_function):
             ),
             id='user2',
         ),
-        pytest.param(dict(user=None, expected_status_code=401), id='no-credentials'),
+        pytest.param(
+            dict(user=None, expected_status_code=200, expected_upload_ids=[]),
+            id='no-credentials',
+        ),
         pytest.param(
             dict(user='invalid', expected_status_code=401), id='invalid-credentials'
         ),
@@ -410,14 +541,11 @@ def test_get_uploads_graph(auth_headers, client, example_data, kwargs):
     def assert_upload_ids(a, b):
         assert set(a.keys()) == set(b)
 
+    assert response.status_code == expected_status_code
     if expected_status_code == 200:
-        result[Token.UPLOADS].pop('m_response', None)
-        if expected_upload_ids:
-            assert_upload_ids(result[Token.UPLOADS], expected_upload_ids)
-        else:
-            assert result[Token.UPLOADS] == {}
-    else:
-        assert response.status_code == expected_status_code
+        uploads = result.get(Token.UPLOADS, {})
+        uploads.pop('m_response', None)
+        assert_upload_ids(uploads, expected_upload_ids)
 
 
 @pytest.mark.parametrize(
