@@ -109,7 +109,7 @@ class LogstashFormatter(logstash.formatter.LogstashFormatterBase):
         message = {
             '@timestamp': self.format_timestamp(record.created),
             '@version': '1',
-            'event': structlog['event'],
+            'event': structlog.get('event', 'unknown event'),
             'host': self.host,
             'path': record.pathname,
             'tags': self.tags,
