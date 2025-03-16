@@ -30,5 +30,5 @@ uv pip compile --universal -p 3.10 --annotation-style=line \
     --output-file=requirements-plugins.txt \
     --unsafe-package nomad-lab \
     -c requirements-dev.txt \
-    default_plugins.txt
+    test_plugins.txt
 

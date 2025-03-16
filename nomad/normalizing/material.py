@@ -18,6 +18,7 @@
 import re
 
 import ase.data
+import numpy as np
 from matid.classification.classifications import (
     Atom,
     Class0D,
@@ -27,7 +28,6 @@ from matid.classification.classifications import (
     Material2D,
     Surface,
 )
-from nptyping import NDArray
 
 from nomad import atomutils
 from nomad.atomutils import Formula
@@ -146,7 +146,9 @@ class MaterialNormalizer:
             classes['compound_class_springer'] = compound_classes
         return classes
 
-    def material_name(self, symbols: list | NDArray, counts: list | NDArray) -> str:
+    def material_name(
+        self, symbols: list | np.ndarray, counts: list | np.ndarray
+    ) -> str:
         if symbols is None or counts is None:
             return None
         name = None

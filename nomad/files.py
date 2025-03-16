@@ -480,12 +480,14 @@ def json_to_streamed_file(json_dict: dict[str, Any], path: str) -> StreamedFile:
     return StreamedFile(path=path, f=io.BytesIO(json_bytes), size=len(json_bytes))
 
 
-def create_zipstream_content(streamed_files: Iterable[StreamedFile]) -> Iterable[dict]:
+def create_zipstream(streamed_files: Iterable[StreamedFile], compress: bool = False):
     """
-    Generator which "casts" a sequence of StreamedFiles to a sequence of dictionaries, of
-    the form which is required by the `zipstream` library, i.e. dictionaries with keys
-    `arcname`, `iterable` and `buffer_size`. Useful for generating zipstreams.
+    Creates a zip stream, i.e. a streamed zip file.
     """
+    zs = zipstream.ZipStream(
+        compress_type=zipfile.ZIP_DEFLATED if compress else zipfile.ZIP_STORED,
+        compress_level=9,
+    )
 
     def content_generator(file):
         with file.f as f:
@@ -493,25 +495,9 @@ def create_zipstream_content(streamed_files: Iterable[StreamedFile]) -> Iterable
                 yield data
 
     for streamed_file in streamed_files:
-        yield dict(
-            arcname=streamed_file.path,
-            iterable=content_generator(streamed_file),
-            buffer_size=streamed_file.size,
-        )
+        zs.add(content_generator(streamed_file), streamed_file.path)
 
-
-def create_zipstream(streamed_files: Iterable[StreamedFile], compress: bool = False):
-    """
-    Creates a zip stream, i.e. a streamed zip file.
-    """
-    zip_stream = zipstream.ZipFile(
-        mode='w',
-        compression=zipfile.ZIP_DEFLATED if compress else zipfile.ZIP_STORED,
-        allowZip64=True,
-    )
-    zip_stream.paths_to_write = create_zipstream_content(streamed_files)
-
-    yield from zip_stream
+    yield from zs
 
 
 async def create_zipstream_async(

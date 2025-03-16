@@ -21,7 +21,6 @@
 # https://github.com/nomad-coe/nomad-schema-plugin-simulation-workflow.git
 
 import numpy as np
-from nptyping import NDArray
 
 from nomad.datamodel.metainfo.common import FastAccess
 from nomad.datamodel.metainfo.simulation.calculation import (
@@ -1300,14 +1299,6 @@ class Stability(MSection):
         """,
     )
 
-    n_references = Quantity(
-        type=int,
-        shape=[],
-        description="""
-        Number of reference systems.
-        """,
-    )
-
     is_stable = Quantity(
         type=bool,
         shape=[],
@@ -1390,7 +1381,7 @@ class Thermodynamics(MSection):
         """,
         cached=True,
     )
-    def heat_capacity_c_v_specific(self) -> NDArray:
+    def heat_capacity_c_v_specific(self) -> np.ndarray:
         """Returns the specific heat capacity by dividing the heat capacity per
         cell with the mass of the atoms in the cell.
         """
@@ -1423,7 +1414,7 @@ class Thermodynamics(MSection):
         """,
         cached=True,
     )
-    def vibrational_free_energy_at_constant_volume_specific(self) -> NDArray:
+    def vibrational_free_energy_at_constant_volume_specific(self) -> np.ndarray:
         import nomad.atomutils
 
         workflow = self.m_parent

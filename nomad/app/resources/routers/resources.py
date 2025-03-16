@@ -27,7 +27,7 @@ from typing import Any
 import ase.io
 import bs4
 import httpx
-from asgiref.sync import async_to_sync
+from anyio.from_thread import start_blocking_portal
 from fastapi import APIRouter
 from fastapi import Query as FastApiQuery
 from mongoengine import (
@@ -659,7 +659,8 @@ def retrieve_resources(
             await asyncio.gather(*tasks)
 
     try:
-        async_to_sync(_retrieve_resources)()
+        with start_blocking_portal() as portal:
+            portal.call(_retrieve_resources)
     finally:
         status_resource = Resource.objects(id=status_resource_id).first()
         status_resource.download_time = datetime.now()
