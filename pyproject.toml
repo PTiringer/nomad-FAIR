@@ -14,49 +14,39 @@ license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
 
 dependencies = [
-    'aniso8601>=7.0.0',
-    'ase~=3.22.0',
+    'ase~=3.22.0', # breaking changes in later versions
     'bitarray>=2.3.5',
     'cachetools>=4.2.4',
     'click>=7.1.2',
     'docstring-parser>=0.12',
-    'elasticsearch-dsl==7.4.0',
+    'elasticsearch-dsl<8',
     'h5py>=3.6.0',
-    'hjson>=3.0.2',
     'httpx>=0.23.3,<0.28',
-    'importlib_metadata~=7.1.0',
     'jmespath>=0.10.0',
     'jsonpath-ng',
-    'kaleido==0.2.1',
-    'lxml-html-clean>=0.1.0',
     'lxml>=5.2',
     'matid>=2.1.3',
-    'nptyping~=1.4.4',
-    'numpy>=1.22.4,<2.0.0',
-    'openpyxl>=3.0.0',
+    'msgpack>=1',
+    'msgspec',
+    'numpy>=1.22.4,<2',
     'orjson>=1.0',
-    'pandas>=2.0.0',
-    'panedr>=0.2',
-    'parmed>=3.0.0',
+    'pandas>=2',
     'pint==0.17',
-    'py-spy',                    # for on-server profiling
-    'pydantic>=2.0.0',
-    'pyinstrument',              # for endpoint profiling
+    'plotly<6', # version 6.0.0 not fully compatible with our GUI
+    'py-spy', # for on-server profiling
+    'pydantic>=2',
+    'pyinstrument', # for endpoint profiling
     'pymatgen>=2023.5.10',
     'python-keycloak>=0.26.1',
-    'python-magic==0.4.24',
+    'python-magic-bin;sys_platform=="win32"',
+    'python-magic',
     'pytz>=2022.7.1',
     'pyyaml>=6.0',
     'requests>=2.27.1,<2.32.0',
     'rfc3161ng>=2.1.3',
-    'scikit-learn>=1.0.2',
     'scipy>=1.7.1',
-    'toposort>=1.0',
-    'typing-extensions>=4.12',
-    'unidecode==1.3.2',
-    'wrapt>=1.12.1',
+    'unidecode',
     'xarray>=0.20.2',
-    'plotly<6.0.0',              # version 6.0.0 not fully compatible with our GUI
 ]
 
 [project.urls]
@@ -65,77 +55,50 @@ documentation = "https://nomad-lab.eu/prod/v1/docs"
 repository = 'https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR'
 
 [project.optional-dependencies]
-parsing = [
-    'h5py==3.11.0',
-    'netCDF4==1.6.5',
-    'rdkit==2023.9.5',
-    'python-magic-bin >= 0.4; sys_platform == "win32"',
-]
+parsing = []
 infrastructure = [
-    'asgiref~=3.5',
-    'bagit==1.8.1',
-    'basicauth==0.4.1',
-    'beautifulsoup4>=4.0,<=4.12.3',
-    'celery>=5.0',
-    'dockerspawner==13.0.0',
-    'elasticsearch>=7.0,<8',
-    'fastapi>0.100',
-    'filelock==3.3.1',
-    'gitpython>=3.0',
-    'gunicorn>=21.2.0,<22.0.0',
-    'h5grove[fastapi]>1.3.0',
-    'html5lib==1.1',
-    'inflection==0.5.1',
-    'itsdangerous>=2.1.2',
-    'jsonschema[format]==4.17.3',
-    'jupyterhub==4.0.2',
-    'm2r==0.2.1',
-    'pymongo==4.6.3',
-    'mongoengine>=0.4',
-    'msgpack>=1.0',
-    'msgspec',
-    'oauthenticator==15.1.0',
-    'optimade[mongo]>=1.1.10',
-    'pyjwt[crypto]==2.6.0',
-    'python-json-logger==2.0.2',
-    'python-logstash==0.4.6',
-    'python-multipart>=0.0.1',
-    'rdflib==5.0.0',
-    'recommonmark==0.7.1',
-    'runstats==2.0.0',
-    'structlog>=1.0',
-    'tabulate==0.8.9',
-    'uvicorn[standard]>=0.29',
-    'validators==0.18.2',
-    'zipstream-new==1.1.5',
+    'beautifulsoup4>=4,<=4.12.3', # 4.13 introduced breaking changes
+    'celery>=5',
+    'dockerspawner',
+    'fastapi',
+    'gunicorn',
+    'h5grove[fastapi]',
+    'jupyterhub',
+    'mongoengine',
+    'oauthenticator',
+    'optimade[mongo]',
+    'pyjwt[crypto]',
+    'python-logstash',
+    'python-multipart',
+    'rdflib==5', # breaking changes in DCT.dataset in later versions
+    'structlog',
+    'tabulate',
+    'uvicorn[standard]',
+    'validators',
+    'zipstream-ng',
 ]
 dev = [
-    'aiosmtpd>=1.0',
-    'devtools>=0.6',
-    'essential-generators==1.0',
-    'markupsafe>=1.0',
-    'mkdocs-click>=0.1',
-    'mkdocs-git-revision-date-localized-plugin>=1.0',
-    'mkdocs-glightbox>=0.4',
-    'mkdocs-macros-plugin>=1.0',
-    'mkdocs-material-extensions>=1.0',
-    'mkdocs-material>=9.0',
-    'mkdocs-redirects>=1.0',
-    'mkdocs>=1.0',
+    'aiosmtpd>=1',
+    'devtools',
+    'essential_generators',
+    'mkdocs-click',
+    'mkdocs-git-revision-date-localized-plugin',
+    'mkdocs-glightbox',
+    'mkdocs-macros-plugin',
+    'mkdocs-material-extensions',
+    'mkdocs-material',
+    'mkdocs-redirects',
+    'mkdocs',
     'mypy>=1.15',
-    'names==0.3.0',
-    'uv>=0.2.35',
-    'pytest-asyncio>=0.23',
-    'pytest-cov>=2.7.1',
-    'pytest-timeout>=1.4.2',
-    'pytest-xdist>=1.30.0',
-    'pytest>= 5.3.0, <8',
-    'pytest-split>=0.9',
-    'python-gitlab==2.10.1',
-    'rope==0.21.0',
-    'ruamel.yaml>=0.1',
-    'ruff>=0.6',
-    'setuptools>=70',                                 # py3.12 doesn't bundle in setuptools, but this is required by mongomock lib
+    'pytest-asyncio',
+    'pytest-cov',
+    'pytest-split',
+    'pytest-timeout',
+    'pytest-xdist',
+    'pytest>=5.3,<8',
+    'python-gitlab',
+    'ruff',
+    'setuptools>=70', # py3.12 doesn't bundle in setuptools, but this is required by mongomock lib
 ]
 
 
@@ -152,18 +115,18 @@ indent-width = 4
 
 [tool.ruff.lint]
 select = [
-    "E",    # pycodestyle
+    "E", # pycodestyle
     "F401", # remove unused import
     "I001", # sort imports
-    "PL",   # pylint
-    "UP",   # pyupgrade
-    "W",    # pycodestyle
+    "PL", # pylint
+    "UP", # pyupgrade
+    "W", # pycodestyle
 ]
 ignore = [
-    "E501",    # Line too long ({width} > {limit} characters)
-    "E701",    # Multiple statements on one line (colon)
-    "E731",    # Do not assign a lambda expression, use a def
-    "E402",    # Module level import not at top of file
+    "E501", # Line too long ({width} > {limit} characters)
+    "E701", # Multiple statements on one line (colon)
+    "E731", # Do not assign a lambda expression, use a def
+    "E402", # Module level import not at top of file
     "PLR0911", # Too many return statements
     "PLR0912", # Too many branches
     "PLR0913", # Too many arguments in function definition
@@ -215,7 +178,12 @@ plugins = ["pydantic.mypy"]
 extra-index-url = [
     "https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple",
 ]
-constraint-dependencies = [ # can be removed once pynxtools removes kikuchipy restriction
+constraint-dependencies = [# can be removed once pynxtools removes kikuchipy restriction
     "hyperspy>=1.7.6",
     "pillow<10.1",
+]
+override-dependencies = [
+    'elasticsearch-dsl<8',
+    'python-magic',
+    'unidecode',
 ]

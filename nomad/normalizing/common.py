@@ -24,7 +24,6 @@ from matid import SymmetryAnalyzer  # pylint: disable=import-error
 from matid.symmetry.wyckoffset import (
     WyckoffSet as WyckoffSetMatID,  # pylint: disable=import-error
 )
-from nptyping import NDArray
 
 from nomad import atomutils
 from nomad.config import config
@@ -100,7 +99,7 @@ def species(
     return species_list
 
 
-def lattice_parameters_from_array(lattice_vectors: NDArray[Any]) -> LatticeParameters:
+def lattice_parameters_from_array(lattice_vectors: np.ndarray) -> LatticeParameters:
     """Converts the given 3x3 numpy array into metainfo LatticeParameters.
     Undefined angle values are not stored.
 

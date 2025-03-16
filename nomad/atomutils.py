@@ -34,7 +34,6 @@ import numpy as np
 from ase import Atoms
 from ase.formula import Formula as ASEFormula
 from ase.utils import pbc2pbc
-from nptyping import NDArray
 from scipy.spatial import Voronoi  # pylint: disable=no-name-in-module
 
 from nomad.aflow_prototypes import aflow_prototypes
@@ -46,7 +45,7 @@ if TYPE_CHECKING:
     from nomad.datamodel.results import ElementalComposition, Material, System
 
 
-def get_summed_atomic_mass(atomic_numbers: NDArray[Any]) -> float:
+def get_summed_atomic_mass(atomic_numbers: np.ndarray) -> float:
     """
     Calculates the summed atomic mass for the given atomic numbers.
 
@@ -164,7 +163,7 @@ def get_masses_from_computational_model(
         return mass_dict
 
 
-def get_volume(basis: NDArray[Any]) -> float:
+def get_volume(basis: np.ndarray) -> float:
     """
     Calculates the volume of the given parallelepiped.
 
@@ -177,7 +176,7 @@ def get_volume(basis: NDArray[Any]) -> float:
     return np.abs(np.linalg.det(basis))
 
 
-def is_valid_basis(basis: NDArray[Any]) -> bool:
+def is_valid_basis(basis: np.ndarray) -> bool:
     """
     Checks if the given set of basis vectors are valid. Currently does not
     check for linear independence, only for empty rows.
@@ -196,11 +195,10 @@ def is_valid_basis(basis: NDArray[Any]) -> bool:
     return True
 
 
-def translate_pretty(
-    fractional: NDArray[Any], pbc: bool | NDArray[Any]
-) -> NDArray[Any]:
+def translate_pretty(fractional: np.ndarray, pbc: bool | np.ndarray) -> np.ndarray:
     """Translates atoms such that fractional positions are minimized."""
     pbc = pbc2pbc(pbc)
+    assert isinstance(pbc, np.ndarray)
 
     for i in range(3):
         if not pbc[i]:
@@ -216,12 +214,12 @@ def translate_pretty(
 
 
 def get_center_of_positions(
-    positions: NDArray[Any],
-    cell: NDArray[Any] = None,
-    pbc: bool | NDArray[Any] = True,
+    positions: np.ndarray,
+    cell: np.ndarray = None,
+    pbc: bool | np.ndarray = True,
     weights=None,
     relative=False,
-) -> NDArray[Any]:
+) -> np.ndarray:
     """Calculates the center of positions with the given weighting. Also takes
     the periodicity of the system into account.
 
@@ -240,6 +238,7 @@ def get_center_of_positions(
         The position of the center of mass in the given system.
     """
     pbc = pbc2pbc(pbc)
+    assert isinstance(pbc, np.ndarray)
     relative_positions = positions if relative else to_scaled(positions, cell)
 
     rel_com = np.zeros((1, 3))
@@ -271,14 +270,14 @@ def get_center_of_positions(
 
 
 def wrap_positions(
-    positions: NDArray[Any],
-    cell: NDArray[Any] = None,
-    pbc: bool | NDArray[Any] = True,
-    center: NDArray[Any] = [0.5, 0.5, 0.5],
+    positions: np.ndarray,
+    cell: np.ndarray = None,
+    pbc: bool | np.ndarray = True,
+    center: tuple = (0.5, 0.5, 0.5),
     pretty_translation=False,
     eps: float = 1e-12,
     relative=False,
-) -> NDArray[Any]:
+) -> np.ndarray:
     """
     Wraps the given position so that they are within the unit cell.
 
@@ -296,6 +295,7 @@ def wrap_positions(
             the unit cell. Otherwise the positions are cartesian.
     """
     pbc = pbc2pbc(pbc)
+    assert isinstance(pbc, np.ndarray)
     shift = np.asarray(center) - 0.5 - eps
 
     # Don't change coordinates when pbc is False
@@ -319,11 +319,11 @@ def wrap_positions(
 
 
 def unwrap_positions(
-    positions: NDArray[Any],
-    cell: NDArray[Any],
-    pbc: bool | NDArray[Any],
+    positions: np.ndarray,
+    cell: np.ndarray,
+    pbc: bool | np.ndarray,
     relative=False,
-) -> NDArray[Any]:
+) -> np.ndarray:
     """
     Unwraps the given positions so that continuous structures are not broken by
     cell boundaries.
@@ -342,6 +342,7 @@ def unwrap_positions(
             the unit cell. Otherwise the positions are cartesian.
     """
     pbc = pbc2pbc(pbc)
+    assert isinstance(pbc, np.ndarray)
     if not any(pbc):
         return positions
 
@@ -368,7 +369,7 @@ def chemical_symbols(atomic_numbers: Iterable[int]) -> list[str]:
     return [ase.data.chemical_symbols[x] for x in atomic_numbers]
 
 
-def to_scaled(positions: NDArray[Any], cell: NDArray[Any] = None) -> NDArray[Any]:
+def to_scaled(positions: np.ndarray, cell: np.ndarray = None) -> np.ndarray:
     """
     Converts cartesian positions into scaled position one using the given
     cell lattice vectors as a basis.
@@ -383,7 +384,7 @@ def to_scaled(positions: NDArray[Any], cell: NDArray[Any] = None) -> NDArray[Any
     return np.linalg.solve(complete_cell(cell).T, positions.T).T
 
 
-def to_cartesian(positions: NDArray[Any], cell: NDArray[Any] = None) -> NDArray[Any]:
+def to_cartesian(positions: np.ndarray, cell: np.ndarray = None) -> np.ndarray:
     """
     Converts scaled positions into cartesian one using the given cell
     lattice vectors as a basis.
@@ -399,7 +400,7 @@ def to_cartesian(positions: NDArray[Any], cell: NDArray[Any] = None) -> NDArray[
     return cartesian_positions
 
 
-def complete_cell(cell: NDArray[Any]) -> NDArray[Any]:
+def complete_cell(cell: np.ndarray) -> np.ndarray:
     """
     Creates placeholder axes for cells with zero-dimensional lattice vectors
     in order to do linear algebra.
@@ -414,7 +415,7 @@ def complete_cell(cell: NDArray[Any]) -> NDArray[Any]:
     return ase.geometry.complete_cell(cell)
 
 
-def reciprocal_cell(cell: NDArray[Any]) -> NDArray[Any]:
+def reciprocal_cell(cell: np.ndarray) -> np.ndarray:
     """
     Returns the reciprocal cell without the factor or 2*Pi.
 
@@ -427,7 +428,7 @@ def reciprocal_cell(cell: NDArray[Any]) -> NDArray[Any]:
     return np.linalg.pinv(cell).transpose()
 
 
-def find_match(pos: NDArray[Any], positions: NDArray[Any], eps: float) -> int | None:
+def find_match(pos: np.ndarray, positions: np.ndarray, eps: float) -> int | None:
     """
     Attempts to find a position within a larger list of positions.
 
@@ -450,11 +451,11 @@ def find_match(pos: NDArray[Any], positions: NDArray[Any], eps: float) -> int | 
 
 
 def cellpar_to_cell(
-    cellpar: NDArray[Any],
-    ab_normal: NDArray[Any] = [0, 0, 1],
-    a_direction: NDArray[Any] = None,
+    cellpar: np.ndarray,
+    ab_normal: tuple = (0, 0, 1),
+    a_direction: np.ndarray = None,
     degrees=False,
-) -> NDArray[Any]:
+) -> np.ndarray:
     """
     Creates a 3x3 cell from the given lattice_parameters.
 
@@ -490,7 +491,7 @@ def cellpar_to_cell(
     return ase.geometry.cell.cellpar_to_cell(cellpar, ab_normal, a_direction)
 
 
-def cell_to_cellpar(cell: NDArray[Any], degrees=False) -> NDArray[Any]:
+def cell_to_cellpar(cell: np.ndarray, degrees=False) -> np.ndarray:
     """
     Returns lattice parameters for the given cell.
 
@@ -568,7 +569,7 @@ def get_symmetry_string(
 
 
 def get_hill_decomposition(
-    atom_labels: NDArray[Any], reduced: bool = False
+    atom_labels: np.ndarray, reduced: bool = False
 ) -> tuple[list[str], list[int]]:
     """
     Given a list of atomic labels, returns the chemical formula using the
@@ -683,7 +684,7 @@ def get_formula_string(symbols: Iterable[str], counts: Iterable[int]) -> str:
 
 
 def get_normalized_wyckoff(
-    atomic_numbers: NDArray[Any], wyckoff_letters: NDArray[Any]
+    atomic_numbers: np.ndarray, wyckoff_letters: np.ndarray
 ) -> dict[str, dict[str, int]]:
     """
     Returns a normalized Wyckoff sequence for the given atomic numbers and
@@ -790,7 +791,7 @@ def search_aflow_prototype(space_group: int, norm_wyckoff: dict) -> dict:
     return structure_type_info
 
 
-def get_brillouin_zone(reciprocal_lattice: NDArray[Any]) -> dict:
+def get_brillouin_zone(reciprocal_lattice: np.ndarray) -> dict:
     """
     Calculates the Brillouin Zone information from the given reciprocal
     lattice.

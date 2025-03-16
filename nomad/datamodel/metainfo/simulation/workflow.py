@@ -23,7 +23,6 @@
 import numpy as np
 from ase import Atoms
 from ase.eos import EquationOfState as aseEOS
-from nptyping import NDArray
 
 from nomad.atomutils import get_volume
 from nomad.datamodel.data import ArchiveSection
@@ -435,7 +434,7 @@ class ThermodynamicsResults(SimulationWorkflowResults):
         """,
         cached=True,
     )
-    def heat_capacity_c_v_specific(self) -> NDArray:
+    def heat_capacity_c_v_specific(self) -> None | np.ndarray:
         """Returns the specific heat capacity by dividing the heat capacity per
         cell with the mass of the atoms in the cell.
         """
@@ -443,7 +442,7 @@ class ThermodynamicsResults(SimulationWorkflowResults):
 
         workflow = self.m_parent
         if not workflow._systems or not workflow._systems[0].atoms:
-            return
+            return None
         atomic_numbers = workflow._systems[0].atoms.species
         mass_per_unit_cell = nomad.atomutils.get_summed_atomic_mass(atomic_numbers)
         heat_capacity = self.heat_capacity_c_v
@@ -469,12 +468,12 @@ class ThermodynamicsResults(SimulationWorkflowResults):
         """,
         cached=True,
     )
-    def vibrational_free_energy_at_constant_volume_specific(self) -> NDArray:
+    def vibrational_free_energy_at_constant_volume_specific(self) -> None | np.ndarray:
         import nomad.atomutils
 
         workflow = self.m_parent
         if not workflow._systems or not workflow._systems[0].atoms:
-            return
+            return None
         atomic_numbers = workflow._systems[0].atoms.species
         mass_per_unit_cell = nomad.atomutils.get_summed_atomic_mass(atomic_numbers)
         free_energy = self.vibrational_free_energy_at_constant_volume
