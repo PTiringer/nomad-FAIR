@@ -395,10 +395,7 @@ class RowActionNorth(RowAction):
 
 
 RowActionsItemType = Annotated[
-    Union[
-        RowActionNorth,
-        RowActionURL,
-    ],
+    RowActionNorth | RowActionURL,
     Field(discriminator='type'),
 ]
 

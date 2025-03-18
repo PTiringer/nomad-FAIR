@@ -508,7 +508,7 @@ async function mockKeycloak(username, password) {
   const getRefreshToken = (username, password) => {
     const command = `curl -s -X POST ${keycloakURL} \\
       -H 'cache-control: no-cache' -H 'content-type: application/x-www-form-urlencoded' \\
-      -d 'username=${username}&grant_type=password&password=${password}&client_id=nomad_gui_dev'`
+      -d 'username=${username}&grant_type=password&password=${password}&client_id=nomad_public'`
     let response = require('child_process').execSync(command).toString()
     response = JSON.parse(response)
     if (response.error !== undefined) throw Error(response.error)
@@ -522,7 +522,7 @@ async function mockKeycloak(username, password) {
       try {
         const command = `curl -s -X POST ${keycloakURL} \\
       -H 'cache-control: no-cache' -H 'content-type: application/x-www-form-urlencoded' \\
-      -d 'refresh_token=${refresh_token}&grant_type=refresh_token&client_id=nomad_gui_dev'`
+      -d 'refresh_token=${refresh_token}&grant_type=refresh_token&client_id=nomad_public'`
         let response = require('child_process').execSync(command).toString()
         response = JSON.parse(response)
         if (response.error !== undefined) return {}
