@@ -51,6 +51,53 @@ const LaunchButton = React.memo(function LaunchButton(props) {
   return <Button color="primary" variant="contained" size="small" {...props} />
 })
 
+export function useNorthToolHook(tool, uploadId, path) {
+  const { name, path_prefix, with_path } = tool
+  const { api } = useApi()
+  const { raiseError } = useErrors()
+
+  const getToolStatus = useCallback(() => {
+    return api
+      .get(`north/${name}?upload_id=${uploadId}`)
+      .then(response => ({state: response.data.state, uploadid_is_mounted: response.upload_id_is_mounted}))
+      .catch(error => {
+        raiseError(error)
+        return { state: "error", uploadid_is_mounted: null }
+      })
+  }, [api, raiseError, name, uploadId])
+
+  const launch = useCallback(() => {
+    return api.post(`north/${name}?upload_id=${uploadId}`)
+      .then(response => {
+        let toolUrl = `${northBase}/user/${response.username}/${response.tool}`
+
+        if (with_path && response.upload_mount_dir && path) {
+          if (path_prefix) {
+            toolUrl = `${toolUrl}/${path_prefix}`
+          }
+          toolUrl = `${toolUrl}/${response.upload_mount_dir}/${path}`
+        }
+
+        return { toolUrl, state: response.data.state, uploadid_is_mounted: response.upload_id_is_mounted }
+      })
+      .catch(error => {
+        raiseError(error)
+        return { toolUrl: null, state: "stopped", uploadid_is_mounted: null }
+      })
+  }, [api, raiseError, name, uploadId, path, path_prefix, with_path])
+
+  const stop = useCallback(() => {
+    return api.delete(`north/${name}`)
+      .then(() => "stopped")
+      .catch(error => {
+        raiseError(error)
+        return "error"
+      })
+  }, [api, raiseError, name])
+
+  return { launch, stop, getToolStatus }
+}
+
 export const NorthToolButtons = React.memo(function NorthToolButton() {
   const {name, launch, stop, state} = useNorthTool()
   return (
@@ -90,68 +137,37 @@ const useStyles = makeStyles(theme => ({
 }))
 
 const NorthTool = React.memo(function NorthTool({tool, uploadId, path, children}) {
-  const {name, title, version, description, short_description, icon, path_prefix, with_path} = tool
   const styles = useStyles()
-  const {api} = useApi()
-  const {raiseError} = useErrors()
-
-  const [state, setState] = useState('stopped')
-
-  const getToolStatus = useCallback(() => {
-    return api.get(`north/${name}`)
-      .then(response => {
-        return response.data.state
-      }).catch(raiseError)
-  }, [api, raiseError, name])
+  const [toolState, setToolState] = useState("stopped")
+  const { launch, stop, getToolStatus } = useNorthToolHook(tool, uploadId, path)
 
   useEffect(() => {
-    const toolStatus = getToolStatus()
-    if (toolStatus) {
-      toolStatus.then((toolStatus) => {
-        setState(toolStatus)
-      })
+    async function fetchStatus() {
+      const {state: status} = await getToolStatus()
+      setToolState(status)
     }
-  }, [setState, getToolStatus])
+    fetchStatus()
+  }, [getToolStatus])
 
-  const launch = useCallback(() => {
-    // We get the current actual tools status and do not use the one used to display the status!
-    setState('starting')
-    api.post(`north/${name}?upload_id=${uploadId}`)
-      .then((response) => {
-        console.log(response)
-        let toolUrl = `${northBase}/user/${response.username}/${response.tool}`
-        if (with_path && response.upload_mount_dir && path) {
-          if (path_prefix) {
-            toolUrl = `${toolUrl}/${path_prefix}`
-          }
-          toolUrl = `${toolUrl}/${response.upload_mount_dir}/${path}`
-        }
-        console.log(toolUrl)
-        window.open(toolUrl, name)
-        setState(response.data.state)
-      })
-      .catch(errors => {
-        raiseError(errors)
-        setState('stopped')
-      })
-  }, [setState, api, raiseError, name, with_path, uploadId, path, path_prefix])
+  const handleLaunch = useCallback(async () => {
+    setToolState("starting")
+    const { toolUrl, state } = await launch()
+    setToolState(state)
+    if (toolUrl) window.open(toolUrl, tool.name)
+  }, [launch, tool.name])
 
-  const stop = useCallback(() => {
-    setState('stopping')
-    api.delete(`north/${name}`)
-      .then((response) => {
-        console.log(response)
-        setState('stopped')
-      })
-      .catch(raiseError)
-  }, [api, raiseError, setState, name])
+  const handleStop = useCallback(async () => {
+    setToolState("stopping")
+    const updatedState = await stop()
+    setToolState(updatedState)
+  }, [stop])
 
   const value = useMemo(() => ({
-    state: state,
-    launch: launch,
-    stop: stop,
+    state: toolState,
+    launch: handleLaunch,
+    stop: handleStop,
     ...tool
-  }), [tool, state, launch, stop])
+  }), [tool, toolState, handleLaunch, handleStop])
 
   if (children) {
     return (
@@ -165,15 +181,17 @@ const NorthTool = React.memo(function NorthTool({tool, uploadId, path, children}
     <northToolContext.Provider value={value}>
       <Box marginY={1}>
         <Box display="flex" flexDirection="row" marginBottom={1}>
-          {icon ? (
+          {tool.icon ? (
             <Icon classes={{root: styles.iconRoot}}>
-              <img className={styles.imageIcon} src={`${process.env.PUBLIC_URL}/${icon}`} alt="icon"/>
+              <img className={styles.imageIcon} src={`${process.env.PUBLIC_URL}/${tool.icon}`} alt="icon"/>
             </Icon>
           ) : (
             <AssessmentIcon classes={{root: styles.iconRoot}}/>
           )}
           <Box flexGrow={1}>
-            <Typography><b>{title || name}{version && <span> ({version})</span>}</b>: {short_description || description}</Typography>
+            <Typography>
+              <b>{tool.title || tool.name}{tool.version && <span> ({tool.version})</span>}</b>: {tool.short_description || tool.description}
+            </Typography>
           </Box>
         </Box>
         <NorthToolButtons />

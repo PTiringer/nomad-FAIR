@@ -18,7 +18,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react'
 import PropTypes from 'prop-types'
 import jmespath from 'jmespath'
-import { Paper, Typography, Tooltip, IconButton } from '@material-ui/core'
+import {Paper, Typography, Tooltip, IconButton, Button, Dialog, DialogTitle, DialogContent} from '@material-ui/core'
 import { Alert } from '@material-ui/lab'
 import Icon from '@material-ui/core/Icon'
 import GitHubIcon from '@material-ui/icons/GitHub'
@@ -35,15 +35,36 @@ import { MaterialRowActions } from '../material/MaterialDetails'
 import { pluralize, formatInteger, parseJMESPath } from '../../utils'
 import { isEmpty, isArray } from 'lodash'
 import { useSearchContext } from './SearchContext'
+import {useTools} from "../north/NorthPage"
+import DialogActions from "@material-ui/core/DialogActions"
+import {useNorthToolHook} from "../north/NorthTool"
+import {useKeycloak} from "@react-keycloak/web"
+import {useErrors} from "../errors"
+import {northBase} from "../../config"
+
+/**
+ * Helper function to resolve a jmespath-like path to a quantity in an entry
+ */
+export const extractPathContent = ({action, data, key}) => {
+  const {path} = parseJMESPath(action[key])
+  return jmespath.search(data, path)
+}
 
 /**
  * Used to retrieve an URL link from the row metadata and display a link icon to
  * that resource.
  */
 export const ActionURL = React.memo(({action, data}) => {
-  const {path} = parseJMESPath(action.path)
-  let href = jmespath.search(data, path)
-  href = isArray(href) ? href[0] : href
+  const {raiseError} = useErrors()
+  const href = extractPathContent({action, data, key: 'path'})
+
+  if (isArray(href)) {
+    raiseError(`
+    Encountered and array in ${action.path}. Expected a string.
+    Update the path in you app to target only one item in the array.`
+    )
+    return
+  }
   const disabled = !href
   const size = 'medium'
   const svgIcon = {
@@ -60,6 +81,150 @@ export const ActionURL = React.memo(({action, data}) => {
 ActionURL.propTypes = {
   action: PropTypes.object.isRequired, // Action configuration from app config
   data: PropTypes.object.isRequired // ES index data
+}
+
+/**
+ * Used to build a north container and open it in a new tab.
+ */
+export const NorthURL = React.memo(({ action, data }) => {
+  const {raiseError} = useErrors()
+  const { keycloak } = useKeycloak()
+  const isAuthenticated = keycloak.authenticated
+
+  const northTools = useTools()
+  const [openDialog, setOpenDialog] = useState(false)
+  const [toolUrl, setToolUrl] = useState(undefined)
+  const [dialogMessage, setDialogMessage] = useState("")
+  const [showStopOnly, setShowStopOnly] = useState(false)
+
+  const filepath = extractPathContent({ action, data, key: "filepath" })
+
+  const toolsData = action?.tool_name
+    ? Object.keys(northTools)
+        .filter(tool => tool === action.tool_name)
+        .map(key => {
+          const { with_path, mount_path, icon, path_prefix } = northTools[key]
+          return {
+            name: key,
+            title: key,
+            with_path,
+            mount_path,
+            icon,
+            path_prefix
+          }
+        })
+    : []
+
+  const tool = toolsData.length > 0 ? toolsData[0] : null
+  const { launch, stop, getToolStatus } = useNorthToolHook(tool ?? {}, data?.upload_id ?? "", filepath)
+
+  const handleLaunch = async () => {
+    if (!tool) return
+    const {state: currentState, uploadid_is_mounted} = await getToolStatus()
+    if (currentState === "stopped") {
+      const { toolUrl } = await launch()
+      setToolUrl(toolUrl)
+      if (toolUrl) window.open(toolUrl, tool.name)
+    } else if (uploadid_is_mounted === false) {
+      setDialogMessage(
+        `The upload ${data?.upload_id} is not mounted. You need to stop the tool before relaunching it.
+        Stopping the tool may cause loss of unsaved data.`)
+      setShowStopOnly(true)
+      setOpenDialog(true)
+    } else {
+      setToolUrl(toolUrl)
+      setDialogMessage("The tool is already running. Stopping it will delete any unsaved data.")
+      setShowStopOnly(false)
+      setOpenDialog(true)
+    }
+  }
+
+  const handleStopAndRetry = async () => {
+    await handleStop()
+    setOpenDialog(false)
+  }
+
+  const handleStop = async () => {
+    if (!tool) return
+    await stop()
+    setOpenDialog(false)
+  }
+
+  const handleOpenTool = () => {
+    setOpenDialog(false)
+    window.open(
+      toolUrl || `${northBase}/user/${keycloak.tokenParsed?.preferred_username}/${tool.name}`,
+      "_blank"
+    )
+  }
+
+  const disabled = !filepath || !isAuthenticated
+  const tooltipMessage = !isAuthenticated
+    ? "You must be logged in to use this tool."
+    : !filepath
+    ? "No file path found. Tool cannot be launched."
+    : action.description || ""
+
+  if (!tool) {
+    return null
+  }
+
+  if (isArray(filepath)) {
+    raiseError(`
+    Encountered and array in ${action.filepath}. Expected a string.
+    Update the path in you app to target only one item in the array.`
+    )
+    return
+  }
+
+  return (
+    <>
+      <Tooltip title={tooltipMessage}>
+        <div>
+          <IconButton
+            onClick={handleLaunch}
+            size="medium"
+            disabled={disabled}
+            style={{ filter: disabled ? "grayscale(100%)" : "none" }}
+          >
+            <Icon fontSize="medium">
+              {tool.icon ? (
+                <img
+                  style={{ width: "30px", height: "30px", objectFit: "contain" }}
+                  src={`${process.env.PUBLIC_URL}/${tool.icon}`}
+                  alt="icon"
+                />
+              ) : (
+                <Icon fontSize="medium">{action?.icon || "launch"}</Icon>
+              )}
+            </Icon>
+          </IconButton>
+        </div>
+      </Tooltip>
+
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+        <DialogTitle>Tool Status</DialogTitle>
+        <DialogContent>
+          <p>{dialogMessage}</p>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleStopAndRetry} color="error">
+            Stop {action.tool_name}
+          </Button>
+          {!showStopOnly && (
+            <Button onClick={handleOpenTool} color="primary">
+              Open {action.tool_name}
+            </Button>
+          )}
+          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  )
+})
+NorthURL.propTypes = {
+  action: PropTypes.object.isRequired,
+  data: PropTypes.object.isRequired
 }
 
 /**
@@ -101,7 +266,8 @@ export const SearchResults = React.memo(({
     const actionComponents = [];
     (rows?.actions?.items || []).forEach((action, i) => {
       const component = {
-        url: <ActionURL key={i} action={action} data={data}/>
+        url: <ActionURL key={i} action={action} data={data}/>,
+        north: <NorthURL key={i} action={action} data={data}/>
       }[action.type]
       if (component) {
         actionComponents.push(component)
