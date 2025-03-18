@@ -374,14 +374,43 @@ class RowActionURL(RowAction):
         return values
 
 
+class RowActionNorth(RowAction):
+    """Action that will open a NORTH tool given its name in the archive."""
+
+    filepath: str = Field(
+        description="""JMESPath pointing to a path in the archive that contains the filepath."""
+    )
+    tool_name: str = Field(description="""Name of the NORTH tool to open.""")
+    type: Literal['north'] = Field(
+        'north', description='Set as `north` to get this widget type.'
+    )
+
+    @model_validator(mode='before')
+    @classmethod
+    def _validate(cls, values):
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
+        values['type'] = 'north'
+        return values
+
+
+RowActionsItemType = Annotated[
+    Union[
+        RowActionNorth,
+        RowActionURL,
+    ],
+    Field(discriminator='type'),
+]
+
+
 class RowActions(Options):
     """Controls the visualization of row actions that are shown at the end of each row."""
 
     enabled: bool = Field(True, description='Whether to enable row actions.')
-    options: dict[str, RowActionURL] | None = Field(
+    options: dict[str, RowActionsItemType] | None = Field(
         None, deprecated="""Deprecated, use 'items' instead."""
     )
-    items: list[RowActionURL] | None = Field(
+    items: list[RowActionsItemType] | None = Field(
         None, description='List of actions to show for each row.'
     )
 

@@ -65,6 +65,7 @@ class ToolResponseModel(BaseModel):
     username: str
     upload_mount_dir: str | None = None
     data: ToolModel
+    upload_id_is_mounted: bool | None = None
 
 
 class ToolsResponseModel(BaseModel):
@@ -148,10 +149,42 @@ async def tool(name: str) -> ToolModel:
 async def get_tool(
     tool: ToolModel = Depends(tool),
     user: User = Depends(create_user_dependency(required=True)),
+    upload_id: str | None = None,
 ):
-    return ToolResponseModel(
-        tool=tool.name, username=user.username, data=_get_status(tool, user)
-    )
+    if upload_id:
+        url = f'{config.hub_url()}/api/users/{user.username}'
+        response = requests.get(url, headers=hub_api_headers)
+        return ToolResponseModel(
+            tool=tool.name,
+            username=user.username,
+            data=_get_status(tool, user),
+            upload_id_is_mounted=_check_uploadid_is_mounted(
+                tool, response.json(), upload_id
+            ),
+        )
+    else:
+        return ToolResponseModel(
+            tool=tool.name, username=user.username, data=_get_status(tool, user)
+        )
+
+
+def _check_uploadid_is_mounted(
+    tool: ToolModel, response: dict, upload_id: str
+) -> bool | None:
+    try:
+        servers = response.get('servers', {})
+        tool_data = servers.get(tool.name, {})
+        if not tool_data:
+            return None
+        user_options = tool_data.get('user_options', {})
+        uploads = user_options.get('uploads', [])
+        for upload in uploads:
+            host_path = upload.get('host_path', '')
+            if upload_id in host_path:
+                return True
+        return False
+    except Exception:
+        return None
 
 
 @router.post(
@@ -240,12 +273,23 @@ async def start_tool(
     # Check if the tool/named server already exists
     _get_status(tool, user)
     if tool.state != ToolStateEnum.stopped:
-        return ToolResponseModel(
-            tool=tool.name,
-            username=user.username,
-            data=_get_status(tool, user),
-            upload_mount_dir=upload_mount_dir,
-        )
+        if upload_id and response.json().get('servers', None):
+            return ToolResponseModel(
+                tool=tool.name,
+                username=user.username,
+                data=_get_status(tool, user),
+                upload_mount_dir=upload_mount_dir,
+                upload_id_is_mounted=_check_uploadid_is_mounted(
+                    tool, response.json(), upload_id
+                ),
+            )
+        else:
+            return ToolResponseModel(
+                tool=tool.name,
+                username=user.username,
+                data=_get_status(tool, user),
+                upload_mount_dir=upload_mount_dir,
+            )
 
     url = f'{config.hub_url()}/api/users/{user.username}/servers/{tool.name}'
     access_token = generate_simple_token(
