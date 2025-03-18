@@ -70,9 +70,8 @@ def run_app(
     **kwargs,
 ):
     config.meta.service = 'app'
-    host = host or config.services.api_host
-    # port change causes permissions issues in the kubernetes cluster
-    # port = port or config.services.api_port
+    host = host or config.services.api_host or '0.0.0.0'
+    port = int(port or config.services.api_port or 8000)
 
     if with_gui:
         import os
@@ -139,11 +138,7 @@ def run_app(
             def load_config(self):
                 self.cfg.set('timeout', config.services.api_timeout)
                 self.cfg.set('worker_class', 'uvicorn.workers.UvicornWorker')
-                if host or port:
-                    self.cfg.set(
-                        'bind',
-                        f'{host if host else "0.0.0.0"}:{port if port else 8000}',
-                    )
+                self.cfg.set('bind', f'{host}:{port}')
                 for key, value in kwargs.items():
                     if key in self.cfg.settings and value is not None:
                         self.cfg.set(key, value)
@@ -160,7 +155,7 @@ def run_app(
             'nomad.app.main:app',
             log_level='info',
             host=host,
-            port=port if port else 8000,
+            port=port,
             **{k: v for k, v in kwargs.items() if v is not None},
         )
 
