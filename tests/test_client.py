@@ -69,7 +69,7 @@ def many_uploads(non_empty_uploaded: tuple[str, str], user1: User, proc_infra):
             pass
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def async_api_v1(monkeysession):
     """
     This fixture provides an HTTP client with AsyncClient that accesses

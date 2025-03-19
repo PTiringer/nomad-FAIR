@@ -19,6 +19,6 @@
 import pytest
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def client(api_v1):
     return api_v1

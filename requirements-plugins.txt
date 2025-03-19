@@ -3,7 +3,7 @@
 aiofiles==24.1.0          # via python-keycloak, -c requirements-dev.txt
 aniso8601==10.0.0         # via nomad-lab
 annotated-types==0.7.0    # via pydantic, -c requirements-dev.txt
-anyio==4.8.0              # via httpx, -c requirements-dev.txt
+anyio==4.9.0              # via httpx, -c requirements-dev.txt
 ase==3.22.1               # via asr, matid, nomad-lab, -c requirements-dev.txt
 asr==0.4.1                # via nomad-parser-plugins-workflow
 async-property==0.2.2     # via python-keycloak, -c requirements-dev.txt
@@ -85,7 +85,7 @@ panedr==0.8.0             # via nomad-lab, nomad-parser-plugins-atomistic
 parmed==4.3.0             # via nomad-lab
 pathsimanalysis==1.2.0    # via mdanalysis
 phonopy==2.11.0           # via asr, nomad-parser-plugins-workflow
-pillow==10.0.1            # via matplotlib, -c requirements-dev.txt, -c (workspace)
+pillow==11.1.0            # via matplotlib, -c requirements-dev.txt
 pint==0.17                # via nomad-lab, -c requirements-dev.txt
 plotly==5.24.1            # via asr, nomad-lab, pymatgen, -c requirements-dev.txt
 py-spy==0.4.0             # via nomad-lab, -c requirements-dev.txt

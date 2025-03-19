@@ -138,7 +138,6 @@ COPY .coveragerc \
      MANIFEST.in \
      mkdocs.yml \
      pyproject.toml \
-     pytest.ini \
      README.md \
      README.parsers.md \
      requirements.txt \

@@ -220,7 +220,7 @@ def reset_config():
     utils.set_console_log_level(test_log_level)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def api_v1(monkeysession, user_molds):
     """
     This fixture provides an HTTP client with Python requests interface that accesses
@@ -262,7 +262,7 @@ def api_v1(monkeysession, user_molds):
     return test_client
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='module')
 def client_with_api_v1(api_v1, monkeysession):
     def call_requests(method, path, *args, **kwargs):
         return getattr(api_v1, method)(path, *args, **kwargs)
