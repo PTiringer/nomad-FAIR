@@ -96,7 +96,7 @@ dev = [
     'pytest-split',
     'pytest-timeout',
     'pytest-xdist',
-    'pytest>=5.3,<8',
+    'pytest',
     'python-gitlab',
     'ruff',
     'setuptools>=70', # py3.12 doesn't bundle in setuptools, but this is required by mongomock lib
@@ -179,12 +179,16 @@ plugins = ["pydantic.mypy"]
 extra-index-url = [
     "https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple",
 ]
-constraint-dependencies = [# can be removed once pynxtools removes kikuchipy restriction
-    "hyperspy>=1.7.6",
-    "pillow<10.1",
-]
 override-dependencies = [
     'elasticsearch-dsl<8',
     'python-magic',
     'unidecode',
+]
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::SyntaxWarning",
 ]
