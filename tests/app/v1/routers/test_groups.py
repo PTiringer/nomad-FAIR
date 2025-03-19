@@ -1,7 +1,8 @@
 import pytest
 
 from nomad.app.v1.models.groups import UserGroup, UserGroupResponse
-from nomad.groups import MongoUserGroup, get_user_group, user_group_exists
+from nomad.groups import MongoUserGroup, get_mongo_user_group, user_group_exists
+from tests.utils import check_with_retry
 
 from .common import assert_response, perform_get, perform_post
 
@@ -34,6 +35,9 @@ def assert_group(group, ref_group, keys=None):
         assert_unordered_lists(val, ref_val)
 
 
+# tests using group fixtures with scope: 'module'
+
+
 def test_group_collection_name(groups_module):
     MongoUserGroup._get_collection_name() == 'user_group'
 
@@ -59,7 +63,7 @@ def test_get_groups(
 
     response_groups = UserGroupResponse.parse_raw(response.content)
     for response_group in response_groups.data:
-        group = get_user_group(response_group.group_id)
+        group = get_mongo_user_group(response_group.group_id)
         assert_group(group, response_group)
 
 
@@ -122,7 +126,7 @@ def test_get_filtered_groups(
     assert_unordered_lists(response_ids, ref_group_ids)
 
     for response_group in response_groups.data:
-        group = get_user_group(response_group.group_id)
+        group = get_mongo_user_group(response_group.group_id)
         assert_group(group, response_group)
 
 
@@ -149,7 +153,7 @@ def test_get_group(
     assert_response(response, expected_status_code)
 
     response_group = UserGroup.parse_raw(response.content)
-    group = get_user_group(response_group.group_id)
+    group = get_mongo_user_group(response_group.group_id)
     assert_group(group, response_group)
     assert_group(group, ref_group)
 
@@ -176,11 +180,58 @@ def test_get_group_invalid(
     assert_response(response, expected_status_code)
 
 
+# tests using group fixtures with scope: 'function' (default)
+
+
+def test_owner_not_member(auth_headers, client, group_molds, group_owner_not_member):
+    ref_group = group_molds['owner_not_member_ref']
+
+    group = group_owner_not_member
+    assert group.owner not in group.members
+    group.clean()
+    assert group.owner in group.members
+    group.reload_without_clean()
+    assert group.owner not in group.members
+    group.reload()
+    assert group.owner in group.members
+    group.reload_without_clean()
+    assert group.owner not in group.members
+
+    # GET returns cleaned group but does not change db
+    url = f'{base_url}/{group.group_id}'
+    response = perform_get(client, url, auth_headers['user1'])
+    assert_response(response, 200)
+
+    response_group = UserGroup.parse_raw(response.content)
+    assert_group(response_group, ref_group, ref_group.keys())
+
+    group.reload_without_clean()
+    assert group.owner not in group.members
+
+    # POST cleans group in db and returns it
+    url = f'{base_url}/{group.group_id}/edit'
+    group_edit = {'group_name': group.group_name}
+    response = perform_post(client, url, auth_headers['user1'], json=group_edit)
+    assert_response(response, 200)
+
+    response_group = UserGroup.parse_raw(response.content)
+    assert_group(response_group, ref_group, ref_group.keys())
+
+    assert group.owner not in group.members
+
+    # cleaned group has been saved but db might not be updated yet
+    def condition():
+        group.reload_without_clean()
+        return group.owner in group.members
+
+    assert check_with_retry(condition)
+
+
 @pytest.mark.parametrize(
     'user_label, new_group_label, ref_group_label, expected_status_code',
     [
-        pytest.param('user1', 'new_group', 'new_group', 201, id='user1'),
-        pytest.param('user2', 'new_group', 'new_group', 201, id='user2'),
+        pytest.param('user1', 'new_group', 'new_group_ref1', 201, id='user1'),
+        pytest.param('user2', 'new_group', 'new_group_ref2', 201, id='user2'),
         pytest.param('invalid', 'new_group', None, 401, id='invalid-user'),
         pytest.param(None, 'new_group', None, 401, id='guest-user'),
         pytest.param('user1', 'short_name', None, 422, id='short-name-fails'),
@@ -214,7 +265,7 @@ def test_create_group(
         return
 
     response_group = UserGroup.parse_raw(response.content)
-    group = get_user_group(response_group.group_id)
+    group = get_mongo_user_group(response_group.group_id)
     assert_group(group, response_group)
     ref_group = group_molds[ref_group_label]
     assert_group(group, ref_group, ref_group.keys())
@@ -226,7 +277,7 @@ def test_create_group(
         pytest.param(None, 'new_group', None, 401, id='guest-fails'),
         pytest.param('invalid', 'new_group', None, 401, id='faker-fails'),
         pytest.param('user2', 'new_group', None, 401, id='user2-fails'),
-        pytest.param('user1', 'new_group', 'new_group', 200, id='edit-ok'),
+        pytest.param('user1', 'new_group', 'new_group_ref1', 200, id='edit-ok'),
         pytest.param('user1', 'short_name', None, 422, id='short-name-fails'),
         pytest.param('user1', 'long_name', None, 422, id='long-name-fails'),
         pytest.param('user1', 'special_char', None, 422, id='special-chars-fails'),
@@ -249,13 +300,13 @@ def test_update_user_group(
     ref_group_label,
     expected_status_code,
 ):
-    group_before = get_user_group(groups_function['group1'].group_id)
+    group_before = get_mongo_user_group(groups_function['group1'].group_id)
     group_edit = group_molds[group_edit_label]
 
     url = f'{base_url}/{group_before.group_id}/edit'
     response = perform_post(client, url, auth_headers[user_label], json=group_edit)
     assert_response(response, expected_status_code)
-    group_after = get_user_group(group_before.group_id)
+    group_after = get_mongo_user_group(group_before.group_id)
 
     if response.status_code != 200:
         assert_group(group_after, group_before)

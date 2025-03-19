@@ -93,7 +93,7 @@ from nomad.files import (
     UploadFiles,
     create_tmp_dir,
 )
-from nomad.groups import get_group_ids, user_group_exists
+from nomad.groups import MongoUserGroup, user_group_exists
 from nomad.metainfo.data_type import Datatype, Datetime
 from nomad.normalizing import normalizers
 from nomad.parsing import Parser
@@ -383,7 +383,7 @@ class MetadataEditRequestHandler:
                 return self._error('No matching upload found', 'upload_id')
 
             is_admin = self.user.is_admin
-            group_ids = get_group_ids(self.user.user_id)
+            group_ids = MongoUserGroup.get_ids_by_user_id(self.user.user_id)
             for upload in self.affected_uploads:
                 is_main_author = self.user.user_id == upload.main_author
                 is_coauthor = self.user.user_id in upload.coauthors or (
