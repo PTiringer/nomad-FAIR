@@ -19,12 +19,24 @@
 """Methods to help with testing of nomad@FAIRDI."""
 
 import os.path
+import time
 import urllib.parse
 import zipfile
 from logging import LogRecord
 from typing import Any
 
 import pytest
+
+
+class ListWithSortKey(list):
+    """List with an attribute `sort_key`.
+
+    Use to sort two lists by the same key with sorted().
+    """
+
+    def __init__(self, iterable=(), sort_key=None):
+        super().__init__(iterable)
+        self.sort_key = sort_key
 
 
 def assert_log(
@@ -191,3 +203,13 @@ def dict_to_params(d):
 
     Can be used to make the parametrize decorator more concise."""
     return [pytest.param(*item, id=id) for id, item in d.items()]
+
+
+def check_with_retry(condition_func, retries=5, delay0=0.1):
+    for attempt in range(retries):
+        if condition_func():
+            return True
+
+        time.sleep(delay0 * (attempt + 1))
+
+    return condition_func()

@@ -41,7 +41,7 @@ from nomad.config.models.config import Reprocess
 from nomad.datamodel import EditableUserMetadata
 from nomad.datamodel.context import ServerContext
 from nomad.files import StreamedFile, create_zipstream_async
-from nomad.groups import get_group_ids
+from nomad.groups import MongoUserGroup
 from nomad.metainfo.elasticsearch_extension import entry_type
 from nomad.processing.data import Upload
 from nomad.search import (
@@ -1477,7 +1477,7 @@ async def post_entry_edit(
     writers = [writer['user_id'] for writer in entry_data.get('writers', [])]
     writer_groups = response.data[0].get('writer_groups', [])
     is_writer = user.user_id in writers or not set(
-        get_group_ids(user.user_id)
+        MongoUserGroup.get_ids_by_user_id(user.user_id)
     ).isdisjoint(writer_groups)
 
     if not (is_admin or is_writer):

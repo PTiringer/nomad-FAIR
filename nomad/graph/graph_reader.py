@@ -77,7 +77,7 @@ from nomad.graph.model import (
     RequestConfig,
     ResolveType,
 )
-from nomad.groups import MongoUserGroup
+from nomad.groups import MongoUserGroup, get_mongo_user_group
 from nomad.metainfo import (
     Definition,
     Package,
@@ -969,7 +969,7 @@ class GeneralReader:
         """
 
         def _retrieve():
-            return MongoUserGroup.objects(group_id=group_id).first()
+            return get_mongo_user_group(group_id)
 
         try:
             group: MongoUserGroup = await asyncio.to_thread(_retrieve)

@@ -35,6 +35,7 @@ from nomad.graph.graph_reader import (
 from nomad.graph.lazy_wrapper import LazyWrapper
 from nomad.utils.exampledata import ExampleData
 from tests.normalizing.conftest import simulationworkflowschema
+from tests.utils import ListWithSortKey
 
 
 def rprint(msg):
@@ -54,9 +55,12 @@ def assert_time(i, j):
         assert i == j
 
 
-def assert_list(l1, l2):
-    assert len(l1) == len(l2)
-    for i, j in zip(l1, l2):
+def assert_list(observed, expected):
+    assert len(observed) == len(expected)
+    if isinstance(expected, ListWithSortKey):
+        observed = sorted(observed, key=expected.sort_key)
+        expected = sorted(expected, key=expected.sort_key)
+    for i, j in zip(observed, expected):
         if isinstance(i, LazyWrapper):
             i = i.to_json()
         if isinstance(i, dict):
@@ -67,27 +71,27 @@ def assert_list(l1, l2):
             assert_time(i, j)
 
 
-def assert_dict(d1, d2):
-    if GeneralReader.__CACHE__ in d1:
-        del d1[GeneralReader.__CACHE__]
-    if 'm_response' in d1:
-        del d1['m_response']
-    if 'm_def' in d1:
-        del d1['m_def']
-    if 'm_def' in d2:
-        del d2['m_def']
-    assert set(d1.keys()) == set(d2.keys())
-    for k, v in d1.items():
+def assert_dict(observed, expected):
+    if GeneralReader.__CACHE__ in observed:
+        del observed[GeneralReader.__CACHE__]
+    if 'm_response' in observed:
+        del observed['m_response']
+    if 'm_def' in observed:
+        del observed['m_def']
+    if 'm_def' in expected:
+        del expected['m_def']
+    assert set(observed.keys()) == set(expected.keys())
+    for k, v in observed.items():
         if isinstance(v, LazyWrapper):
             v = v.to_json()
         if isinstance(v, dict):
-            assert_dict(v, d2[k])
+            assert_dict(v, expected[k])
         elif isinstance(v, list):
-            assert_list(v, d2[k])
+            assert_list(v, expected[k])
         elif k == 'upload_files_server_path':
             continue
         else:
-            assert_time(v, d2[k])
+            assert_time(v, expected[k])
 
 
 user_dict = {
@@ -2189,17 +2193,30 @@ def test_group_reader(groups_function, user1):
                         'is_admin': False,
                         'is_oasis_admin': True,
                     },
-                    'members': [
-                        {
-                            'name': 'Rajesh Koothrappali',
-                            'first_name': 'Rajesh',
-                            'last_name': 'Koothrappali',
-                            'email': 'rajesh.koothrappali@nomad-fairdi.tests.de',
-                            'user_id': '00000000-0000-0000-0000-000000000004',
-                            'username': 'rkoothrappali',
-                            'is_admin': False,
-                        }
-                    ],
+                    'members': ListWithSortKey(
+                        (
+                            {
+                                'name': 'Rajesh Koothrappali',
+                                'first_name': 'Rajesh',
+                                'last_name': 'Koothrappali',
+                                'email': 'rajesh.koothrappali@nomad-fairdi.tests.de',
+                                'user_id': '00000000-0000-0000-0000-000000000004',
+                                'username': 'rkoothrappali',
+                                'is_admin': False,
+                            },
+                            {
+                                'name': 'Sheldon Cooper',
+                                'first_name': 'Sheldon',
+                                'last_name': 'Cooper',
+                                'email': 'sheldon.cooper@nomad-coe.eu',
+                                'user_id': '00000000-0000-0000-0000-000000000001',
+                                'username': 'scooper',
+                                'is_admin': False,
+                                'is_oasis_admin': True,
+                            },
+                        ),
+                        sort_key=lambda x: x['user_id'],
+                    ),
                 }
             }
         },

@@ -30,8 +30,7 @@ from nomad.app.v1.models.groups import (
 from nomad.app.v1.models.pagination import PaginationResponse
 from nomad.app.v1.utils import parameter_dependency_from_model
 from nomad.datamodel import User as UserDataModel
-from nomad.groups import MongoUserGroup
-from nomad.groups import create_user_group as create_mongo_user_group
+from nomad.groups import MongoUserGroup, create_mongo_user_group, get_mongo_user_group
 from nomad.utils import strip
 
 from ..models import User
@@ -55,8 +54,8 @@ user_group_pagination_parameters = parameter_dependency_from_model(
 )
 
 
-def get_mongo_user_group(group_id: str) -> MongoUserGroup:
-    user_group = MongoUserGroup.objects(group_id=group_id).first()
+def get_user_group_or_404(group_id: str) -> MongoUserGroup:
+    user_group = get_mongo_user_group(group_id)
     if user_group is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -124,7 +123,7 @@ async def get_user_groups(
 )
 async def get_user_group(group_id: str):
     """Get data about user group."""
-    user_group = get_mongo_user_group(group_id)
+    user_group = get_user_group_or_404(group_id)
 
     return user_group
 
@@ -163,7 +162,7 @@ async def update_user_group(
     user: User = Depends(create_user_dependency(required=True)),
 ):
     """Update user group."""
-    user_group = get_mongo_user_group(group_id)
+    user_group = get_user_group_or_404(group_id)
     check_user_may_edit_user_group(user, user_group)
 
     user_group_dict = user_group_edit.dict(exclude_none=True)
@@ -171,9 +170,7 @@ async def update_user_group(
     if members is not None:
         check_user_ids(members)
 
-    user_group.update(**user_group_dict)
-    user_group.save()
-    user_group.reload()
+    user_group.clean_update_reload(**user_group_dict)
     return user_group
 
 
@@ -187,7 +184,7 @@ async def delete_user_group(
     group_id: str, user: User = Depends(create_user_dependency(required=True))
 ):
     """Delete user group."""
-    user_group = get_mongo_user_group(group_id)
+    user_group = get_user_group_or_404(group_id)
     check_user_may_edit_user_group(user, user_group)
 
     user_group.delete()

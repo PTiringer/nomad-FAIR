@@ -12,6 +12,7 @@ attrs==25.3.0             # via jsonschema, referencing
 beautifulsoup4==4.12.3    # via nomad-lab (pyproject.toml)
 billiard==4.2.1           # via celery
 bitarray==3.1.1           # via nomad-lab (pyproject.toml)
+blinker==1.9.0            # via nomad-lab (pyproject.toml)
 cachetools==5.5.2         # via nomad-lab (pyproject.toml)
 celery==5.4.0             # via nomad-lab (pyproject.toml)
 certifi==2025.1.31        # via elasticsearch, httpcore, httpx, requests

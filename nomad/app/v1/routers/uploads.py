@@ -50,7 +50,7 @@ from nomad.config import config
 from nomad.config.models.config import Reprocess
 from nomad.config.models.plugins import ExampleUploadEntryPoint
 from nomad.files import PublicUploadFiles, StagingUploadFiles
-from nomad.groups import get_group_ids
+from nomad.groups import MongoUserGroup
 from nomad.processing import (
     Entry,
     MetadataEditRequestHandler,
@@ -2713,7 +2713,7 @@ def get_role_query(roles: list[UploadRole], user: User, include_all=False) -> Q:
     if not roles:
         roles = list(UploadRole)
 
-    group_ids = get_group_ids(user.user_id, include_all=include_all)
+    group_ids = MongoUserGroup.get_ids_by_user_id(user.user_id, include_all=include_all)
 
     role_query = Q()
     if UploadRole.main_author in roles:
@@ -2739,7 +2739,7 @@ def is_user_upload_viewer(upload: Upload, user: User | None):
     if user.user_id in upload.viewers:
         return True
 
-    group_ids = get_group_ids(user.user_id)
+    group_ids = MongoUserGroup.get_ids_by_user_id(user.user_id)
     if not set(group_ids).isdisjoint(upload.viewer_groups):
         return True
 
@@ -2753,7 +2753,7 @@ def is_user_upload_writer(upload: Upload, user: User):
     if user.user_id in upload.writers:
         return True
 
-    group_ids = get_group_ids(user.user_id)
+    group_ids = MongoUserGroup.get_ids_by_user_id(user.user_id)
     if not set(group_ids).isdisjoint(upload.writer_groups):
         return True
 
