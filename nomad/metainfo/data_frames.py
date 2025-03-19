@@ -8,7 +8,6 @@ import xarray as xr
 from pydantic import BaseModel
 
 from nomad.metainfo import MSection, Package, Quantity, Section, SubSection, constraint
-from nomad.metainfo.metainfo import _placeholder_quantity
 from nomad.units import ureg
 
 m_package = Package()
@@ -16,7 +15,7 @@ m_package = Package()
 
 class Values(MSection):
     name = Quantity(type=str)
-    values = _placeholder_quantity
+    values = None
     values_ref = Quantity(type='Values', shape=[])
     spanned_dimensions = Quantity(type=int, shape=['*'])
     original_shape = Quantity(type=int, shape=['*'])

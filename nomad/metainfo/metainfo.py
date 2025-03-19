@@ -76,9 +76,6 @@ from .annotation import (
     SectionAnnotation,
 )
 
-# todo: remove once simulation package does not use it anymore
-_placeholder_quantity = None
-
 m_package: Package | None = None
 
 is_bootstrapping: bool = True
