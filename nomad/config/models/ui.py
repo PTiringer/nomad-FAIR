@@ -978,19 +978,6 @@ class SearchQuantities(OptionsGlob):
     `*.#myschema.schema.MySchema`.
     """
 
-    include: list[str] | None = Field(
-        None,
-        description="""
-        List of included options. Supports glob/wildcard syntax.
-    """,
-    )
-    exclude: list[str] | None = Field(
-        None,
-        description="""
-        List of excluded options. Supports glob/wildcard syntax. Has higher precedence than include.
-    """,
-    )
-
 
 class Filters(SearchQuantities):
     """Alias for SearchQuantities."""
@@ -1696,7 +1683,28 @@ class App(ConfigBaseModel):
                     'electronic': Menu(
                         items=[
                             MenuItemTerms(
-                                search_quantity='electronic_properties',
+                                title='Electronic properties',
+                                search_quantity='results.properties.available_properties',
+                                options={
+                                    'electronic.band_structure_electronic.band_gap': MenuItemOption(
+                                        label='Band gap',
+                                    ),
+                                    'band_structure_electronic': MenuItemOption(
+                                        label='Band structure',
+                                    ),
+                                    'dos_electronic': MenuItemOption(
+                                        label='Density of states',
+                                    ),
+                                    'greens_functions_electronic': MenuItemOption(
+                                        label='Green\u0027s functions'
+                                    ),
+                                    'eels': MenuItemOption(
+                                        label='Electron energy loss spectrum',
+                                    ),
+                                    'density_charge': MenuItemOption(
+                                        label='Charge density',
+                                    ),
+                                },
                                 show_input=False,
                             ),
                             MenuItemNestedObject(
@@ -1735,7 +1743,22 @@ class App(ConfigBaseModel):
                     'vibrational': Menu(
                         items=[
                             MenuItemTerms(
-                                search_quantity='vibrational_properties',
+                                title='Vibrational properties',
+                                search_quantity='results.properties.available_properties',
+                                options={
+                                    'dos_phonon': MenuItemOption(
+                                        label='Phonon density of states',
+                                    ),
+                                    'band_structure_phonon': MenuItemOption(
+                                        label='Phonon band structure',
+                                    ),
+                                    'energy_free_helmholtz': MenuItemOption(
+                                        label='Helmholtz free energy',
+                                    ),
+                                    'heat_capacity_constant_volume': MenuItemOption(
+                                        label='Heat capacity constant volume'
+                                    ),
+                                },
                                 show_input=False,
                             ),
                         ]
@@ -1743,7 +1766,19 @@ class App(ConfigBaseModel):
                     'mechanical': Menu(
                         items=[
                             MenuItemTerms(
-                                search_quantity='mechanical_properties',
+                                title='Mechanical properties',
+                                search_quantity='results.properties.available_properties',
+                                options={
+                                    'bulk_modulus': MenuItemOption(
+                                        label='Bulk modulus',
+                                    ),
+                                    'shear_modulus': MenuItemOption(
+                                        label='Shear modulus',
+                                    ),
+                                    'energy_volume_curve': MenuItemOption(
+                                        label='Energy-volume curve',
+                                    ),
+                                },
                                 show_input=False,
                             ),
                             MenuItemNestedObject(
