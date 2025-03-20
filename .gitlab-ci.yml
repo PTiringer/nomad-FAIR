@@ -193,7 +193,7 @@ generate pytest timings:
     - <<: [*non-docs-changes, *manual-allow_failure]
 
 python tests:
-  parallel: 4
+  parallel: 3
   extends: .base_test
   script:
     - python -m pytest --cov=nomad --cov-report term --cov-config=.coveragerc -sv tests --splits $CI_NODE_TOTAL --group=$CI_NODE_INDEX
