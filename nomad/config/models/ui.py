@@ -362,8 +362,8 @@ class RowActionURL(RowAction):
         description="""JMESPath pointing to a path in the archive that contains the URL."""
     )
     type: Literal['url'] = Field(
-        'url', description='Set as `url` to get this widget type.'
-    )
+        'url', description='Set as `url` to get this action type.', hidden=True
+    )  # type: ignore[call-overload]
 
     @model_validator(mode='before')
     @classmethod
@@ -382,8 +382,8 @@ class RowActionNorth(RowAction):
     )
     tool_name: str = Field(description="""Name of the NORTH tool to open.""")
     type: Literal['north'] = Field(
-        'north', description='Set as `north` to get this widget type.'
-    )
+        'north', description='Set as `north` to get this action type.', hidden=True
+    )  # type: ignore[call-overload]
 
     @model_validator(mode='before')
     @classmethod
@@ -583,8 +583,8 @@ class TermsBase(ConfigBaseModel):
     )
     search_quantity: str = Field(description='The targeted search quantity.')
     type: Literal['terms'] = Field(
-        description='Set as `terms` to get this type.',
-    )
+        description='Set as `terms` to get this type.', hidden=True
+    )  # type: ignore[call-overload]
     scale: ScaleEnum = Field(ScaleEnum.LINEAR, description='Statistics scaling.')
     show_input: bool = Field(True, description='Whether to show text input field.')
     showinput: bool | None = Field(
@@ -618,8 +618,8 @@ class HistogramBase(ConfigBaseModel):
     """Base model for configuring histogram components."""
 
     type: Literal['histogram'] = Field(
-        description='Set as `histogram` to get this widget type.'
-    )
+        description='Set as `histogram` to get this widget type.', hidden=True
+    )  # type: ignore[call-overload]
     quantity: str | None = Field(
         None,
         deprecated='The "quantity" field is deprecated, use "x.search_quantity" instead.',
@@ -698,8 +698,8 @@ class PeriodicTableBase(ConfigBaseModel):
     """Base model for configuring periodic table components."""
 
     type: Literal['periodic_table'] = Field(
-        description='Set as `periodic_table` to get this widget type.'
-    )
+        description='Set as `periodic_table` to get this widget type.', hidden=True
+    )  # type: ignore[call-overload]
     quantity: str | None = Field(
         None,
         deprecated='The "quantity" field is deprecated, use "search_quantity" instead.',
@@ -813,8 +813,8 @@ class MenuItemVisibility(MenuItem):
     """Menu item that shows a radio button that can be used to change the visiblity."""
 
     type: Literal['visibility'] = Field(
-        description='Set as `visibility` to get this menu item type.',
-    )
+        description='Set as `visibility` to get this menu item type.', hidden=True
+    )  # type: ignore[call-overload]
 
     @model_validator(mode='before')
     @classmethod
@@ -829,8 +829,8 @@ class MenuItemDefinitions(MenuItem):
     """Menu item that shows a tree for filtering data by the presence of definitions."""
 
     type: Literal['definitions'] = Field(
-        description='Set as `definitions` to get this menu item type.',
-    )
+        description='Set as `definitions` to get this menu item type.', hidden=True
+    )  # type: ignore[call-overload]
 
     @model_validator(mode='before')
     @classmethod
@@ -845,8 +845,8 @@ class MenuItemOptimade(MenuItem):
     """Menu item that shows a dialog for entering OPTIMADE queries."""
 
     type: Literal['optimade'] = Field(
-        description='Set as `optimade` to get this menu item type.',
-    )
+        description='Set as `optimade` to get this menu item type.', hidden=True
+    )  # type: ignore[call-overload]
 
     @model_validator(mode='before')
     @classmethod
@@ -865,7 +865,8 @@ class MenuItemCustomQuantities(MenuItem):
 
     type: Literal['custom_quantities'] = Field(
         description='Set as `custom_quantities` to get this menu item type.',
-    )
+        hidden=True,
+    )  # type: ignore[call-overload]
 
     @model_validator(mode='before')
     @classmethod
@@ -900,8 +901,8 @@ class MenuItemNestedObject(MenuItem):
     """
 
     type: Literal['nested_object'] = Field(
-        description='Set as `nested_object` to get this menu item type.',
-    )
+        description='Set as `nested_object` to get this menu item type.', hidden=True
+    )  # type: ignore[call-overload]
     path: str = Field(
         description='Path of the nested object. Typically a section name.'
     )
@@ -944,8 +945,8 @@ class Menu(MenuItem):
     """
 
     type: Literal['menu'] = Field(
-        description='Set as `nested_object` to get this menu item type.',
-    )
+        description='Set as `nested_object` to get this menu item type.', hidden=True
+    )  # type: ignore[call-overload]
     size: MenuSizeEnum | str | None = Field(
         MenuSizeEnum.SM,
         description="""
@@ -1063,32 +1064,32 @@ class WidgetTerms(Widget, TermsBase):
     """Terms widget configuration."""
 
     type: Literal['terms'] = Field(
-        description='Set as `terms` to get this type.',
-    )
+        description='Set as `terms` to get this widget type.', hidden=True
+    )  # type: ignore[call-overload]
 
 
 class WidgetHistogram(Widget, HistogramBase):
     """Histogram widget configuration."""
 
     type: Literal['histogram'] = Field(
-        description='Set as `histogram` to get this type.',
-    )
+        description='Set as `histogram` to get this widget type.', hidden=True
+    )  # type: ignore[call-overload]
 
 
 class WidgetPeriodicTable(Widget, PeriodicTableBase):
     """Periodic table widget configuration."""
 
     type: Literal['periodic_table'] = Field(
-        description='Set as `periodic_table` to get this type.',
-    )
+        description='Set as `periodic_table` to get this widget type.', hidden=True
+    )  # type: ignore[call-overload]
 
 
 class WidgetPeriodicTableDeprecated(WidgetPeriodicTable):
     """Deprecated copy of WidgetPeriodicTable with a misspelled type."""
 
     type: Literal['periodictable'] = Field(  # type: ignore[assignment]
-        description='Set as `periodictable` to get this widget type.'
-    )
+        description='Set as `periodictable` to get this widget type.', hidden=True
+    )  # type: ignore[call-overload]
 
     @model_validator(mode='before')
     @classmethod
@@ -1117,8 +1118,8 @@ class WidgetScatterPlot(Widget):
     """Scatter plot widget configuration."""
 
     type: Literal['scatter_plot'] = Field(
-        description='Set as `scatter_plot` to get this widget type.'
-    )
+        description='Set as `scatter_plot` to get this widget type.', hidden=True
+    )  # type: ignore[call-overload]
     x: AxisLimitedScale | str = Field(
         description='Configures the information source and display options for the x-axis.'
     )
@@ -1182,8 +1183,8 @@ class WidgetScatterPlotDeprecated(WidgetScatterPlot):
     """Deprecated copy of WidgetScatterPlot with a misspelled type."""
 
     type: Literal['scatterplot'] = Field(  # type: ignore[assignment]
-        description='Set as `scatterplot` to get this widget type.'
-    )
+        description='Set as `scatterplot` to get this type.', hidden=True
+    )  # type: ignore[call-overload]
 
     @model_validator(mode='before')
     @classmethod

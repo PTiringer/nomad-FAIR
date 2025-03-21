@@ -26,7 +26,7 @@ import yaml
 import json
 import os.path
 
-from typing import get_args
+from typing import get_args, cast
 
 from inspect import isclass
 
@@ -197,6 +197,12 @@ def define_env(env):
             return '</br>'.join(result)
 
         def field_row(name: str, field: FieldInfo):
+            # The field is not shown in the docs if it has the 'hidden' flag set to True
+            if (
+                field.json_schema_extra
+                and cast(dict, field.json_schema_extra).get('hidden', False) is True
+            ):
+                return ''
             if name.startswith('m_') or field is None:
                 return ''
             type_name, classes = get_field_type_info(field)
@@ -218,7 +224,7 @@ def define_env(env):
         result += '|----|----|-|\n'
         if isinstance(fields, tuple):
             # handling union types
-            results = []
+            results: list[str] = []
             for field in fields:
                 if hasattr(field, 'model_fields'):
                     # if the field is a pydantic model, generate the documentation for that model
@@ -226,15 +232,14 @@ def define_env(env):
                 elif "<class 'NoneType'>" not in str(field):
                     # the check is a bit awkward but checking for None directly falls through
                     results.append(field_row(name, field))
-            result = ''.join(results)
         else:
-            result += ''.join(
-                [
-                    field_row(name, field)
-                    for name, field in fields.items()
-                    if name not in hide
-                ]
-            )
+            results = [
+                field_row(name, field)
+                for name, field in fields.items()
+                if name not in hide
+            ]
+        results = sorted(results, key=lambda x: 'None' in x)
+        result += ''.join(results)
 
         for required_model in required_models:
             if required_model.__name__ not in exported_config_models:
