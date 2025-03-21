@@ -32,13 +32,13 @@ nav:
           - Update an Oasis: howto/oasis/update.md
           - Perform admin tasks: howto/oasis/admin.md
       - Plugins:
-          - Get started with plugins: howto/plugins/plugins.md
+          - Introduction to plugins: howto/plugins/plugins.md
+          - Write an API: howto/plugins/apis.md
           - Write an app: howto/plugins/apps.md
           - Write an example upload: howto/plugins/example_uploads.md
           - Write a normalizer: howto/plugins/normalizers.md
           - Write a parser: howto/plugins/parsers.md
           - Write a schema package: howto/plugins/schema_packages.md
-          - Write an API: howto/plugins/apis.md
       - Customization:
           - Write a YAML schema package: howto/customization/basics.md
           - Define ELNs: howto/customization/elns.md
@@ -107,6 +107,8 @@ theme:
     - navigation.path
     - navigation.footer
     - navigation.top
+    - content.code.copy
+    - content.code.annotate
   icon:
     repo: fontawesome/brands/github
 # repo_url: https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/

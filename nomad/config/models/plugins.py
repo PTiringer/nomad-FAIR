@@ -46,15 +46,20 @@ class EntryPoint(BaseModel):
     id: str | None = Field(
         None,
         description='Unique identifier corresponding to the entry point name. Automatically set to the plugin entry point name in pyproject.toml.',
-    )
-    entry_point_type: str = Field(description='Determines the entry point type.')
+        hidden=True,
+    )  # type: ignore[call-overload]
+    entry_point_type: str = Field(
+        description='Determines the entry point type.', hidden=True
+    )  # type: ignore[call-overload]
     name: str | None = Field(None, description='Name of the plugin entry point.')
     description: str | None = Field(
         None, description='A human readable description of the plugin entry point.'
     )
     plugin_package: str | None = Field(
-        None, description='The plugin package from which this entry points comes from.'
-    )
+        None,
+        description='The plugin package from which this entry points comes from.',
+        hidden=True,
+    )  # type: ignore[call-overload]
 
     def dict_safe(self):
         """Used to serialize the non-confidential parts of a plugin model. This
@@ -69,8 +74,8 @@ class AppEntryPoint(EntryPoint):
     """Base model for app plugin entry points."""
 
     entry_point_type: Literal['app'] = Field(
-        'app', description='Determines the entry point type.'
-    )
+        'app', description='Determines the entry point type.', hidden=True
+    )  # type: ignore[call-overload]
     app: App = Field(description='The app configuration.')
 
     def dict_safe(self):
@@ -83,8 +88,8 @@ class SchemaPackageEntryPoint(EntryPoint, metaclass=ABCMeta):
     """Base model for schema package plugin entry points."""
 
     entry_point_type: Literal['schema_package'] = Field(
-        'schema_package', description='Specifies the entry point type.'
-    )
+        'schema_package', description='Specifies the entry point type.', hidden=True
+    )  # type: ignore[call-overload]
 
     @abstractmethod
     def load(self) -> 'SchemaPackage':
@@ -98,8 +103,8 @@ class NormalizerEntryPoint(EntryPoint, metaclass=ABCMeta):
     """Base model for normalizer plugin entry points."""
 
     entry_point_type: Literal['normalizer'] = Field(
-        'normalizer', description='Determines the entry point type.'
-    )
+        'normalizer', description='Determines the entry point type.', hidden=True
+    )  # type: ignore[call-overload]
     level: int = Field(
         0,
         description="""
@@ -121,8 +126,8 @@ class ParserEntryPoint(EntryPoint, metaclass=ABCMeta):
     """Base model for parser plugin entry points."""
 
     entry_point_type: Literal['parser'] = Field(
-        'parser', description='Determines the entry point type.'
-    )
+        'parser', description='Determines the entry point type.', hidden=True
+    )  # type: ignore[call-overload]
     level: int = Field(
         0,
         description="""
@@ -229,8 +234,8 @@ class ExampleUploadEntryPoint(EntryPoint):
     """Base model for example upload plugin entry points."""
 
     entry_point_type: Literal['example_upload'] = Field(
-        'example_upload', description='Determines the entry point type.'
-    )
+        'example_upload', description='Determines the entry point type.', hidden=True
+    )  # type: ignore[call-overload]
     category: str | None = Field(description='Category for the example upload.')
     title: str | None = Field(description='Title of the example upload.')
     description: str | None = Field(
@@ -253,7 +258,8 @@ class ExampleUploadEntryPoint(EntryPoint):
     from_examples_directory: bool = Field(
         False,
         description='Whether this example upload should be read from the "examples" directory.',
-    )
+        hidden=True,
+    )  # type: ignore[call-overload]
 
     def get_package_path(self):
         """Once all built-in example uploads have been removed, this function
@@ -408,8 +414,8 @@ class APIEntryPoint(EntryPoint, metaclass=ABCMeta):
     """Base model for API plugin entry points."""
 
     entry_point_type: Literal['api'] = Field(
-        'api', description='Specifies the entry point type.'
-    )
+        'api', description='Specifies the entry point type.', hidden=True
+    )  # type: ignore[call-overload]
 
     prefix: str = Field(
         None,
