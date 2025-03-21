@@ -206,9 +206,10 @@ def dict_to_params(d):
 
 
 def check_with_retry(condition_func, retries=5, delay0=0.1):
+    """Call function, return early on truthy result. Retry with increasing delays."""
     for attempt in range(retries):
-        if condition_func():
-            return True
+        if result := condition_func():
+            return result
 
         time.sleep(delay0 * (attempt + 1))
 

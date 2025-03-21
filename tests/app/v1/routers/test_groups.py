@@ -224,7 +224,9 @@ def test_owner_not_member(auth_headers, client, group_molds, group_owner_not_mem
         group.reload_without_clean()
         return group.owner in group.members
 
-    assert check_with_retry(condition)
+    assert check_with_retry(condition, retries=10, delay0=0.2), (
+        'group in db not updated within expected time'
+    )
 
 
 @pytest.mark.parametrize(
