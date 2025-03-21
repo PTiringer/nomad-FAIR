@@ -336,4 +336,8 @@ def import_all_parsers():
     """
     for parser in parsers:
         if isinstance(parser, MatchingParserInterface):
-            parser.import_parser_class()  # pylint: disable=no-member
+            try:
+                parser.import_parser_class()  # pylint: disable=no-member
+
+            except Exception as e:
+                raise ImportError(f'Failed to load {parser=}') from e

@@ -413,6 +413,7 @@ def import_class(class_name, class_description: str = None):
         module_path, cls = class_name.rsplit('.', 1)
         module = importlib.import_module(module_path)
         instance = getattr(module, cls)
+
     except Exception as e:
         if not class_description:
             logger.error('cannot import', exc_info=e)
