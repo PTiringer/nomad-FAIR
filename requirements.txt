@@ -11,7 +11,7 @@ async-property==0.2.2     # via python-keycloak
 attrs==25.3.0             # via jsonschema, referencing
 beautifulsoup4==4.12.3    # via nomad-lab (pyproject.toml)
 billiard==4.2.1           # via celery
-bitarray==3.1.1           # via nomad-lab (pyproject.toml)
+bitarray==3.2.0           # via nomad-lab (pyproject.toml)
 blinker==1.9.0            # via nomad-lab (pyproject.toml)
 cachetools==5.5.2         # via nomad-lab (pyproject.toml)
 celery==5.4.0             # via nomad-lab (pyproject.toml)
@@ -80,7 +80,7 @@ networkx==3.4.2           # via matid, pymatgen
 numpy==1.26.4             # via ase, contourpy, h5grove, h5py, matid, matplotlib, monty, pandas, pymatgen, scikit-learn, scipy, spglib, tifffile, xarray, nomad-lab (pyproject.toml)
 oauthenticator==17.3.0    # via nomad-lab (pyproject.toml)
 oauthlib==3.2.2           # via jupyterhub
-optimade==1.2.2           # via nomad-lab (pyproject.toml)
+optimade==1.2.3           # via nomad-lab (pyproject.toml)
 orjson==3.10.15           # via h5grove, nomad-lab (pyproject.toml)
 packaging==24.2           # via deprecation, gunicorn, jupyter-events, jupyterhub, matplotlib, mongomock, pint, plotly, xarray
 palettable==3.3.3         # via pymatgen
@@ -160,5 +160,5 @@ watchfiles==1.0.4         # via uvicorn
 wcwidth==0.2.13           # via prompt-toolkit
 webcolors==24.11.1        # via jsonschema
 websockets==15.0.1        # via uvicorn
-xarray==2025.1.2          # via nomad-lab (pyproject.toml)
+xarray==2025.3.0          # via nomad-lab (pyproject.toml)
 zipstream-ng==1.8.0       # via nomad-lab (pyproject.toml)
