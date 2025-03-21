@@ -16,7 +16,7 @@ babel==2.17.0             # via mkdocs-git-revision-date-localized-plugin, mkdoc
 backrefs==5.8             # via mkdocs-material
 beautifulsoup4==4.12.3    # via -r requirements.txt, nomad-lab (pyproject.toml)
 billiard==4.2.1           # via celery, -r requirements.txt
-bitarray==3.1.1           # via -r requirements.txt, nomad-lab (pyproject.toml)
+bitarray==3.2.0           # via -r requirements.txt, nomad-lab (pyproject.toml)
 blinker==1.9.0            # via -r requirements.txt, nomad-lab (pyproject.toml)
 cachetools==5.5.2         # via -r requirements.txt, nomad-lab (pyproject.toml)
 celery==5.4.0             # via -r requirements.txt, nomad-lab (pyproject.toml)
@@ -63,7 +63,7 @@ httpcore==1.0.7           # via httpx, -r requirements.txt
 httptools==0.6.4          # via uvicorn, -r requirements.txt
 httpx==0.27.2             # via python-keycloak, -r requirements.txt, nomad-lab (pyproject.toml)
 idna==3.10                # via anyio, email-validator, httpx, jsonschema, jupyterhub, requests, -r requirements.txt
-iniconfig==2.0.0          # via pytest
+iniconfig==2.1.0          # via pytest
 isodate==0.7.2            # via rdflib, -r requirements.txt
 isoduration==20.11.0      # via jsonschema, -r requirements.txt
 jinja2==3.1.6             # via jupyterhub, mkdocs, mkdocs-macros-plugin, mkdocs-material, -r requirements.txt
@@ -108,7 +108,7 @@ networkx==3.4.2           # via matid, pymatgen, -r requirements.txt
 numpy==1.26.4             # via ase, contourpy, h5grove, h5py, matid, matplotlib, monty, pandas, pymatgen, scikit-learn, scipy, spglib, tifffile, xarray, -r requirements.txt, nomad-lab (pyproject.toml)
 oauthenticator==17.3.0    # via -r requirements.txt, nomad-lab (pyproject.toml)
 oauthlib==3.2.2           # via jupyterhub, -r requirements.txt
-optimade==1.2.2           # via -r requirements.txt, nomad-lab (pyproject.toml)
+optimade==1.2.3           # via -r requirements.txt, nomad-lab (pyproject.toml)
 orjson==3.10.15           # via h5grove, -r requirements.txt, nomad-lab (pyproject.toml)
 packaging==24.2           # via deprecation, gunicorn, jupyter-events, jupyterhub, matplotlib, mkdocs, mkdocs-macros-plugin, mongomock, pint, plotly, pytest, xarray, -r requirements.txt
 paginate==0.5.7           # via mkdocs-material
@@ -118,7 +118,7 @@ pandas==2.2.3             # via pymatgen, xarray, -r requirements.txt, nomad-lab
 pathspec==0.12.1          # via mkdocs, mkdocs-macros-plugin
 pillow==11.1.0            # via matplotlib, -r requirements.txt
 pint==0.17                # via -r requirements.txt, nomad-lab (pyproject.toml)
-platformdirs==4.3.6       # via mkdocs-get-deps
+platformdirs==4.3.7       # via mkdocs-get-deps
 plotly==5.24.1            # via pymatgen, -r requirements.txt, nomad-lab (pyproject.toml)
 pluggy==1.5.0             # via pytest
 ply==3.11                 # via jsonpath-ng, -r requirements.txt
@@ -169,11 +169,11 @@ rfc3986-validator==0.1.1  # via jsonschema, jupyter-events, -r requirements.txt
 rpds-py==0.23.1           # via jsonschema, referencing, -r requirements.txt
 ruamel-yaml==0.18.10      # via monty, oauthenticator, pymatgen, -r requirements.txt
 ruamel-yaml-clib==0.2.12 ; python_full_version < '3.13' and platform_python_implementation == 'CPython'  # via ruamel-yaml, -r requirements.txt
-ruff==0.11.0              # via nomad-lab (pyproject.toml)
+ruff==0.11.2              # via nomad-lab (pyproject.toml)
 scikit-learn==1.6.1       # via matid, -r requirements.txt
 scipy==1.15.2             # via ase, pymatgen, scikit-learn, -r requirements.txt, nomad-lab (pyproject.toml)
 sentinels==1.0.0          # via mongomock, -r requirements.txt
-setuptools==76.1.0        # via nomad-lab (pyproject.toml)
+setuptools==77.0.3        # via nomad-lab (pyproject.toml)
 six==1.17.0               # via asttokens, elasticsearch-dsl, pybtex, python-dateutil, rdflib, rfc3339-validator, -r requirements.txt
 smmap==5.0.2              # via gitdb
 sniffio==1.3.1            # via anyio, httpx, -r requirements.txt
@@ -209,5 +209,5 @@ watchfiles==1.0.4         # via uvicorn, -r requirements.txt
 wcwidth==0.2.13           # via prompt-toolkit, -r requirements.txt
 webcolors==24.11.1        # via jsonschema, -r requirements.txt
 websockets==15.0.1        # via uvicorn, -r requirements.txt
-xarray==2025.1.2          # via -r requirements.txt, nomad-lab (pyproject.toml)
+xarray==2025.3.0          # via -r requirements.txt, nomad-lab (pyproject.toml)
 zipstream-ng==1.8.0       # via -r requirements.txt, nomad-lab (pyproject.toml)
