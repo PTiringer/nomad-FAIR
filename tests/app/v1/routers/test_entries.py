@@ -16,9 +16,11 @@
 # limitations under the License.
 #
 
+import csv
 import io
 import json
 import zipfile
+from typing import Literal
 from urllib.parse import urlencode
 
 import pytest
@@ -49,15 +51,13 @@ from .common import (
     post_query_test_parameters,
 )
 
-"""
-These are the tests for all API operations below ``entries``. The tests are organized
-using the following type of methods: fixtures, ``perfrom_*_test``, ``assert_*``, and
-``test_*``. While some ``test_*`` methods test individual API operations, some
-test methods will test multiple API operations that use common aspects like
-supporting queries, pagination, or the owner parameter. The test methods will use
-``perform_*_test`` methods as an parameter. Similarely, the ``assert_*`` methods allow
-to assert for certain aspects in the responses.
-"""
+# These are the tests for all API operations below ``entries``. The tests are organized
+# using the following type of methods: fixtures, ``perfrom_*_test``, ``assert_*``, and
+# ``test_*``. While some ``test_*`` methods test individual API operations, some
+# test methods will test multiple API operations that use common aspects like
+# supporting queries, pagination, or the owner parameter. The test methods will use
+# ``perform_*_test`` methods as an parameter. Similarely, the ``assert_*`` methods allow
+# to assert for certain aspects in the responses.
 
 
 def perform_entries_raw_test(
@@ -96,7 +96,7 @@ def perform_entries_raw_test(
         )
 
     else:
-        assert False
+        pytest.fail(f'Invalid HTTP method {http_method}')
 
     assert_response(response, status_code)
     if status_code == 200:
@@ -139,7 +139,7 @@ def perform_entries_rawdir_test(
         response = client.post('entries/rawdir/query', headers=headers, json=body)
 
     else:
-        assert False
+        pytest.fail(f'Invalid HTTP method {http_method}')
 
     response_json = assert_base_metadata_response(response, status_code=status_code)
 
@@ -193,7 +193,7 @@ def perform_entries_archive_download_test(
         )
 
     else:
-        assert False
+        pytest.fail(f'Invalid HTTP method {http_method}')
 
     assert_response(response, status_code)
     if status_code == 200:
@@ -376,7 +376,7 @@ def assert_archive(archive, required=None):
         assert key in archive
 
 
-program_name = 'results.method.simulation.program_name'
+PROGRAM_NAME: str = 'results.method.simulation.program_name'
 
 
 def test_entries_all_metrics(client, example_data):
@@ -617,7 +617,7 @@ def test_entry_metadata(
             id='child-entries',
         ),
         pytest.param(
-            None, None, {program_name: 'DOESNOTEXIST'}, {}, 0, 5, 200, id='empty'
+            None, None, {PROGRAM_NAME: 'DOESNOTEXIST'}, {}, 0, 5, 200, id='empty'
         ),
     ],
 )
@@ -663,7 +663,7 @@ def test_entries_rawdir(
             id='child-entries',
         ),
         pytest.param(
-            None, None, {program_name: 'DOESNOTEXIST'}, {}, 0, 5, 200, id='empty'
+            None, None, {PROGRAM_NAME: 'DOESNOTEXIST'}, {}, 0, 5, 200, id='empty'
         ),
         pytest.param(None, None, {}, {'glob_pattern': '*.json'}, 23, 1, 200, id='glob'),
         pytest.param(
@@ -759,6 +759,128 @@ def test_entries_download_max(
     monkeypatch.setattr('nomad.config.services.max_entry_download', 20)
 
     test_method(client, status_code=400, http_method=http_method)
+
+
+class TestEntriesExportMetadata:
+    @pytest.mark.parametrize(
+        'user, owner, query, status_code',
+        [
+            pytest.param(None, None, {}, 200, id='all'),
+            pytest.param(None, 'all', {}, 401, id='owner_all'),
+        ],
+    )
+    @pytest.mark.parametrize('content_type', ['application/json', 'text/csv'])
+    def test_entries_export_metadata(
+        self,
+        auth_headers,
+        client,
+        example_data,
+        user,
+        owner,
+        query,
+        status_code,
+        content_type,
+        page_size: int = 10_000,
+    ):
+        if owner == 'all':
+            # This operation is not allow for owner 'all'
+            status_code = 401
+
+        params = dict(**query)
+        params['page_size'] = page_size
+
+        if owner is not None:
+            params['owner'] = owner
+
+        response = client.get(
+            f'entries/export?{urlencode(params)}',
+            headers={**(auth_headers[user] or {}), 'Content-Type': content_type},
+        )
+
+        assert_response(response, status_code)
+
+        if status_code == 200:
+            if content_type == 'application/json':
+                for i, entry in enumerate(response.json(), start=1):
+                    assert entry['upload_id'] == 'id_published'
+                    assert entry['entry_id'] == f'id_{i:02d}'
+
+            else:
+                csv_data = io.StringIO(response.text)
+                rows = list(csv.reader(csv_data))
+                assert len(rows) >= 2
+
+                assert set(rows[0]).issuperset({'upload_id', 'entry_id'})
+
+                for i, entry_row in enumerate(rows[1:], start=1):
+                    assert 'id_published' in entry_row  # upload_id
+                    assert f'id_{i:02d}' in entry_row  # entry_id
+
+    @pytest.mark.parametrize(
+        'user, owner, query, status_code, content_type',
+        [
+            pytest.param(None, None, {}, 415, 'invalid', id='all'),
+        ],
+    )
+    def test_invalid_content_type(
+        self,
+        auth_headers,
+        client,
+        example_data,
+        user,
+        owner,
+        query,
+        status_code,
+        content_type,
+    ):
+        params = dict(**query)
+
+        if owner is not None:
+            params['owner'] = owner
+
+        response = client.get(
+            f'entries/export?{urlencode(params)}',
+            headers={**(auth_headers[user] or {}), 'Content-Type': content_type},
+        )
+
+        assert_response(response, status_code)
+
+    @pytest.mark.parametrize(
+        'user, owner, query, status_code',
+        [
+            pytest.param(None, None, {}, 400, id='all'),
+        ],
+    )
+    @pytest.mark.parametrize('content_type', ['application/json', 'text/csv'])
+    def test_max_entry_metadata_download(
+        self,
+        auth_headers,
+        client,
+        example_data,
+        monkeypatch,
+        user,
+        owner,
+        query,
+        status_code,
+        content_type: Literal['application/json', 'text/csv'],
+    ):
+        monkeypatch.setattr('nomad.config.services.max_entry_metadata_download', 1)
+
+        params = dict(**query)
+        if owner is not None:
+            params['owner'] = owner
+
+        response = client.get(
+            'entries/export',
+            headers={**(auth_headers[user] or {}), 'Content-Type': content_type},
+        )
+
+        assert response.status_code == status_code
+
+        expected_message = (
+            'The limit of maximum number of metadata in a single download'
+        )
+        assert expected_message in response.json()['detail']
 
 
 @pytest.mark.parametrize(
@@ -1014,7 +1136,7 @@ def test_entry_raw_file(
         ),
         pytest.param(None, None, {}, {'metadata': '*'}, {}, 23, 200, id='required'),
         pytest.param(
-            None, None, {program_name: 'DOESNOTEXIST'}, None, {}, -1, 200, id='empty'
+            None, None, {PROGRAM_NAME: 'DOESNOTEXIST'}, None, {}, -1, 200, id='empty'
         ),
         pytest.param(None, None, {}, None, {'compress': True}, 23, 200, id='compress'),
     ],
@@ -1154,8 +1276,8 @@ def test_entry_archive_query(
         assert_archive_response(response.json(), required=required)
 
 
-elements = 'results.material.elements'
-n_elements = 'results.material.n_elements'
+ELEMENTS: str = 'results.material.elements'
+N_ELEMENTS: str = 'results.material.n_elements'
 
 
 @pytest.mark.parametrize(
@@ -1231,7 +1353,7 @@ def test_entries_post_query(
             'total_gt': 22,
         },
         int={
-            'name': 'results.material.n_elements',
+            'name': N_ELEMENTS,
             'values': [2, 1],
             'total': 23,
             'total_any': 23,
@@ -1358,8 +1480,8 @@ def test_entries_owner(
 @pytest.mark.parametrize(
     'pagination, response_pagination, status_code',
     pagination_test_parameters(
-        elements='results.material.elements',
-        n_elements='results.material.n_elements',
+        elements=ELEMENTS,
+        n_elements=N_ELEMENTS,
         crystal_system='results.material.symmetry.crystal_system',
         total=23,
     ),

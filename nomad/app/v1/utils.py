@@ -245,8 +245,9 @@ async def create_stream_from_string(content: str):
         yield x
 
 
-def create_responses(*args):
-    return {status_code: response for status_code, response in args}
+def create_responses(*args) -> dict:
+    """Pack status code-response pairs into a dictionary."""
+    return dict(args)
 
 
 def browser_download_headers(
