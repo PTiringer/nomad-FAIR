@@ -612,14 +612,13 @@ const InputHistogram = React.memo(({
   const {units} = useUnitContext()
   const styles = useInputHistogramStyles()
   const [scaleState, setScaleState] = useState(y?.scale || filterData[x?.search_quantity].scale)
-  const dtype = filterData[x.search_quantity].dtype
-  const isTime = dtype === DType.Timestamp
-  const autorangeFinal = isNil(autorange) ? isTime : autorange
   showStatistics = isStatisticsEnabled && showStatistics
 
   // Create final axis configs for the histogram
   const xAxis = useMemo(() => getAxisConfig(x, filterData, units), [x, filterData, units])
   const yAxis = useMemo(() => ({...y, scale: scaleState}), [scaleState, y])
+  const isTime = xAxis.dtype === DType.Timestamp
+  const autorangeFinal = isNil(autorange) ? isTime : autorange
 
   // Determine the description and title
   const def = filterData[x.search_quantity]
