@@ -740,26 +740,25 @@ export function getStaticSuggestions(quantities, filterData) {
   return suggestions
 }
 
-// add a specific filter
-export function addFilter(filterPath, def, repeats, filtersData, setFiltersData) {
-  if (filterPath in filtersData) {
-    return
-  }
-  const newFilters = {}
-  const pathDtype = filterPath.split(schemaSeparator).slice(-1)[0]
-  const dtype = dtypeMap[getDatatype(def)] || pathDtype
-  // TODO: For some Nexus quantities, the data types cannot be fetched.
-  if (!dtype) {
-    return
-  }
+// Add a new filter to filterData on the fly: NOTE: this is a workaround for
+// enabling the search of unregistered search quantities.
+export function tryAddNewFilter(filterPath, def, repeats, filtersData, setFiltersData) {
+  if (filterPath in filtersData) return
+  const dtype = postFixMap[parseQuantityName(filterPath)?.dtype]
+  if (!dtype) return
+
   const params = {
     name: filterPath,
     quantity: filterPath,
     aggregatable: new Set([DType.String, DType.Enum, DType.Boolean]).has(getDatatype(def)),
-    repeats: repeats
+    repeats: repeats,
+    dtype: dtype
   }
-  newFilters[filterPath] = new Filter(def, params)
-  setFiltersData((old) => ({...old, ...newFilters}))
+  setFiltersData((old) => {
+    const newFilters = {...old}
+    newFilters[filterPath] = new Filter(def, params)
+    return newFilters
+  })
 }
 
 /**

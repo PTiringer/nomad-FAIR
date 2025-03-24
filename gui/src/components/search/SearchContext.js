@@ -72,7 +72,7 @@ import UploadStatusIcon from '../uploads/UploadStatusIcon'
 import { getWidgetsObject } from './widgets/Widget'
 import { inputSectionContext } from './input/InputNestedObject'
 import { SearchSuggestion } from './SearchSuggestion'
-import { withSearchQuantities, addFilter } from './FilterRegistry'
+import { withSearchQuantities, tryAddNewFilter } from './FilterRegistry'
 import { useUnitContext } from '../units/UnitContext'
 
 const useWidthConstrainedStyles = makeStyles(theme => ({
@@ -1096,9 +1096,7 @@ export const SearchContextRaw = React.memo(({
       // trigger any required API calls that also return the aggregation
       // response that is returned by this hook.
       useEffect(() => {
-        if (!(name in filtersData)) {
-          addFilter(name, "", true, filtersData, setFiltersData)
-        }
+        tryAddNewFilter(name, "", true, filtersData, setFiltersData)
         const defaults = filtersData[name]?.aggs?.[config?.type]
         const finalConfig = {
           update: update,
