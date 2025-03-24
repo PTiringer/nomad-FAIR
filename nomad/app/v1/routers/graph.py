@@ -142,6 +142,6 @@ async def archive_query(
         del graph_dict[Token.SEARCH]['m_request']['query']
 
     with UserReader(graph_dict, user=user) as reader:
-        response: dict = await reader.read(user.user_id)
+        response: dict = await reader.read(user.user_id if user else '')
 
     return GraphJSONResponse(response)
