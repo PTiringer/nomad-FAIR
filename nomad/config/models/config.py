@@ -169,6 +169,10 @@ class Services(ConfigBaseModel):
         Page-after-value-based pagination is independent and can be used without limitations.
     """,
     )
+    max_entry_metadata_download: int = Field(
+        100_000,
+        description='The maximum amount of entries metadata that can be downloaded.',
+    )
     unavailable_value: str = Field(
         'unavailable',
         description="""

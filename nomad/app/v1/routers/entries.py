@@ -15,17 +15,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+import csv
 import io
 import json
 import os.path
-from collections.abc import Iterator
+from collections.abc import AsyncIterator, Iterator
 from datetime import datetime
 from enum import Enum
 from typing import Any
 
 import orjson
 import yaml
-from fastapi import APIRouter, Body, Depends, HTTPException, Path, Request, status
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    Header,
+    HTTPException,
+    Path,
+    Request,
+    status,
+)
 from fastapi import Query as QueryParameter
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import ORJSONResponse, StreamingResponse
@@ -474,10 +485,13 @@ def perform_search(*args, **kwargs):
             search_response = search(*args, **kwargs)
             search_response.es_query = None
             return search_response
+
         except QueryValidationError as e:
             raise RequestValidationError(errors=e.errors)
+
         except AuthenticationRequiredError as e:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail=str(e))
+
         except SearchError as e:
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST,
@@ -507,7 +521,7 @@ async def post_entries_metadata_query(
 
     By default the *empty* search (that returns everything) is performed. Only a small
     page of the search results are returned at a time; use `pagination` in subsequent
-    requests to retrive more data. Each entry has a lot of different *metadata*, use
+    requests to retrieve more data. Each entry has a lot of different *metadata*, use
     `required` to limit the data that is returned.
 
     The `statistics` and `aggregations` keys will further allow to return statistics
@@ -874,6 +888,121 @@ async def get_entries_raw(
     return _answer_entries_raw_request(
         owner=with_query.owner, query=with_query.query, files=files, user=user
     )
+
+
+@router.get(
+    '/export',
+    tags=[APITag.METADATA],
+    summary='Search entries and download their metadata in selected format',
+    response_class=StreamingResponse,
+    responses=create_responses(_bad_owner_response),
+)
+async def export_entries_metadata(
+    with_query: WithQuery = Depends(query_parameters),
+    content_type: str = Header('application/json'),
+    required: MetadataRequired = Depends(metadata_required_parameters),
+    user: User = Depends(create_user_dependency(signature_token_auth_allowed=True)),
+    page_size: int = QueryParameter(10_000, gt=0),
+):
+    """(**Experimental**) Export metadata entries in a selected format.
+
+    This endpoint allows users to export metadata entries in either JSON or CSV format.
+    The format must be specified via the `Content-Type` HTTP header:
+        - `application/json` → Returns the metadata as a JSON response.
+        - `text/csv` → Returns the metadata as a CSV file.
+    """
+    if with_query.owner == Owner.all_:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            detail=strip(
+                """
+            The owner=all is not allowed for this operation as it will search for entries
+            that you might now be allowed to access.
+            """
+            ),
+        )
+
+    response = perform_search(
+        owner=with_query.owner,
+        query=with_query.query,
+        pagination=MetadataPagination(page_size=0),
+        required=MetadataRequired(include=[]),
+        user_id=user.user_id if user is not None else None,
+    )
+
+    if response.pagination.total > config.services.max_entry_metadata_download:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f'The limit of maximum number of metadata in a single download '
+                f'({config.services.max_entry_metadata_download}) has been exceeded ({response.pagination.total}).'
+            ),
+        )
+
+    async def json_stream() -> AsyncIterator[bytes]:
+        """Stream metadata in JSON format."""
+        first_item: bool = True
+        yield b'['  # Start of JSON array
+
+        for entry_metadata in _do_exhaustive_search(
+            owner=with_query.owner,
+            query=with_query.query,
+            user=user,
+            required=required,
+            page_size=page_size,
+        ):
+            if not first_item:
+                yield b','  # Separate JSON objects
+            first_item = False
+            yield json.dumps(entry_metadata, default=str).encode('utf-8')
+
+        yield b']'  # End of JSON array
+
+    async def csv_stream() -> AsyncIterator[bytes]:
+        """Stream metadata in CSV format."""
+        first_row: bool = True
+        buffer: io.StringIO = io.StringIO()
+        writer: csv.DictWriter | None = None
+
+        for entry_metadata in _do_exhaustive_search(
+            owner=with_query.owner,
+            query=with_query.query,
+            user=user,
+            required=required,
+            page_size=page_size,
+        ):
+            if first_row:
+                writer = csv.DictWriter(buffer, fieldnames=entry_metadata.keys())
+                yield buffer.getvalue().encode('utf-8')  # Send column headers
+                buffer.seek(0)
+                buffer.truncate(0)  # Clear buffer
+                writer.writeheader()
+                first_row = False
+
+            writer.writerow(entry_metadata)
+            yield buffer.getvalue().encode('utf-8')  # Send row data
+            buffer.seek(0)
+            buffer.truncate(0)
+
+    if content_type == 'text/csv':
+        return StreamingResponse(
+            csv_stream(),
+            media_type=content_type,
+            headers=browser_download_headers(filename='metadata_export.csv'),
+        )
+
+    elif content_type == 'application/json':
+        return StreamingResponse(
+            json_stream(),
+            media_type=content_type,
+            headers=browser_download_headers(filename='metadata_export.json'),
+        )
+
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=f"Unsupported {content_type=}. Expected 'application/json' or 'text/csv'.",
+        )
 
 
 def _read_archive(entry_metadata, uploads, required_reader: RequiredReader):
