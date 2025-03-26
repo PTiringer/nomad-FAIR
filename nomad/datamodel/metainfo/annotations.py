@@ -23,7 +23,14 @@ from typing import Any
 from pydantic import ConfigDict, Field, field_validator, model_validator
 from pydantic.main import BaseModel
 
-from nomad.metainfo import AnnotationModel, Datetime, MEnum, Quantity, Reference
+from nomad.metainfo import (
+    AnnotationModel,
+    Datetime,
+    Definition,  # noqa: F401
+    MEnum,
+    Quantity,
+    Reference,
+)
 from nomad.utils import strip
 
 from ...metainfo.data_type import Datatype
