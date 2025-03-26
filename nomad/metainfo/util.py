@@ -288,7 +288,7 @@ def get_namefit(name: str, concept_name: str, name_any: bool = False) -> int:
     uppercase_parts_pattern = re.compile(r'[A-Z]+(?:_[A-Z]+)*')
     uppercase_parts = uppercase_parts_pattern.findall(concept_name)
 
-    path_regex = r'([a-zA-Z0-9_.]+)'
+    path_regex = r'([a-zA-Z0-9_.]*)'
     regex_name = concept_name
     uppercase_count = sum(len(part) for part in uppercase_parts)
 
