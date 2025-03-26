@@ -328,7 +328,11 @@ class ExampleData:
         if archive is not None:
             entry_archive.m_update(**archive)
 
-        if entry_archive.results.material.material_id is None:
+        if (
+            entry_archive.results
+            and entry_archive.results.material
+            and entry_archive.results.material.material_id is None
+        ):
             entry_archive.results.material.material_id = material_id
 
         self.archives[entry_id] = entry_archive

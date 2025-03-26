@@ -58,6 +58,7 @@ from nomad.archive import ArchiveDict, ArchiveList, to_json
 from nomad.archive.storage_v2 import ArchiveDict as ArchiveDictNew
 from nomad.archive.storage_v2 import ArchiveList as ArchiveListNew
 from nomad.datamodel import Dataset, EntryArchive, ServerContext, User
+from nomad.datamodel.metainfo.plot import PlotlyFigure
 from nomad.datamodel.util import parse_path
 from nomad.files import RawPathInfo, UploadFiles
 from nomad.graph.lazy_wrapper import (
@@ -259,7 +260,7 @@ class GraphNode:
             raise ArchiveError(f'Circular reference detected: {reference_url}.')
 
         try:
-            target = await self.__goto_path(self.archive_root, path_stack)
+            target = await _goto_path(self.archive_root, path_stack)
         except (KeyError, IndexError):
             raise ArchiveError(f'Archive {self.entry_id} does not contain {reference}.')
 
@@ -317,7 +318,7 @@ class GraphNode:
 
         try:
             # now go to the target path
-            other_target = await self.__goto_path(other_archive_root, path_stack)
+            other_target = await _goto_path(other_archive_root, path_stack)
         except (KeyError, IndexError):
             raise ArchiveError(f'Archive {other_entry_id} does not contain {path}.')
 
@@ -352,16 +353,14 @@ class GraphNode:
             result_root=self.ref_result_root,
         )
 
-    @staticmethod
-    async def __goto_path(target_root: ArchiveDict | dict, path_stack: list) -> Any:
-        """
-        Go to the specified path in the data.
-        """
-        for key in path_stack:
-            target_root = await goto_child(
-                target_root, int(key) if key.isdigit() else key
-            )
-        return target_root
+
+async def _goto_path(target_root: GenericDict, path_stack: list) -> Any:
+    """
+    Go to the specified path in the data.
+    """
+    for key in path_stack:
+        target_root = await goto_child(target_root, int(key) if key.isdigit() else key)
+    return target_root
 
 
 async def _if_exists(target_root: dict, path_stack: list) -> bool:
@@ -424,7 +423,7 @@ def _convert_ref_to_path_string(ref: str, upload_id: str = None) -> str:
 
 
 def _to_response_config(config: RequestConfig, exclude: list = None, **kwargs):
-    response_config = config.dict(exclude_unset=True, exclude_none=True)
+    response_config = config.model_dump(exclude_unset=True, exclude_none=True)
 
     for item in ('include', 'exclude'):
         if isinstance(x := response_config.pop(item, None), frozenset):
@@ -989,7 +988,7 @@ class GeneralReader:
     @staticmethod
     async def _overwrite_upload(item: Upload):
         plain_dict = orjson.loads(
-            upload_to_pydantic(item, include_total_count=False).json()
+            upload_to_pydantic(item, include_total_count=False).model_dump_json()
         )
         plain_dict.pop('entries', None)
         cached_item = CachedUpload(item)
@@ -1026,7 +1025,7 @@ class GeneralReader:
 
     @staticmethod
     def _overwrite_entry(item: Entry):
-        plain_dict = orjson.loads(entry_to_pydantic(item).json())
+        plain_dict = orjson.loads(entry_to_pydantic(item).model_dump_json())
         plain_dict.pop('entry_metadata', None)
         if mainfile := plain_dict.pop('mainfile', None):
             plain_dict['mainfile_path'] = mainfile
@@ -1334,7 +1333,7 @@ class MongoReader(GeneralReader):
         if config.query:
             assert isinstance(config.query, Metadata)
 
-            search_query = config.query.dict(exclude_none=True)  # type: ignore
+            search_query = config.query.model_dump(exclude_none=True)  # type: ignore
 
             if config.query.owner:
                 search_params['owner'] = config.query.owner
@@ -1391,7 +1390,9 @@ class MongoReader(GeneralReader):
                     references |= Q(references__regex=item)
             mongo_query &= references
 
-        return config.query.dict(exclude_unset=True), self.entries.filter(mongo_query)
+        return config.query.model_dump(exclude_unset=True), self.entries.filter(
+            mongo_query
+        )
 
     async def _query_uploads(self, config: RequestConfig):
         if not config.query:
@@ -1424,7 +1425,9 @@ class MongoReader(GeneralReader):
         elif config.query.is_owned is False:
             mongo_query &= Q(main_author__ne=self.auth_user_id)
 
-        return config.query.dict(exclude_unset=True), self.uploads.filter(mongo_query)
+        return config.query.model_dump(exclude_unset=True), self.uploads.filter(
+            mongo_query
+        )
 
     async def _query_datasets(self, config: RequestConfig):
         if not config.query:
@@ -1448,7 +1451,9 @@ class MongoReader(GeneralReader):
                 dataset_name=re.compile(rf'^{config.query.prefix}.*$', re.IGNORECASE)
             )
 
-        return config.query.dict(exclude_unset=True), self.datasets.filter(mongo_query)
+        return config.query.model_dump(exclude_unset=True), self.datasets.filter(
+            mongo_query
+        )
 
     @staticmethod
     async def _query_groups(config: RequestConfig):
@@ -1457,7 +1462,7 @@ class MongoReader(GeneralReader):
             if isinstance(config.query, UserGroupQuery)
             else UserGroupQuery()
         )
-        return query.dict(exclude_unset=True), MongoUserGroup.get_by_query(query)
+        return query.model_dump(exclude_unset=True), MongoUserGroup.get_by_query(query)
 
     async def _normalise(
         self, mongo_result, config: RequestConfig, transformer: Callable
@@ -1473,7 +1478,7 @@ class MongoReader(GeneralReader):
         elif isinstance(config.pagination, Pagination):
             pagination_response = PaginationResponse(
                 total=mongo_result.count() if mongo_result else 0,
-                **config.pagination.dict(),
+                **config.pagination.model_dump(),
             )
 
         if transformer is None:
@@ -1732,7 +1737,7 @@ class MongoReader(GeneralReader):
                     filtered, child_config, transformer
                 )
                 if pagination is not None:
-                    pagination_dict = pagination.dict()
+                    pagination_dict = pagination.model_dump()
                     if pagination_dict.get('order_by', None) == 'mainfile':
                         pagination_dict['order_by'] = 'mainfile_path'
                     await _populate_result(
@@ -2403,7 +2408,7 @@ class FileSystemReader(GeneralReader):
         if config.pagination is not None:
             assert isinstance(config.pagination, RawDirPagination)
             start: int = config.pagination.get_simple_index()
-            pagination: dict = config.pagination.dict(exclude_none=True)
+            pagination: dict = config.pagination.model_dump(exclude_none=True)
         else:
             start = 0
             pagination = dict(page=1, page_size=10, order='asc')
@@ -2710,9 +2715,9 @@ class ArchiveReader(ArchiveLikeReader):
 
             if isinstance(value, RequestConfig):
                 # this is a leaf, resolve it according to the config
-                await self._resolve(
-                    child(current_path=child_path, archive=child_archive), value
-                )
+                child_node = child(current_path=child_path, archive=child_archive)
+                await self._resolve_figure(child_node, node, value)
+                await self._resolve(child_node, value)
             elif isinstance(value, dict):
                 # this is a nested query, keep walking down the tree
                 async def __walk(__path, __archive):
@@ -2735,6 +2740,48 @@ class ArchiveReader(ArchiveLikeReader):
             else:
                 # should never reach here
                 raise ConfigError(f'Invalid required config: {value}.')
+
+    @staticmethod
+    async def _resolve_figure(
+        child: GraphNode, parent: GraphNode, config: RequestConfig
+    ):
+        """
+        Ensure a Figure object is properly resolved.
+        """
+        if not isinstance(
+            child.definition, SubSection
+        ) or not child.definition.sub_section.m_follows(
+            PlotlyFigure.m_def, self_as_definition=True
+        ):
+            return
+
+        if config.directive is not DirectiveType.resolved:
+            return
+
+        async def _visit(_node):
+            if isinstance(_node, GenericDict):
+                for v in _node.values():
+                    await _visit(v)
+            elif isinstance(_node, GenericList):
+                if len(_node) > 0 and isinstance(_node[0], int | float):
+                    # looks like a data array
+                    return
+                for v in _node:
+                    await _visit(v)
+            elif isinstance(_node, str):
+                _node = [x for x in _node.lstrip('#').split('/') if x]
+                if _node and await _if_exists(parent.archive, _node):
+                    await _populate_result(
+                        parent.result_root,
+                        parent.current_path + _node,
+                        await _goto_path(parent.archive, _node),
+                    )
+
+        if not isinstance(child.archive, GenericList):
+            return await _visit(child.archive)
+
+        for i in _normalise_index(config.index, len(child.archive)):
+            await _visit(child.archive[i])
 
     async def _resolve(
         self,
@@ -2852,6 +2899,7 @@ class ArchiveReader(ArchiveLikeReader):
                         node.result_root, child_node.current_path, child_node.archive
                     )
                 else:
+                    await self._resolve_figure(child_node, node, child_config)
                     await self._resolve(child_node, child_config)
 
     async def _check_definition(
@@ -3418,7 +3466,7 @@ class MetainfoBrowser(DefinitionReader):
         # we use the class member to cache the response
         # it will be written to the result tree later
         # we do not direct perform writing here to avoid turning all methods async
-        self._pagination_response = default_pagination.dict()
+        self._pagination_response = default_pagination.model_dump()
         self._pagination_response['total'] = total
 
         return all_keys

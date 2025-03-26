@@ -34,7 +34,7 @@ from nomad.graph.graph_reader import (
 )
 from nomad.graph.lazy_wrapper import LazyWrapper
 from nomad.utils.exampledata import ExampleData
-from tests.normalizing.conftest import simulationworkflowschema
+from tests.normalizing.conftest import run_processing, simulationworkflowschema
 from tests.utils import ListWithSortKey
 
 
@@ -4034,3 +4034,113 @@ def json_dict():
             'results': {'calculation_result_ref': '/run/0/calculation/1'},
         },
     }
+
+
+@pytest.fixture(scope='function')
+def example_data_with_figure(proc_infra, user1):
+    data = ExampleData(main_author=user1)
+
+    data.create_upload(
+        upload_id='id_published_with_ref', upload_name='name_published', published=False
+    )
+
+    directory = 'tests/data/datamodel/metainfo/plotly'
+    mainfile = 'plotly.schema.archive.yaml'
+    data.create_entry(
+        upload_id='id_published_with_ref',
+        entry_id='id_plotly',
+        entry_archive=run_processing(directory, mainfile),
+    )
+
+    for archive in data.archives.values():
+        archive.metadata.apply_archive_metadata(archive)
+
+    data.save(with_files=True, with_es=True, with_mongo=True)
+
+    yield data
+
+    data.delete()
+
+
+@pytest.mark.parametrize(
+    'query,result',
+    [
+        # plain get default quantities
+        # the references are not resolved
+        pytest.param(
+            {
+                Token.ARCHIVE: {
+                    'data': {
+                        'figures[0]': {
+                            'm_request': {
+                                'directive': 'plain',
+                            },
+                        }
+                    }
+                },
+            },
+            {
+                'archive': {
+                    'data': {
+                        'figures': [
+                            {
+                                'label': 'graph object 1',
+                                'figure': {
+                                    'data': {'x': '#xArr', 'y': '#xArr'},
+                                    'layout': {
+                                        'title': {'text': 'Plot in section level'},
+                                        'xaxis': {'title': {'text': 'x data'}},
+                                        'yaxis': {'title': {'text': 'y data'}},
+                                    },
+                                },
+                            }
+                        ]
+                    }
+                }
+            },
+            id='plain-read',
+        ),
+        pytest.param(
+            {
+                Token.ARCHIVE: {
+                    'data': {
+                        'figures[0]': {
+                            'm_request': {
+                                'directive': 'resolved',
+                            },
+                        }
+                    }
+                },
+            },
+            {
+                'archive': {
+                    'data': {
+                        'xArr': [1.1, 2.0, 3.0, 4.0, 5.0],
+                        'figures': [
+                            {
+                                'label': 'graph object 1',
+                                'figure': {
+                                    'data': {'x': '#xArr', 'y': '#xArr'},
+                                    'layout': {
+                                        'title': {'text': 'Plot in section level'},
+                                        'xaxis': {'title': {'text': 'x data'}},
+                                        'yaxis': {'title': {'text': 'y data'}},
+                                    },
+                                },
+                            }
+                        ],
+                    }
+                }
+            },
+            id='read-resolved',
+        ),
+    ],
+)
+def test_figure_resolution(user1, example_data_with_figure, query, result):
+    def __entry_print(required, *, result=None):
+        with EntryReader(required, user=user1) as reader:
+            response = reader.sync_read('id_plotly')
+            if result:
+                assert_dict(response, result)
+
+    __entry_print(query, result=result)
