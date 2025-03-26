@@ -1776,13 +1776,24 @@ class MSection(metaclass=MObjectMeta):
         # todo: mypy bug https://github.com/python/mypy/issues/14458
         return cast(cls, self)  # type: ignore
 
-    def m_follows(self, definition: Section) -> bool:
+    def m_follows(
+        self, definition: Section, *, self_as_definition: bool = False
+    ) -> bool:
         """
         Determines if this section's definition is or is derived from the given definition.
+
+        Arguments:
+            definition: The definition to check against.
+            self_as_definition: If True, the current section is considered as a definition
+                instead of a data section. This is useful when directly checking the definitions
+                without the need to create a dummy data section.
         """
         if not isinstance(definition, Section):
             raise TypeError(f'{definition} is not an instance of class Section.')
-        return definition in itertools.chain(self.m_def.all_base_sections, [self.m_def])
+
+        target = self if self_as_definition else self.m_def
+
+        return definition in itertools.chain(target.all_base_sections, [target])
 
     def m_to_dict(
         self,
