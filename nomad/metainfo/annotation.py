@@ -54,6 +54,9 @@ class SectionAnnotation(DefinitionAnnotation):
         return {}
 
 
+Definition = ForwardRef('Definition')
+
+
 class AnnotationModel(Annotation, BaseModel):
     """
     Base class for defining annotation models. Annotations used with simple dict-based
@@ -61,7 +64,7 @@ class AnnotationModel(Annotation, BaseModel):
     model.
     """
 
-    m_definition: ForwardRef('Definition') = Field(  # type: ignore
+    m_definition: Definition = Field(  # type: ignore
         None,
         description='The definition that this annotation is annotating.',
         exclude=True,
