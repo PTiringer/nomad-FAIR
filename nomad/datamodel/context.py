@@ -16,11 +16,17 @@
 # limitations under the License.
 #
 
+from __future__ import annotations
+
+import json
 import os.path
 import re
+from contextlib import contextmanager
+from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
 import requests
+from ruamel import yaml
 
 from nomad import utils
 from nomad.config import config
@@ -29,6 +35,20 @@ from nomad.datamodel.datamodel import EntryMetadata
 from nomad.datamodel.util import parse_path
 from nomad.metainfo import Context as MetainfoContext
 from nomad.metainfo import MetainfoReferenceError, MSection, Package, Quantity
+
+
+def _opener_and_dumper(file_name: str) -> tuple:
+    if not file_name.endswith(('json', 'yaml', 'yml')):
+        raise AssertionError('Only json/yaml files can be updated.')
+
+    if file_name.endswith('json'):
+        loader = json.load
+        dumper = json.dump
+    else:
+        loader = yaml.safe_load  # type: ignore
+        dumper = yaml.dump  # type: ignore
+
+    return loader, dumper
 
 
 class Context(MetainfoContext):
@@ -407,6 +427,50 @@ class ServerContext(Context):
 
         return self.upload_files.archive_hdf5_location(entry_id)
 
+    @contextmanager
+    def update_entry(
+        self,
+        mainfile: str,
+        *,
+        write: bool = False,
+        process: bool = False,
+        **kwargs,
+    ):
+        if not self.upload:
+            raise AssertionError(
+                'A valid upload must be attached before updating files.'
+            )
+
+        loader, dumper = _opener_and_dumper(mainfile)
+
+        content: dict = {}
+        if self.upload_files.raw_path_exists(mainfile):
+            with self.upload_files.raw_file(mainfile, 'r') as f:
+                content = loader(f)
+
+        yield content
+
+        if not write:
+            return
+
+        with self.upload_files.raw_file(mainfile, 'w') as f:
+            dumper(content, f, indent=2)
+
+        if process:
+            self.upload.process_updated_raw_file(mainfile, True)
+
+
+class ServerLocalContext(Context):
+    def __init__(self, mainfile_dir):
+        super().__init__()
+        self._mainfile_dir: Path = Path(mainfile_dir)
+
+    def raw_file(self, path, *args, **kwargs):
+        return (self._mainfile_dir / path).open(*args, **kwargs)
+
+    def raw_path_exists(self, path: str) -> bool:
+        return (self._mainfile_dir / path).exists()
+
 
 def _validate_url(url):
     return config.api_url(api='api/v1') if url is None else url
@@ -426,10 +490,12 @@ class ClientContext(Context):
     def __init__(
         self,
         installation_url: str = None,
+        *,
         local_dir: str = None,
         upload_id: str = None,
         username: str = None,
         password: str = None,
+        recursive_kwargs: dict = None,
         auth=None,
     ):
         super().__init__(
@@ -444,6 +510,14 @@ class ClientContext(Context):
 
             self._auth = Auth(user=username, password=password)
         self._upload_id = upload_id
+        self._recursive_kwargs = recursive_kwargs if recursive_kwargs else {}
+        self._child_archives: list = []
+
+    @property
+    def child_archives(self):
+        holder = self._child_archives
+        self._child_archives = []
+        return holder
 
     @property
     def upload_id(self):
@@ -552,3 +626,43 @@ class ClientContext(Context):
             )
 
         return response.json()['data']
+
+    @contextmanager
+    def update_entry(
+        self,
+        mainfile: str,
+        *,
+        write: bool = False,
+        process: bool = False,
+        **kwargs,
+    ):
+        if not self.local_dir:
+            raise AssertionError(
+                'A valid local folder must be attached before updating files.'
+            )
+
+        loader, dumper = _opener_and_dumper(mainfile)
+
+        file_path: Path = Path(self.local_dir) / mainfile
+
+        content: dict = {}
+        if file_path.exists():
+            with file_path.open() as f:
+                content = loader(f)
+
+        yield content
+
+        if not write:
+            return
+
+        with file_path.open('w') as f:
+            dumper(content, f, indent=2)
+
+        if process:
+            from nomad.client import parse
+
+            self._child_archives.extend(
+                parse(
+                    file_path.absolute().as_posix(), **(self._recursive_kwargs | kwargs)
+                )
+            )

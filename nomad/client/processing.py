@@ -41,7 +41,15 @@ def parse(
     Run the given parser on the provided mainfile. If parser_name is given, we only try
     to match this parser, otherwise we try to match all parsers.
     """
-    from nomad import parsing
+    recursive_kwargs: dict = dict(
+        backend_factory=backend_factory,
+        strict=strict,
+        logger=logger,
+        server_context=server_context,
+        username=username,
+        password=password,
+    )
+
     from nomad.parsing import parsers
 
     mainfile = os.path.basename(mainfile_path)
@@ -53,10 +61,6 @@ def parse(
     parser, mainfile_keys = parsers.match_parser(
         mainfile_path, strict=strict, parser_name=parser_name
     )
-    if isinstance(parser, parsing.MatchingParser):
-        parser_name = parser.name
-    else:
-        parser_name = parser.__class__.__name__
 
     assert parser is not None, f'there is no parser matching {mainfile}'
     logger = logger.bind(parser=parser.name)  # type: ignore
@@ -65,7 +69,14 @@ def parse(
         setattr(parser, 'backend_factory', backend_factory)
 
     entry_archives = parsers.run_parser(
-        mainfile_path, parser, mainfile_keys, logger, server_context, username, password
+        mainfile_path,
+        parser,
+        mainfile_keys,
+        logger,
+        server_context,
+        username,
+        password,
+        recursive_kwargs=recursive_kwargs,
     )
 
     logger.info('ran parser')
