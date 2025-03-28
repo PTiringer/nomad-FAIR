@@ -729,6 +729,10 @@ class Context:
     multiple hierarchies (e.g. archives) with references.
     """
 
+    @property
+    def child_archives(self):
+        return []
+
     def warning(self, event, **kwargs):
         """
         Used to log (or otherwise handle) warning that are issued, e.g. while serialization,
@@ -817,6 +821,42 @@ class Context:
         return None
 
     def hdf5_path(self, section: MSection):
+        raise NotImplementedError
+
+    def update_entry(
+        self,
+        mainfile: str,
+        *,
+        write: bool = True,
+        process: bool = True,
+        **kwargs,
+    ):
+        """
+        Open the target file and send it to the updater function.
+        The updater function shall return the updated file content.
+        The updated file will be stored and processed if needed.
+
+        WARNING:
+            If `process=True`, the updated file will be processed immediately.
+            Please be aware of the fact that this method may be called during the processing of
+            the parent/main file.
+            This means if there are any data dependencies, there is a risk of infinite loops,
+            racing conditions and/or other unexpected behavior.
+            You must carefully design the logic to mitigate these risks.
+
+        To use this function, you shall use the with-statement as follows:
+
+        ```python
+        with context.update_entry('mainfile.json',**kwargs) as content:
+            # do something with content
+        ```
+
+        Parameters:
+            mainfile: The relative path (from upload root) to the file to update.
+            write: Whether to write the updated file back to the storage.
+                If False, no processing will be triggered whatsoever.
+            process: Whether to trigger processing of the updated file.
+        """
         raise NotImplementedError
 
 

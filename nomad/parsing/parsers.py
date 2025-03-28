@@ -16,6 +16,8 @@
 # limitations under the License.
 #
 
+from __future__ import annotations
+
 import os.path
 from collections.abc import Iterable
 
@@ -23,7 +25,7 @@ from nomad.config import config
 from nomad.config.models.plugins import Parser as ParserPlugin
 from nomad.config.models.plugins import ParserEntryPoint
 from nomad.datamodel import EntryArchive, EntryMetadata, results
-from nomad.datamodel.context import ClientContext, Context
+from nomad.datamodel.context import ClientContext, ServerLocalContext
 
 from .artificial import ChaosParser, EmptyParser, GenerateRandomParser, TemplateParser
 from .parser import (
@@ -152,17 +154,6 @@ def match_parser(
     return None, None
 
 
-class ParserContext(Context):
-    def __init__(self, mainfile_dir):
-        self._mainfile_dir = mainfile_dir
-
-    def raw_file(self, path, *args, **kwargs):
-        return open(os.path.join(self._mainfile_dir, path), *args, **kwargs)
-
-    def raw_path_exists(self, path: str) -> bool:
-        return os.path.exists(os.path.join(self._mainfile_dir, path))
-
-
 def run_parser(
     mainfile_path: str,
     parser: Parser,
@@ -171,6 +162,8 @@ def run_parser(
     server_context: bool = False,
     username: str = None,
     password: str = None,
+    *,
+    recursive_kwargs: dict = None,
 ) -> list[EntryArchive]:
     """
     Parses a file, given the path, the parser, and mainfile_keys, as returned by
@@ -184,11 +177,14 @@ def run_parser(
         # TODO this looks totally wrong. ParserContext is not a server context at all.
         # There should be three different context. Client, Server and Parser. Currently,
         # ClientContext seems to cover both the client and the local parser use-case.
-        entry_archive = EntryArchive(m_context=ParserContext(directory))
+        entry_archive = EntryArchive(m_context=ServerLocalContext(directory))
     else:
         entry_archive = EntryArchive(
             m_context=ClientContext(
-                local_dir=directory, username=username, password=password
+                local_dir=directory,
+                username=username,
+                password=password,
+                recursive_kwargs=recursive_kwargs,
             )
         )
 
@@ -223,6 +219,9 @@ def run_parser(
     for entry_archive in entry_archives:
         if entry_archive.metadata.domain is None:
             entry_archive.metadata.domain = parser.domain
+
+    entry_archives.extend(entry_archives[0].m_context.child_archives)
+
     return entry_archives
 
 
