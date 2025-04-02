@@ -183,6 +183,10 @@ def test_get_group_invalid(
 # tests using group fixtures with scope: 'function' (default)
 
 
+# This test is flaky.
+# The last check (whether changes propagated to the DB) fails sometimes, even when
+# retrying multiple times for up to over a minute. If it succeeds, it does so immediately.
+@pytest.mark.xfail(strict=False)
 def test_owner_not_member(auth_headers, client, group_molds, group_owner_not_member):
     ref_group = group_molds['owner_not_member_ref']
 
