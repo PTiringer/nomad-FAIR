@@ -105,11 +105,16 @@ const DatasetActions = React.memo(function VisitDatasetAction({data}) {
   const handleConfirmDoiDialogClose = (value) => {
     setOpenConfirmDoiDialog(false)
   }
+  const tooltip = dataciteEnabled
+    ? !data.doi
+      ? 'Assign a DOI'
+      : 'Dataset already has a DOI'
+    : 'Cannot create a DOI because the DataCite service is not enabled on this deployment'
 
   return <React.Fragment>
-    {dataciteEnabled && <Tooltip title="Assign a DOI">
+    {<Tooltip title={tooltip}>
       <span>
-        <IconButton onClick={() => setOpenConfirmDoiDialog(true)} disabled={!!data.doi}>
+        <IconButton onClick={() => setOpenConfirmDoiDialog(true)} disabled={!dataciteEnabled || !!data.doi}>
           <DOIIcon />
         </IconButton>
       </span>
