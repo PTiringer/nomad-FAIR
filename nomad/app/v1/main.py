@@ -64,7 +64,7 @@ async def profile_request(request: Request, call_next):
     if not request.query_params.get('__profile__', False):
         return await call_next(request)
 
-    with Profiler(async_mode='enabled') as profiler:
+    with Profiler(async_mode='strict') as profiler:
         await call_next(request)
 
     return HTMLResponse(profiler.output_html())
