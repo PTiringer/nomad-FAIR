@@ -329,6 +329,8 @@ def read_archive(file_or_path: str | BytesIO, **kwargs) -> ArchiveReader:
     from .storage_v2 import ArchiveReader as ArchiveReaderNew
     from .storage_v2 import ArchiveWriter as ArchiveWriterNew
 
+    kwargs['use_blocked_toc'] = False
+
     # todo: replace implementation to enable automatic conversion
     # if isinstance(file_or_path, str):
     #     from nomad.archive.converter import convert_archive
