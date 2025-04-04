@@ -7,9 +7,10 @@ edit_uri: ""
 nav:
   - Home: index.md
   - Tutorial:
-      - Navigating to NOMAD: tutorial/nomad_repo.md
-      - Uploading and publishing data: tutorial/upload_publish.md
+      - Overview: tutorial/overview.md
       - Exploring data: tutorial/explore.md
+      - Uploading and publishing data: tutorial/upload_publish.md
+      - Using NOMAD as an ELN: tutorial/NOMAD_ELN.md
       - Access data via API: tutorial/access_api.md
       - Schemas and plugins: tutorial/custom.md
       - Developing a NOMAD plugin: tutorial/develop_plugin.md
