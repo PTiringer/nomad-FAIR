@@ -175,7 +175,8 @@ async def goto_child(container, key: str | int | list):
         if isinstance(container, list | dict):
             return container[key]  # type: ignore
 
-        return await asyncio.to_thread(container.__getitem__, key)
+        return container[key]
+        # return await asyncio.to_thread(container.__getitem__, key)
 
     target = container
     for v in key:
