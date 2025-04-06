@@ -172,11 +172,7 @@ class ConfigError(Exception):
 
 async def goto_child(container, key: str | int | list):
     if not isinstance(key, list):
-        if isinstance(container, list | dict):
-            return container[key]  # type: ignore
-
         return container[key]
-        # return await asyncio.to_thread(container.__getitem__, key)
 
     target = container
     for v in key:
