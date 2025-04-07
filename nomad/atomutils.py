@@ -34,7 +34,6 @@ import numpy as np
 from ase import Atoms
 from ase.formula import Formula as ASEFormula
 from ase.utils import pbc2pbc
-from scipy.spatial import Voronoi  # pylint: disable=no-name-in-module
 
 from nomad.aflow_prototypes import aflow_prototypes
 from nomad.constants import atomic_masses
@@ -810,6 +809,9 @@ def get_brillouin_zone(reciprocal_lattice: np.ndarray) -> dict:
             first Brillouin zone. The order of these indices matter, because
             only when combined sequentially they form the correct face.
     """
+    # Lazily import expensive `scipy`
+    from scipy.spatial import Voronoi
+
     # Create the near lattice points that surround the origin
     b1 = reciprocal_lattice[0, :]
     b2 = reciprocal_lattice[1, :]

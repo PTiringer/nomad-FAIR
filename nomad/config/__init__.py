@@ -24,7 +24,7 @@ this module.
 
 All parameters are structured into objects for two reasons. First, to have
 categories. Second, to allow runtime manipulation that is not effected
-by python import logic. The categories are choosen along infrastructure components:
+by python import logic. The categories are chosen along infrastructure components:
 ``mongo``, ``elastic``, etc.
 
 This module also provides utilities to read the configuration from environment variables

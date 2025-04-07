@@ -57,13 +57,13 @@ from .util import parse_path
 # due to the next imports requiring the m_package already, this would be too late.
 m_package = Package()
 
-from .results import Results  # noqa
-from .data import EntryData, ArchiveSection, User, UserReference, AuthorReference  # noqa
-from .optimade import OptimadeEntry  # noqa
-from .metainfo.simulation.legacy_workflows import Workflow as LegacySimulationWorkflow  # noqa
-from .metainfo.workflow import Workflow  # noqa
-from .metainfo.measurements import Measurement  # noqa
-from .metainfo.tabulartree import TabularTree  # noqa
+from .results import Results  # noqa: I001
+from .data import EntryData, ArchiveSection, User, UserReference, AuthorReference
+from .optimade import OptimadeEntry
+from .metainfo.simulation.legacy_workflows import Workflow as LegacySimulationWorkflow
+from .metainfo.workflow import Workflow
+from .metainfo.measurements import Measurement
+from .metainfo.tabulartree import TabularTree
 
 try:
     from runschema.run import Run as run_def

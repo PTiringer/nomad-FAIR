@@ -24,7 +24,6 @@
 
 import os
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy import integrate, optimize
@@ -335,6 +334,8 @@ class EQEAnalyzer:
         """
         Plots the extrapolated eqe ad the raw eqe.
         """
+        import matplotlib.pyplot as plt
+
         x, y = self.arrange_eqe_columns()
         photon_energy_extrapolated, eqe_extrapolated = self.extrapolate_eqe()
         bandgap = self.calculate_bandgap()
@@ -355,6 +356,8 @@ class EQEAnalyzer:
         plt.show()
 
     def plot_eqe_raw(self):
+        import matplotlib.pyplot as plt
+
         x, y = self.arrange_eqe_columns()
         plt.rcParams.update({'font.size': 16, 'font.family': 'Arial'})
         plt.ylim(1e-4, 1.1)

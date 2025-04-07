@@ -60,7 +60,6 @@ import orjson
 import os
 import unicodedata
 import re
-import pandas as pd
 
 from nomad.config import config
 
@@ -1010,6 +1009,8 @@ def dict_to_dataframe(
     Returns:
         result: Pandas DataFrame with flattened and sorted data.
     """
+
+    import pandas as pd
 
     if not keys_to_filter:
         keys_to_filter = []

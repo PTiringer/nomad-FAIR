@@ -19,9 +19,6 @@ from copy import deepcopy
 from datetime import datetime
 
 import numpy as np
-import plotly.express as px
-import plotly.graph_objs as go
-from plotly.subplots import make_subplots
 
 from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import JSON, MSection, Package, Quantity, Section, SubSection
@@ -100,6 +97,8 @@ def resolve_plot_references(annotations, section, archive, logger):
 
 
 def express_do_plot(plotly_express_annotation, section, archive, logger):
+    import plotly.express as px
+
     method_name = plotly_express_annotation.pop('method')
     layout = plotly_express_annotation.get('layout', None)
     if layout:
@@ -271,6 +270,8 @@ class PlotSection(ArchiveSection):
                 )
 
         if plotly_express_annotations:
+            import plotly.graph_objs as go
+
             for plotly_express_annotation in plotly_express_annotations:
                 try:
                     label, figure_index, figure_open = get_figure_layout(
@@ -318,6 +319,8 @@ class PlotSection(ArchiveSection):
                         raise PlotSectionError(error)
 
         if plotly_subplots_annotations:
+            from plotly.subplots import make_subplots
+
             for plotly_subplots_annotation in plotly_subplots_annotations:
                 try:
                     label, figure_index, figure_open = get_figure_layout(

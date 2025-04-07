@@ -26,7 +26,6 @@ from collections.abc import Iterable
 from functools import lru_cache
 from typing import IO, Any
 
-import h5py
 import numpy as np
 import yaml
 from pydantic import BaseModel, Extra  # noqa: F401
@@ -250,6 +249,9 @@ class MatchingParser(Parser):
 
         self._ls = lru_cache(maxsize=16)(lambda directory: os.listdir(directory))
 
+    def __repr__(self):
+        return self.name
+
     def read_metadata_file(self, metadata_file: str) -> dict[str, Any]:
         """
         Read parser metadata from a yaml file.
@@ -311,39 +313,47 @@ class MatchingParser(Parser):
                 if sibling_is_mainfile:
                     return False
 
-        def match(value, reference):
-            if not isinstance(value, dict):
-                equal = value == (
-                    reference[()] if isinstance(reference, h5py.Dataset) else reference
-                )
-                return equal.all() if isinstance(equal, np.ndarray) else equal
-
-            if not hasattr(reference, 'keys'):
-                return False
-
-            matches = []
-            reference_keys = list(reference.keys())
-            tmp = value.pop('__has_comment', None)
-            for key, val in value.items():
-                if key == '__has_key':
-                    matches.append(val in reference_keys)
-                elif key == '__has_all_keys':
-                    assert isinstance(val, list) and isinstance(reference_keys, list)
-                    matches.append(False not in [v in reference_keys for v in val])
-                elif key == '__has_only_keys':
-                    assert isinstance(val, list) and isinstance(reference_keys, list)
-                    matches.append(False not in [v in val for v in reference_keys])
-                else:
-                    if key not in reference_keys:
-                        matches.append(False)
-                        continue
-
-                    matches.append(match(val, reference[key]))
-            if tmp:
-                value.update({'__has_comment': tmp})
-            return False not in matches
-
         if self._mainfile_contents_dict is not None:
+            import h5py
+
+            def match(value, reference):
+                if not isinstance(value, dict):
+                    equal = value == (
+                        reference[()]
+                        if isinstance(reference, h5py.Dataset)
+                        else reference
+                    )
+                    return equal.all() if isinstance(equal, np.ndarray) else equal
+
+                if not hasattr(reference, 'keys'):
+                    return False
+
+                matches = []
+                reference_keys = list(reference.keys())
+                tmp = value.pop('__has_comment', None)
+                for key, val in value.items():
+                    if key == '__has_key':
+                        matches.append(val in reference_keys)
+                    elif key == '__has_all_keys':
+                        assert isinstance(val, list) and isinstance(
+                            reference_keys, list
+                        )
+                        matches.append(False not in [v in reference_keys for v in val])
+                    elif key == '__has_only_keys':
+                        assert isinstance(val, list) and isinstance(
+                            reference_keys, list
+                        )
+                        matches.append(False not in [v in val for v in reference_keys])
+                    else:
+                        if key not in reference_keys:
+                            matches.append(False)
+                            continue
+
+                        matches.append(match(val, reference[key]))
+                if tmp:
+                    value.update({'__has_comment': tmp})
+                return False not in matches
+
             is_match = False
             if (
                 mime.startswith('application/json')
@@ -389,12 +399,11 @@ class MatchingParser(Parser):
     ) -> None:
         raise NotImplementedError()
 
-    def __repr__(self):
-        return self.name
-
 
 # TODO remove this after merging hdf5 reference, only for parser compatibility
 def to_hdf5(value: Any, f: str | IO, path: str):
+    import h5py
+
     with h5py.File(f, 'a') as root:
         segments = path.rsplit('/', 1)
         group = root.require_group(segments[0]) if len(segments) == 2 else root
