@@ -17,19 +17,15 @@
 #
 
 import datetime
+import importlib
 import re
+import warnings
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from unidecode import unidecode
 
 from nomad.datamodel.metainfo.plot import PlotSection
-
-if TYPE_CHECKING:
-    from structlog.stdlib import (
-        BoundLogger,
-    )
-from ase.data import atomic_masses, atomic_numbers, chemical_symbols
 
 from nomad import utils
 from nomad.datamodel.data import (
@@ -68,7 +64,6 @@ from nomad.datamodel.metainfo.basesections.v1 import (
     SystemComponent as Component,
 )
 from nomad.datamodel.metainfo.common import ProvenanceTracker
-from nomad.datamodel.metainfo.eln.eqe_parser import EQEAnalyzer
 from nomad.datamodel.results import (
     ELN,
     BandGap,
@@ -85,6 +80,31 @@ from nomad.datamodel.results import ElementalComposition as ResultsElementalComp
 from nomad.metainfo import Datetime, Package, Quantity, Reference, Section, SubSection
 from nomad.metainfo.metainfo import Category, MCategory, MEnum, MProxy, MSection
 from nomad.units import ureg
+
+
+class _LazyEQEAnalyzer:
+    """Lazily import expensive EQEAnalyzer."""
+
+    def __new__(cls, *args, **kwargs):
+        warnings.warn(
+            "Importing 'EQEAnalyzer' from this module is deprecated. "
+            "Please import it directly from 'nomad.datamodel.metainfo.eln.eqe_parser'.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+        EQEAnalyzer = importlib.import_module(
+            'nomad.datamodel.metainfo.eln.eqe_parser'
+        ).EQEAnalyzer
+        return EQEAnalyzer(*args, **kwargs)
+
+
+EQEAnalyzer = _LazyEQEAnalyzer
+
+if TYPE_CHECKING:
+    from structlog.stdlib import (
+        BoundLogger,
+    )
 
 
 def add_band_gap(archive, band_gap):
@@ -1679,6 +1699,9 @@ class SolarCellEQE(PlotSection):
 
         if self.eqe_data_file:
             with archive.m_context.raw_file(self.eqe_data_file) as f:
+                # Import `EQEAnalyzer` is slow (owing to scipy)
+                from nomad.datamodel.metainfo.eln.eqe_parser import EQEAnalyzer
+
                 eqe_dict = EQEAnalyzer(
                     f.name, header_lines=self.header_lines
                 ).eqe_dict()
