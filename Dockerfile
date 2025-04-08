@@ -127,8 +127,6 @@ FROM dev_python AS dev_package
 
 WORKDIR /app
 
-COPY docs ./docs
-COPY examples ./examples
 COPY nomad ./nomad
 COPY scripts ./scripts
 COPY tests ./tests
@@ -136,7 +134,6 @@ COPY .coveragerc \
      AUTHORS \
      LICENSE \
      MANIFEST.in \
-     mkdocs.yml \
      pyproject.toml \
      README.md \
      README.parsers.md \
@@ -149,13 +146,6 @@ COPY ops/docker-compose ./ops/docker-compose
 
 # Build documentation with static version
 RUN SETUPTOOLS_SCM_PRETEND_VERSION='0.0' uv pip install ".[parsing,infrastructure,dev]"
-
-RUN ./scripts/generate_docs_artifacts.sh \
- && mkdocs build \
- && mkdir -p nomad/app/static/docs \
- && cp -r site/* nomad/app/static/docs
-
-RUN RUN_DOCS_TEST=1 python -m pytest tests/app/test_app.py
 
 # Copy the built gui code
 COPY --from=build_node /app/gui/build nomad/app/static/gui
