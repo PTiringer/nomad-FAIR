@@ -314,7 +314,7 @@ for parser in parsers:
     if (
         getattr(parser, 'domain', None) == 'dft'
         and code_name is not None
-        and code_name != 'currupted mainfile'
+        and code_name != 'corrupted mainfile'
         and code_name != 'Template'
     ):
         code_names.append(code_name)
