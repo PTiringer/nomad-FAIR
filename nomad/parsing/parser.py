@@ -152,7 +152,7 @@ class BrokenParser(Parser):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.code_name = 'currupted mainfile'
+        self.code_name = 'corrupted mainfile'
         self._patterns = [
             re.compile(
                 r'^pid=[0-9]+'
