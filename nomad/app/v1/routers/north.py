@@ -306,6 +306,7 @@ async def start_tool(
             'NOMAD_CLIENT_USER': user.username,
             'NOMAD_CLIENT_ACCESS_TOKEN': access_token,
             'NOMAD_CLIENT_URL': config.api_url(ssl=config.services.https_upload),
+            'NOMAD_oasis_uses_central_user_management': config.oasis.uses_central_user_management,
         },
         'user_home': {
             'host_path': os.path.join(config.fs.north_home_external, user.user_id),
