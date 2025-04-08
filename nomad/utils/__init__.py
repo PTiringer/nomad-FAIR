@@ -41,6 +41,7 @@ Depending on the configuration all logs will also be send to a central logstash.
 from typing import Any
 from collections.abc import Iterable
 from collections import OrderedDict
+import fnmatch
 from functools import reduce
 from itertools import takewhile
 import base64
@@ -698,6 +699,29 @@ def rebuild_dict(src: dict, separator: str = '.'):
     return ret
 
 
+def glob(path: str, include: list[str], exclude: list[str]) -> bool:
+    """
+    Determines if the given path matches include patterns and is not excluded.
+
+    Args:
+        path (str): The file path to check.
+        include (list[str]): Glob patterns for inclusion.
+        exclude (list[str]): Glob patterns for exclusion.
+
+    Returns:
+        bool: True if the path is accepted, False otherwise.
+    """
+    # If includes are specified, return False if none match
+    if include and not any(fnmatch.fnmatch(path, pattern) for pattern in include):
+        return False
+
+    # Exclude if any exclusion pattern matches
+    if exclude and any(fnmatch.fnmatch(path, pattern) for pattern in exclude):
+        return False
+
+    return True
+
+
 def prune_dict(data, include_patterns=None, exclude_patterns=None):
     """
     Prune a nested dictionary based on include and exclude branch patterns.
@@ -713,6 +737,8 @@ def prune_dict(data, include_patterns=None, exclude_patterns=None):
     Returns:
         Pruned dictionary.
     """
+    if include_patterns is None and exclude_patterns is None:
+        return data
 
     # Preprocess patterns
     def process_patterns(patterns):

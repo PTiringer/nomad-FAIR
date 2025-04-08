@@ -152,9 +152,12 @@ def get_schema_quantity(type, quantity):
         name = python_schema_name
     elif type == 'yaml':
         name = yaml_schema_name
-        dtype = {'data.name': 'str', 'data.count': 'int', 'data.frequency': 'float'}[
-            quantity
-        ]
+        dtype = {
+            'data.name': 'str',
+            'data.count': 'int',
+            'data.frequency': 'float',
+            'data.child_repeating.name': 'str',
+        }[quantity]
         dtype = f'{dtype_separator}{dtype}'
 
     return f'{quantity}{schema_separator}{name}{dtype}'
@@ -541,6 +544,13 @@ def test_search_quantities(indices, example_eln_data, api_query, total):
             [f'data.name', 'search_quantities.0.id'],
             [],
             id='include-both',
+        ),
+        pytest.param(
+            ['data.child_repeating.name'],
+            None,
+            [f'data.child_repeating.0.name'],
+            [],
+            id='repeating-section',
         ),
     ],
 )

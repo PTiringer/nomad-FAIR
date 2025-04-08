@@ -87,7 +87,6 @@ from nomad.metainfo.elasticsearch_extension import (
     create_dynamic_quantity_annotation,
     entry_index,
     entry_type,
-    get_searchable_quantity_value_field,
     index_entries,
     material_entry_type,
     material_type,
@@ -455,9 +454,9 @@ def _es_to_api_pagination(
 
 def _es_to_entry_dict(
     hit,
-    required: MetadataRequired = None,
-    requires_filtering: bool = False,
-    doc_type=None,
+    requires_filtering: bool,
+    include_patterns: list[str] | None,
+    exclude_patterns: list[str] | None,
 ) -> dict[str, Any]:
     """
     Translates an ES hit response into a response data object that is expected
@@ -468,12 +467,8 @@ def _es_to_entry_dict(
     # Add metadata default values
     for key, value in _entry_metadata_defaults.items():
         if key not in entry_dict:
-            if required is not None:
-                if required.exclude and key in required.exclude:
-                    continue
-                if required.include and key not in required.include:
-                    continue
-
+            if not utils.glob(key, include_patterns, exclude_patterns):
+                continue
             entry_dict[key] = value
 
     # Delete author email
@@ -487,69 +482,56 @@ def _es_to_entry_dict(
             if 'email' in author:
                 del author['email']
 
-    # The search_quantities field is mapped here into the return structure
+    # The search_quantities field is mapped here into the return structure. This
+    # mapping quickly becomes a bottle-neck in the whole query process, and that
+    # is why it has been heavily optimized. # TODO: If this mapping on every
+    # request gets too heavy, we could map the response into a non-indexed field
+    # at indexing time.
     search_quantities = entry_dict.get('search_quantities')
     if search_quantities:
-        flattened_dict = {}
-        for search_quantity in search_quantities:
+        valid_keys = (
+            'float_value',
+            'str_value',
+            'int_value',
+            'datetime_value',
+            'bool_value',
+        )
+        sep = schema_separator
+        glob_func = utils.glob
+        rebuild_dict = utils.rebuild_dict
+        logger = utils.get_logger(__name__)
+        flattened = {}
+        for sq in search_quantities:
             try:
-                id = search_quantity.get('id')
-                path_archive = search_quantity.get('path_archive')
-                if id is None or path_archive is None:
+                id_val = sq.get('id')
+                path_archive = sq.get('path_archive')
+                if id_val is None or path_archive is None:
                     continue
-                quantity = doc_type.quantities.get(id)
-                if not quantity:
-                    path, schema, _ = parse_quantity_name(id)
-                    if schema and schema.startswith((yaml_prefix, nexus_prefix)):
-                        dtype_map = {
-                            'float_value': float,
-                            'str_value': str,
-                            'int_value': int,
-                            'bool_value': bool,
-                            'datetime_value': Datetime,
-                        }
-                        dtype = None
-                        for key, value in dtype_map.items():
-                            if key in search_quantity:
-                                dtype = value
-                                break
-                        quantity = get_quantity(
-                            Quantity(type=dtype), path, schema, doc_type
-                        )
-                    else:
+
+                if requires_filtering:
+                    path_schema = id_val.split(sep, 1)[0]
+                    if not glob_func(path_schema, include_patterns, exclude_patterns):
                         continue
-                value_field_name = get_searchable_quantity_value_field(
-                    quantity.annotation
-                )
-                if not value_field_name:
-                    continue
-                value = search_quantity[value_field_name]
-                flattened_dict[path_archive] = value
+
+                for key in valid_keys:
+                    if key in sq:
+                        flattened[path_archive] = sq[key]
+                        break
+
             except Exception as e:
-                utils.get_logger(__name__).error(
+                logger.error(
                     'error mapping dynamic search quantity to entry dict',
                     exc_info=e,
-                    search_quantity=search_quantity,
+                    extra={'search_quantity': sq},
                 )
-
-        entry_dict.update(utils.rebuild_dict(flattened_dict))
+        entry_dict.update(rebuild_dict(flattened))
 
     # Here we do additional filtering that could not be done by ES directly
-    # TODO: If we at some point don't need to return search_quantities at
-    # all, this filtering could be replaced by the action of dropping the whole
-    # search_quantities field and doing additional filtering for the
-    # constructed dynamic quantities.
-    if requires_filtering and required:
-        include_patterns = (
-            [pattern.split(schema_separator)[0] for pattern in required.include]
-            if required.include
-            else None
-        )
-        exclude_patterns = (
-            [pattern.split(schema_separator)[0] for pattern in required.exclude]
-            if required.exclude
-            else None
-        )
+    # TODO: If we at some point don't need to return search_quantities at all,
+    # this filtering could be replaced by the action of dropping the whole
+    # search_quantities field and doing additional filtering for the constructed
+    # dynamic quantities.
+    if requires_filtering:
         entry_dict = utils.prune_dict(entry_dict, include_patterns, exclude_patterns)
 
     return entry_dict
@@ -1584,8 +1566,6 @@ def _and_clauses(query: Query) -> Generator[Query, None, None]:
 def _buckets_to_interval(
     owner: str = 'public',
     query: Query | EsQuery = None,
-    pagination: MetadataPagination = None,
-    required: MetadataRequired = None,
     aggregations: dict[str, Aggregation] = {},
     user_id: str = None,
     index: Index = entry_index,
@@ -1625,7 +1605,13 @@ def _buckets_to_interval(
         for agg_name, agg in histogram_requests.items()
     }
     response = search(
-        owner, query, pagination, required, min_max_aggregations, user_id, index
+        owner,
+        query,
+        MetadataPagination(page_size=0),
+        None,
+        min_max_aggregations,
+        user_id,
+        index,
     )
 
     # Calculate interval and return the modified aggregations
@@ -1699,7 +1685,7 @@ def search(
     # separately query the min/max values before forming the histogram
     # aggregation
     aggregations, histogram_responses, bucket_values = _buckets_to_interval(
-        owner, query, pagination, required, aggregations, user_id, index
+        owner, query, aggregations, user_id, index
     )
 
     doc_type = index.doc_type
@@ -1852,13 +1838,30 @@ def search(
         # we cannot report EsQuery back, because it won't validate within the MetadataResponse model
         query = None
 
+    # Precalculate the include/exclude patterns
+    include_patterns = None
+    exclude_patterns = None
+    if required:
+        include_patterns = (
+            [pattern.split(schema_separator, 1)[0] for pattern in required.include]
+            if required.include
+            else None
+        )
+        exclude_patterns = (
+            [pattern.split(schema_separator, 1)[0] for pattern in required.exclude]
+            if required.exclude
+            else None
+        )
+
     result = MetadataResponse(
         owner='all' if owner is None else owner,
         query=query,
         pagination=pagination_response,
         required=required,
         data=[
-            _es_to_entry_dict(hit, required, requires_filtering, doc_type)
+            _es_to_entry_dict(
+                hit, requires_filtering, include_patterns, exclude_patterns
+            )
             for hit in es_response.hits
         ],
         **more_response_data,
