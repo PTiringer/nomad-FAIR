@@ -1733,7 +1733,7 @@ class MSection(metaclass=MObjectMeta):
                 this must be used to explicitly state the subsection definition.
         """
 
-        section_def = section_cls.m_def
+        section_def = section_cls.m_def.m_resolved()  # some input may be a proxy
         sub_section_defs = self.m_def.all_sub_sections_by_section.get(section_def, [])
         n_sub_section_defs = len(sub_section_defs)
         if n_sub_section_defs == 0:
