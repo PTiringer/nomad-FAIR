@@ -338,7 +338,7 @@ python package install tests:
         
         uv venv -p $PYTHON_VERSION
         
-        uv pip install dist/nomad-*.tar.gz
+        uv pip install dist/nomad_*.tar.gz
         
         ./.venv/bin/python -c 'import nomad.cli'
         ./.venv/bin/python -c 'from nomad.client import ArchiveQuery'
