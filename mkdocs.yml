@@ -29,7 +29,8 @@ nav:
           - Access processed data: howto/programmatic/archive_query.md
           - Transform data: howto/programmatic/json_transformer.md
       - NOMAD Oasis:
-          - Install an Oasis: howto/oasis/install.md
+          - Configure an Oasis: howto/oasis/configure.md
+          - Deploy an Oasis: howto/oasis/deploy.md
           - Update an Oasis: howto/oasis/update.md
           - Perform admin tasks: howto/oasis/admin.md
       - Plugins:
@@ -148,7 +149,7 @@ plugins:
   - redirects:
       redirect_maps:
         "pythonlib.md": "howto/programmatic/pythonlib.md"
-        "oasis.md": "howto/oasis/install.md"
+        "oasis.md": "howto/oasis/configure.md"
         "develop/gitlab.md": "howto/develop/contrib.md"
   - glightbox
   # - git-revision-date-localized
