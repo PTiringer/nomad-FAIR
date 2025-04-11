@@ -93,6 +93,7 @@ const InputTerms = React.memo(({
   showStatistics,
   showSuggestions,
   options,
+  queryMode,
   sortStatic,
   className,
   classes,
@@ -230,8 +231,8 @@ const InputTerms = React.memo(({
     const checked = Object.entries(newOptions)
       .filter(([key, value]) => value.checked)
       .map(([key, value]) => getFinalKey(key, filterData[searchQuantity]?.dtype))
-    setFilter(new Set(checked))
-  }, [setFilter, visibleOptions, filterData, searchQuantity])
+    setFilter(new Set(checked), {queryMode: {and: 'all', or: 'any'}[queryMode]})
+  }, [setFilter, visibleOptions, filterData, searchQuantity, queryMode])
 
   // Create the search component
   const searchComponent = useMemo(() => {
@@ -396,6 +397,7 @@ InputTerms.propTypes = {
   showHeader: PropTypes.bool, // Whether to show the header
   showStatistics: PropTypes.bool, // Whether to show statistics
   showSuggestions: PropTypes.bool, // Whether to show the text field suggestions
+  queryMode: PropTypes.string,
   className: PropTypes.string,
   classes: PropTypes.object,
   'data-testid': PropTypes.string

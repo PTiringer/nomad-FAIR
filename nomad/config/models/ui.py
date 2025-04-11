@@ -574,6 +574,11 @@ class Axis(AxisScale, AxisQuantity):
     """Configuration for a plot axis with limited scaling options."""
 
 
+class QueryModeEnum(str, Enum):
+    AND = 'and'
+    OR = 'or'
+
+
 class TermsBase(ConfigBaseModel):
     """Base model for configuring terms components."""
 
@@ -590,6 +595,10 @@ class TermsBase(ConfigBaseModel):
     showinput: bool | None = Field(
         None,
         deprecated='The "showinput" field is deprecated, use "show_input" instead.',
+    )
+    query_mode: QueryModeEnum | None = Field(
+        None,
+        description='The query mode to use when multiple terms are selected.',
     )
 
     @model_validator(mode='before')

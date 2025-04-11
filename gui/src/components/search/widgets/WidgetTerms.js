@@ -45,6 +45,11 @@ import { scales } from '../../plotting/common'
 // Predefined in order to not break memoization
 const dtypes = new Set([DType.String, DType.Enum, DType.Boolean])
 
+const queryModes = {
+  'and': 'and',
+  'or': 'or'
+}
+
 /**
  * Displays a terms widget.
  */
@@ -105,6 +110,7 @@ export const WidgetTerms = React.memo((
   search_quantity,
   scale,
   show_input,
+  query_mode,
   className,
   'data-testid': testID
 }) => {
@@ -141,8 +147,8 @@ export const WidgetTerms = React.memo((
       const newValue = new Set(old)
       selected ? newValue.add(key) : newValue.delete(key)
       return newValue
-    })
-  }, [setFilter])
+    }, {queryMode: {and: 'all', or: 'any'}[query_mode]})
+  }, [setFilter, query_mode])
 
   const handleEdit = useCallback(() => {
     setWidget(old => { return {...old, editing: true } })
@@ -249,6 +255,7 @@ WidgetTerms.propTypes = {
   scale: PropTypes.string,
   autorange: PropTypes.bool,
   show_input: PropTypes.bool,
+  query_mode: PropTypes.string,
   className: PropTypes.string,
   'data-testid': PropTypes.string
 }
@@ -349,6 +356,20 @@ export const WidgetTermsEdit = React.memo((props) => {
           />
         </WidgetEditOption>
         <WidgetEditOption>
+          <TextField
+            select
+            fullWidth
+            label="Query mode"
+            variant="filled"
+            value={settings.query_mode}
+            onChange={(event) => { handleChange('query_mode', event.target.value) }}
+          >
+            {Object.keys(queryModes).map((key) =>
+              <MenuItem value={key} key={key}>{key}</MenuItem>
+            )}
+          </TextField>
+        </WidgetEditOption>
+        <WidgetEditOption>
           <FormControlLabel
             control={<Checkbox checked={settings.show_input} onChange={(event, value) => handleChange('show_input', value)}/>}
             label='Show input field'
@@ -367,11 +388,13 @@ WidgetTermsEdit.propTypes = {
   nbins: PropTypes.number,
   autorange: PropTypes.bool,
   show_input: PropTypes.bool,
+  query_mode: PropTypes.bool,
   onClose: PropTypes.func
 }
 
 export const schemaWidgetTerms = schemaWidget.shape({
   search_quantity: string().required('Search quantity is required.'),
   scale: string().required('Scale is required.'),
-  show_input: bool()
+  show_input: bool(),
+  query_mode: string()
 })

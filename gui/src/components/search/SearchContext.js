@@ -425,7 +425,7 @@ export const SearchContextRaw = React.memo(({
       useFilterMaps,
       useResetFilters,
       useQueryString,
-      useDynamicQueryModes,
+      useQueryModes,
       aggsFamily,
       useWidgetValue,
       useSetWidget,
@@ -550,8 +550,8 @@ export const SearchContextRaw = React.memo(({
       default: (name) => initialQuery[name]
     })
 
-    const dynamicQueryModesFamily = atomFamily({
-      key: `dynamicQueryModesFamily_${contextID}`,
+    const queryModesFamily = atomFamily({
+      key: `queryModesFamily_${contextID}`,
       default: (name) => undefined
     })
 
@@ -637,32 +637,22 @@ export const SearchContextRaw = React.memo(({
     /**
      * A Recoil.js selector that return the dynamic query modes state
      */
-    const dynamicQueryModesState = selector({
-      key: `dynamicQueryModes_${contextID}`,
+    const queryModesState = selector({
+      key: `queryModes_${contextID}`,
       get: ({get}) => {
-        const query = {}
+        const queryModes = {}
         for (const key of get(filterNamesState)) {
-          const filter = get(dynamicQueryModesFamily(key))
-          if (filter !== undefined) {
-            query[key] = filter
+          const queryMode = get(queryModesFamily(key))
+          if (queryMode !== undefined) {
+            queryModes[key] = queryMode
           }
         }
-        return query
-      },
-      set: ({ set, get }, data) => {
-        for (const filter of get(filterNamesState)) {
-          set(dynamicQueryModesFamily(filter), undefined)
-        }
-        if (data) {
-          for (const [key, value] of Object.entries(data)) {
-            set(dynamicQueryModesFamily(key), value)
-          }
-        }
+        return queryModes
       }
     })
 
-    function useDynamicQueryModes() {
-      return useRecoilValue(dynamicQueryModesState)
+    function useQueryModes() {
+      return useRecoilValue(queryModesState)
     }
 
     const widgetFamily = atomFamily({
@@ -898,11 +888,11 @@ export const SearchContextRaw = React.memo(({
       const section = sectionContext?.section
       const subname = useMemo(() => section ? name.slice(section.length + 1) : undefined, [name, section])
       const setter = useSetRecoilState(queryFamily(section || name))
-      const dynamicQueryModeSetter = useSetRecoilState(dynamicQueryModesFamily(section || name))
+      const queryModeSetter = useSetRecoilState(queryModesFamily(section || name))
 
       return useCallback((value, config = undefined) => {
         updatedFilters.current.add(name)
-        dynamicQueryModeSetter(config?.queryMode)
+        queryModeSetter(config?.queryMode)
         section
           ? setter(old => {
             const newValue = isNil(old) ? {} : {...old}
@@ -915,7 +905,7 @@ export const SearchContextRaw = React.memo(({
           : setter(isFunction(value)
             ? (old) => clearEmpty(value(old))
             : clearEmpty(value))
-      }, [name, dynamicQueryModeSetter, section, setter, subname])
+      }, [name, queryModeSetter, section, setter, subname])
     }
 
     /**
@@ -957,7 +947,7 @@ export const SearchContextRaw = React.memo(({
       const reset = useRecoilCallback(({set}) => () => {
         for (const filter of filterNames) {
           set(queryFamily(filter), undefined)
-          set(dynamicQueryModesFamily(filter), undefined)
+          set(queryModesFamily(filter), undefined)
         }
       }, [])
       return reset
@@ -1137,7 +1127,7 @@ export const SearchContextRaw = React.memo(({
     const useUpdateFilter = () => {
       return useRecoilCallback(({set}) => ([key, value, queryMode]) => {
         set(queryFamily(key), value)
-        if (queryMode) set(dynamicQueryModesFamily(key), queryMode)
+        if (queryMode) set(queryModesFamily(key), queryMode)
       }, [])
     }
 
@@ -1167,7 +1157,7 @@ export const SearchContextRaw = React.memo(({
       useFilters,
       useResetFilters,
       useQueryString,
-      useDynamicQueryModes,
+      useQueryModes,
       aggsFamily,
       useWidgetValue,
       useSetWidget,
@@ -1233,7 +1223,7 @@ export const SearchContextRaw = React.memo(({
   const updateAggsResponse = useSetAggsResponse()
   const aggs = useAggs()
   const query = useQuery()
-  const dynamicQueryModes = useDynamicQueryModes()
+  const queryModes = useQueryModes()
   const filtersLocked = useFiltersLocked()
   const required = useRequired()
   const resultsUsed = useResultsUsed()
@@ -1327,8 +1317,8 @@ export const SearchContextRaw = React.memo(({
     // The locked filters are applied as a parallel AND query. This is the only
     // way to consistently apply them. If we mix them inside 'regular' filters,
     // they can be accidentally overwritten with an OR statement.
-    const customQuery = convertQueryGUIToAPI(apiQuery, resource, filtersData, dynamicQueryModes)
-    const lockedQuery = convertQueryGUIToAPI(filtersLocked, resource, filtersData, dynamicQueryModes)
+    const customQuery = convertQueryGUIToAPI(apiQuery, resource, filtersData, queryModes)
+    const lockedQuery = convertQueryGUIToAPI(filtersLocked, resource, filtersData, queryModes)
 
     let finalQuery = customQuery
     if (!isEmpty(lockedQuery)) {
@@ -1418,7 +1408,7 @@ export const SearchContextRaw = React.memo(({
         }
         resolve({undefined, ...resolveArgs})
       })
-  }, [filtersData, filterDefaults, filtersLocked, resource, api, raiseError, resolve, dynamicQueryModes, setApiQuery])
+  }, [filtersData, filterDefaults, filtersLocked, resource, api, raiseError, resolve, queryModes, setApiQuery])
 
   // This is a debounced version of apiCall.
   const apiCallDebounced = useMemo(() => debounce(apiCall, debounceTime), [apiCall])
@@ -1714,6 +1704,7 @@ export const SearchContextRaw = React.memo(({
       useApiData,
       useApiQuery,
       useQuery,
+      useQueryModes,
       useSetPagination,
       useParseQuery,
       useParseQueries,
@@ -1790,6 +1781,7 @@ export const SearchContextRaw = React.memo(({
     useRemoveAgg,
     useAggs,
     useQuery,
+    useQueryModes,
     useSetFilters,
     useUpdateFilter,
     apiCallInterMediate,
