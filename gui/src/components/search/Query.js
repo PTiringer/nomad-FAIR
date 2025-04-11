@@ -198,14 +198,15 @@ export const QueryCurlyBracketRight = React.memo((props) => {
 })
 
 // Custom function for chip creation
-const createChips = (name, filterValue, onDelete, filterData, units) => {
+const createChips = (name, filterValue, onDelete, filterData, units, queryModes) => {
   if (isNil(filterValue)) return []
 
   const { serializerPretty: serializer, customSerialization, queryMode } = filterData[name]
+  const finalQueryMode = queryModes?.[name] || queryMode
   const isArray = Array.isArray(filterValue)
   const isSet = filterValue instanceof Set
   const isObj = isPlainObject(filterValue)
-  const op = queryMode === "any" ? <QueryOr/> : <QueryAnd/>
+  const op = finalQueryMode === "any" ? <QueryOr/> : <QueryAnd/>
   const chips = []
 
   const createChip = (label, onDelete, single = false) => (
@@ -278,7 +279,8 @@ const useStyles = makeStyles(theme => ({
   }
 }))
 const QueryChips = React.memo(({ className, classes }) => {
-  const { filterData, useQuery, useUpdateFilter } = useSearchContext()
+  const { filterData, useQuery, useUpdateFilter, useQueryModes } = useSearchContext()
+  const queryModes = useQueryModes()
   const query = useQuery()
   const updateFilter = useUpdateFilter()
   const theme = useTheme()
@@ -307,7 +309,7 @@ const QueryChips = React.memo(({ className, classes }) => {
             }
             newChips.push(
               <React.Fragment key={`${quantity}.${key}`}>
-                {createChips(`${quantity}.${key}`, value, onDelete, filterData, units)}
+                {createChips(`${quantity}.${key}`, value, onDelete, filterData, units, queryModes)}
               </React.Fragment>
             )
           })
@@ -322,12 +324,12 @@ const QueryChips = React.memo(({ className, classes }) => {
       // Regular chips get their own group
       } else {
         const onDelete = (newValue) => updateFilter([quantity, newValue])
-        chips.push(createChips(quantity, filterValue, onDelete, filterData, units))
+        chips.push(createChips(quantity, filterValue, onDelete, filterData, units, queryModes))
       }
     }
 
     return chips
-  }, [query, filterData, units, updateFilter])
+  }, [query, filterData, units, updateFilter, queryModes])
 
   return (
     <div className={clsx(className, styles.root)}>
