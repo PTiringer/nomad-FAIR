@@ -130,7 +130,7 @@ def convert_archive(
 
     try:
         tmp_path = ''
-        with read_archive(original_path, use_blocked_toc=False) as reader:
+        with read_archive(original_path) as reader:
             flush(f'{prefix} [INFO] Converting: {original_path}')
             tmp_path = (
                 f'{original_path}.{hashlib.md5(original_path.encode()).hexdigest()}'

@@ -412,7 +412,7 @@ def export(ctx, uploads, required, output: str):
             entry_count += 1
             total_count += 1
             try:
-                archive = upload_files.read_archive(entry_id, use_blocked_toc=False)
+                archive = upload_files.read_archive(entry_id)
                 archive_data = required_reader.read(archive, entry_id, upload_id)
                 write(entry_id, archive_data)
             except ArchiveQueryError as e:
@@ -1052,7 +1052,7 @@ def integrity(
         for entry in entries:
             entry_id = entry['entry_id']
             es_nomad_version = entry['nomad_version']
-            with upload.upload_files.read_archive(entry_id, False) as archive:
+            with upload.upload_files.read_archive(entry_id) as archive:
                 archive_nomad_version = archive[entry_id]['metadata']['nomad_version']
                 if es_nomad_version != archive_nomad_version:
                     return True

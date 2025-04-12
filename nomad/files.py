@@ -679,9 +679,7 @@ class UploadFiles(DirectoryObject, metaclass=ABCMeta):
     def scandir(self, path: str = '', depth: int = -1):
         raise NotImplementedError()
 
-    def read_archive(
-        self, entry_id: str, use_blocked_toc: bool = True
-    ) -> ArchiveReader:
+    def read_archive(self, entry_id: str) -> ArchiveReader:
         """
         Returns an :class:`nomad.archive.ArchiveReader` that contains the
         given entry_id.
@@ -880,15 +878,9 @@ class StagingUploadFiles(UploadFiles):
 
         return archive_file_object.size
 
-    def read_archive(
-        self, entry_id: str, use_blocked_toc: bool = True
-    ) -> ArchiveReader:
+    def read_archive(self, entry_id: str) -> ArchiveReader:
         try:
-            return read_archive(
-                self._archive_file_object(entry_id, True).os_path,
-                use_blocked_toc=use_blocked_toc,
-            )
-
+            return read_archive(self._archive_file_object(entry_id, True).os_path)
         except FileNotFoundError:
             raise KeyError(entry_id)
 
@@ -1492,7 +1484,7 @@ class PublicUploadFiles(UploadFiles):
 
         return _versioned_archive_file_object(target_dir, versioned_file_name, fallback)
 
-    def _open_msg_file(self, use_blocked_toc: bool = True) -> ArchiveReader:
+    def _open_msg_file(self) -> ArchiveReader:
         if self._archive_msg_file is not None:
             if not self._archive_msg_file.is_closed():
                 return self._archive_msg_file
@@ -1504,7 +1496,7 @@ class PublicUploadFiles(UploadFiles):
         if not msg_file_object.exists():
             raise FileNotFoundError()
 
-        archive = read_archive(msg_file_object.os_path, use_blocked_toc=use_blocked_toc)
+        archive = read_archive(msg_file_object.os_path)
         assert archive is not None
         self._archive_msg_file = archive
 
@@ -1706,9 +1698,9 @@ class PublicUploadFiles(UploadFiles):
 
         raise KeyError(file_path)
 
-    def read_archive(self, entry_id: str, use_blocked_toc: bool = True) -> Any:
+    def read_archive(self, entry_id: str) -> Any:
         try:
-            archive = self._open_msg_file(use_blocked_toc)
+            archive = self._open_msg_file()
             if entry_id in archive:
                 return archive
         except FileNotFoundError:

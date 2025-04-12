@@ -1038,7 +1038,7 @@ def _read_entry_from_archive(entry: dict, uploads, required_reader: RequiredRead
     try:
         upload_files = uploads.get_upload_files(upload_id)
 
-        with upload_files.read_archive(entry_id, True) as archive:
+        with upload_files.read_archive(entry_id) as archive:
             entry['archive'] = required_reader.read(archive, entry_id, upload_id)
             return entry
     except ArchiveQueryError as e:
