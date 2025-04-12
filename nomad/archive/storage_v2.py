@@ -17,7 +17,6 @@
 #
 from __future__ import annotations
 
-import struct
 from collections.abc import Generator, Iterable
 from io import BytesIO
 
@@ -624,7 +623,6 @@ class ArchiveReader(ArchiveItem):
     def __init__(
         self,
         file_or_path: str | BytesIO,
-        use_blocked_toc: bool = True,
         counter: ArchiveReadCounter = None,
     ):
         self._file_or_path: str | BytesIO = file_or_path
@@ -647,40 +645,8 @@ class ArchiveReader(ArchiveItem):
         # { 'toc_pos': <...>
         #              ^11
         # 11 ==> 1 (0b0000XXXX for map) + 1 (0b101XXXXX for str key) + 7 ('toc_pos') + 2 (0xc4 0bXXXXXXXX for bin 8)
-        self._toc_position = tuple(
-            Utility.decode(self._direct_read(10, 11 + ArchiveWriter.magic_len))
-        )
-        self._toc_entry: dict | None = None
-
-        self._use_blocked_toc: bool = use_blocked_toc
-
-        # if not using blocked TOC, load everything now
-        if not self._use_blocked_toc:
-            self._ensure_toc()
-            return
-
-        # determine the map storing the TOC
-        # https://github.com/msgpack/msgpack/blob/master/spec.md#map-format-family
-        toc_start: int = self._toc_position[0]
-        if (b := self._direct_read(1, toc_start)[0]) & 0b11110000 == 0b10000000:
-            self._toc_number: int = b & 0b00001111
-            self._toc_offset: int = toc_start + 1
-        elif b == 0xDE:
-            (self._toc_number,) = struct.unpack_from(
-                '>H', self._direct_read(2, toc_start + 1)
-            )
-            self._toc_offset = toc_start + 3
-        elif b == 0xDF:
-            (self._toc_number,) = struct.unpack_from(
-                '>I', self._direct_read(4, toc_start + 1)
-            )
-            self._toc_offset = toc_start + 5
-        else:
-            raise ArchiveError('Top level TOC is not a msgpack map (dictionary).')
-
-        self._toc: dict = {}
-        self._toc_block_info: list = [None] * (
-            self._toc_number // Utility.entries_per_block + 1
+        self._toc_entry: dict = self._read(
+            *Utility.decode(self._direct_read(10, 11 + ArchiveWriter.magic_len))
         )
 
     def __enter__(self):
@@ -691,69 +657,9 @@ class ArchiveReader(ArchiveItem):
         if exc_val:
             raise exc_val
 
-    def _load_toc_block(self, i_entry: int) -> tuple:
-        i_block: int = i_entry // Utility.entries_per_block
-
-        if self._toc_block_info[i_block]:
-            return self._toc_block_info[i_block]
-
-        i_offset: int = i_block * Utility.bytes_per_block + self._toc_offset
-        block_data = self._direct_read(Utility.bytes_per_block, i_offset)
-
-        first, last = None, None
-
-        offset: int = 0
-        for i in range(
-            entries_current_block := min(
-                Utility.entries_per_block,
-                self._toc_number - i_block * Utility.entries_per_block,
-            )
-        ):
-            entry_uuid, positions = Utility.unpack_entry(
-                block_data[offset : offset + Utility.toc_item_size]
-            )
-            self._toc[entry_uuid] = positions
-            offset += Utility.toc_item_size
-
-            if i == 0:
-                first = entry_uuid
-
-            if i + 1 == entries_current_block:
-                last = entry_uuid
-
-        self._toc_block_info[i_block] = first, last
-
-        return self._toc_block_info[i_block]
-
     def _locate_position(self, key: str) -> tuple:
-        if not self._use_blocked_toc or self._toc_entry is not None:
-            positions = self._toc_entry[key]
-            return Utility.decode(positions[0]), Utility.decode(positions[1])
-
-        if self._toc_number == 0:
-            raise KeyError(key)
-
-        if (positions := self._toc.get(key)) is None:
-            r_start, r_end, i_entry = 0, self._toc_number, -9999
-            while r_start <= r_end:
-                if i_entry == (m_entry := r_start + (r_end - r_start) // 2):
-                    break
-
-                i_entry = m_entry
-
-                first, last = self._load_toc_block(i_entry)
-
-                if key < first:
-                    r_end = i_entry - 1
-                elif key > last:
-                    r_start = i_entry + 1
-                else:
-                    break
-
-            if (positions := self._toc.get(key)) is None:
-                raise KeyError(key)
-
-        return positions
+        positions = self._toc_entry[key]
+        return Utility.decode(positions[0]), Utility.decode(positions[1])
 
     def __getitem__(self, key: str) -> ArchiveDict:
         key = utils.adjust_uuid_size(key)
@@ -796,11 +702,9 @@ class ArchiveReader(ArchiveItem):
             return False
 
     def __iter__(self):
-        self._ensure_toc()
         return self._toc_entry.__iter__()
 
     def __len__(self):
-        self._ensure_toc()
         return self._toc_entry.__len__()
 
     def get(self, key: str, default=None):
@@ -810,22 +714,15 @@ class ArchiveReader(ArchiveItem):
             return default
 
     def items(self):
-        self._ensure_toc()
         for k in self._toc_entry:
             yield k, self[k]
 
     def keys(self):
-        self._ensure_toc()
         return self._toc_entry.keys()
 
     def values(self):
-        self._ensure_toc()
         for k in self._toc_entry:
             yield self[k]
-
-    def _ensure_toc(self):
-        if self._toc_entry is None:
-            self._toc_entry = self._read(*self._toc_position)
 
     def close(self, close_unowned: bool = False):
         if close_unowned or isinstance(self._file_or_path, str):

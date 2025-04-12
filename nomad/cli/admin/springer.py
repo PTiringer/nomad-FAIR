@@ -181,8 +181,7 @@ def update_springer(max_n_query: int = 10, retry_time: int = 120):
     # querying database with unvailable dataset leads to error,
     # get toc keys first by making an empty query
     with read_archive(config.normalize.springer_db_path) as springer_archive:
-        _ = springer_archive._load_toc_block(0)
-        archive_keys = springer_archive._toc.keys()
+        archive_keys = springer_archive.keys()
 
     sp_data = archive.query_archive(
         config.normalize.springer_db_path, {spg: '*' for spg in archive_keys}

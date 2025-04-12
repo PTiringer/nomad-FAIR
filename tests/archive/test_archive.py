@@ -165,14 +165,13 @@ def test_write_archive_multi(example_uuid, example_entry):
     assert example_uuid in toc
 
 
-@pytest.mark.parametrize('use_blocked_toc', [False, True])
-def test_read_archive_single(example_uuid, example_entry, use_blocked_toc):
+def test_read_archive_single(example_uuid, example_entry):
     f = BytesIO()
     write_archive(f, 1, [(example_uuid, example_entry)])
     packed_archive = f.getbuffer()
 
     f = BytesIO(packed_archive)
-    data = read_archive(f, use_blocked_toc=use_blocked_toc)
+    data = read_archive(f)
 
     assert example_uuid in data
     assert data[example_uuid]['run']['system'][1] == example_entry['run']['system'][1]
@@ -189,8 +188,7 @@ def test_read_archive_single(example_uuid, example_entry, use_blocked_toc):
         data[example_uuid]['run']['system'][2]
 
 
-@pytest.mark.parametrize('use_blocked_toc', [False, True])
-def test_read_archive_multi(monkeypatch, example_uuid, example_entry, use_blocked_toc):
+def test_read_archive_multi(monkeypatch, example_uuid, example_entry):
     monkeypatch.setattr('nomad.config.archive.small_obj_optimization_threshold', 256)
 
     archive_size = _entries_per_block * 2 + 23
@@ -203,17 +201,9 @@ def test_read_archive_multi(monkeypatch, example_uuid, example_entry, use_blocke
     packed_archive = f.getbuffer()
 
     f = BytesIO(packed_archive)
-    with read_archive(f, use_blocked_toc=use_blocked_toc) as reader:
-        # if use_blocked_toc:
-        #     reader._load_toc_block(0)
-        #     assert reader._toc.get(create_example_uuid(0)) is not None
-        #     assert len(reader._toc) == _entries_per_block
-        #     reader._load_toc_block(archive_size - 1)
-        #     assert reader._toc.get(create_example_uuid(archive_size - 1)) is not None
-        #     assert len(reader._toc) > _entries_per_block
-
+    with read_archive(f) as reader:
         for i in range(0, archive_size):
-            reader.get(create_example_uuid(i)) is not None
+            assert reader.get(create_example_uuid(i)) is not None
 
         entry = reader[create_example_uuid(0)]
 
