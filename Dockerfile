@@ -156,8 +156,8 @@ ARG SETUPTOOLS_SCM_PRETEND_VERSION='0.0'
 # Re-install project with correct version
 RUN uv pip install ".[parsing,infrastructure,dev]"
 
-# Build the python source distribution package
-RUN uv build --sdist
+# Build the python package.
+RUN uv build 
 
 
 # ================================================================================
