@@ -122,7 +122,6 @@ const CreateEntry = React.memo((props) => {
       const globalTemplates = getTemplatesFromGlobalDefinitions(
         globalDefinitions, '__global__', null, section => section._qualifiedName
       )
-      console.log(globalTemplates)
       return globalTemplates.map(template => ({group: 'OASIS', ...template}))
     }
 

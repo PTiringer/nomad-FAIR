@@ -472,7 +472,7 @@ const useDatatableTableStyles = makeStyles(theme => ({
 export const DatatableTable = React.memo(function DatatableTable({children, actions, details, noHeader, defaultUncollapsedRow}) {
   const classes = useDatatableTableStyles()
   const {withSelectionFeature, multiSelect, getId} = useStaticDatatableContext()
-  const {shownColumns, data, pagination, onPaginationChanged, selected} = useDatatableContext()
+  const {shownColumns, data, pagination, onPaginationChanged, selected, isLoading} = useDatatableContext()
   const {page_size} = pagination
   const emptyRows = Math.max(0, page_size - data.length)
   const columns = shownColumns
@@ -522,6 +522,13 @@ export const DatatableTable = React.memo(function DatatableTable({children, acti
           progressIcon={row?.current_process === 'delete_upload' && (row?.process_status === 'PENDING' || row?.process_status === 'RUNNING') && <CircularProgress/>}
         />
       ))}
+      {isLoading && (
+        <TableRow>
+          <TableCell colSpan={numberOfColumns} align="center" valign="middle">
+            <CircularProgress size={24} />
+          </TableCell>
+        </TableRow>
+      )}
       {!isExtending && (emptyRows > 0) && (
         <TableRow style={{ height: 53 * emptyRows }}>
           <TableCell colSpan={numberOfColumns} />

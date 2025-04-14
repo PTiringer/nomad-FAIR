@@ -88,7 +88,7 @@ function renderMemberName(member) {
 }
 
 function MembersTable() {
-  const {members, setIsChanged} = useContext(editMembersDialogContext)
+  const {members, areMembersLoading, setIsChanged} = useContext(editMembersDialogContext)
   const forceUpdate = useReducer(bool => !bool)[1]
 
   const columns = [
@@ -113,7 +113,7 @@ function MembersTable() {
     }
   ]
 
-  return <Datatable columns={columns} data={members}>
+  return <Datatable columns={columns} data={members} isLoading={areMembersLoading}>
     <DatatableTable actions={DeleteAction} />
   </Datatable>
 }
@@ -123,7 +123,7 @@ function AddMember() {
   const {api} = useApi()
   const {raiseError} = useErrors()
   const [suggestions, setSuggestions] = useState([])
-  const {members, setMembers, setIsChanged} = useContext(editMembersDialogContext)
+  const {members, setMembers, areMembersLoading, setIsChanged} = useContext(editMembersDialogContext)
   const [query, setQuery] = useState('')
   const [searchType, setSearchType] = useState(TYPES.USER)
   const [selectedSuggestion, setSelectedSuggestion] = useState(null)
@@ -187,6 +187,7 @@ function AddMember() {
   return <React.Fragment>
     <FormGroup row className={classes.memberSearch}>
       {uploadMembersGroupSearchEnabled && <TextField
+        disabled={areMembersLoading}
         select
         className={classes.memberSearchType}
         id='search-type'
@@ -200,6 +201,7 @@ function AddMember() {
         <MenuItem value={TYPES.GROUP}>Group</MenuItem>
       </TextField>}
       <AutoComplete
+        disabled={areMembersLoading}
         className={classes.memberSearchText}
         options={suggestions}
         getOptionLabel={option => (option.affiliation ? `${option.name} (${option.affiliation})` : option.name)}
@@ -252,6 +254,7 @@ const EditMembersDialog = ({open, setOpen}) => {
   const {raiseError} = useErrors()
   const {uploadId, upload, updateUpload} = useUploadPageContext()
   const [members, setMembers] = useState([])
+  const [areMembersLoading, setAreMembersLoading] = useState(false)
   const [isChanged, setIsChanged] = useState(false)
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false)
 
@@ -284,15 +287,34 @@ const EditMembersDialog = ({open, setOpen}) => {
   }, [api, upload])
 
   useEffect(() => {
-    if (!open) {
-      return
-    }
+    if (!open) return
 
+    const abortController = new AbortController()
+    const signal = abortController.signal
+
+    setAreMembersLoading(true)
     setMembers([])
     setIsChanged(false)
-    fetchMembers()
-      .then(setMembers)
-      .catch(raiseError)
+
+    const fetchWithAbort = async () => {
+      try {
+        if (signal.aborted) return
+        const newMembers = await fetchMembers()
+        if (signal.aborted) return
+        setMembers(newMembers)
+        setAreMembersLoading(false)
+      } catch (error) {
+        if (signal.aborted) return
+        raiseError(error)
+        setAreMembersLoading(false)
+      }
+    }
+
+    fetchWithAbort()
+
+    return () => {
+      abortController.abort()
+    }
   }, [fetchMembers, open, raiseError])
 
   const handleDiscardChanges = () => {
@@ -336,9 +358,10 @@ const EditMembersDialog = ({open, setOpen}) => {
   const contextValue = useMemo(() => ({
     members: members,
     setMembers: setMembers,
+    areMembersLoading: areMembersLoading,
     isChanged: isChanged,
     setIsChanged: setIsChanged
-  }), [members, setMembers, isChanged, setIsChanged])
+  }), [members, setMembers, areMembersLoading, isChanged, setIsChanged])
 
   return <editMembersDialogContext.Provider value={contextValue}>
     <React.Fragment>
