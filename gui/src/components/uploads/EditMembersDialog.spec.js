@@ -160,7 +160,7 @@ const submitChanges = async (dialog, user) => {
   await waitFor(() => expect(processing).not.toBeInTheDocument())
 }
 
-const openMembersDialog = async (user) => {
+const openMembersDialog = async (user, {waitForMainAuthor = true} = {}) => {
   await screen.findByTestId('logout-button')
   await screen.findByText('unnamed upload')
   const editMembersButton = screen.getByTestId('edit-members-action')
@@ -170,7 +170,9 @@ const openMembersDialog = async (user) => {
   expect(within(dialog).getByText('Name')).toBeInTheDocument()
   expect(within(dialog).getByText('Affiliation')).toBeInTheDocument()
   expect(within(dialog).getByText('Role')).toBeInTheDocument()
-  await within(dialog).findByText('Main author')
+  if (waitForMainAuthor) {
+    await within(dialog).findByText('Main author')
+  }
   return dialog
 }
 
@@ -178,6 +180,19 @@ const testReadOnlyPermissions = async (isLoggedIn) => {
   await screen.findByTestId(isLoggedIn ? 'logout-button' : 'login-register-button')
   await screen.findByText('unnamed upload')
   expect(screen.getByTestId('edit-members-action')).toBeDisabled()
+}
+
+const testSearchBarAndTableForSlowData = async (dialog) => {
+  const rows = within(dialog).queryAllByTestId('datatable-row')
+  expect(rows.length).toBe(0)
+
+  const searchMembers = within(dialog).getByRole('combobox')
+  const autocompleteInput = within(searchMembers).getByRole('textbox')
+  expect(autocompleteInput).toBeDisabled()
+
+  await waitFor(() => expect(autocompleteInput).toBeEnabled())
+  const newRows = within(dialog).queryAllByTestId('datatable-row')
+  expect(newRows.length).toBe(5)
 }
 
 test.each([
@@ -217,7 +232,7 @@ test.each([
 
   if (username === 'test') {
     const newDialog = await openMembersDialog(user)
-    await testNewDialog(newDialog)
+    testNewDialog(newDialog)
   } else if (username === 'scooper') {
     await testReadOnlyPermissions(true)
   }
@@ -283,4 +298,38 @@ test.each([
   await waitFor(() => {
     expect(screen.getByRole("tooltip", { name: "ID: group23", hidden: true })).toBeVisible()
   })
+})
+
+test.each([
+  [
+    'Members dialog elements stay disabled until loading has finished',
+    'tests.states.uploads.unpublished_twin_access',
+    'tests/data/uploads/members-dialog-unpublished-author',
+    'dft_upload',
+    'test',
+    'password'
+  ]
+])('Members dialog: %s', async (name, state, snapshot, uploadId, username, password) => {
+  await startAPI(state, snapshot, username, password)
+  const user = userEvent.setup()
+
+  const apiUtils = require('../utils/apiUtils')
+  const originalFetchUsersById = apiUtils.fetchUsersByIds
+  apiUtils.fetchUsersByIds = jest.fn().mockImplementation(async (...args) => {
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    return originalFetchUsersById(...args)
+  })
+
+  render(<><LoginLogout/><UploadPage uploadId={uploadId} /></>)
+
+  const dialog = await openMembersDialog(user, {waitForMainAuthor: false})
+  await testSearchBarAndTableForSlowData(dialog)
+  testInitialDialog(dialog)
+
+  await testAddRemoveMembers(dialog, user)
+  await submitChanges(dialog, user)
+
+  const newDialog = await openMembersDialog(user, {waitForMainAuthor: false})
+  await testSearchBarAndTableForSlowData(newDialog)
+  testNewDialog(newDialog)
 })
