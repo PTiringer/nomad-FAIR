@@ -40,7 +40,7 @@ const SpectroscopicPropertiesCard = React.memo(({index, properties, archive}) =>
 
   // When archive is loaded, fill out the information
   if (archive) {
-    let spectraReferences = archive?.results?.properties?.spectroscopic?.spectra
+    let spectraReferences = archive?.results?.properties?.spectroscopic?.spectra || []
     if (!Array.isArray(spectraReferences)) spectraReferences = [spectraReferences]
     if (spectraReferences) {
       for (const spectra of spectraReferences) {
