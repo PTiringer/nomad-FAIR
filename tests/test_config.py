@@ -98,13 +98,15 @@ def test_config_success(config_dict, format, mockopen, monkeypatch):
     [
         pytest.param(
             {'fs': {'does': 'not exist'}},
-            'The following unsupported keys were found in your configuration, e.g. nomad.yaml: "does".',
+            'The following unsupported keys were found in the nomad configuration '
+            '(nomad.yaml, defaults.yaml or environment variables): FS: "does"',
             ['yaml', 'env'],
             id='non-existing nested field',
         ),
         pytest.param(
             {'does': 'not exist'},
-            'The following unsupported keys were found in your configuration, e.g. nomad.yaml: "does".',
+            'The following unsupported keys were found in the nomad configuration '
+            '(nomad.yaml, defaults.yaml or environment variables): Config: "does"',
             ['yaml'],
             id='non-existing top-level field',
         ),

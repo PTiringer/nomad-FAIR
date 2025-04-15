@@ -66,13 +66,26 @@ class ConfigBaseModel(BaseModel):
             return ', '.join([f'"{x}"' for x in items])
 
         if extra_fields:
+            import traceback
+
             from structlog import get_logger
 
+            config_location = traceback.format_stack()[-3].strip().split(', in')[0]
+            if 'nomad-FAIR/nomad/config/__init__.py' in config_location:
+                warning = (
+                    f'The following unsupported keys were found in the nomad '
+                    f'configuration (nomad.yaml, defaults.yaml or environment variables):'
+                    f' {cls.__name__}: {list_items(extra_fields)}'
+                )
+            else:
+                warning = (
+                    f'The following unsupported keys were found in a configuration model'
+                    f' instance: {cls.__name__}: {list_items(extra_fields)}\n'
+                    f'In {config_location}.'
+                )
+
             logger = get_logger()
-            logger.warning(
-                f'The following unsupported keys were found in your configuration, '
-                f'e.g. nomad.yaml: {list_items(extra_fields)}.'
-            )
+            logger.warning(warning)
 
         return values
 
