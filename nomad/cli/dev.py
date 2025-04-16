@@ -18,7 +18,7 @@
 import json
 import os
 import sys
-from typing import Any
+from typing import Any, cast
 
 import click
 from pint import Unit
@@ -493,7 +493,7 @@ def example_data(username: str):
 def _generate_units_json() -> tuple[Any, Any]:
     from collections import defaultdict
 
-    from pint.converters import ScaleConverter
+    from pint.facets.plain import ScaleConverter
 
     from nomad.units import ureg
 
@@ -505,7 +505,7 @@ def _generate_units_json() -> tuple[Any, Any]:
     prefixes = {}
     for name, prefix in ureg._prefixes.items():
         if isinstance(prefix.converter, int):
-            scale = prefix.converter
+            scale = cast(float, prefix.converter)
         elif isinstance(prefix.converter, ScaleConverter):
             scale = prefix.converter.scale
         else:
@@ -544,7 +544,7 @@ def _generate_units_json() -> tuple[Any, Any]:
 
     # Define a function to check for an SI prefix
     si_prefixes = [
-        value['name'] for value in prefixes.values() if len(value['name']) > 2
+        value['name'] for value in prefixes.values() if len(str(value['name'])) > 2
     ]
 
     def is_prefix_only(unit_base_name):
@@ -565,7 +565,7 @@ def _generate_units_json() -> tuple[Any, Any]:
 
         return False
 
-    unit_list = []
+    unit_list: list[dict[str, Any]] = []
     for unit_str in ureg._units:
         # Filter out aliases
         unit_base_name = ureg.get_name(unit_str)
@@ -599,6 +599,7 @@ def _generate_units_json() -> tuple[Any, Any]:
                 'label': 'Kilogram',
                 'abbreviation': 'kg',
             },
+            # TODO: Could the dimensionless quantities be added programmatically?
             # Dimensionless
             {
                 'name': 'dimensionless',

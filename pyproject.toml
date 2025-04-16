@@ -31,7 +31,7 @@ dependencies = [
     'numpy>=1.22.4,<2',
     'orjson>=1.0',
     'pandas>=2',
-    'pint==0.17',
+    'pint',
     'plotly<6', # version 6.0.0 not fully compatible with our GUI
     'py-spy', # for on-server profiling
     'pydantic>=2',
@@ -183,6 +183,7 @@ override-dependencies = [
     'elasticsearch-dsl>=7,<8',
     'python-magic',
     'unidecode',
+    'pint>=0.23',
 ]
 
 [tool.pytest.ini_options]

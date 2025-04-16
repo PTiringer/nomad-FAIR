@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from typing import Any
+from typing import Any, cast
 
 import pint
 
@@ -54,7 +54,7 @@ class MQuantity:
         self.unit: pint.Unit | None = None
         if isinstance(in_value, pint.Quantity):
             self.value = in_value.m  # magnitude
-            self.unit = in_value.u  # unit
+            self.unit = cast(pint.Unit, in_value.u)  # unit
             assert in_unit is None, f'Unit is already defined in the value {in_value}'
         else:
             # the input argument is not a pint quantity
@@ -217,7 +217,7 @@ def to_dict(entries):
     return entries
 
 
-def convert_to(from_magnitude, from_unit: ureg.Unit | None, to_unit: ureg.Unit | None):
+def convert_to(from_magnitude, from_unit: pint.Unit | None, to_unit: pint.Unit | None):
     """
     Convert a magnitude from one unit to another.
 
@@ -233,7 +233,7 @@ def convert_to(from_magnitude, from_unit: ureg.Unit | None, to_unit: ureg.Unit |
     if to_unit is None:
         return from_magnitude
 
-    from_quantity: ureg.Quantity = from_magnitude * from_unit
+    from_quantity: pint.Quantity = from_magnitude * from_unit
 
     return from_quantity.to(to_unit).m
 
@@ -288,7 +288,7 @@ def get_namefit(name: str, concept_name: str, name_any: bool = False) -> int:
     uppercase_parts_pattern = re.compile(r'[A-Z]+(?:_[A-Z]+)*')
     uppercase_parts = uppercase_parts_pattern.findall(concept_name)
 
-    path_regex = r'([a-zA-Z0-9_.]*)'
+    path_regex = r'([a-zA-Z0-9_.]+)'
     regex_name = concept_name
     uppercase_count = sum(len(part) for part in uppercase_parts)
 
