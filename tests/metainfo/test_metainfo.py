@@ -23,7 +23,7 @@ from math import isnan
 
 import numpy as np
 import pandas as pd
-import pint
+import pint.quantity
 import pytest
 
 from nomad.metainfo import (
@@ -653,12 +653,12 @@ class TestM1:
     def test_np_array(self):
         system = System()
         system.atom_positions = [[1, 2, 3]]
-        assert isinstance(system.atom_positions, pint.Quantity)
+        assert isinstance(system.atom_positions, pint.quantity._Quantity)
 
     def test_pd_dataframe(self):
         system = System()
         system.atom_positions = pd.DataFrame([[1, 2], [3, 4]])
-        assert isinstance(system.atom_positions, pint.Quantity)
+        assert isinstance(system.atom_positions, pint.quantity._Quantity)
         assert np.all(system.atom_positions.m == [[1, 2], [3, 4]])
 
     def test_np_scalar(self):
@@ -740,8 +740,8 @@ class TestM1:
     def test_synonym(self):
         system = System()
         system.lattice_vectors = [[1.2e-10, 0, 0], [0, 1.2e-10, 0], [0, 0, 1.2e-10]]
-        assert isinstance(system.lattice_vectors, pint.Quantity)
-        assert isinstance(system.unit_cell, pint.Quantity)
+        assert isinstance(system.lattice_vectors, pint.quantity._Quantity)
+        assert isinstance(system.unit_cell, pint.quantity._Quantity)
         assert np.array_equal(
             system.unit_cell.magnitude, system.lattice_vectors.magnitude
         )  # pylint: disable=no-member
@@ -768,7 +768,7 @@ class TestM1:
         assert system.m_def == System.m_def
         assert system.n_atoms == 3
         assert system.atom_labels == ['H', 'H', 'O']
-        assert isinstance(system.atom_positions, pint.Quantity)
+        assert isinstance(system.atom_positions, pint.quantity._Quantity)
 
     def test_derived(self):
         system = System()
