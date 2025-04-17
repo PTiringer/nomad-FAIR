@@ -138,7 +138,8 @@ def test_config_warning(
             (
                 '1 validation error for Config\ncelery.timeout\n  '
                 'Input should be a valid integer, unable to parse string as an '
-                "integer [type=int_parsing, input_value='not_a_number', input_type=str]"
+                "integer [type=int_parsing, input_value='not_a_number', input_type=str]\n    "
+                'For further information visit https://errors.pydantic.dev/2.10/v/int_parsing'
             ),
             id='invalid type',
         ),

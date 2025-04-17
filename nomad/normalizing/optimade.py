@@ -20,8 +20,9 @@ import re
 from typing import Any
 
 import ase.data
+import ase.formula
 import numpy as np
-from pint import Quantity
+import pint.quantity
 
 from nomad.atomutils import Formula
 from nomad.datamodel import EntryArchive, EntryMetadata, OptimadeEntry, Species
@@ -120,7 +121,7 @@ class OptimadeNormalizer(SystemBasedNormalizer):
                     return np.array(value)
 
                 if numpy and unit is not None:
-                    if isinstance(value, Quantity):
+                    if isinstance(value, pint.quantity._Quantity):
                         value = value.to(unit)
                     elif value is not None:
                         value = value * unit

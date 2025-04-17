@@ -62,17 +62,13 @@
 #### PREFIXES ####
 
 # decimal prefixes
-quecto- = 1e-30 = q-
-ronto- = 1e-27 = r-
 yocto- = 1e-24 = y-
 zepto- = 1e-21 = z-
 atto- =  1e-18 = a-
 femto- = 1e-15 = f-
 pico- =  1e-12 = p-
 nano- =  1e-9  = n-
-# The micro (U+00B5) and Greek mu (U+03BC) are both valid prefixes,
-# and they often use the same glyph.
-micro- = 1e-6  = µ- = μ- = u-
+micro- = 1e-6  = µ- = u-
 milli- = 1e-3  = m-
 centi- = 1e-2  = c-
 deci- =  1e-1  = d-
@@ -86,8 +82,6 @@ peta- =  1e15  = P-
 exa- =   1e18  = E-
 zetta- = 1e21  = Z-
 yotta- = 1e24  = Y-
-ronna- = 1e27 = R-
-quetta- = 1e30 = Q-
 
 # binary_prefixes
 kibi- = 2**10 = Ki-
@@ -139,23 +133,11 @@ square_degree = (π / 180) ** 2 * sr = sq_deg = sqdeg
 byte = 8 * bit = B = octet
 baud = bit / second = Bd = bps
 
-# Ratios (disabled until we have proper ELN support)
-#percent = 0.01 = %
-#permille = 0.001 = ‰
-#ppm = 1e-6
-
 # Length
 angstrom = 1e-10 * meter = Å = ångström = Å
-micron = micrometer = µ = μ
-fermi = femtometer = fm
-light_year = speed_of_light * julian_year = ly = lightyear
-astronomical_unit = 149597870700 * meter = au  # since Aug 2012
-parsec = 1 / tansec * astronomical_unit = pc
-nautical_mile = 1852 * meter = nmi
+micron = micrometer = µ
+fermi = femtometer
 atomic_unit_of_length = h_bar / (alpha * m_e * c) = bohr = a_0 = a0 = bohr_radius = a_u_length
-x_unit_Cu = K_alpha_Cu_d_220 * d_220 / 1537.4 = Xu_Cu
-x_unit_Mo = K_alpha_Mo_d_220 * d_220 / 707.831 = Xu_Mo
-angstrom_star = K_alpha_W_d_220 * d_220 / 0.2090100 = Å_star
 planck_length = (h_bar * gravitational_constant / c ** 3) ** 0.5
 
 # Mass
@@ -170,30 +152,7 @@ planck_mass = (h_bar * c / gravitational_constant) ** 0.5
 # Time
 minute = 60 * second
 hour = 60 * minute = hr
-day = 24 * hour = d
-week = 7 * day
-fortnight = 2 * week
-year = 365.25 * day = a = yr = julian_year
-month = year / 12
-
-# decade = 10 * year
-## NOTE: decade [time] can conflict with decade [dimensionless]
-
-century = 100 * year = _ = centuries
-millennium = 1e3 * year = _ = millennia
-eon = 1e9 * year
-shake = 1e-8 * second
-svedberg = 1e-13 * second
 atomic_unit_of_time = h_bar / E_h = a_u_time
-gregorian_year = 365.2425 * day
-sidereal_year = 365.256363004 * day                # approximate, as of J2000 epoch
-tropical_year = 365.242190402 * day                # approximate, as of J2000 epoch
-common_year = 365 * day
-leap_year = 366 * day
-sidereal_day = day / 1.00273790935079524           # approximate
-sidereal_month = 27.32166155 * day                 # approximate
-tropical_month = 27.321582 * day                   # approximate
-synodic_month = 29.530589 * day = _ = lunar_month  # approximate
 planck_time = (h_bar * gravitational_constant / c ** 5) ** 0.5
 
 # Temperature
@@ -206,10 +165,8 @@ planck_temperature = (h_bar * c ** 5 / gravitational_constant / k ** 2) ** 0.5
 
 # Area
 [area] = [length] ** 2
-are = 100 * meter ** 2
 barn = 1e-28 * meter ** 2 = b
 darcy = centipoise * centimeter ** 2 / (second * atmosphere)
-hectare = 100 * are = ha
 
 # Volume
 [volume] = [length] ** 3
@@ -227,10 +184,8 @@ counts_per_second = 1 / second = cps
 [wavenumber] = 1 / [length]
 reciprocal_centimeter = 1 / cm = cm_1 = kayser
 
-# Velocity
-[velocity] = [length] / [time]
-[speed] = [velocity]
-knot = nautical_mile / hour = kt = knot_international = international_knot
+# Speed
+[speed] = [length] / [time]
 mile_per_hour = mile / hour = mph = MPH
 kilometer_per_hour = kilometer / hour = kph = KPH
 kilometer_per_second = kilometer / second = kps
@@ -238,7 +193,7 @@ meter_per_second = meter / second = mps
 foot_per_second = foot / second = fps
 
 # Acceleration
-[acceleration] = [velocity] / [time]
+[acceleration] = [speed] / [time]
 galileo = centimeter / second ** 2 = Gal
 
 # Force
@@ -376,7 +331,6 @@ coulomb = ampere * second = C
 abcoulomb = 10 * C = abC
 faraday = e * N_A * mole
 conventional_coulomb_90 = K_J90 * R_K90 / (K_J * R_K) * coulomb = C_90
-ampere_hour = ampere * hour = Ah
 
 # Electric potential
 [electric_potential] = [energy] / [charge]
@@ -415,16 +369,16 @@ farad = coulomb / volt = F
 abfarad = 1e9 * farad = abF
 conventional_farad_90 = R_K90 / R_K * farad = F_90
 
-# Magnetic flux
-[magnetic_flux] = [electric_potential] * [time]
-weber = volt * second = Wb
-unit_pole = µ_0 * biot * centimeter
-
 # Inductance
 [inductance] = [magnetic_flux] / [current]
 henry = weber / ampere = H
 abhenry = 1e-9 * henry = abH
 conventional_henry_90 = R_K / R_K90 * henry = H_90
+
+# Magnetic flux
+[magnetic_flux] = [electric_potential] * [time]
+weber = volt * second = Wb
+unit_pole = µ_0 * biot * centimeter
 
 # Magnetic field
 [magnetic_field] = [magnetic_flux] / [area]

@@ -1915,25 +1915,15 @@ def stacked_cu_ni_surface_topology() -> list[ResultSystem]:
 def graphene() -> Atoms:
     """Graphene system"""
     symbols_c = ['C', 'C']
-    positions_c = (
-        np.array(
-            [
-                [0.0, 0.0, 2.1712595],
-                [1.2338620706831436, -0.712370598651782, 2.1712595],
-            ]
-        )
-        * ureg.angstrom
-    )
-    cell_c = (
-        np.array(
-            [
-                [1.2338620706831436, -2.137111795955346, 0.0],
-                [1.2338620706831436, 2.137111795955346, 0.0],
-                [0.0, 0.0, 8.685038],
-            ]
-        )
-        * ureg.angstrom
-    )
+    positions_c = [
+        [0.0, 0.0, 2.1712595],
+        [1.2338620706831436, -0.712370598651782, 2.1712595],
+    ] * ureg.angstrom
+    cell_c = [
+        [1.2338620706831436, -2.137111795955346, 0.0],
+        [1.2338620706831436, 2.137111795955346, 0.0],
+        [0.0, 0.0, 8.685038],
+    ] * ureg.angstrom
     system_c = Atoms(
         symbols=symbols_c, positions=positions_c, cell=cell_c, pbc=True
     ) * [4, 4, 1]
@@ -1958,25 +1948,15 @@ def graphene_topology() -> list[ResultSystem]:
     if runschema:
         atoms_c_conv = runschema.system.Atoms()
         atoms_c_conv.periodic = [True, True, False]
-        atoms_c_conv.lattice_vectors = (
-            np.array(
-                [
-                    [2.4677241413662866, 0.0, 0.0],
-                    [-1.2338620706831433, 2.1371117959553457, 0.0],
-                    [0.0, 0.0, 1],
-                ]
-            )
-            * ureg.angstrom
-        )
-        atoms_c_conv.positions = (
-            np.array(
-                [
-                    [1.2338620706831433, 0.712370598651782, 0.5],
-                    [-2.7636130944313266e-16, 1.4247411973035641, 0.5],
-                ]
-            )
-            * ureg.angstrom
-        )
+        atoms_c_conv.lattice_vectors = [
+            [2.4677241413662866, 0.0, 0.0],
+            [-1.2338620706831433, 2.1371117959553457, 0.0],
+            [0.0, 0.0, 1],
+        ] * ureg.angstrom
+        atoms_c_conv.positions = [
+            [1.2338620706831433, 0.712370598651782, 0.5],
+            [-2.7636130944313266e-16, 1.4247411973035641, 0.5],
+        ] * ureg.angstrom
         atoms_c_conv.labels = ['C', 'C']
         species = Species()
         species.name = 'C'
@@ -2008,25 +1988,15 @@ def graphene_topology() -> list[ResultSystem]:
 def boron_nitride() -> Atoms:
     """Boron nitride system"""
     symbols_bn = ['B', 'N']
-    positions_bn = (
-        np.array(
-            [
-                [1.2557999125000436, -0.7250364175302085, 6.200847],
-                [0.0, 0.0, 6.200847],
-            ]
-        )
-        * ureg.angstrom
-    )
-    cell_bn = (
-        np.array(
-            [
-                [1.2557999125000436, -2.1751092525906257, 0.0],
-                [1.2557999125000436, 2.1751092525906257, 0.0],
-                [0.0, 0.0, 8.267796],
-            ]
-        )
-        * ureg.angstrom
-    )
+    positions_bn = [
+        [1.2557999125000436, -0.7250364175302085, 6.200847],
+        [0.0, 0.0, 6.200847],
+    ] * ureg.angstrom
+    cell_bn = [
+        [1.2557999125000436, -2.1751092525906257, 0.0],
+        [1.2557999125000436, 2.1751092525906257, 0.0],
+        [0.0, 0.0, 8.267796],
+    ] * ureg.angstrom
     system_bn = Atoms(
         symbols=symbols_bn, positions=positions_bn, cell=cell_bn, pbc=True
     )
@@ -2056,16 +2026,11 @@ def boron_nitride_topology() -> list[ResultSystem]:
     if runschema:
         atoms = runschema.system.Atoms()
         atoms.periodic = [True, True, False]
-        atoms.lattice_vectors = (
-            np.array(
-                [
-                    [2.510266994011973, 0.0, 0.0],
-                    [-1.2551334970059864, 2.1739549870959678, 0.0],
-                    [0.0, 0.0, 1],
-                ]
-            )
-            * ureg.angstrom
-        )
+        atoms.lattice_vectors = [
+            [2.510266994011973, 0.0, 0.0],
+            [-1.2551334970059864, 2.1739549870959678, 0.0],
+            [0.0, 0.0, 1],
+        ] * ureg.angstrom
         atoms.labels = ['B', 'N']
         atoms.species = [5, 7]
         species_B = Species()
@@ -2101,26 +2066,16 @@ def boron_nitride_topology() -> list[ResultSystem]:
 
 def mos2() -> Atoms:
     symbols_mos2 = ['Mo', 'S', 'S']
-    positions_mos2 = (
-        np.array(
-            [
-                [0.0, 0.0, 9.063556323175761],
-                [1.5920332323422965, 0.9191608152516547, 10.62711264635152],
-                [1.5920332323422965, 0.9191608152516547, 7.5],
-            ]
-        )
-        * ureg.angstrom
-    )
-    cell_mos2 = (
-        np.array(
-            [
-                [3.184066464684593, 0.0, 0.0],
-                [-1.5920332323422965, 2.7574824457549643, 0.0],
-                [0.0, 0.0, 18.127112646351521],
-            ]
-        )
-        * ureg.angstrom
-    )
+    positions_mos2 = [
+        [0.0, 0.0, 9.063556323175761],
+        [1.5920332323422965, 0.9191608152516547, 10.62711264635152],
+        [1.5920332323422965, 0.9191608152516547, 7.5],
+    ] * ureg.angstrom
+    cell_mos2 = [
+        [3.184066464684593, 0.0, 0.0],
+        [-1.5920332323422965, 2.7574824457549643, 0.0],
+        [0.0, 0.0, 18.127112646351521],
+    ] * ureg.angstrom
     system_mos2 = Atoms(
         symbols=symbols_mos2, positions=positions_mos2, cell=cell_mos2, pbc=True
     )
@@ -2149,26 +2104,16 @@ def mos2_topology() -> list[ResultSystem]:
     if runschema:
         atoms = runschema.system.Atoms()
         atoms.periodic = [True, True, False]
-        atoms.lattice_vectors = (
-            np.array(
-                [
-                    [3.253646631826119, 0.0, 0.0],
-                    [-1.6268233159130596, 2.8177406380990937, 0.0],
-                    [0.0, 0.0, 3.124912396241947],
-                ]
-            )
-            * ureg.angstrom
-        )
-        atoms.positions = (
-            np.array(
-                [
-                    [0.0, 0.0, 1.562456198120974],
-                    [1.626823332181293, 0.9392468699738958, 3.124912396241947],
-                    [1.626823332181293, 0.9392468699738958, 0.0],
-                ]
-            )
-            * ureg.angstrom
-        )
+        atoms.lattice_vectors = [
+            [3.253646631826119, 0.0, 0.0],
+            [-1.6268233159130596, 2.8177406380990937, 0.0],
+            [0.0, 0.0, 3.124912396241947],
+        ] * ureg.angstrom
+        atoms.positions = [
+            [0.0, 0.0, 1.562456198120974],
+            [1.626823332181293, 0.9392468699738958, 3.124912396241947],
+            [1.626823332181293, 0.9392468699738958, 0.0],
+        ] * ureg.angstrom
         atoms.labels = ['Mo', 'S', 'S']
         atoms.species = [42, 16, 16]
         species_Mo = Species()
