@@ -416,10 +416,8 @@ north:
         image_pull_policy: Always
         default_url: /lab
         maintainer:
-        - email: florian.dobener@physik.hu-berlin.de
-          name: Florian Dobener
-        - email: emminger.carola@physik.hu-berlin.de
-          name: Carola Emminger
+        - email: sandor.brockhauser@physik.hu-berlin.de
+          name: Sandor Brockhauser
         mount_path: /home/jovyan
         path_prefix: lab/tree
         privileged: false
@@ -437,16 +435,12 @@ north:
         - h5
         - hdf5
         icon: logo/jupyter.svg
-        image: gitlab-registry.mpcdf.mpg.de/nomad-lab/north/xps:refactor
+        image: gitlab-registry.mpcdf.mpg.de/nomad-lab/north/xps:master
         default_url: /lab
         image_pull_policy: Always
         maintainer:
-        - email: florian.dobener@physik.hu-berlin.de
-          name: Florian Dobener
-        - email: lukas.pielsticker@cec.mpg.de
+        - email: lukas.pielsticker@physik.hu-berlin.de
           name: Lukas Pielsticker
-        - email: rubel.mozumder@physik.hu-berlin.de
-          name: Rubel Mozumder
         mount_path: /home/jovyan
         path_prefix: lab/tree
         privileged: false
