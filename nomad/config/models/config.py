@@ -366,6 +366,15 @@ class FS(ConfigBaseModel):
     public_external: str = None
     north_home: str = '.volumes/fs/north/users'
     north_home_external: str = None
+    north_home_user_folder_map: dict[str, str] | None = Field(
+        {},
+        description="""
+        This can be used to mount external folders with already existing user data for every user's work folder in the North tools. For example, if you already store user's data files under their own folders on the server, you can mount them with this into the user's launched North tool e.g. Jupyter notebook.
+        The username is on the left hand side and the external folder path on disk on the right hand side. For example:
+            north_home_user_folder_map:
+                     'nomad username': '/path/on/disk/to/work/folder/specific/for/user'
+    """,
+    )
     local_tmp: str = '/tmp'
     prefix_size: int = 2
     archive_version_suffix: str | list[str] = Field(
