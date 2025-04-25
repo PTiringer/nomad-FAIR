@@ -142,7 +142,7 @@ async def http_exception_handler(request, exc):
         content={
             'detail': 'Not found',
             'info': {
-                'app': config.meta.dict(),
+                'app': config.meta.model_dump(),
                 'apis': {
                     'v1': {
                         'root': f'{app_base}/api/v1',
