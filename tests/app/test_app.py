@@ -16,11 +16,8 @@
 # limitations under the License.
 #
 
-import os
 
 import pytest
-
-from nomad.config import config
 
 
 def test_alive(client):

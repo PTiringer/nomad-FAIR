@@ -74,8 +74,6 @@ build gui:
   variables:
     TARGET: dev_node
     DESTINATION: "${CI_REGISTRY_IMAGE}/dev_node:${DOCKER_TAG}"
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_TAG
 
 # kaniko image doesn't contain pip, so we have to save the scm_pretend_version in an earlier job and reuse it later
 update_scm_pretend_version:
@@ -93,8 +91,6 @@ build python:
   variables:
     TARGET: dev_python
     DESTINATION: "${CI_REGISTRY_IMAGE}/dev_python:${DOCKER_TAG}"
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_TAG
 
 python linting:
   stage: test
@@ -107,6 +103,7 @@ python linting:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
+    - when: on_success
   artifacts:
     name: "nomad_code_quality"
     when: always
@@ -131,8 +128,6 @@ check python dependencies:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-      <<: *manual-allow_failure
 
 .base_test:
   image: ${CI_REGISTRY_IMAGE}/dev_python:${DOCKER_TAG}
@@ -174,7 +169,6 @@ generate pytest timings:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - if: $CI_PIPELINE_SOURCE == "schedule"
       <<: *manual-allow_failure
 
 python tests:
@@ -191,7 +185,7 @@ python tests:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - when: on_success
 
 python coverage report:
   stage: test
@@ -211,7 +205,7 @@ python coverage report:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - when: on_success
 
 gui linting:
   stage: test
@@ -225,7 +219,7 @@ gui linting:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - when: on_success
 
 generate gui artifacts:
   stage: test
@@ -237,7 +231,7 @@ generate gui artifacts:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - when: on_success
   artifacts:
     paths:
       - gui/tests/env.js
@@ -276,7 +270,7 @@ gui tests:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - when: on_success
 
 build python package:
   stage: test
@@ -299,6 +293,7 @@ build python package:
     - cp /app/tests/data/examples/example.out $CI_PROJECT_DIR/
   artifacts:
     expire_in: 1 days
+    when: on_success
     paths:
       - dist/
       - archive.json
@@ -330,7 +325,8 @@ python package install tests:
         echo "\n"
       done
   rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_TAG
+    - if: $CI_COMMIT_TAG
+    - when: on_success
 
 release python package:
   stage: release
