@@ -286,13 +286,10 @@ class DocumentType:
 
             return value
 
-        def exclude(property_, section):
-            if property_ not in self.indexed_properties:
-                return True
+        def exclude(_p, _s):
+            return _p not in self.indexed_properties
 
-            return False
-
-        kwargs: dict[str, Any] = dict(
+        result = root.m_to_dict(
             with_meta=False,
             include_defaults=True,
             include_derived=True,
@@ -300,8 +297,6 @@ class DocumentType:
             exclude=exclude,
             transform=transform,
         )
-
-        result = root.m_to_dict(**kwargs)
 
         # Add the collected suggestion values
         for path, value in suggestions.items():

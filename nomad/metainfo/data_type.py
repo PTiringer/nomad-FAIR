@@ -966,13 +966,28 @@ class Unit(NonPrimitive):
 
 
 class Callable(NonPrimitive):
-    __slots__ = ()
+    __slots__ = ('_nargs',)
+
+    def __init__(self, nargs: int = 0):
+        """
+        Provide the number of arguments to enable validation.
+
+        Arguments:
+            nargs: number of arguments to the callable.
+        """
+        super().__init__()
+        self._nargs = nargs
 
     def _normalize_impl(self, value, **kwargs):
-        if callable(value):
-            return value
+        if not callable(value):
+            raise TypeError(f'{value} is not a valid callable object.')
 
-        raise TypeError(f'{value} is not a valid callable object.')
+        if self._nargs > 0 and (
+            getattr(getattr(value, '__code__', None), 'co_argcount', 0) != self._nargs
+        ):
+            raise TypeError(f'Callable {value} should have {self._nargs} arguments.')
+
+        return value
 
     def _serialize_impl(self, value, **kwargs):
         raise NotImplementedError()

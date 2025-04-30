@@ -1835,7 +1835,7 @@ class MSection(metaclass=MObjectMeta):
         if subsection_as_dict:
             with_index = True
 
-        kwargs: dict[str, Any] = dict(
+        kwargs: dict = dict(
             with_meta=with_meta,
             with_out_meta=with_out_meta,
             with_def_id=with_def_id,
@@ -1881,22 +1881,23 @@ class MSection(metaclass=MObjectMeta):
                         prop in v.get_all_definitions() for v in category_defs
                     )
 
-        def serialize_quantity(quantity, is_set, is_derived, path, target_value=None):
+        def serialize_quantity(quantity, path, target_value=None):
             # get the value to be serialized
             # explicitly assigned the target value overrides the value from the section
             if target_value is None:
-                if is_set:
-                    target_value = self.__dict__[quantity.name]
-                elif is_derived:
+                target_value = self.__dict__.get(quantity.name, None)
+
+            if target_value is None:
+                if quantity.derived is None:
+                    target_value = quantity.default
+                else:
                     try:
                         target_value = quantity.derived(self)
                     except Exception:  # noqa
                         target_value = quantity.default
-                else:
-                    target_value = quantity.default
 
             def _transform_wrapper(_value, _stack=None):
-                _path = path if path else ''
+                _path = path
                 if _stack is not None:
                     _path += '/' + '/'.join(str(i) for i in _stack)
                 return (
@@ -1972,9 +1973,7 @@ class MSection(metaclass=MObjectMeta):
             result: dict = {}
             for m_quantity in values.values():
                 m_result: dict = {
-                    'm_value': serialize_quantity(
-                        quantity_def, True, False, None, m_quantity.value
-                    )
+                    'm_value': serialize_quantity(quantity_def, '', m_quantity.value)
                 }
                 if m_quantity.unit:
                     m_result['m_unit'] = str(m_quantity.unit)
@@ -1994,7 +1993,7 @@ class MSection(metaclass=MObjectMeta):
                 return annotation.m_to_dict()
 
             if isinstance(annotation, BaseModel):
-                return annotation.dict()
+                return annotation.model_dump()
 
             if not isinstance(annotation, dict):
                 return str(annotation)
@@ -2054,10 +2053,10 @@ class MSection(metaclass=MObjectMeta):
                 try:
                     if quantity.virtual:
                         if include_derived and quantity.derived is not None:
-                            yield name, serialize_quantity(quantity, False, True, path)
+                            yield name, serialize_quantity(quantity, path)
                         continue
 
-                    if not (is_set := self.m_is_set(quantity)) and (
+                    if not self.m_is_set(quantity) and (
                         not include_defaults or not quantity.m_is_set(Quantity.default)
                     ):
                         continue
@@ -2065,7 +2064,7 @@ class MSection(metaclass=MObjectMeta):
                     if quantity.use_full_storage:
                         yield name, serialize_full(quantity, self.__dict__[name])
                     else:
-                        yield name, serialize_quantity(quantity, is_set, False, path)
+                        yield name, serialize_quantity(quantity, path)
 
                 except ValueError as e:
                     raise ValueError(f'Value error ({str(e)}) for {quantity}')
