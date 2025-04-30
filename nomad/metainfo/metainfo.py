@@ -944,7 +944,8 @@ class MSection(metaclass=MObjectMeta):
         self.m_parent_index = -1
         self.m_context = m_context
         self.m_mod_count = 0
-        self.m_cache: dict = {}  # Dictionary for caching temporary values that are not persisted to the Archive
+        self.m_cache: dict = {}  # dictionary for caching temporary values that are not persisted to the archive
+        self.m_annotations: dict = {}
 
         # get missing m_def from class
         cls_def = self.__class__.m_def
@@ -961,35 +962,15 @@ class MSection(metaclass=MObjectMeta):
                     'Section extends another section and cannot be instantiated.'
                 )
 
-        # get annotations from kwargs
-        self.m_annotations: dict[str, Any] = kwargs.get('m_annotations', {})
-        other_kwargs = {}
-        for key, value in kwargs.items():
-            if key.startswith('a_'):
-                self.m_annotations[key[2:]] = value
-            else:
-                other_kwargs[key] = value
-
-        # get additional annotations from the section definition
-        if not is_bootstrapping:
-            for section_annotation in self.m_def.m_get_annotations(
-                SectionAnnotation, as_list=True
-            ):
-                for name, annotation in section_annotation.new(self).items():
-                    self.m_annotations[name] = annotation
-
-        self.m_parse_annotations()
-
-        # set remaining kwargs
         if is_bootstrapping:
             # this manual checking is required only during bootstrapping
             # for normal cases it will be handled via `m_update`
-            if (target := other_kwargs.pop('type', None)) is not None:
-                other_kwargs['type'] = _adapter.normalize(target, section=self)
+            if (target := kwargs.pop('type', None)) is not None:
+                kwargs['type'] = _adapter.normalize(target, section=self)
 
-            self.__dict__.update(other_kwargs)
+            self.__dict__.update(kwargs)
         else:
-            self.m_update(**other_kwargs)
+            self.m_update_from_dict(kwargs, skip_virtual=False)
 
     @classmethod
     def __init_cls__(cls):
@@ -1171,40 +1152,6 @@ class MSection(metaclass=MObjectMeta):
                 pass
 
         raise AttributeError(name)
-
-    def m_parse_annotations(self):
-        for annotation_name, annotation in self.m_annotations.items():
-            AnnotationModel.model_rebuild()
-            annotation_model = AnnotationModel.m_registry.get(annotation_name)
-            if not annotation_model:
-                continue
-
-            def to_model(_model, _data):
-                if _data is None:
-                    return None
-
-                try:
-                    if isinstance(_data, AnnotationModel):
-                        _annotation = _data
-                    else:
-                        adapter = TypeAdapter(_model)
-                        _annotation = adapter.validate_python(_data)
-
-                    if isinstance(self, Definition):
-                        _annotation.m_definition = self
-
-                    return _annotation
-                except ValidationError as e:
-                    return AnnotationModel(m_error=str(e))
-
-            if isinstance(annotation, list):
-                for index, item in enumerate(annotation):
-                    annotation[index] = to_model(annotation_model, item)
-            else:
-                annotation = to_model(annotation_model, annotation)
-
-            if annotation:
-                self.m_annotations[annotation_name] = annotation
 
     def _ensure_definition(
         self,
@@ -1456,9 +1403,7 @@ class MSection(metaclass=MObjectMeta):
                 target = value
             else:
                 # maybe this setting/appending a single element shall not be allowed?
-                target = definition.__get__(self)
-                if target is None:
-                    target = []
+                target = definition.__get__(self) or []
                 target.append(value)
             # regardless, need to revalidate the value
             definition.__set__(self, target, **kwargs)
@@ -1625,10 +1570,7 @@ class MSection(metaclass=MObjectMeta):
         self.__set_attribute(None, name, value)
 
     def m_set_quantity_attribute(
-        self,
-        quantity_def: str | Quantity,
-        name: str,
-        value: Any,
+        self, quantity_def: str | Quantity, name: str, value: Any
     ) -> None:
         """
         Set attribute for the given quantity.
@@ -1637,10 +1579,7 @@ class MSection(metaclass=MObjectMeta):
 
     @metainfo_modifier
     def __set_attribute(
-        self,
-        tgt_property: str | None | Definition,
-        attr_name: str,
-        attr_value: Any,
+        self, tgt_property: str | None | Definition, attr_name: str, attr_value: Any
     ):
         """
         Set attribute for current section for a quantity of the current section.
@@ -1760,17 +1699,6 @@ class MSection(metaclass=MObjectMeta):
         self.m_add_sub_section(sub_section_def, sub_section)
 
         return cast(MSectionBound, sub_section)
-
-    def m_update(self, m_ignore_additional_keys: bool = False, **kwargs):
-        """Updates all quantities and subsections with the given arguments."""
-        for name, value in kwargs.items():
-            prop: Property | None = self.m_def.all_aliases.get(name, None)
-            if prop is None:
-                if m_ignore_additional_keys:
-                    continue
-                raise KeyError(f'{name} is not an attribute of this section {self}')
-
-            self.m_set(prop, value)
 
     def m_setdefault(self, path: str | list):
         """
@@ -2171,9 +2099,16 @@ class MSection(metaclass=MObjectMeta):
 
         return {key: value for key, value in items()}
 
-    def m_update_from_dict(self, data: dict, **kwargs) -> None:
+    def m_update(self, **kwargs):
         """
-        Updates this section with the serialized data from the given dict, e.g. data
+        Updates all quantities and subsections with the given arguments.
+        This is a convenience method that calls :func:`m_update_from_dict`.
+        """
+        return self.m_update_from_dict(kwargs)
+
+    def m_update_from_dict(self, data: dict, **kwargs):
+        """
+        Updates this section with the serialized data from the given dict, e.g., data
         produced by :func:`m_to_dict`.
         """
         m_context: Context | MSection = self.m_context if self.m_context else self
@@ -2181,6 +2116,52 @@ class MSection(metaclass=MObjectMeta):
         # todo: the hack flag shall be removed
         # it is required due to json serialize nan and inf to null
         treat_none_as_nan = kwargs.get('treat_none_as_nan', False)
+        skip_virtual = kwargs.get('skip_virtual', True)
+        force_none = kwargs.get('force_none', False)
+
+        if not isinstance(new_annotations := data.get('m_annotations', {}), dict):
+            raise MetainfoError(
+                f'The provided m_annotations is not a dict. {type(new_annotations).__name__} was provided.'
+            )
+
+        # get annotations from input data
+        all_annotations: dict = new_annotations | {
+            k[2:]: v for k, v in data.items() if k.startswith('a_')
+        }
+
+        for section_annotation in self.m_def.m_get_annotations(
+            SectionAnnotation, as_list=True
+        ):
+            all_annotations.update(section_annotation.new(self))
+
+        for annotation_name, annotation in all_annotations.items():
+            AnnotationModel.model_rebuild()
+            if annotation_model := AnnotationModel.m_registry.get(annotation_name):
+
+                def to_model(_model, _data):
+                    if isinstance(_data, list):
+                        return [to_model(annotation_model, _v) for _v in _data]
+
+                    if _data is None:
+                        return None
+
+                    try:
+                        if isinstance(_data, AnnotationModel):
+                            _annotation = _data
+                        else:
+                            _annotation = TypeAdapter(_model).validate_python(_data)
+
+                        if isinstance(self, Definition):
+                            _annotation.m_definition = self
+
+                        return _annotation
+                    except ValidationError as e:
+                        return AnnotationModel(m_error=str(e))
+
+                annotation = to_model(annotation_model, annotation)
+
+            if annotation:
+                self.m_annotations[annotation_name] = annotation
 
         # need to deserialize the definitions first as they are needed for the rest
         # need to deserialize the metadata first as they are needed for the rest
@@ -2193,8 +2174,11 @@ class MSection(metaclass=MObjectMeta):
                 except (ValueError, MetainfoError):
                     pass
 
+        if 'definitions' in processed:
+            self.definitions.archive = self
+
         for name, value in data.items():
-            if name in processed or name.startswith('m_'):
+            if name in processed or name.startswith(('m_', 'a_')):
                 continue
 
             try:
@@ -2211,18 +2195,21 @@ class MSection(metaclass=MObjectMeta):
                     context=m_context,
                     treat_none_as_nan=treat_none_as_nan,
                 )
-            elif not definition.virtual:
+            else:
                 self.m_set(
                     definition,
                     value,
                     # todo: the hack flag shall be removed
                     # it is required in editing, None is used to remove the value in indexing
-                    force_none=kwargs.get('force_none', False),
+                    force_none=force_none,
                     treat_none_as_nan=treat_none_as_nan,
+                    skip_virtual=skip_virtual,
                 )
 
         for name, value in data.get('m_attributes', {}).items():
             self.m_set_section_attribute(name, value)
+
+        return self
 
     @classmethod
     def m_from_dict(
@@ -2254,68 +2241,44 @@ class MSection(metaclass=MObjectMeta):
 
         treat_none_as_nan: bool = kwargs.pop('treat_none_as_nan', False)
 
-        if 'm_ref_archives' in dct and isinstance(m_context, Context):
-            # dct['m_ref_archives'] guarantees that 'm_def' exists
-            for entry_url, archive_json in dct['m_ref_archives'].items():
+        if isinstance(m_context, Context):
+            for entry_url, archive_json in dct.pop('m_ref_archives', {}).items():
                 m_context.cache_archive(
-                    entry_url,
-                    MSection.from_dict(
-                        archive_json, m_parent=m_parent, m_context=m_context
-                    ),
+                    entry_url, MSection.from_dict(archive_json, m_context=m_context)
                 )
-            del dct['m_ref_archives']
 
-        # first try to find a m_def in the data
-        if 'm_def' in dct:
-            # We re-use the _SectionReference implementation for m_def
-            m_def = dct['m_def']
-            context_section = m_parent
-            archive_root: MSection = m_parent.m_root() if m_parent else None
-            if archive_root:
-                definitions = getattr(archive_root, 'definitions', None)
-                if isinstance(definitions, Package):
-                    context_section = definitions
-            m_def_proxy = SectionReference().normalize(m_def, section=context_section)
+        # check if `m_def` exists in the data
+        if m_def := dct.get('m_def', None):
+            def_section = m_parent
+            if archive_root := def_section.m_root() if def_section else None:
+                if isinstance(
+                    definitions := getattr(archive_root, 'definitions', None), Package
+                ):
+                    def_section = definitions
+            m_def_proxy = SectionReference().normalize(m_def, section=def_section)  # noqa
             m_def_proxy.m_proxy_context = m_context
             cls = m_def_proxy.section_cls
 
-        # if 'm_def_id' exists, check if id matches
+        # if `m_def_id` exists, check if id matches
         # in case of mismatch, retrieve the Package and use the corresponding section definition
-        if 'm_def_id' in dct:
-            if (
-                cls is None
-                or cls.m_def is None
-                or dct['m_def_id'] != cls.m_def.definition_id
-            ):
-                if not isinstance(m_context, Context):
-                    raise MetainfoError(
-                        f'A context object is needed to resolve definition {dct["m_def_id"]}'
-                    )
-                cls = m_context.resolve_section_definition(
-                    dct.get('m_def', None), dct['m_def_id']
+        if (m_def_id := dct.get('m_def_id', None)) and (
+            cls is None or cls.m_def is None or m_def_id != cls.m_def.definition_id
+        ):
+            if not isinstance(m_context, Context):
+                raise MetainfoError(
+                    f'A context object is needed to resolve definition {m_def_id}'
                 )
+            cls = m_context.resolve_section_definition(dct.get('m_def', None), m_def_id)  # noqa
 
-        assert cls is not None, 'Section definition or cls needs to be known'
+        assert cls is not None, 'Section definition or class needs to be known.'
 
         if isinstance(m_context, Context):
-            section = cls(m_context=m_context, **kwargs)
-        else:
-            section = cls(**kwargs)
+            kwargs['m_context'] = m_context
 
-        # We have to set this prematurely. It would be set later on, but to late to get
-        # the proper root for subsequent resolution of m_def references.
+        section = cls(**kwargs)
         section.m_parent = m_parent
-
-        if 'm_annotations' in dct:
-            m_annotations = dct['m_annotations']
-            if not isinstance(m_annotations, dict):
-                raise MetainfoError(
-                    f'The provided m_annotations is of a wrong type. {type(m_annotations).__name__} was provided.'
-                )
-            section.m_annotations.update(m_annotations)
-            section.m_parse_annotations()
-
         section.m_update_from_dict(dct, treat_none_as_nan=treat_none_as_nan)
+
         return section
 
     def m_to_json(self, **kwargs):
@@ -2558,34 +2521,42 @@ class MSection(metaclass=MObjectMeta):
             value = self.m_annotations.get(key, default)
             if as_list and not isinstance(value, list | tuple):
                 return [value]
-            else:
-                return value
 
-        elif isinstance(key, type):
-            result_list = []
+            return value
+
+        if isinstance(key, type):
+            result_list: list = []
             for values in self.m_annotations.values():
                 if isinstance(values, tuple | list):
-                    for value in values:
-                        if isinstance(value, key):
-                            result_list.append(value)
+                    result_list.extend(v for v in values if isinstance(v, key))
                 elif isinstance(values, key):
                     result_list.append(values)
 
-            result_list_len = len(result_list)
             if not as_list:
-                if result_list_len == 1:
-                    return result_list[0]
-                elif result_list_len == 0:
+                if (result_len := len(result_list)) == 0:
                     return default
+                if result_len == 1:
+                    return result_list[0]
 
             return result_list
 
         raise TypeError('Key must be str or annotation class.')
 
+    def m_all_validate(self):
+        """Evaluates all constraints in the whole section hierarchy, incl. this section."""
+        all_errors: list[str] = []
+        all_warnings: list[str] = []
+        for section in self.m_all_contents(include_self=True):
+            more_errors, more_warnings = section.m_validate()
+            all_errors.extend(more_errors)
+            all_warnings.extend(more_warnings)
+
+        return all_errors, all_warnings
+
     def m_validate(self) -> tuple[list[str], list[str]]:
         """Evaluates all constraints and shapes of this section and returns a list of errors."""
-        errors: list[str] = []
-        warnings: list[str] = []
+        all_errors: list[str] = []
+        all_warnings: list[str] = []
 
         def _execute(
             _name: str, _constraint: TypingCallable, include_self: bool = False
@@ -2601,9 +2572,9 @@ class MSection(metaclass=MObjectMeta):
                 if message == '':
                     message = f'Constraint {_name} violated.'
                 if getattr(_constraint, 'm_warning', False):
-                    warnings.append(message)
+                    all_warnings.append(message)
                 else:
-                    errors.append(message)
+                    all_errors.append(message)
 
         if base_sections := getattr(self.m_parent, 'all_base_sections', None):
             for base_section in base_sections:
@@ -2626,18 +2597,20 @@ class MSection(metaclass=MObjectMeta):
             if isinstance(_annotation, AnnotationModel):
                 if _annotation.m_error:
                     # This annotation could not be parsed and only contains the error.
-                    errors.append(_annotation.m_error)
+                    all_errors.append(_annotation.m_error)
                     return
 
                 try:
                     # Trigger model validation by re-assigning the definition
                     _annotation.m_definition = self
                 except ValidationError as e:
-                    errors.append(f'Annotation validation error for {self}: {str(e)}')
+                    all_errors.append(
+                        f'Annotation validation error for {self}: {str(e)}'
+                    )
 
         _validate(list(self.m_annotations.values()))
 
-        return errors, warnings
+        return all_errors, all_warnings
 
     def m_copy(self, deep=False, a_elasticsearch: list | None = None):
         """
@@ -2666,17 +2639,6 @@ class MSection(metaclass=MObjectMeta):
             copy.m_annotations['elasticsearch'] = a_elasticsearch
 
         return cast(type(self), copy)  # type: ignore
-
-    def m_all_validate(self):
-        """Evaluates all constraints in the whole section hierarchy, incl. this section."""
-        errors: list[str] = []
-        warnings: list[str] = []
-        for section in self.m_all_contents(include_self=True):
-            more_errors, more_warnings = section.m_validate()
-            errors.extend(more_errors)
-            warnings.extend(more_warnings)
-
-        return errors, warnings
 
     def m_warning(self, *args, **kwargs):
         if self.m_context is not None:

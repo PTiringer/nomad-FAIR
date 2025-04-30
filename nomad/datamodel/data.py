@@ -118,7 +118,7 @@ class Author(MSection):
 
     name = Quantity(
         type=str,
-        derived=lambda user: (f'{user.first_name} {user.last_name}').strip(),
+        derived=lambda user: f'{user.first_name} {user.last_name}'.strip(),
         a_elasticsearch=[
             Elasticsearch(material_entry_type, _es_field='keyword'),
             Elasticsearch(
@@ -266,7 +266,7 @@ class Query(JSON):
         class QueryResult(MetadataResponse):
             filters: dict[str, Any] | None = Field(None)
 
-        return QueryResult().parse_obj(value).dict()
+        return QueryResult.model_validate(value).model_dump()
 
 
 Schema = EntryData
