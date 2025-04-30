@@ -231,7 +231,7 @@ class Services(ConfigBaseModel):
             api_host = self.api_host
         protocol = 'https' if self.https and ssl else 'http'
         host_and_port = api_host
-        if api_host == 'localhost':
+        if api_port not in [80, 443]:
             host_and_port += ':' + str(api_port)
         base_path = self.api_base_path.strip('/')
         return f'{protocol}://{host_and_port}/{base_path}/{api}'
