@@ -238,6 +238,9 @@ class DataFrameAnnotation(BaseModel):
     mandatory_variables: list[ValuesTemplate]
 
     def dict(self, *args, **kwargs):
+        return self.model_dump(*args, **kwargs)
+
+    def model_dump(self, *args, **kwargs):
         return dict(
             mandatory_fields=[
                 field.section_def.qualified_name() for field in self.mandatory_fields
