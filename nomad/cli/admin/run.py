@@ -71,7 +71,9 @@ def run_app(
 ):
     config.meta.service = 'app'
     host = host or config.services.api_host or '0.0.0.0'
-    port = int(port or config.services.api_port or 8000)
+    # TODO: respect `config.services.api_port` instead of defaulting to 8000
+    # port = int(port or config.services.api_port or 8000)
+    port = int(port or 8000)
 
     if with_gui:
         import glob
