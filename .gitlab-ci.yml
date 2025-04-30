@@ -9,15 +9,6 @@
 #   - all jobs if any other files changed.
 
 .anchors:
-  .non-docs-changes: &non-docs-changes
-    changes:
-      - examples/**/*
-      - gui/**/*
-      - nomad/**/*
-      - ops/**/*
-      - scripts/**/*
-      - tests/**/*
-      - "*"  # all files in root
   .manual-allow_failure: &manual-allow_failure
     when: manual
     allow_failure: true
@@ -27,7 +18,7 @@ image: gitlab-registry.mpcdf.mpg.de/nomad-lab/nomad-fair/ci-runner:latest
 
 default:
   tags:
-    - cloud  # Necessary to select the right CI runner
+    - cloud # Necessary to select the right CI runner
 
 variables:
   DOCKER_TAG: ${CI_COMMIT_REF_SLUG}
@@ -85,7 +76,6 @@ build gui:
     DESTINATION: "${CI_REGISTRY_IMAGE}/dev_node:${DOCKER_TAG}"
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_TAG
-    - <<: *non-docs-changes
 
 # kaniko image doesn't contain pip, so we have to save the scm_pretend_version in an earlier job and reuse it later
 update_scm_pretend_version:
@@ -105,7 +95,6 @@ build python:
     DESTINATION: "${CI_REGISTRY_IMAGE}/dev_python:${DOCKER_TAG}"
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_TAG
-    - <<: *non-docs-changes
 
 python linting:
   stage: test
@@ -118,7 +107,6 @@ python linting:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - <<: *non-docs-changes
   artifacts:
     name: "nomad_code_quality"
     when: always
@@ -134,7 +122,6 @@ python package clean up:
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_TAG
       <<: *manual-allow_failure
-    - <<: [*non-docs-changes, *manual-allow_failure]
 
 check python dependencies:
   stage: test
@@ -146,7 +133,6 @@ check python dependencies:
       when: never
     - if: $CI_PIPELINE_SOURCE == "schedule"
       <<: *manual-allow_failure
-    - <<: [*non-docs-changes, *manual-allow_failure]
 
 .base_test:
   image: ${CI_REGISTRY_IMAGE}/dev_python:${DOCKER_TAG}
@@ -190,7 +176,6 @@ generate pytest timings:
       when: never
     - if: $CI_PIPELINE_SOURCE == "schedule"
       <<: *manual-allow_failure
-    - <<: [*non-docs-changes, *manual-allow_failure]
 
 python tests:
   parallel: 3
@@ -207,7 +192,6 @@ python tests:
     - if: $CI_COMMIT_TAG
       when: never
     - if: $CI_PIPELINE_SOURCE == "schedule"
-    - <<: *non-docs-changes
 
 python coverage report:
   stage: test
@@ -228,7 +212,6 @@ python coverage report:
     - if: $CI_COMMIT_TAG
       when: never
     - if: $CI_PIPELINE_SOURCE == "schedule"
-    - <<: *non-docs-changes
 
 gui linting:
   stage: test
@@ -243,7 +226,6 @@ gui linting:
     - if: $CI_COMMIT_TAG
       when: never
     - if: $CI_PIPELINE_SOURCE == "schedule"
-    - <<: *non-docs-changes
 
 generate gui artifacts:
   stage: test
@@ -256,7 +238,6 @@ generate gui artifacts:
     - if: $CI_COMMIT_TAG
       when: never
     - if: $CI_PIPELINE_SOURCE == "schedule"
-    - <<: *non-docs-changes
   artifacts:
     paths:
       - gui/tests/env.js
@@ -296,7 +277,6 @@ gui tests:
     - if: $CI_COMMIT_TAG
       when: never
     - if: $CI_PIPELINE_SOURCE == "schedule"
-    - <<: *non-docs-changes
 
 build python package:
   stage: test
@@ -351,7 +331,6 @@ python package install tests:
       done
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_TAG
-    - <<: *non-docs-changes
 
 release python package:
   stage: release
@@ -363,7 +342,7 @@ release python package:
     - if: $CI_COMMIT_BRANCH == "develop" && $NIGHTLY
     - if: $CI_COMMIT_TAG
       <<: *manual-allow_failure
-    - <<: [*non-docs-changes, *manual-allow_failure]
+    - <<: [*manual-allow_failure]
 
 release pypi package:
   stage: release
@@ -375,7 +354,6 @@ release pypi package:
   rules:
     - if: $CI_COMMIT_TAG
       <<: *manual-allow_failure
-    - <<: [*non-docs-changes, *manual-allow_failure]
 
 push to github:
   stage: release
