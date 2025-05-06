@@ -3428,9 +3428,13 @@ class Reactant(Reagent):
         type=np.float64,
         shape=['*'],
         description="""
-        Conversion of the reactant, in %.
+        A dimensionless quantity describing the consumption of a reactant in a chemical
+        reaction, in %.
         """,
-        links=['https://w3id.org/nfdi4cat/voc4cat_0005002'],
+        links=[
+            'https://w3id.org/nfdi4cat/voc4cat_0005002',
+            'https://w3id.org/nfdi4cat/voc4cat_0005004',
+        ],
         a_elasticsearch=Elasticsearch(material_entry_type),
     )
 
@@ -3442,6 +3446,7 @@ class Product(Reagent):
         a selectivity, or a fraction_out but no/zero fraction_in.
         """,
         label_quantity='name',
+        # links=['https://w3id.org/nfdi4cat/voc4cat_0007818'], #currently in MR
     )
     name = Quantity(
         type=str,
@@ -3471,6 +3476,18 @@ class Product(Reagent):
         Space-time-yield of the product, in mass product per mass catalyst per time.
         """,
         links=['https://w3id.org/nfdi4cat/voc4cat_0005006'],
+        a_elasticsearch=Elasticsearch(material_entry_type),
+    )
+
+    faradaic_efficiency = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description="""
+        In an electrochemical reaction, the faradaic efficiency is the ratio of the
+        collected product to the theoretical amount of product that could be
+        produced from the charge passed through the cell, in %.
+        """,
+        links=['https://w3id.org/nfdi4cat/voc4cat_0007229'],
         a_elasticsearch=Elasticsearch(material_entry_type),
     )
 
@@ -3554,7 +3571,7 @@ class ReactionConditions(MSection):
         description="""
         Conditions under which a catalytic test reaction was performed.
         """,
-        # links=['https://w3id.org/nfdi4cat/voc4cat_0007037'],
+        links=['https://w3id.org/nfdi4cat/voc4cat_0007039'],
     )
 
     temperature = Quantity(
@@ -3607,7 +3624,7 @@ class ReactionConditions(MSection):
         description="""
         The volumetric gas flow in volume per time.
         """,
-        links=['https://w3id.org/nfdi4cat/voc4cat_0000162'],
+        links=['https://w3id.org/nfdi4cat/voc4cat_0000104'],
         a_elasticsearch=Elasticsearch(material_entry_type),
     )
 
@@ -3616,8 +3633,31 @@ class ReactionConditions(MSection):
         shape=['*'],
         unit='s',
         description="""
-        The time on stream of the catalyst in the catalytic reaction.
+        The time since starting the catalytic reaction, can be time on stream of the catalyst in
+        a flow reactor or the reaction time of a batch reaction.
         """,
+        a_elasticsearch=Elasticsearch(material_entry_type),
+    )
+
+    current_density = Quantity(
+        type=np.float64,
+        shape=['*'],
+        unit='A/m^2',
+        description="""
+        The current density in an electrochemical reaction.
+        """,
+        links=['https://w3id.org/nfdi4cat/voc4cat_0007221'],
+        a_elasticsearch=Elasticsearch(material_entry_type),
+    )
+
+    electrical_potential = Quantity(
+        type=np.float64,
+        shape=['*'],
+        unit='V',
+        description="""
+        The voltage applied or measured in an electrochemical reaction.
+        """,
+        links=['https://w3id.org/nfdi4cat/voc4cat_0007219'],
         a_elasticsearch=Elasticsearch(material_entry_type),
     )
 
@@ -3627,7 +3667,6 @@ class ReactionStep(MSection):
         description="""
         Properties of single steps of a catalytic reaction mechanism.
         """,
-        # links=['https://w3id.org/nfdi4cat/voc4cat_0007038'],
     )
 
     initial_states = Quantity(
@@ -3698,12 +3737,16 @@ class Reaction(MSection):
 
     type = Quantity(
         type=str,
-        shape=[],
+        shape=['*'],
         description="""
-        Classification of the catalytic test reaction such as Oxidation, Hydrogenation,
-        Isomerization, Coupling...
+        Classification of the catalytic process as thermal, electrochemical, photo- or
+        photoelectrochemical catalysis. Furthermore added classification grouping reactions according to
+        common conditions or reactants such as oxidation, hydrogenation, isomerization, coupling.
         """,
-        links=['https://w3id.org/nfdi4cat/voc4cat_0007010'],
+        links=[
+            'https://w3id.org/nfdi4cat/voc4cat_0007010',
+            'https://w3id.org/nfdi4cat/voc4cat_0000185',
+        ],
         a_elasticsearch=[
             Elasticsearch(material_entry_type),
             Elasticsearch(suggestion='default'),
@@ -3744,20 +3787,21 @@ class Reaction(MSection):
 class Catalyst(MSection):
     m_def = Section(
         description="""
-        Properties of a heterogeneous catalyst.
-        """
+        Section of adding properties of a heterogeneous catalyst.
+        """,
     )
 
     catalyst_name = Quantity(
         type=str,
         shape=[],
         description="""
-        Custom name of catalyst.
+        Custom name of the studied catalyst.
         """,
         a_elasticsearch=[
             Elasticsearch(material_entry_type),
             Elasticsearch(suggestion='default'),
         ],
+        links=['https://w3id.org/nfdi4cat/voc4cat_0000194'],
     )
 
     preparation_method = Quantity(
@@ -3777,7 +3821,7 @@ class Catalyst(MSection):
         type=str,
         shape=['*'],
         description="""
-        The type of catalyst, wether metal or oxide, model, bulk, supported, ect.
+        The type of catalyst, whether metal or oxide, model, bulk, supported, ect.
         Multiple values can apply.
         """,
         links=['https://w3id.org/nfdi4cat/voc4cat_0007014'],
@@ -3793,7 +3837,7 @@ class Catalyst(MSection):
         description="""
         The support material of the catalyst (if any).
         """,
-        links=['https://w3id.org/nfdi4cat/voc4cat_0007034'],
+        # links=['https://w3id.org/nfdi4cat/voc4cat_0007825'], #currently in MR
         a_elasticsearch=[
             Elasticsearch(material_entry_type),
             Elasticsearch(suggestion='default'),

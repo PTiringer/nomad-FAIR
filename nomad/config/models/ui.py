@@ -1874,11 +1874,20 @@ class App(ConfigBaseModel):
                     ),
                     'heterogeneouscatalyst': Menu(
                         items=[
-                            MenuItemTerms(
-                                search_quantity='results.properties.catalytic.reaction.name',
+                            Menu(
+                                title='Catalytic Reactions',
+                                indentation=1,
+                                size='md',
+                                items=[
+                                    MenuItemTerms(
+                                        search_quantity='results.properties.catalytic.reaction.name',
+                                    ),
+                                ],
                             ),
-                            MenuItemNestedObject(
-                                path='results.properties.catalytic.reaction.reactants',
+                            Menu(
+                                title='Reactants',
+                                indentation=2,
+                                size='md',
                                 items=[
                                     MenuItemTerms(
                                         search_quantity='results.properties.catalytic.reaction.reactants.name',
@@ -1894,8 +1903,10 @@ class App(ConfigBaseModel):
                                     ),
                                 ],
                             ),
-                            MenuItemNestedObject(
-                                path='results.properties.catalytic.reaction.products',
+                            Menu(
+                                title='Products',
+                                indentation=2,
+                                size='md',
                                 items=[
                                     MenuItemTerms(
                                         search_quantity='results.properties.catalytic.reaction.products.name',
@@ -1908,11 +1919,38 @@ class App(ConfigBaseModel):
                                     ),
                                 ],
                             ),
-                            MenuItemHistogram(
-                                x='results.properties.catalytic.reaction.reaction_conditions.temperature',
+                            Menu(
+                                title='Reaction Conditions',
+                                indentation=2,
+                                size='md',
+                                items=[
+                                    MenuItemHistogram(
+                                        x='results.properties.catalytic.reaction.reaction_conditions.temperature',
+                                    ),
+                                    MenuItemHistogram(
+                                        x={
+                                            'search_quantity': 'results.properties.catalytic.reaction.reaction_conditions.pressure',
+                                            'unit': 'bar',
+                                        }
+                                    ),
+                                    MenuItemHistogram(
+                                        x={
+                                            'search_quantity': 'results.properties.catalytic.reaction.reaction_conditions.time_on_stream',
+                                            'unit': 'hr',
+                                        }
+                                    ),
+                                    MenuItemHistogram(
+                                        x={
+                                            'search_quantity': 'results.properties.catalytic.reaction.reaction_conditions.weight_hourly_space_velocity',
+                                            'unit': 'mL / (g hr)',
+                                        },
+                                    ),
+                                ],
                             ),
-                            MenuItemNestedObject(
-                                path='results.properties.catalytic.catalyst',
+                            Menu(
+                                title='Catalyst Materials',
+                                indentation=1,
+                                size='md',
                                 items=[
                                     MenuItemTerms(
                                         search_quantity='results.properties.catalytic.catalyst.catalyst_type',
@@ -1930,7 +1968,10 @@ class App(ConfigBaseModel):
                                         search_quantity='results.properties.catalytic.catalyst.characterization_methods',
                                     ),
                                     MenuItemHistogram(
-                                        x='results.properties.catalytic.catalyst.surface_area',
+                                        x={
+                                            'search_quantity': 'results.properties.catalytic.catalyst.surface_area',
+                                            'unit': 'm^2/g',
+                                        }
                                     ),
                                 ],
                             ),
