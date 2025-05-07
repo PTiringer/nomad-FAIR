@@ -249,13 +249,13 @@ else:
             **_band_gap_quantities,
             **(
                 dict(
-                    index=runschema.calculation.BandGapDeprecated.index.m_copy(
+                    index=runschema.calculation.BandGapDeprecated.index.m_copy().m_update(
                         a_elasticsearch=[Elasticsearch(material_entry_type)]
                     ),
-                    value=runschema.calculation.BandGapDeprecated.value.m_copy(
+                    value=runschema.calculation.BandGapDeprecated.value.m_copy().m_update(
                         a_elasticsearch=[Elasticsearch(material_entry_type)]
                     ),
-                    type=runschema.calculation.BandGapDeprecated.type.m_copy(
+                    type=runschema.calculation.BandGapDeprecated.type.m_copy().m_update(
                         a_elasticsearch=[Elasticsearch(material_entry_type)]
                     ),
                 )
@@ -279,13 +279,13 @@ else:
             **_band_gap_quantities,
             **(
                 dict(
-                    index=runschema.calculation.BandGap.index.m_copy(
+                    index=runschema.calculation.BandGap.index.m_copy().m_update(
                         a_elasticsearch=[Elasticsearch(material_entry_type)]
                     ),
-                    value=runschema.calculation.BandGap.value.m_copy(
+                    value=runschema.calculation.BandGap.value.m_copy().m_update(
                         a_elasticsearch=[Elasticsearch(material_entry_type)]
                     ),
-                    type=runschema.calculation.BandGap.type.m_copy(
+                    type=runschema.calculation.BandGap.type.m_copy().m_update(
                         a_elasticsearch=[Elasticsearch(material_entry_type)]
                     ),
                 )
@@ -1883,7 +1883,7 @@ class ExcitedStateMethodology(MSection):
         """
     )
     if runschema:
-        type = runschema.method.ExcitedStateMethodology.type.m_copy(
+        type = runschema.method.ExcitedStateMethodology.type.m_copy().m_update(
             a_elasticsearch=[
                 Elasticsearch(material_entry_type),
                 Elasticsearch(suggestion='default'),
@@ -1922,7 +1922,7 @@ class GW(ExcitedStateMethodology):
         """
     )
     if runschema:
-        type = runschema.method.GW.type.m_copy(
+        type = runschema.method.GW.type.m_copy().m_update(
             a_elasticsearch=[
                 Elasticsearch(material_entry_type),
                 Elasticsearch(suggestion='default'),
@@ -1937,13 +1937,13 @@ class BSE(ExcitedStateMethodology):
         """
     )
     if runschema:
-        type = runschema.method.BSE.type.m_copy(
+        type = runschema.method.BSE.type.m_copy().m_update(
             a_elasticsearch=[
                 Elasticsearch(material_entry_type),
                 Elasticsearch(suggestion='default'),
             ],
         )
-        solver = runschema.method.BSE.solver.m_copy(
+        solver = runschema.method.BSE.solver.m_copy().m_update(
             a_elasticsearch=[
                 Elasticsearch(material_entry_type),
                 Elasticsearch(suggestion='default'),
@@ -1968,14 +1968,16 @@ class DMFT(MSection):
         """
     )
     if runschema:
-        impurity_solver_type = runschema.method.DMFT.impurity_solver.m_copy(
+        impurity_solver_type = runschema.method.DMFT.impurity_solver.m_copy().m_update(
             a_elasticsearch=[
                 Elasticsearch(material_entry_type),
                 Elasticsearch(suggestion='default'),
             ],
         )
-        inverse_temperature = runschema.method.DMFT.inverse_temperature.m_copy(
-            a_elasticsearch=[Elasticsearch(material_entry_type)],
+        inverse_temperature = (
+            runschema.method.DMFT.inverse_temperature.m_copy().m_update(
+                a_elasticsearch=[Elasticsearch(material_entry_type)],
+            )
         )
         magnetic_state = runschema.method.DMFT.magnetic_state.m_copy()
         magnetic_state.description = (
@@ -1985,10 +1987,10 @@ class DMFT(MSection):
             Elasticsearch(material_entry_type),
             Elasticsearch(suggestion='default'),
         ]
-        u = runschema.method.HubbardKanamoriModel.u.m_copy(
+        u = runschema.method.HubbardKanamoriModel.u.m_copy().m_update(
             a_elasticsearch=[Elasticsearch(material_entry_type)]
         )
-        jh = runschema.method.HubbardKanamoriModel.jh.m_copy(
+        jh = runschema.method.HubbardKanamoriModel.jh.m_copy().m_update(
             a_elasticsearch=[Elasticsearch(material_entry_type)]
         )
     analytical_continuation = Quantity(
@@ -2048,21 +2050,21 @@ class Precision(MSection):
         a_elasticsearch=[Elasticsearch(material_entry_type)],
     )
     if runschema:
-        native_tier = runschema.method.BasisSetContainer.native_tier.m_copy(
+        native_tier = runschema.method.BasisSetContainer.native_tier.m_copy().m_update(
             a_elasticsearch=[Elasticsearch(material_entry_type)]
         )
-        basis_set = runschema.method.BasisSetContainer.type.m_copy(
+        basis_set = runschema.method.BasisSetContainer.type.m_copy().m_update(
             a_elasticsearch=[
                 Elasticsearch(material_entry_type),
                 Elasticsearch(suggestion='default'),
             ],
         )
-        planewave_cutoff = runschema.method.BasisSet.cutoff.m_copy(
+        planewave_cutoff = runschema.method.BasisSet.cutoff.m_copy().m_update(
             a_elasticsearch=[  # TODO: set better names?
                 Elasticsearch(material_entry_type)
             ],
         )
-        apw_cutoff = runschema.method.BasisSet.cutoff_fractional.m_copy(
+        apw_cutoff = runschema.method.BasisSet.cutoff_fractional.m_copy().m_update(
             a_elasticsearch=[  # TODO: set better names?
                 Elasticsearch(material_entry_type)
             ],
@@ -3913,19 +3915,19 @@ class EELSMethodology(MSection):
         Base class for the EELS methodology.
         """,
     )
-    detector_type = EELSInstrument.detector_type.m_copy(
+    detector_type = EELSInstrument.detector_type.m_copy().m_update(
         a_elasticsearch=[
             Elasticsearch(material_entry_type),
             Elasticsearch(suggestion='default'),
         ]
     )
-    resolution = EELSInstrument.resolution.m_copy(
+    resolution = EELSInstrument.resolution.m_copy().m_update(
         a_elasticsearch=[Elasticsearch(material_entry_type)]
     )
-    max_energy = EELSInstrument.max_energy.m_copy(
+    max_energy = EELSInstrument.max_energy.m_copy().m_update(
         a_elasticsearch=[Elasticsearch(material_entry_type)]
     )
-    min_energy = EELSInstrument.min_energy.m_copy(
+    min_energy = EELSInstrument.min_energy.m_copy().m_update(
         a_elasticsearch=[Elasticsearch(material_entry_type)]
     )
 
