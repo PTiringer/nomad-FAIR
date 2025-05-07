@@ -26,7 +26,7 @@ import sys
 import warnings
 from collections.abc import Callable as TypingCallable
 from collections.abc import Iterable
-from copy import deepcopy
+from copy import copy, deepcopy
 from functools import wraps
 from typing import Any, Literal, TypeVar, cast
 from urllib.parse import urlsplit, urlunsplit
@@ -2611,33 +2611,42 @@ class MSection(metaclass=MObjectMeta):
 
         return all_errors, all_warnings
 
-    def m_copy(self, deep=False, a_elasticsearch: list | None = None):
-        """
-        a_elasticsearch: Optional annotation for ElasticSearch. Will override
-            any existing annotation.
-        """
-        # TODO this a shallow copy, but should be a deep copy
-        copy = self.m_def.section_cls()
-        copy.__dict__.update(**self.__dict__)
+    def m_copy(self, deep=False):
+        return deepcopy(self) if deep else copy(self)
 
-        if deep:
-            if isinstance(copy, Definition):
-                copy.more = deepcopy(self.more)
-            for sub_section_def in self.m_def.all_sub_sections.values():
-                sub_sections_copy = MSubSectionList(self, sub_section_def)
-                for sub_section in self.m_get_sub_sections(sub_section_def):
-                    sub_sections_copy.append(
-                        None if sub_section is None else sub_section.m_copy(deep=True)
-                    )
-                if sub_section_def.repeats:
-                    copy.__dict__[sub_section_def.name] = sub_sections_copy
-                elif len(sub_sections_copy) == 1:
-                    copy.m_set(sub_section_def, sub_sections_copy[0])
+    def __deepcopy__(self, memo):
+        shallow_list = ('m_context',)
+        unique_list = (
+            'm_def',  # will be automatically set
+            'm_parent',  # will be automatically set if self is attached to something
+            'm_parent_sub_section',  # will be automatically set if self is attached to something
+            '_cached_hash',  # unique to each instance
+        )
 
-        if a_elasticsearch:
-            copy.m_annotations['elasticsearch'] = a_elasticsearch
+        new_copy = self.m_def.section_cls()
 
-        return cast(type(self), copy)  # type: ignore
+        memo[id(self)] = new_copy
+        # we do need to provide custom implementations of deepcopy for MSection
+        # to ensure the inheritance structure is preserved
+        for k, v in self.__dict__.items():
+            # no need to deepcopy attributes unique to a specific instance
+            if k in unique_list:
+                continue
+
+            if k in shallow_list:
+                # no need to deepcopy metainfo related attributes
+                new_copy.__dict__[k] = v
+            elif isinstance(v, MSubSectionList):
+                new_copy.m_set(
+                    v.sub_section_def,
+                    [x if x is None else deepcopy(x, memo) for x in v],
+                )
+            elif isinstance(v, MSection):
+                new_copy.m_set(v.m_parent_sub_section, deepcopy(v, memo))
+            else:
+                new_copy.__dict__[k] = deepcopy(v, memo)
+
+        return new_copy
 
     def m_warning(self, *args, **kwargs):
         if self.m_context is not None:
@@ -2921,7 +2930,7 @@ class Definition(MSection):
         if (
             self._cached_hash is None
             or regenerate
-            or self._cached_hash != self.m_mod_count
+            or self._cached_count != self.m_mod_count
         ):
             self._cached_count = self.m_mod_count
             self._cached_hash = default_hash()
@@ -3501,7 +3510,7 @@ class SubSection(Property):
         if self.repeats:
             if value is not None and not isinstance(value, list | set):
                 raise TypeError(
-                    'Cannot set a repeating subsection directly, modify the list, e.a. via append.'
+                    'Cannot set a repeating subsection directly, modify the list, e.g. via append.'
                 )
             existing = cast(MSubSectionList, existing)
             existing.clear()

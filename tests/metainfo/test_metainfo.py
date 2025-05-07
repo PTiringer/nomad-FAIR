@@ -916,6 +916,15 @@ class TestM1:
         assert (
             copy.systems[0].m_parent_sub_section is run.systems[0].m_parent_sub_section
         )
+        for k, v in copy.__dict__.items():
+            if k not in (
+                'm_def',
+                'm_parent',
+                'm_parent_index',
+                'm_parent_sub_section',
+                'm_context',
+            ):
+                assert v is not run.__dict__[k]
 
     def test_copy_keeps_m_sub_section_list(self):
         run = Run()
