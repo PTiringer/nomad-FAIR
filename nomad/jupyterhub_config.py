@@ -121,7 +121,7 @@ c.GenericOAuthenticator.username_key = 'preferred_username'
 c.GenericOAuthenticator.scope = ['openid', 'profile']
 c.Authenticator.auto_login = True
 c.Authenticator.enable_auth_state = True
-c.Ahtenticator.allow_all = True
+c.Authenticator.allow_all = True
 
 
 # configure docker spawner
