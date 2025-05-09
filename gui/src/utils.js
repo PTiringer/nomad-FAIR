@@ -945,6 +945,7 @@ export function getLocation() {
  *    ../uploads/<uploadId> [ /raw/<rawPath> [ #<dataPath> [ @<versionHash> ] ] ]
  *    ../uploads/<uploadId>/archive/<entryid> [ #<dataPath> [ @<versionHash> ] ]
  *    ../uploads/<uploadId>/archive/mainfile/<mainfile> [ #<dataPath> [ @<versionHash> ] ]
+ *    ../entries/<entryId>/archive [ #<dataPath> [ @<versionHash> ] ]
  *    <qualifiedName> (TODO: how to handle versions, deploymentUrl etc)
  *  Urls relative to the current upload:
  *    ../upload [ /raw/<rawPath> [ #<dataPath> [ @<versionHash> ] ] ]
@@ -1049,6 +1050,9 @@ export function parseNomadUrl(url) {
 
   let relativeTo, type, deploymentUrl, uploadId, entryId, mainfile, path, qualifiedName, versionHash
   let dataPath, rest, rawPath
+  if (url.startsWith('/uploads')) {
+    url = `..${url}`
+  }
   if (url.startsWith('/')) {
     dataPath = url
     rest = ''
@@ -1082,14 +1086,19 @@ export function parseNomadUrl(url) {
   }
   const restParts = rest.split('/')
   if ((deploymentUrl && rest) || url.startsWith('../')) {
-    // Expect upload ref
-    if (restParts[0] === 'uploads') {
-      // Ref with upload id
+    // Expect upload or entry ref
+    if (restParts[0] === 'uploads' || restParts[0] === 'entries') {
+      // Ref with upload id or entry_id
       if (!deploymentUrl) {
         relativeTo = refRelativeTo.deployment
       }
-      if (restParts.length === 1) throw new Error(prefix + 'expected "/uploads/<uploadId>" in url')
-      uploadId = restParts[1]
+      const idType = restParts[0]
+      if (restParts.length === 1) throw new Error(prefix + `expected "/${idType}/<id>" in url`)
+      if (idType === 'uploads') {
+        uploadId = restParts[1]
+      } else if (idType === 'entries') {
+        entryId = restParts[1]
+      }
       restParts.splice(0, 2)
     } else if (restParts[0] === 'upload') {
       // Relative ref
@@ -1102,7 +1111,7 @@ export function parseNomadUrl(url) {
       // There is more. Expect "raw" or "archive"
       if (restParts[0] === 'raw') {
         rawPath = restParts.slice(1).map(decodeURIComponent).join('/')
-      } else if (restParts[0] === 'archive') {
+      } else if (restParts[0] === 'archive' && !entryId) {
         if (restParts.length === 1) throw new Error(prefix + '"archive" must be followed by entry id or "mainfile"')
         if (restParts[1] === 'mainfile') {
           if (restParts.length === 2) throw new Error(prefix + '"mainfile" must be followed by a mainfile path')
@@ -1111,7 +1120,7 @@ export function parseNomadUrl(url) {
           if (restParts.length !== 2) throw new Error(prefix + 'unexpected path element after entry id')
           entryId = restParts[1]
         }
-      } else {
+      } else if (!entryId) {
         throw new Error(prefix + 'expected "raw" or "archive" after upload ref')
       }
     }
