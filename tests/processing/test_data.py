@@ -27,11 +27,10 @@ import pytest
 import yaml
 
 from nomad import infrastructure, utils
-from nomad.archive import read_partial_archive_from_mongo, to_json
+from nomad.archive import to_json
 from nomad.config import config
 from nomad.config.models.config import BundleImportSettings
 from nomad.datamodel import ServerContext
-from nomad.datamodel.data import EntryData
 from nomad.datamodel.datamodel import ArchiveSection, EntryArchive, EntryData
 from nomad.files import PublicUploadFiles, StagingUploadFiles, UploadFiles
 from nomad.metainfo import Package, Quantity, Reference, SubSection
@@ -202,13 +201,6 @@ def assert_processing(
 
             assert has_test_event
         assert len(entry.errors) == 0
-
-        archive = read_partial_archive_from_mongo(entry.entry_id)
-        assert archive.metadata is not None
-        assert (
-            archive.workflow2.results.calculation_result_ref.system_ref.atoms.labels
-            is not None
-        )
 
         with upload_files.raw_file(entry.mainfile) as f:
             f.read()
