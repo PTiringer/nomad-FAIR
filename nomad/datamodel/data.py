@@ -65,25 +65,23 @@ class EntryDataCategory(MCategory):
 
 
 class ElnIntegrationCategory(EntryDataCategory):
-    m_def = Category(
-        label='Third-party ELN Integration', categories=[EntryDataCategory]
-    )
+    m_def = Category(categories=[EntryDataCategory])
 
 
 class BasicElnCategory(EntryDataCategory):
-    m_def = Category(label='Basic ELN', categories=[EntryDataCategory])
+    m_def = Category(categories=[EntryDataCategory])
 
 
 class ElnExampleCategory(EntryDataCategory):
-    m_def = Category(label='Example ELNs', categories=[EntryDataCategory])
+    m_def = Category(categories=[EntryDataCategory])
 
 
 class UseCaseElnCategory(EntryDataCategory):
-    m_def = Category(label='Use-cases', categories=[EntryDataCategory])
+    m_def = Category(categories=[EntryDataCategory])
 
 
 class WorkflowsElnCategory(EntryDataCategory):
-    m_def = Category(label='Workflows', categories=[EntryDataCategory])
+    m_def = Category(categories=[EntryDataCategory])
 
 
 class EntryData(ArchiveSection):
