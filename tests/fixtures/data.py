@@ -5,12 +5,7 @@ from datetime import datetime, timezone
 import pytest
 
 from nomad import bundles, datamodel, processing, utils
-from nomad.archive import (
-    read_archive,
-    to_json,
-    write_archive,
-    write_partial_archive_to_mongo,
-)
+from nomad.archive import read_archive, to_json, write_archive
 from nomad.config import config
 from nomad.datamodel import EntryArchive, OptimadeEntry, User
 from nomad.datamodel.datamodel import SearchableQuantity
@@ -373,10 +368,6 @@ def example_data(
             mainfile=mainfile,
             **kwargs,
         )
-
-        if i == 1:
-            archive = data.archives[entry_id]
-            write_partial_archive_to_mongo(archive)
 
     # 3 entries from one mainfile, 1 material, unpublished
     upload_id = 'id_child_entries'

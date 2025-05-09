@@ -65,11 +65,7 @@ from nomad.app.v1.models import (
     restrict_query_to_upload,
 )
 from nomad.app.v1.routers.metainfo import store_package_definition
-from nomad.archive import (
-    delete_partial_archives_from_mongo,
-    to_json,
-    write_partial_archive_to_mongo,
-)
+from nomad.archive import to_json
 from nomad.common import is_safe_relative_path
 from nomad.config import config
 from nomad.config.models.config import Reprocess
@@ -1586,12 +1582,6 @@ class Entry(Proc):
 
     def write_archive(self, archive: EntryArchive):
         # save the archive mongo entry
-        try:
-            if self._entry_metadata.processed:
-                write_partial_archive_to_mongo(archive)
-        except Exception as e:
-            self.get_logger().error('could not write mongodb archive entry', exc_info=e)
-
         if archive is not None:
             archive = archive.m_copy()
         else:
@@ -1817,12 +1807,6 @@ class Upload(Proc):
         with utils.lnr(logger, 'upload delete failed'):
             with utils.timer(logger, 'upload deleted from index'):
                 search.delete_upload(self.upload_id, refresh=True)
-
-            with utils.timer(logger, 'upload partial archives deleted'):
-                entry_ids = [
-                    entry.entry_id for entry in Entry.objects(upload_id=self.upload_id)
-                ]
-                delete_partial_archives_from_mongo(entry_ids)
 
             with utils.timer(logger, 'upload files deleted'):
                 for cls in (StagingUploadFiles, PublicUploadFiles):
@@ -2158,7 +2142,6 @@ class Upload(Proc):
 
         # Delete existing unmatched entries
         if entry_ids_to_delete:
-            delete_partial_archives_from_mongo(list(entry_ids_to_delete))
             for entry_id in entry_ids_to_delete:
                 search.delete_entry(entry_id=entry_id, update_materials=True)
                 old_entries_dict[entry_id].delete()
@@ -2440,9 +2423,7 @@ class Upload(Proc):
                             not self.published
                             or reprocess_settings.delete_unmatched_published_entries
                         ):
-                            entries_to_delete: list[str] = list(old_entries)
-                            delete_partial_archives_from_mongo(entries_to_delete)
-                            for entry_id in entries_to_delete:
+                            for entry_id in old_entries:
                                 search.delete_entry(
                                     entry_id=entry_id, update_materials=True
                                 )
