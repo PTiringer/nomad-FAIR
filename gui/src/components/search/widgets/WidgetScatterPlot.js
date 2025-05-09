@@ -229,6 +229,9 @@ export const WidgetScatterPlot = React.memo((
         }
       }
 
+      // Remove null values
+      filterNull(hitData)
+
       // Flatten arrays
       hitData.x = flatten(hitData.x)
       hitData.y = flatten(hitData.y)
@@ -433,10 +436,46 @@ function getShape(input) {
 
   while (isArray(inner)) {
     shape.push(inner.length)
-    inner = inner[0]
+    inner = inner.find(i => i != null)
   }
 
   return shape
+}
+
+/**
+ * Validates and filters hitData by removing entries with null values.
+ */
+function filterNull(input) {
+  // We only validate lists of x/y/color values
+  const hasColor = Boolean(input.color)
+  const isColorArray = hasColor && isArray(input.color)
+  if (!isArray(input.x) || !isArray(input.y) || (hasColor && !isColorArray)) {
+    return
+  }
+
+  const filtered = input.x.reduce(
+    (acc, curr, i) => {
+      const xVal = input.x[i]
+      const yVal = input.y[i]
+      const colorVal = hasColor ? input.color[i] : undefined
+      if (xVal === null || yVal === null || colorVal === null) {
+        return acc
+      }
+
+      acc.x.push(xVal)
+      acc.y.push(yVal)
+      if (hasColor) acc.color.push(colorVal)
+
+      return acc
+    },
+    { x: [], y: [], color: [] }
+  )
+
+  input.x = filtered.x
+  input.y = filtered.y
+  if (hasColor) {
+    input.color = filtered.color
+  }
 }
 
 /**

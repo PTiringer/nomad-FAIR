@@ -89,7 +89,8 @@ describe('test different combinations of x/y/color produced with JMESPath', () =
     ['datetime', 'entry_create_time', 'entry_create_time', 'entry_id'],
     ['index expression', 'results.properties.electronic.band_gap[0].value', 'results.properties.electronic.band_gap[0].value', 'results.properties.electronic.band_gap[0].value'],
     ['slicing', 'results.properties.electronic.band_gap[1:2].value', 'results.properties.electronic.band_gap[1:2].value', 'results.properties.electronic.band_gap[1:2].value'],
-    ['function', 'min(results.properties.electronic.band_gap[*].value)', 'min(results.properties.electronic.band_gap[*].value)', 'min(results.properties.electronic.band_gap[*].value)'],
+    ['function min', 'min(results.properties.electronic.band_gap[*].value)', 'min(results.properties.electronic.band_gap[*].value)', 'min(results.properties.electronic.band_gap[*].value)'],
+    ['function map with expression', 'map(&value, results.properties.electronic.band_gap[*])', 'map(&value, results.properties.electronic.band_gap[*])', 'map(&value, results.properties.electronic.band_gap[*])'],
     ['filter projection', "results.material.topology[?label=='original'].cell.a", "results.material.topology[?label=='original'].cell.a", "results.material.topology[?label=='original'].cell.a"],
     ['1D array vs 2D array vs 1D color', 'results.properties.catalytic.reaction.reaction_conditions.temperature', 'results.properties.catalytic.reaction.reactants[*].conversion', 'results.properties.catalytic.reaction.reactants[*].name']
   ])('%s', async (name, x, y, color) => {
