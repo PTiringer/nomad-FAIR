@@ -10,4 +10,3 @@ omit =
     nomad/metainfo/benchmarks.py
     nomad/metainfo/generate.py
     nomad/metainfo/pylint_plugin.py
-    nomad/mkdocs.py
