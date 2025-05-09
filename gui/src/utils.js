@@ -1686,8 +1686,14 @@ export function parseJMESPath(input) {
         childFields.push(fieldInner)
         childExtras.push(extrasInner)
       }
+      // In map functions we save ExpressionReference in the reverse order
+      if (type === 'Function' && name === 'map' && children[0].type === 'ExpressionReference') {
+        field = [...field, ...childFields[1], childFields[0]]
+        for (const childExtra of childExtras) {
+          extras = [...extras, ...childExtra]
+        }
       // In filter projections we save the filter field in extras
-      if (type === 'FilterProjection') {
+      } else if (type === 'FilterProjection') {
         for (const childField of childFields.slice(0, 2)) {
           field = [...field, ...childField]
         }
