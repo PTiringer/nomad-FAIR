@@ -56,20 +56,26 @@ export const extractPathContent = ({action, data, key}) => {
  */
 export const ActionURL = React.memo(({action, data}) => {
   const {raiseError} = useErrors()
-  const href = extractPathContent({action, data, key: 'path'})
+  let href = extractPathContent({action, data, key: 'path'})
 
   if (isArray(href)) {
-    raiseError(`
-    Encountered and array in ${action.path}. Expected a string.
-    Update the path in you app to target only one item in the array.`
-    )
-    return
+    if (href.length > 1) {
+      raiseError(`
+        The data for a row action as returned by the path "${action.path}"
+        contains an array with more than one item. Update the path in your app
+        to target only one item in the array.`
+      )
+      return null
+    } else {
+      href = href[0]
+    }
   }
   const disabled = !href
   const size = 'medium'
   const svgIcon = {
     'github': <GitHubIcon fontSize={size}/>
   }[action.icon]
+
   return <Tooltip title={disabled ? 'Not available' : (action.description || '')}>
     <div>
       <IconButton size={size} href={href} target="_blank" disabled={disabled}>
