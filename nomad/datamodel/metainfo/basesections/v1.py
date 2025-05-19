@@ -2103,7 +2103,9 @@ class HDF5Normalizer(ArchiveSection):
             quantity_mapper = custom_quantities[1]
             try:
                 dataset = h5_file[h5_path]
-                quantity_mapper(self, dataset[:])
+                quantity_mapper(
+                    self, dataset[()] if dataset.shape == () else dataset[:]
+                )
             except Exception as e:
                 logger.warning(
                     f'Could not map the path {h5_path}.'
