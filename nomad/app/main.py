@@ -147,7 +147,6 @@ async def http_exception_handler(request, exc):
                     'v1': {
                         'root': f'{app_base}/api/v1',
                         'dashboard': f'{app_base}/api/v1/extensions/docs',
-                        'documentation': f'{app_base}/api/v1/extensions/redoc',
                     },
                     'optimade': {
                         'root': f'{app_base}/optimade/v1',

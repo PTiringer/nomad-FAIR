@@ -32,7 +32,7 @@ within the [nomad-coe organization](https://github.com/nomad-coe).
 
 For a general project overview visit the official project page [https://nomad-lab.eu](https://nomad-lab.eu). For specific use of the NOMAD software follow these links to our documentation:
 
-- [get started as a developer](https://nomad-lab.eu/prod/v1/docs/develop/setup.html)
+- [get started as a developer](https://nomad-lab.eu/prod/v1/docs/howto/develop/setup.html)
 - [install and use NOMAD as Python package (to use our APIs or parsers)](https://nomad-lab.eu/prod/v1/docs/pythonlib.html)
 - [install NOMAD Oasis](https://nomad-lab.eu/prod/v1/docs/oasis.html)
 
