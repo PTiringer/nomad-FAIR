@@ -268,7 +268,7 @@ export const routes = [
         exact: true,
         menu: 'APIs',
         tooltip: 'The list of APIs offered by NOMAD',
-        breadcrumb: 'NOMAD APIs',
+        breadcrumb: 'APIs',
         component: APIs
       },
       {
