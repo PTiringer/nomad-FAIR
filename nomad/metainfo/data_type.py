@@ -1242,7 +1242,7 @@ def normalize_type(value):
     raise ValueError(f'Unsupported data type {value}.')
 
 
-def to_optimade_type(in_type: Datatype):
+def to_optimade_type(in_type: Datatype) -> str:
     standard_type = in_type.standard_type()
 
     if standard_type.startswith('int'):
@@ -1309,7 +1309,7 @@ def to_pydantic_type(in_type: Datatype):
     raise NotImplementedError(f'Unsupported pydantic data type {in_type}.')
 
 
-def to_elastic_type(in_type: Datatype, dynamic: bool):
+def to_elastic_type(in_type: Datatype, dynamic: bool) -> str:
     standard_type = in_type.standard_type()
 
     if dynamic:
@@ -1344,6 +1344,28 @@ def to_elastic_type(in_type: Datatype, dynamic: bool):
             return 'date'
 
     raise NotImplementedError(f'Unsupported elastic data type {in_type}.')
+
+
+def to_json_schema_type(in_type: Datatype) -> dict[str, str]:
+    """
+    Convert a metainfo Datatype to a JSON Schema type.
+    """
+    std_type = in_type.standard_type()
+
+    if std_type.startswith('int'):
+        return {'type': 'integer'}
+    if std_type.startswith('float'):
+        return {'type': 'number'}
+    if std_type == 'bool':
+        return {'type': 'boolean'}
+    if std_type in ('str', 'enum'):
+        return {'type': 'string'}
+    if std_type == 'dict':
+        return {'type': 'object'}
+    if std_type == 'datetime':
+        return {'type': 'string', 'format': 'date-time'}
+
+    raise NotImplementedError(f'Unsupported JSON Schema type: {std_type}')
 
 
 _extra_precision = set()

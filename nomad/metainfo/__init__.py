@@ -19,7 +19,7 @@
 """
 The NOMAD meta-info allows to define schemas for physics data independent of the used
 storage format. It allows to define physics quantities with types, complex shapes
-(vetors, matrices, etc.), units, links, and descriptions. It allows to organize large
+(vectors, matrices, etc.), units, links, and descriptions. It allows to organize large
 amounts of these quantities in containment hierarchies of extendable sections, references
 between sections, and additional quantity categories.
 

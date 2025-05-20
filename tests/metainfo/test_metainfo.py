@@ -16,11 +16,12 @@
 # limitations under the License.
 #
 
-# Contains more general test cases that are replaced continiously by more specialized
+# Contains more general test cases that are replaced continuously by more specialized
 # in-depth tests in test_* files of the same module.
 
-from math import isnan
+import math
 
+import jsonschema
 import numpy as np
 import pandas as pd
 import pint.quantity
@@ -32,12 +33,14 @@ from nomad.metainfo import (
     DefinitionAnnotation,
     SectionAnnotation,
 )
+from nomad.metainfo.data_type import JSON, Datetime
 from nomad.metainfo.example import SCC, Parsing, Run, System, SystemHash, VaspRun
 from nomad.metainfo.example import m_package as example_package
 from nomad.metainfo.metainfo import (
     Definition,
     DeriveError,
     MCategory,
+    MEnum,
     MetainfoError,
     MSection,
     Package,
@@ -104,6 +107,161 @@ class TestM3:
         assert Quantity.m_def.name == 'Quantity'
 
         assert_section_instance(Quantity.m_def)
+
+    def test_m_to_json_schema_basics(self):
+        quantity = Quantity(
+            type=float, description='Test', unit='m', title='test quantity'
+        )
+
+        schema = quantity.m_to_json_schema()
+        jsonschema.Draft201909Validator.check_schema(schema)
+
+        assert 'json-schema.org/' in schema['$schema']
+        assert schema['title'] == quantity.title
+        assert schema['description'] == quantity.description
+        assert schema['unit'] == quantity.unit
+
+    @pytest.mark.parametrize(
+        'shape, expected_subschema',
+        [
+            pytest.param([], {'type': 'number'}, id='0D'),
+            pytest.param(
+                [3],
+                {
+                    'type': 'array',
+                    'minItems': 3,
+                    'maxItems': 3,
+                    'items': {'type': 'number'},
+                },
+                id='1D-fixed',
+            ),
+            pytest.param(
+                ['*'],
+                {
+                    'type': 'array',
+                    'items': {'type': 'number'},
+                },
+                id='1D-flexible',
+            ),
+            pytest.param(
+                [3, 3],
+                {
+                    'type': 'array',
+                    'minItems': 3,
+                    'maxItems': 3,
+                    'items': {
+                        'type': 'array',
+                        'minItems': 3,
+                        'maxItems': 3,
+                        'items': {'type': 'number'},
+                    },
+                },
+                id='2D-fixed',
+            ),
+            pytest.param(
+                ['*', '*'],
+                {
+                    'type': 'array',
+                    'items': {'type': 'array', 'items': {'type': 'number'}},
+                },
+                id='2D-flexible',
+            ),
+            pytest.param(
+                [3, 3, 3],
+                {
+                    'type': 'array',
+                    'minItems': 3,
+                    'maxItems': 3,
+                    'items': {
+                        'type': 'array',
+                        'minItems': 3,
+                        'maxItems': 3,
+                        'items': {
+                            'type': 'array',
+                            'minItems': 3,
+                            'maxItems': 3,
+                            'items': {'type': 'number'},
+                        },
+                    },
+                },
+                id='3D-fixed',
+            ),
+            pytest.param(
+                ['*', '*', '*'],
+                {
+                    'type': 'array',
+                    'items': {
+                        'type': 'array',
+                        'items': {'type': 'array', 'items': {'type': 'number'}},
+                    },
+                },
+                id='3D-flexible',
+            ),
+            pytest.param(
+                [3, '*', 3],
+                {
+                    'type': 'array',
+                    'minItems': 3,
+                    'maxItems': 3,
+                    'items': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'array',
+                            'minItems': 3,
+                            'maxItems': 3,
+                            'items': {'type': 'number'},
+                        },
+                    },
+                },
+                id='mixed',
+            ),
+        ],
+    )
+    def test_m_to_json_schema_shape(self, shape, expected_subschema):
+        quantity = Quantity(type=float, shape=shape)
+        schema = quantity.m_to_json_schema()
+        jsonschema.Draft201909Validator.check_schema(schema)
+
+        # Inline recursive sub-dict comparison
+        def assert_subdict(actual, expected):
+            assert isinstance(actual, dict), f'Expected dict, got {type(actual)}'
+            for key, expected_value in expected.items():
+                assert key in actual, f'Missing key: {key}'
+                actual_value = actual[key]
+                if isinstance(expected_value, dict):
+                    assert_subdict(actual_value, expected_value)
+                else:
+                    assert actual_value == expected_value, (
+                        f"For key '{key}', expected {expected_value}, got {actual_value}"
+                    )
+
+        assert_subdict(schema, expected_subschema)
+
+    @pytest.mark.parametrize(
+        'm_types, expected_type',
+        [
+            pytest.param(MTypes.int, 'integer', id='integer'),
+            pytest.param(MTypes.float, 'number', id='number'),
+            pytest.param(MTypes.str | {MEnum('test')}, 'string', id='string'),
+            pytest.param(MTypes.bool, 'boolean', id='boolean'),
+            pytest.param({Datetime}, 'date-time', id='datetime'),
+            pytest.param({JSON}, 'object', id='json'),
+            # pytest.param(
+            #     MTypes.complex, 'complex', id='complex'
+            # ),  # TODO: Probably should fail for now? Not sure how we could map these
+        ],
+    )
+    def test_m_to_json_schema_type(self, m_types, expected_type):
+        for type_ in m_types:
+            quantity = Quantity(type=type_)
+            schema = quantity.m_to_json_schema()
+            jsonschema.Draft201909Validator.check_schema(schema)
+
+            if expected_type == 'date-time':
+                assert schema['type'] == 'string'
+                assert schema.get('format') == 'date-time'
+            else:
+                assert schema['type'] == expected_type
 
     def test_definition(self):
         assert len(Section.m_def.base_sections) == 1
@@ -679,7 +837,7 @@ class TestM1:
         class TestSection(MSection):
             test_quantity = Quantity(type=float)
 
-        assert isnan(
+        assert math.isnan(
             TestSection.m_from_dict(
                 {'test_quantity': None}, treat_none_as_nan=True
             ).test_quantity

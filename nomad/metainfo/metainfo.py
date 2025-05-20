@@ -52,6 +52,7 @@ from nomad.metainfo.data_type import (
     check_dimensionality,
     m_str,
     normalize_type,
+    to_json_schema_type,
 )
 from nomad.metainfo.data_type import Datetime as DatetimeType
 from nomad.metainfo.data_type import Dimension as DimensionType
@@ -2280,8 +2281,8 @@ class MSection(metaclass=MObjectMeta):
 
         return section
 
-    def m_to_json(self, **kwargs):
-        """Returns the data of this section as a json string."""
+    def m_to_json(self, **kwargs) -> str:
+        """Returns the data of this section as a JSON string."""
         return json.dumps(self.m_to_dict(), **kwargs)
 
     def m_all_contents(
@@ -2363,7 +2364,7 @@ class MSection(metaclass=MObjectMeta):
             content.m_pretty_print(indent + [i == length - 1])
 
     def m_contents(self) -> Iterable[MSection]:
-        """Returns an iterable over all direct subs sections."""
+        """Returns an iterable over all direct subsections."""
         for sub_section_def in self.m_def.all_sub_sections.values():
             for sub_section in self.m_get_sub_sections(sub_section_def):
                 if sub_section is not None:
@@ -2897,7 +2898,7 @@ class Definition(MSection):
             for category in value:
                 category.definitions.add(self)
 
-    def m_to_dict(self, **kwargs) -> dict:  # type: ignore
+    def m_to_dict(self, **kwargs) -> dict:  # type: ignore[override]
         value: dict = super().m_to_dict(**kwargs)
         if kwargs.get('with_def_id', False):
             value['definition_id'] = self.definition_id
@@ -3083,7 +3084,7 @@ class Quantity(Property):
             - a build-in primitive Python type: ``int``, ``str``, ``bool``, ``float``
             - an instance of :class:`MEnum`, e.g. ``MEnum('one', 'two', 'three')``
             - a section to define references to other sections as quantity values
-            - a custom meta-info :class:`DataType`, see :ref:`metainfo-custom-types`
+            - a custom meta-info :class:`Datatype`, see :ref:`metainfo-custom-types`
             - a numpy `dtype`, e.g. ``np.float32``
             - ``typing.Any`` to support any value
 
@@ -3119,7 +3120,7 @@ class Quantity(Property):
             numpy arrays. Their type must be a `dtype`.
 
         is_scalar:
-            Derived quantity that is True, iff this quantity has shape of length 0
+            Derived quantity that is True, if this quantity has shape of length 0
 
         unit:
             The physics unit for this quantity. It is optional.
@@ -3431,6 +3432,65 @@ class Quantity(Property):
             + str(self.dimensionality)
             + ('T' if self.virtual else 'F')
         )
+
+    def m_to_json_schema(self) -> dict[str, Any]:
+        """
+        Generate JSON Schema for a Quantity instance.
+        """
+
+        def shape_to_json_schema(shape: list, base_type: str) -> dict[str, Any]:
+            """Recursively convert shape and base type to nested JSON Schema arrays."""
+
+            def parse_dim(dim):
+                if isinstance(dim, int):
+                    return {'minItems': dim, 'maxItems': dim}
+                if dim == '*':
+                    return {}
+                if isinstance(dim, str):
+                    match = re.fullmatch(r'(\d+)?\.\.(\d+|\*)?', dim)
+                    if match:
+                        min_, max_ = match.groups()
+                        out = {}
+                        if min_ is not None:
+                            out['minItems'] = int(min_)
+                        if max_ and max_ != '*':
+                            out['maxItems'] = int(max_)
+                        return out
+                    raise NotImplementedError(
+                        f"Shape reference '{dim}' not yet supported."
+                    )
+                raise TypeError(f'Unsupported shape dimension: {dim}')
+
+            def build(dimensions: list) -> dict[str, Any]:
+                if not dimensions:
+                    return {'type': base_type}
+                dim_spec = parse_dim(dimensions[0])
+                return {'type': 'array', **dim_spec, 'items': build(dimensions[1:])}
+
+            return build(shape)
+
+        # Determine base type
+        base_schema = to_json_schema_type(self.type)
+        base_type = base_schema['type']
+
+        if self.is_scalar or self.shape in (None, [], [1]):
+            schema: dict[str, Any] = {
+                '$schema': 'https://json-schema.org/draft/2019-09/schema',
+                **base_schema,
+            }
+        else:
+            schema = shape_to_json_schema(self.shape, base_type)
+            schema['$schema'] = 'https://json-schema.org/draft/2019-09/schema'
+
+        # Optional fields
+        if getattr(self, 'title', None):
+            schema['title'] = self.title
+        if getattr(self, 'description', None):
+            schema['description'] = self.description
+        if self.unit is not None:
+            schema['unit'] = str(self.unit)
+
+        return schema
 
 
 class DirectQuantity(Quantity):

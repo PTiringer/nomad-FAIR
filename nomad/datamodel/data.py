@@ -150,7 +150,7 @@ class User(Author):
         affiliation_address: The address of the given affiliation
         created: The time the account was created
         repo_user_id: The id that was used to identify this user in the NOMAD CoE Repository
-        is_admin: Bool that indicated, iff the user the use admin user
+        is_admin: Bool that indicated, if the user is the admin
     """
 
     m_def = Section(a_pydantic=PydanticModel())
