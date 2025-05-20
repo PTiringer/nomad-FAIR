@@ -3473,7 +3473,7 @@ class Quantity(Property):
         base_schema = to_json_schema_type(self.type)
         base_type = base_schema['type']
 
-        if self.is_scalar or self.shape in (None, [], [1]):
+        if self.is_scalar:
             schema: dict[str, Any] = {
                 '$schema': 'https://json-schema.org/draft/2019-09/schema',
                 **base_schema,
