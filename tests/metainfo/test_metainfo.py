@@ -126,6 +126,16 @@ class TestM3:
         [
             pytest.param([], {'type': 'number'}, id='0D'),
             pytest.param(
+                [1],
+                {
+                    'type': 'array',
+                    'minItems': 1,
+                    'maxItems': 1,
+                    'items': {'type': 'number'},
+                },
+                id='single-item-array',
+            ),
+            pytest.param(
                 [3],
                 {
                     'type': 'array',
