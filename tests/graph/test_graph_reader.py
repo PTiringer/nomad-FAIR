@@ -3634,7 +3634,7 @@ def test_custom_schema_archive_and_definition(user1, custom_data):
                                 },
                                 {
                                     'name': 'is_admin',
-                                    'description': 'Bool that indicated, iff the user the use admin user',
+                                    'description': 'Bool that indicated, if the user is the admin',
                                     'type': {
                                         'type_kind': 'python',
                                         'type_data': 'bool',
