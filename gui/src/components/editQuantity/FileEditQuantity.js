@@ -18,7 +18,7 @@
 import React, {useCallback, useRef, useState} from 'react'
 import PropTypes from 'prop-types'
 import {
-  makeStyles, IconButton, Tooltip, TextField
+  makeStyles, IconButton, Tooltip
 } from '@material-ui/core'
 import UploadIcon from '@material-ui/icons/CloudUpload'
 import { useDropzone } from 'react-dropzone'
@@ -30,6 +30,7 @@ import UploadProgressDialog from '../uploads/UploadProgressDialog'
 import {getDisplayLabel} from "../../utils"
 import {useRecoilValue} from "recoil"
 import {configState} from "../archive/ArchiveBrowser"
+import {getFieldProps, TextFieldWithHelp} from "./StringEditQuantity"
 
 const useFileEditQuantityStyles = makeStyles(theme => ({
   dropzone: {
@@ -47,6 +48,7 @@ const useFileEditQuantityStyles = makeStyles(theme => ({
 const FileEditQuantity = React.memo(props => {
   const classes = useFileEditQuantityStyles()
   const {onChange, onFailed, quantityDef, value, ...otherProps} = props
+  const fieldProps = getFieldProps(quantityDef)
   const {index} = otherProps
   const {uploadId, metadata} = useEntryStore() || {}
   const {api} = useApi()
@@ -141,25 +143,24 @@ const FileEditQuantity = React.memo(props => {
     <div {...getRootProps({className: dropzoneClassName})}>
       <UploadProgressDialog uploading={uploading} />
       <input {...getInputProps()} />
-      <TextField
+      <TextFieldWithHelp
         value={value || ''} onChange={handleChange}
         size="small" variant="filled" fullWidth
         label={label}
         {...otherProps}
-        InputProps={{
-          endAdornment: (
-            <React.Fragment>
-              <IconButton size="small" onClick={open} >
-                <Tooltip title="upload file (click or drop file)">
-                  <UploadIcon/>
-                </Tooltip>
-              </IconButton>
-              {lane && value && (
-                <ItemButton size="small" itemKey={index === undefined ? quantityDef.name : `${quantityDef.name}/${index}`} />
-              )}
-            </React.Fragment>
-          )
-        }}
+        {...fieldProps}
+        actions={[
+          <React.Fragment key={'upload-file'}>
+            <IconButton size="small" onClick={open} >
+              <Tooltip title="upload file (click or drop file)">
+                <UploadIcon/>
+              </Tooltip>
+            </IconButton>
+            {lane && value && (
+              <ItemButton size="small" itemKey={index === undefined ? quantityDef.name : `${quantityDef.name}/${index}`} />
+            )}
+          </React.Fragment>
+        ]}
       />
       <OverwriteExistingFileDialog
         open={askForOverwrite}
