@@ -43,13 +43,13 @@ stages:
   - release
 
 # JOBS
-
 update changelog:
   stage: build
+  when: manual
   script:
-    - curl -X POST "https://gitlab.mpcdf.mpg.de/api/v4/projects/$CI_PROJECT_ID/repository/changelog?version=${CI_COMMIT_TAG:1}&access_token=$CI_ACCESS_TOKEN&message=Add%20changelog%20for%20version%20$CI_COMMIT_TAG%20%5Bskip-ci%5D"
+    - curl -X POST "https://gitlab.mpcdf.mpg.de/api/v4/projects/$CI_PROJECT_ID/repository/changelog?branch=${CI_COMMIT_REF_NAME}&version=${CI_COMMIT_REF_NAME:1}&access_token=$CI_ACCESS_TOKEN&message=Add%20changelog%20for%20version%20$CI_COMMIT_REF_NAME%20%5Bskip-ci%5D"
   rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+    - if: $CI_COMMIT_REF_NAME =~ /^v\d+\.\d+\.\d+$/
 
 .build_image:
   image:
@@ -310,11 +310,11 @@ python package install tests:
     - |
       for PYTHON_VERSION in 3.10 3.11 3.12; do
         echo "Running for Python $PYTHON_VERSION"
-        
+
         uv venv -p $PYTHON_VERSION
-        
+
         uv pip install dist/nomad_*.whl
-        
+
         ./.venv/bin/python -c 'import nomad.cli'
         ./.venv/bin/python -c 'from nomad.client import ArchiveQuery'
         ./.venv/bin/python -m nomad.cli parse --skip-normalizers archive.json

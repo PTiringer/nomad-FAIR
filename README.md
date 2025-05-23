@@ -46,11 +46,16 @@ Scheidgen et al., (2023). NOMAD: A distributed web-based platform for managing m
 
 For citation in academic works, you can use this [BibTeX file](docs/assets/joss_paper.bib).
 
-## Changelog
+## Changelog highlights
 
-Omitted versions are plain bugfix releases with only minor changes and fixes. The
-file [`CHANGELOG.md`](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/blob/develop/CHANGELOG.md)
-contains much more detailed information about changes and fixes in the released versions.
+The following list contains highlights from different versions, the file [`CHANGELOG.md`](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/blob/develop/CHANGELOG.md) contains much more detailed information about changes and fixes in the released versions. Omitted versions are plain bugfix releases with only minor changes and fixes.
+
+### v1.3.16
+
+- Added option for setting the query mode for terms widget and terms menu item
+- Added new action for launching remote tools from the results table
+- Fixed performance issues with API response for entries with large amounts of search quantities
+- Fixed issue with unit conversion from/to delta units
 
 ### v1.3.15
 

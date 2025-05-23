@@ -202,7 +202,7 @@ class Services(ConfigBaseModel):
     """,
     )
     upload_members_group_search_enabled: bool = Field(
-        False,
+        True,
         description='If true, the GUI will show a search for groups as upload members.',
     )
     log_api_queries: bool = Field(
