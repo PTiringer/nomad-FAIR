@@ -56,20 +56,26 @@ export const extractPathContent = ({action, data, key}) => {
  */
 export const ActionURL = React.memo(({action, data}) => {
   const {raiseError} = useErrors()
-  const href = extractPathContent({action, data, key: 'path'})
+  let href = extractPathContent({action, data, key: 'path'})
 
   if (isArray(href)) {
-    raiseError(`
-    Encountered and array in ${action.path}. Expected a string.
-    Update the path in you app to target only one item in the array.`
-    )
-    return
+    if (href.length > 1) {
+      raiseError(`
+        The data for a row action as returned by the path "${action.path}"
+        contains an array with more than one item. Update the path in your app
+        to target only one item in the array.`
+      )
+      return null
+    } else {
+      href = href[0]
+    }
   }
   const disabled = !href
   const size = 'medium'
   const svgIcon = {
     'github': <GitHubIcon fontSize={size}/>
   }[action.icon]
+
   return <Tooltip title={disabled ? 'Not available' : (action.description || '')}>
     <div>
       <IconButton size={size} href={href} target="_blank" disabled={disabled}>
@@ -120,11 +126,11 @@ export const NorthURL = React.memo(({ action, data }) => {
 
   const handleLaunch = async () => {
     if (!tool) return
-    const {state: currentState, uploadid_is_mounted} = await getToolStatus()
+    const { state: currentState, uploadid_is_mounted } = await getToolStatus()
     if (currentState === "stopped") {
-      const { toolUrl } = await launch()
-      setToolUrl(toolUrl)
-      if (toolUrl) window.open(toolUrl, tool.name)
+      const { toolUrl: newUrl } = await launch()
+      setToolUrl(newUrl)
+      if (newUrl) window.open(newUrl, tool.name)
     } else if (uploadid_is_mounted === false) {
       setDialogMessage(
         `The upload ${data?.upload_id} is not mounted. You need to stop the tool before relaunching it.
@@ -132,7 +138,6 @@ export const NorthURL = React.memo(({ action, data }) => {
       setShowStopOnly(true)
       setOpenDialog(true)
     } else {
-      setToolUrl(toolUrl)
       setDialogMessage("The tool is already running. Stopping it will delete any unsaved data.")
       setShowStopOnly(false)
       setOpenDialog(true)
@@ -150,13 +155,22 @@ export const NorthURL = React.memo(({ action, data }) => {
     setOpenDialog(false)
   }
 
-  const handleOpenTool = () => {
-    setOpenDialog(false)
-    window.open(
-      toolUrl || `${northBase}/user/${keycloak.tokenParsed?.preferred_username}/${tool.name}`,
-      "_blank"
-    )
+  const handleOpenTool = async () => {
+  setOpenDialog(false)
+  let url = toolUrl
+
+  if (!url) {
+    const { state, uploadid_is_mounted } = await getToolStatus()
+    if (state === "running" && uploadid_is_mounted) {
+      const { toolUrl: fetchedUrl } = await launch()
+      url = fetchedUrl || `${northBase}/user/${keycloak.tokenParsed?.preferred_username}/${tool.name}`
+    } else {
+      url = `${northBase}/user/${keycloak.tokenParsed?.preferred_username}/${tool.name}`
+    }
   }
+
+  window.open(url, "_blank")
+}
 
   const disabled = !filepath || !isAuthenticated
   const tooltipMessage = !isAuthenticated
