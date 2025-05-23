@@ -1,3 +1,28 @@
+## 1.3.16 (2025-05-15)
+
+### Changed (4 changes)
+
+- [Added more context to the ConfigBaseModel validation logger warning](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/96b76947d6fc01c1d42defcd868bfe2b333334f9) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2429))
+- [Removed direct infrastructure dependency from mkdocs macros](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/075653f2b839539e90a07e729d2304268b8f2527) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2366))
+- [Use newer version of setuptools](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/112dc2b9a08103da228c12333ae3fd93c870dfc5) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2426))
+
+### Fixed (5 changes)
+
+- [Fixed issue with undefined spectra data](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/c2e6601ba5ca611e308ed35adeac9d4f130aca25) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2436))
+- [Fixed performance issues with API response for entries with large amounts of search quantities](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/cc3f32a034f57f07aab14ddfd94184106ad09758) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2409))
+- [Fixed issue with unit conversion from/to delta units](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/fa071c5df9255c1489ef61a44667cf1105c07289) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2380))
+- [Fixed issue with histograms that contain negative numbers](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/5d8438f86461da28e20c62eb72187f85a7ec5442) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2367))
+- [Fixed ForwardRef related pydantic error in annotation models](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/d324719cf5f0d006dfa51ae452e9685484c802b3) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2403))
+
+### Added (6 changes)
+
+- [Added option for setting the query mode for terms widget and terms menu item](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/f744bea733616076ab72bdfba0aa450a4194edb9) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2428))
+- [Added experimental API endpoint for bulk entries metadata export](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/072952d29940df4d16e010f870af1d5fdb1eb584) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2315))
+- [Added new action for launching remote tools from the results table](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/e7343bd0de909b3f9a8ae57b48044455a2adfa2d) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2279))
+- [Added support for negative parser levels](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/203b6e11308bca7f18d7cb7580116c87b0e92bdd) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2362))
+- [Added mkdocs function to add schema section and package reference](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/bd2d5c84824cc1a4bbd2c40e1d9c1871c1a41aa6) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2116))
+- [Added wheel to the Python package](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/aa13798e378ca1d78d576820eee0f1be0f360aba) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2433))
+
 ## 1.3.15 (2025-03-05)
 
 ### Fixed (1 change)
