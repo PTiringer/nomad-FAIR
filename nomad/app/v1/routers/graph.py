@@ -79,6 +79,7 @@ def relocate_children(request):
     summary='Query the database with a graph style without verification.',
     description='Query the database with a graph style without verification.',
     response_class=GraphJSONResponse,
+    include_in_schema=False,
 )
 async def raw_query(query=Body(...), user: User = Depends(create_user_dependency())):
     relocate_children(query)
@@ -119,6 +120,7 @@ async def basic_query(
     tags=[APITag.DEFAULT],
     summary='Search entries and access their archives',
     response_class=GraphJSONResponse,
+    include_in_schema=False,
 )
 async def archive_query(
     data: EntriesArchive, user: User = Depends(create_user_dependency())
