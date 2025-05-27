@@ -568,7 +568,7 @@ const DataStore = React.memo(({children}) => {
         config.headers = {
           'Content-Type': 'application/yaml'
         }
-        stringifiedArchive = YAML.stringify(newArchive)
+        stringifiedArchive = YAML.stringify(newArchive, {defaultStringType: 'QUOTE_SINGLE'})
       }
       return new Promise((resolve, reject) => {
         api.put(`/uploads/${uploadId}/raw/${path}?file_name=${fileName}&wait_for_processing=true&entry_hash=${archive.metadata.entry_hash}`, stringifiedArchive || newArchive, config)
