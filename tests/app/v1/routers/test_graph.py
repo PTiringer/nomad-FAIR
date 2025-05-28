@@ -572,7 +572,23 @@ def test_get_uploads_graph(auth_headers, client, example_data, kwargs):
                                 'm_is': 'Directory',
                             },
                         }
-                    }
+                    },
+                    'm_response': {
+                        'pagination': {
+                            'first_page_url': None,
+                            'next_page_after_value': 'id_empty',
+                            'next_page_url': None,
+                            'order': 'asc',
+                            'order_by': None,
+                            'page': None,
+                            'page_after_value': None,
+                            'page_offset': None,
+                            'page_size': 10,
+                            'page_url': None,
+                            'prev_page_url': None,
+                            'total': 10,
+                        },
+                    },
                 }
             },
             id='depth-1',
@@ -601,7 +617,23 @@ def test_get_uploads_graph(auth_headers, client, example_data, kwargs):
                                 'm_is': 'Directory',
                             },
                         }
-                    }
+                    },
+                    'm_response': {
+                        'pagination': {
+                            'first_page_url': None,
+                            'next_page_after_value': 'id_empty',
+                            'next_page_url': None,
+                            'order': 'asc',
+                            'order_by': None,
+                            'page': None,
+                            'page_after_value': None,
+                            'page_offset': None,
+                            'page_size': 10,
+                            'page_url': None,
+                            'prev_page_url': None,
+                            'total': 10,
+                        },
+                    },
                 }
             },
             id='depth-2',
@@ -655,7 +687,23 @@ def test_get_uploads_graph(auth_headers, client, example_data, kwargs):
                                 'm_is': 'Directory',
                             },
                         }
-                    }
+                    },
+                    'm_response': {
+                        'pagination': {
+                            'first_page_url': None,
+                            'next_page_after_value': 'id_empty',
+                            'next_page_url': None,
+                            'order': 'asc',
+                            'order_by': None,
+                            'page': None,
+                            'page_after_value': None,
+                            'page_offset': None,
+                            'page_size': 10,
+                            'page_url': None,
+                            'prev_page_url': None,
+                            'total': 10,
+                        },
+                    },
                 }
             },
             id='depth-3',
