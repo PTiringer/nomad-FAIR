@@ -1499,13 +1499,16 @@ class MongoReader(GeneralReader):
 
             raise ValueError(f'Should not reach here.')
 
-        if config.pagination is None:
-            # still apply a default pagination to avoid unnecessarily large results
-            mongo_result = mongo_result[: pagination_response.page_size]
+        def _populate_next_page_after_value():
             if mongo_result:
                 pagination_response.next_page_after_value = _pick_id(
                     mongo_result[len(mongo_result) - 1]
                 )
+
+        if config.pagination is None:
+            # still apply a default pagination to avoid unnecessarily large results
+            mongo_result = mongo_result[: pagination_response.page_size]
+            _populate_next_page_after_value()
         elif not isinstance(config.pagination, PaginationResponse):
             # apply pagination when config.pagination is present
             # if it is a PaginationResponse, it means the pagination has been applied in the search
@@ -1514,10 +1517,7 @@ class MongoReader(GeneralReader):
             mongo_result = config.pagination.order_result(mongo_result)
 
             mongo_result = config.pagination.paginate_result(mongo_result, _pick_id)
-            if mongo_result:
-                pagination_response.next_page_after_value = _pick_id(
-                    mongo_result[len(mongo_result) - 1]
-                )
+            _populate_next_page_after_value()
 
         if transformer == upload_to_pydantic:
             mongo_dict = {
@@ -1737,9 +1737,12 @@ class MongoReader(GeneralReader):
                 if filtered is None:
                     return
 
-                result, pagination = await self._normalise(
-                    filtered, child_config, transformer
-                )
+                if isinstance(value, dict) and GeneralReader.__WILDCARD__ not in value:
+                    result, pagination = {}, None
+                else:
+                    result, pagination = await self._normalise(
+                        filtered, child_config, transformer
+                    )
                 if pagination is not None:
                     pagination_dict = pagination.model_dump()
                     if pagination_dict.get('order_by', None) == 'mainfile':
