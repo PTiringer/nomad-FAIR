@@ -3447,8 +3447,7 @@ class Quantity(Property):
                 if dim == '*':
                     return {}
                 if isinstance(dim, str):
-                    match = re.fullmatch(r'(\d+)?\.\.(\d+|\*)?', dim)
-                    if match:
+                    if match := re.fullmatch(r'(\d+)?\.\.(\d+|\*)?', dim):
                         min_, max_ = match.groups()
                         out = {}
                         if min_ is not None:
@@ -3456,9 +3455,10 @@ class Quantity(Property):
                         if max_ and max_ != '*':
                             out['maxItems'] = int(max_)
                         return out
-                    raise NotImplementedError(
-                        f"Shape reference '{dim}' not yet supported."
-                    )
+
+                    # Assume `shape` to be name of another `Quantity` in the Section
+                    return parse_dim('*')
+
                 raise TypeError(f'Unsupported shape dimension: {dim}')
 
             def build(dimensions: list) -> dict[str, Any]:

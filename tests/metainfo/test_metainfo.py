@@ -39,7 +39,6 @@ from nomad.metainfo.example import m_package as example_package
 from nomad.metainfo.metainfo import (
     Definition,
     DeriveError,
-    MCategory,
     MEnum,
     MetainfoError,
     MSection,
@@ -225,15 +224,29 @@ class TestM3:
                 },
                 id='mixed',
             ),
+            pytest.param(
+                ['n_sites', 3],
+                {
+                    'items': {
+                        'items': {'type': 'number'},
+                        'maxItems': 3,
+                        'minItems': 3,
+                        'type': 'array',
+                    },
+                    'type': 'array',
+                },
+                id='ref-another-quantity',
+            ),
         ],
     )
     def test_m_to_json_schema_shape(self, shape, expected_subschema):
         quantity = Quantity(type=float, shape=shape)
+
         schema = quantity.m_to_json_schema()
         jsonschema.Draft201909Validator.check_schema(schema)
 
-        # Inline recursive sub-dict comparison
         def assert_subdict(actual, expected):
+            """Recursive sub-dict comparison."""
             assert isinstance(actual, dict), f'Expected dict, got {type(actual)}'
             for key, expected_value in expected.items():
                 assert key in actual, f'Missing key: {key}'
@@ -256,9 +269,6 @@ class TestM3:
             pytest.param(MTypes.bool, 'boolean', id='boolean'),
             pytest.param({Datetime}, 'date-time', id='datetime'),
             pytest.param({JSON}, 'object', id='json'),
-            # pytest.param(
-            #     MTypes.complex, 'complex', id='complex'
-            # ),  # TODO: Probably should fail for now? Not sure how we could map these
         ],
     )
     def test_m_to_json_schema_type(self, m_types, expected_type):
@@ -291,12 +301,6 @@ class TestPureReflection:
         # FIXME assert obj.m_get('test_quantity') is None
         setattr(obj, 'test_quantity', 'test_value')
         assert getattr(obj, 'test_quantity') == 'test_value'
-
-
-class MaterialDefining(MCategory):
-    """Quantities that add to what constitutes a different material."""
-
-    pass
 
 
 class TestM2:
