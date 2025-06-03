@@ -264,7 +264,7 @@ class Query(JSON):
         class QueryResult(MetadataResponse):
             filters: dict[str, Any] | None = Field(None)
 
-        return QueryResult.model_validate(value).model_dump()
+        return QueryResult.model_validate(value).model_dump(by_alias=True)
 
 
 Schema = EntryData
