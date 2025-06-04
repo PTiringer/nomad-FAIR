@@ -2878,6 +2878,9 @@ class Definition(MSection):
 
         return super().__getattr__(name)
 
+    def __repr__(self):
+        return f'{self.qualified_name()}:{self.m_def.name}'
+
     def m_is_set(self, def_or_name: Property | str, *, hint: str | None = None) -> bool:
         definition = self._ensure_definition(def_or_name, hint=hint)
 
@@ -2904,8 +2907,55 @@ class Definition(MSection):
             value['definition_id'] = self.definition_id
         return value
 
-    def __repr__(self):
-        return f'{self.qualified_name()}:{self.m_def.name}'
+    def m_to_json_schema(self) -> dict[str, Any]:
+        """
+        Generate JSON Schema for this Section, referencing each
+        property (Quantity or SubSection) via `$defs`.
+        """
+        schema: dict[str, Any] = {
+            '$schema': 'https://json-schema.org/draft/2020-12/schema',
+            'title': self.name,
+            'type': 'object',
+        }
+
+        properties: dict = {}
+        defs: dict = {}
+
+        # Add Quantities inline
+        for quantity in self.quantities:
+            quantity_schema = quantity.m_to_json_schema()
+            quantity_schema.pop('$schema', None)
+            properties[quantity.name] = quantity_schema
+
+        # Add SubSection to `$ref`
+        for subsection in self.sub_sections:
+            name = subsection.name
+            child_section = subsection.sub_section
+
+            # Recursively get JSON schema
+            child_schema = child_section.m_to_json_schema()
+            child_schema.pop('$schema', None)
+
+            defs[child_section.name] = child_schema
+
+            # Reference it in properties
+            if subsection.repeats:
+                properties[name] = {
+                    'type': 'array',
+                    'items': {'$ref': f'#/$defs/{child_section.name}'},
+                }
+            else:
+                properties[name] = {'$ref': f'#/$defs/{child_section.name}'}
+
+            if child_section.description is not None:
+                properties[name]['description'] = child_section.description
+
+        if properties:
+            schema['properties'] = properties
+        if defs:
+            schema['$defs'] = defs  # for Quantity it's empty
+
+        return schema
 
     def _hash_seed(self) -> str:
         """
