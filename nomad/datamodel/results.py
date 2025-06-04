@@ -1839,6 +1839,7 @@ class DFT(MSection):
         description='Amount of exact exchange mixed in with the XC functional (value range = [0,1]).',
         a_elasticsearch=Elasticsearch(material_entry_type),
     )
+
     hubbard_kanamori_model = SubSection(
         sub_section=HubbardKanamoriModel.m_def,
         repeats=True,
