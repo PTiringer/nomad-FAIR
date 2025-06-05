@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 
+import os
 import re
 from typing import Any
 
@@ -264,30 +265,36 @@ class ResultsNormalizer(Normalizer):
             tag = ''
             if results.method.simulation:
                 tag = 'simulation'
-
-            try:
-                method_name = results.method.method_name
-                program_name = results.method.simulation.program_name
-                if workflow_name == 'SinglePoint' and method_name:
-                    self.entry_archive.metadata.entry_type = (
-                        f'{program_name} {method_name} {workflow_name}'
-                    )
-                else:
-                    self.entry_archive.metadata.entry_type = (
-                        f'{program_name} {workflow_name}'
-                    )
-            except Exception:
-                self.entry_archive.metadata.entry_type = workflow_name
+                entry_type = self.entry_archive.metadata.entry_type
+                try:
+                    if entry_type == workflow_name or not entry_type:
+                        method_name = results.method.method_name
+                        program_name = results.method.simulation.program_name
+                        if workflow_name == 'SinglePoint' and method_name:
+                            self.entry_archive.metadata.entry_type = (
+                                f'{program_name} {method_name} {workflow_name}'
+                            )
+                        else:
+                            self.entry_archive.metadata.entry_type = (
+                                f'{program_name} {workflow_name}'
+                            )
+                except Exception:
+                    if not entry_type:
+                        self.entry_archive.metadata.entry_type = workflow_name
             type_tag = f'{self.entry_archive.metadata.entry_type} {tag}'
 
             # Populate entry_name
-            material = results.material
-            if material and material.chemical_formula_descriptive:
-                self.entry_archive.metadata.entry_name = (
-                    f'{material.chemical_formula_descriptive} {type_tag}'
-                )
-            else:
-                self.entry_archive.metadata.entry_name = f'{type_tag}'
+            entry_name = self.entry_archive.metadata.entry_name
+            if not entry_name or entry_name == os.path.basename(
+                self.entry_archive.metadata.mainfile
+            ):
+                material = results.material
+                if material and material.chemical_formula_descriptive:
+                    self.entry_archive.metadata.entry_name = (
+                        f'{material.chemical_formula_descriptive} {type_tag}'
+                    )
+                else:
+                    self.entry_archive.metadata.entry_name = f'{type_tag}'
 
     def resolve_band_gap(
         self, path: list[str] = ['run', 'calculation', 'band_gap']
