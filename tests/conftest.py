@@ -373,3 +373,19 @@ def mockopen(monkeypatch):
     manager = MockFileManager()
     monkeypatch.setattr(builtins, 'open', manager.open)
     return manager
+
+
+@pytest.fixture(scope='session', autouse=True)
+def nomad_parsers(monkeysession):
+    from nomad.parsing.artificial import (
+        ChaosParser,
+        GenerateRandomParser,
+        TemplateParser,
+    )
+    from nomad.parsing.parsers import parser_dict, parsers
+
+    test_parsers = [GenerateRandomParser(), TemplateParser(), ChaosParser()]
+    parser_dict.update({parser.name: parser for parser in test_parsers})
+    parsers.extend(test_parsers)
+    monkeysession.setattr('nomad.parsing.parsers.parsers', parsers)
+    monkeysession.setattr('nomad.parsing.parsers.parser_dict', parser_dict)

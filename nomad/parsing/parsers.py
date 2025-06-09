@@ -27,7 +27,7 @@ from nomad.config.models.plugins import ParserEntryPoint
 from nomad.datamodel import EntryArchive, EntryMetadata, results
 from nomad.datamodel.context import ClientContext, ServerLocalContext
 
-from .artificial import ChaosParser, EmptyParser, GenerateRandomParser, TemplateParser
+from .artificial import EmptyParser
 from .parser import (
     ArchiveParser,
     BrokenParser,
@@ -225,7 +225,7 @@ def run_parser(
     return entry_archives
 
 
-parsers = [GenerateRandomParser(), TemplateParser(), ChaosParser()]
+parsers = []
 config.load_plugins()
 enabled_entry_points = config.plugins.entry_points.filtered_values()
 

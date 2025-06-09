@@ -24,6 +24,7 @@ import json
 import os
 import os.path
 import random
+import re
 import signal
 import sys
 import time
@@ -208,7 +209,7 @@ class GenerateRandomParser(TemplateParser):
         decoded_buffer: str,
         compression: str = None,
     ) -> bool:
-        return os.path.basename(filename).startswith('random_')
+        return re.match(r'.*?random_\d+', filename) is not None
 
     def parse(
         self, mainfile: str, archive: EntryArchive, logger=None, child_archives=None
