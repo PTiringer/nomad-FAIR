@@ -23,7 +23,7 @@ import { Snackbar, SnackbarContent, IconButton, Link as MuiLink, Link } from '@m
 import UnderstoodIcon from '@material-ui/icons/Check'
 import { amber } from '@material-ui/core/colors'
 import AppBar, { appBarHeight } from './AppBar'
-import { guiBase, version } from '../../config'
+import { termsOfServiceURL, guiBase, version } from '../../config'
 import { Routes } from './Routes'
 import { ErrorBoundary } from '../errors'
 import { useCookies } from 'react-cookie'
@@ -57,7 +57,7 @@ function TermsSnack() {
       message={<span>
         NOMAD only uses cookies that are strictly necessary for this site&apos;s functionality.
         No tracking or marketing cookies are used. By using this site you agree to
-        our <Link className={classes.termsLink} href="https://nomad-lab.eu/nomad-lab/terms.html" title="terms of service">terms of service</Link>.
+        our <Link className={classes.termsLink} href={termsOfServiceURL} title="terms of service">terms of service</Link>.
       </span>}
       action={[
         <IconButton

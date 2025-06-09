@@ -324,6 +324,7 @@ def get_gui_config() -> str:
         'plugins': plugins,
         'dataciteEnabled': config.datacite.enabled,
         'resourcesEnabled': config.resources.enabled,
+        'termsOfServiceURL': config.oasis.terms_of_service_url,
     }
 
     return f'window.nomadEnv = {json.dumps(data, indent=2)}'

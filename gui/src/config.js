@@ -114,6 +114,7 @@ export const appTokenMaxExpiresIn = window.nomadEnv.appTokenMaxExpiresIn || "202
 export const uploadMembersGroupSearchEnabled = window.nomadEnv.uploadMembersGroupSearchEnabled || false
 export const dataciteEnabled = window.nomadEnv.dataciteEnabled || false
 export const resourcesEnabled = window.nomadEnv.resourcesEnabled || false
+export const termsOfServiceURL = window.nomadEnv.termsOfServiceURL
 export const email = 'support@nomad-lab.eu'
 export const maxLogsToShow = 50
 export const schemaSeparator = '#'

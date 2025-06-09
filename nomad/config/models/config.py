@@ -324,6 +324,12 @@ class Oasis(ConfigBaseModel):
         The URL of the API of the NOMAD deployment that is considered the *central* NOMAD.
     """,
     )
+    terms_of_service_url: str = Field(
+        'https://nomad-lab.eu/nomad-lab/terms.html',
+        description="""
+        The URL of the terms of service.
+    """,
+    )
 
 
 class RabbitMQ(ConfigBaseModel):
