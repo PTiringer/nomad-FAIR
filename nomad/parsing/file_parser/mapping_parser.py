@@ -1,7 +1,11 @@
+import bz2
+import gzip
 import json
+import lzma
 import os
 import re
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from io import BytesIO
 from typing import Any, Optional
 
@@ -22,6 +26,12 @@ from nomad.units import ureg
 from nomad.utils import get_logger
 
 MAPPING_ANNOTATION_KEY = 'mapping'
+
+COMPRESSIONS = {
+    b'\x1f\x8b\x08': ('gz', gzip.open),
+    b'\x42\x5a\x68': ('bz2', bz2.open),
+    b'\xfd\x37\x7a': ('xz', lzma.open),
+}
 
 
 class JmespathOptions(jmespath.visitor.Options):
@@ -279,9 +289,7 @@ class Path(BaseModel, validate_assignment=True):
     def get_relative_path(cls, values: dict[str, Any]) -> dict[str, Any]:
         relative_path = values.get('path', '')
         parent = values.get('parent')
-        match = re.match(r'^\.(.+)|(.+\()\.(.+)', relative_path)
-        if match:
-            relative_path = ''.join([g for g in match.groups() if g])
+        relative_path = re.sub(r'(?:^|(?<=\s))\.', '', relative_path)
         values['relative_path'] = relative_path
 
         absolute_path = relative_path
@@ -800,6 +808,7 @@ class MappingParser(ABC):
         self._data: dict[str, Any] = kwargs.get('data', {})
         self._data_object: Any = kwargs.get('data_object')
         self._required_paths: list[str] = kwargs.get('required_paths', [])
+        self._open: Callable = kwargs.get('open')
 
     @abstractmethod
     def load_file(self) -> Any:
@@ -817,6 +826,19 @@ class MappingParser(ABC):
         return Mapper()
 
     @property
+    def open(self):
+        """
+        Opens the file with the provided open function or based on the file type.
+        """
+        if self._open is not None:
+            return self._open
+
+        with open(self.filepath, 'rb') as f:
+            open_compressed = COMPRESSIONS.get(f.read(3))
+
+        return open_compressed[1] if open_compressed is not None else open
+
+    @property
     def filepath(self) -> str:
         return self._filepath
 
@@ -825,11 +847,15 @@ class MappingParser(ABC):
         self._filepath = value
         self._data_object = None
         self._data = None
+        self._open = None
 
     @property
     def data(self):
         if not self._data:
-            self._data = self.to_dict()
+            try:
+                self._data = self.to_dict()
+            except Exception:
+                pass
         return self._data
 
     @property
@@ -1375,7 +1401,7 @@ class XMLParser(MappingParser):
 
         current_path = ''
         # TODO determine if iterparse is better than iterwalk
-        with open(self.filepath, 'rb') as f:
+        with self.open(self.filepath, 'rb') as f:
             for event, element in etree.iterparse(f, events=('start', 'end')):
                 tag = element.tag
                 if event == 'start':
