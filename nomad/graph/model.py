@@ -20,6 +20,7 @@ from __future__ import annotations
 import functools
 import re
 from enum import Enum
+from fnmatch import translate
 from hashlib import sha1
 from typing import Annotated, Union
 
@@ -408,21 +409,9 @@ class RequestConfig(BaseModel):
 @functools.lru_cache(maxsize=1024)
 def _normalise_pattern(pattern: frozenset[str]) -> frozenset[str]:  # pylint: disable=no-self-argument
     """
-    Normalise the patterns.
-    The received pattern can be regular expression and glob pattern, such as `quantity` and `quantity*`.
-    In order to use it with regular expressions, we need to convert the glob patterns to regular expressions.
-    1. Remove consecutive `*`s such that `**` becomes `*`.
-    2. Replace `*` with `[a-zA-z_]*` such that `quantity*` becomes `quantity[a-zA-z_]*`.
-    3. Add `^` and `$` to the beginning and end of the pattern such that `quantity` becomes `^quantity$`.
+    Convert a (list of) glob pattern(s) to a (list of) regex patterns.
     """
-    pattern = frozenset(re.sub(r'\*+', '*', v) for v in pattern)
-    pattern = frozenset(re.sub(r'\.', r'\.', v) for v in pattern)
-    # replace wildcard with regex
-    pattern = frozenset(v.replace('*', r'.*').replace('?', r'.?') for v in pattern)
-    # add ^ and $ to the pattern if not present
-    pattern = frozenset('^' + v if not v.startswith('^') else v for v in pattern)
-    pattern = frozenset(v + '$' if not v.endswith('$') else v for v in pattern)
-    return pattern
+    return frozenset(translate(v) for v in pattern)
 
 
 class RequestQuery(dict[str, Union['RequestQuery', dict[str, RequestConfig]]]):
