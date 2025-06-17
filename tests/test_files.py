@@ -384,6 +384,17 @@ class TestStagingUploadFiles(UploadFilesContract):
                 if filepath == example_mainfile_raw_path:
                     assert len(content) > 0
 
+    @pytest.mark.parametrize('target_dir', ['', 'subdir'])
+    def test_add_rawfiles_zip_no_decompression(self, test_upload_id, target_dir):
+        test_upload = StagingUploadFiles(test_upload_id, create=True)
+        test_upload.add_rawfiles(
+            example_file, target_dir=target_dir, auto_decompress=False
+        )
+        filepath = os.path.join(
+            test_upload.external_os_path, 'raw', target_dir, 'examples_template.zip'
+        )
+        assert os.path.isfile(filepath)
+
     def test_pack(self, test_upload: StagingUploadWithFiles):
         _, entries, upload_files = test_upload
         upload_files.pack(entries, with_embargo=entries[0].with_embargo)

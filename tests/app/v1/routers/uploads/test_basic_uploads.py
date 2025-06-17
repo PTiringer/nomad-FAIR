@@ -227,40 +227,51 @@ def assert_file_upload_and_processing(
             )
 
             # Check that files got copied as expected
-            for source_path in source_paths:
-                upload_files = files.UploadFiles.get(upload_id)
-                file_name = os.path.basename(source_path)
-                if zipfile.is_zipfile(source_path):
-                    with open(source_path, 'rb') as f:
-                        zf = zipfile.ZipFile(f)
-                        for path in zf.namelist():
-                            if not path.endswith('/'):
+            if query_args.get('auto_decompress', True):
+                for source_path in source_paths:
+                    upload_files = files.UploadFiles.get(upload_id)
+                    file_name = os.path.basename(source_path)
+                    if zipfile.is_zipfile(source_path):
+                        with open(source_path, 'rb') as f:
+                            zf = zipfile.ZipFile(f)
+                            for path in zf.namelist():
+                                if not path.endswith('/'):
+                                    target_path_full = os.path.join(target_path, path)
+                                    assert upload_files.raw_path_exists(
+                                        target_path_full
+                                    )
+                                    assert upload_files.raw_path_is_file(
+                                        target_path_full
+                                    )
+                    elif os.path.isdir(source_path):
+                        for root, _, filepaths in os.walk(source_path):
+                            for filepath in filepaths:
+                                rel_dir = os.path.relpath(root, source_path)
+                                path = (
+                                    filepath
+                                    if rel_dir == '.'
+                                    else os.path.join(rel_dir, filepath)
+                                )
                                 target_path_full = os.path.join(target_path, path)
                                 assert upload_files.raw_path_exists(target_path_full)
                                 assert upload_files.raw_path_is_file(target_path_full)
-                elif os.path.isdir(source_path):
-                    for root, _, filepaths in os.walk(source_path):
-                        for filepath in filepaths:
-                            rel_dir = os.path.relpath(root, source_path)
-                            path = (
-                                filepath
-                                if rel_dir == '.'
-                                else os.path.join(rel_dir, filepath)
-                            )
-                            target_path_full = os.path.join(target_path, path)
-                            assert upload_files.raw_path_exists(target_path_full)
-                            assert upload_files.raw_path_is_file(target_path_full)
-                else:
-                    if mode == 'stream':
-                        # Must specify file_name
-                        file_name = query_args['file_name']
-                    target_path_full = os.path.join(target_path, file_name)
-                    assert upload_files.raw_path_exists(target_path_full)
-                    assert upload_files.raw_path_is_file(target_path_full)
-                    assert (
-                        upload_files.raw_file_size(target_path_full)
-                        == os.stat(source_path).st_size
-                    )
+                    else:
+                        if mode == 'stream':
+                            # Must specify file_name
+                            file_name = query_args['file_name']
+                        target_path_full = os.path.join(target_path, file_name)
+                        assert upload_files.raw_path_exists(target_path_full)
+                        assert upload_files.raw_path_is_file(target_path_full)
+                        assert (
+                            upload_files.raw_file_size(target_path_full)
+                            == os.stat(source_path).st_size
+                        )
+            else:
+                upload_files = files.UploadFiles.get(upload_id)
+                file_name = os.path.basename(source_paths[0])
+                target_path_full = os.path.join(target_path, file_name)
+                assert upload_files.raw_path_exists(target_path_full)
+                assert upload_files.raw_path_is_file(target_path_full)
 
         assert_expected_mainfiles(upload_id, expected_mainfiles)
     return response, processed_response_data
@@ -2252,6 +2263,19 @@ def test_get_upload_entry_archive(
             ['examples_template/template.json'],
             id='upload-multiple-one-corrupted-zip',
         ),
+        pytest.param(
+            'stream',
+            'user1',
+            'examples_template',
+            empty_file,
+            '',
+            {'file_name': 'empty.zip', 'auto_decompress': False},
+            True,
+            False,
+            200,
+            None,
+            id='disable-default-decompression',
+        ),
     ],
 )
 def test_put_upload_raw_path(
@@ -3180,6 +3204,17 @@ def test_post_upload_edit(
             200,
             id='example-upload',
         ),
+        pytest.param(
+            'stream',
+            empty_file,
+            dict(upload_name='test_name', auto_decompress=False, file_name='empty.zip'),
+            'user1',
+            False,
+            False,
+            True,
+            200,
+            id='disable-default-decompression',
+        ),
     ],
 )
 def test_post_upload(
@@ -3228,7 +3263,6 @@ def test_post_upload(
                 resources='data.txt',
             ),
         )
-
     action = 'POST'
     url = 'uploads'
     published = query_args.get('publish_directly') and not source_paths == [empty_file]
