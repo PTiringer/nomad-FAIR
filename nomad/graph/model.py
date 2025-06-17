@@ -269,7 +269,7 @@ class RequestConfig(BaseModel):
         The start and end index of the current field if it is a list.
         Can be a tuple of one index: (index).
         Or a tuple of two indices: (start, end), in which one of two can be `None`.
-        This index field can be optionally used to slice the list, but the indices in key name has a higher priority.
+        This index field can be optionally used to slice the list.
         """,
     )
     inherit_from_parent: bool = Field(

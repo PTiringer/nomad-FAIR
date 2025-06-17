@@ -744,10 +744,10 @@ def _normalise_index(index: tuple | None, length: int) -> range:
 
     def _bound(v):
         if v < -length:
-            return -length
+            return 0
         if v >= length:
             return length - 1
-        return v
+        return length + v if v < 0 else v
 
     # one item
     if len(index) == 1:
@@ -2702,7 +2702,10 @@ class ArchiveReader(ArchiveLikeReader):
                 )
                 continue
 
-            child_definition = node.definition.all_properties.get(name, None)
+            # could just be a quantity
+            child_definition = getattr(node.definition, 'all_properties', {}).get(
+                name, None
+            )
             if child_definition is None:
                 self._log(
                     f'Definition {name} is not found.', error_type=QueryError.NOTFOUND
@@ -2738,6 +2741,8 @@ class ArchiveReader(ArchiveLikeReader):
                     )
 
                 if is_list:
+                    if GeneralReader.__CONFIG__ in value:
+                        index = value[GeneralReader.__CONFIG__].index or index
                     # field[start:end]: dict
                     for i in _normalise_index(index, len(child_archive)):
                         await __walk(child_path + [str(i)], child_archive[i])
