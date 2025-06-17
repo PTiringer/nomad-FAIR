@@ -898,32 +898,25 @@ class StagingUploadFiles(UploadFiles):
         target_dir: str = '',
         cleanup_source_file_and_dir: bool = False,
         updated_files: set[str] = None,
+        auto_decompress: bool = True,
     ) -> None:
-        """
-        Adds the file or folder specified by `path` to this upload, in the raw directory
-        specified by `target_dir`. If `path` denotes a zip or tar archive file, it will
-        first be extracted to a temporary directory. The file(s) are *merged* with the
-        existing upload files, i.e. new files are added, replacing old files if there
-        already exists file(s) by the same names, the rest of the old files are left
-        untouched.
+        """Adds files or directories to the upload, optionally decompressing archives.
 
-        Cleanup
-        The method is responsible for trying to clean up temporarily extracted files.
-        If `cleanup_source_file_and_dir` is True, the source file (defined by `path`), and
-        its parent directory (which we also assume is temporary) are also cleaned up.
-        Note: the cleanup steps are always carried out, also if the operation fails.
+        If `path` refers to an archive (ZIP, TAR) and `auto_decompress` is True,
+        the archive is extracted before merging. Otherwise, archives are treated as single files.
 
-        Arguments:
-            path: OS path to a file or folder to add.
-            target_dir: A raw path (i.e. path relative to the raw directory) defining
-                where the resource defined by `path` should be put. If `target_dir` is not
-                specified, it defaults to the empty string, i.e. the upload's raw dir.
-            cleanup_source_file_and_dir: If true, the source file/folder (defined by `path`) is
-                deleted when done (regardless of success or failure). Additionally, the parent
-                folder is deleted if it's empty or if the operation failed. Use when the file/folder
-                to add is stored in a temporary directory.
-            updated_files: An optional set of paths. If provided with the call, the raw
-                path of all files added or updated by the operation will be added to this set.
+        Args:
+            path (str): Path to the file or directory to add.
+            target_dir (str, optional): Relative path within the upload's raw directory.
+                Defaults to "".
+            cleanup_source_file_and_dir (bool, optional): If True, deletes the source path
+                and its parent directory after processing. Defaults to False.
+            updated_files (set[str], optional): Set to track paths of files updated or added.
+            auto_decompress (bool, optional): If True, automatically decompress archives.
+                Defaults to True.
+
+        Raises:
+            AssertionError: If file format is unrecognized or merge conflicts occur.
         """
         tmp_dir = None
         try:
@@ -933,10 +926,15 @@ class StagingUploadFiles(UploadFiles):
             self._size += os.stat(path).st_size
 
             is_dir = os.path.isdir(path)
-            compression_format = get_compression_format(path)
+            compression_format = (
+                get_compression_format(path) if auto_decompress else None
+            )
+
+            # ONLY extract if it's an archive *and* auto_decompress is enabled
             if compression_format == 'error':
-                # Unknown / bad file format
-                assert False, 'Cannot extract file. Bad file format or file extension?'
+                raise ValueError(
+                    'Cannot extract file. Bad file format or file extension?'
+                )
             elif compression_format is not None:
                 tmp_dir = create_tmp_dir(self.upload_id + '_unzip')
                 extract_file(path, tmp_dir, compression_format, remove_archive=False)

@@ -1360,6 +1360,13 @@ async def put_upload_raw_path(
         None,
         description=strip("""The hash code of the not modified entry."""),
     ),
+    auto_decompress: bool = FastApiQuery(
+        True,
+        description=strip(
+            """
+            Automatically decompress uploaded files upon receiving (ZIP or TAR). True by default."""
+        ),
+    ),
     user: User = Depends(
         create_user_dependency(required=True, upload_token_auth_allowed=True)
     ),
@@ -1509,7 +1516,11 @@ async def put_upload_raw_path(
         else:
             file_operations = [
                 dict(
-                    op='ADD', path=upload_path, target_dir=path, temporary=(method != 0)
+                    op='ADD',
+                    path=upload_path,
+                    target_dir=path,
+                    temporary=(method != 0),
+                    auto_decompress=auto_decompress,
                 )
                 for upload_path in upload_paths
             ]
@@ -1823,6 +1834,13 @@ async def post_upload(
             If the upload should be published directly. False by default."""
         ),
     ),
+    auto_decompress: bool = FastApiQuery(
+        True,
+        description=strip(
+            """
+            Automatically decompress uploaded files upon receiving (ZIP or TAR). True by default."""
+        ),
+    ),
     user: User = Depends(
         create_user_dependency(required=True, upload_token_auth_allowed=True)
     ),
@@ -1926,6 +1944,7 @@ async def post_upload(
             path=upload_path,
             target_dir=upload_folders[i_path],
             temporary=(method != 0),
+            auto_decompress=auto_decompress,
         )
         for i_path, upload_path in enumerate(upload_paths)
     ]

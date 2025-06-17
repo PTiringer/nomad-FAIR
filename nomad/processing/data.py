@@ -2225,6 +2225,7 @@ class Upload(Proc):
                             file_operation['target_dir'],
                             cleanup_source_file_and_dir=file_operation['temporary'],
                             updated_files=updated_files,
+                            auto_decompress=file_operation.get('auto_decompress', True),
                         )
                 elif op == 'DELETE':
                     self.set_last_status_message('Deleting files')
