@@ -71,6 +71,7 @@ for (let def of unitList) {
   }
 }
 createUnit(unitDefinitions, {override: true})
+export const DIMENSIONLESS_UNIT_INDEX = UnitMathJS.BASE_DIMENSIONS.findIndex(d => d === 'dimensionless')
 
 // Export unit options for each unit and dimension
 export const unitMap = Object.fromEntries(unitList.map(x => [x.name, x]))

@@ -110,6 +110,18 @@ test.each([
 })
 
 test.each([
+  ['explicit dimensionless to dimensionless', 'dimensionless', 'dimensionless', 1],
+  ['implicit dimensionless to dimensionless', undefined, 'dimensionless', 1],
+  ['dimensionless to count', 'dimensionless', 'count', 1],
+  ['bequerel to hertz', 'Bq', 'Hz', 1]
+]
+)('test dimensionless units: %s', async (name, unitA, unitB, value) => {
+  const a = new Quantity(1, unitA)
+  const b = a.to(unitB)
+  expect(b.value()).toBe(value)
+})
+
+test.each([
   [0],
   [1],
   [2],
