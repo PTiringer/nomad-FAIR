@@ -246,12 +246,7 @@ class GraphNode:
         Go to a local reference.
         Since it is a local reference, only need to walk to the proper position.
         """
-        reference_copy: str = reference
-        # this is a local reference, go to the target location first
-        while reference_copy.startswith(('/', '#')):
-            reference_copy = reference_copy[1:]
-
-        path_stack: list = [v for v in reference_copy.split('/') if v]
+        path_stack: list = [v for v in reference.lstrip('/#').split('/') if v]
 
         if (reference_url := self.generate_reference(path_stack)) in self.visited_path:
             raise ArchiveError(f'Circular reference detected: {reference_url}.')
@@ -2845,8 +2840,16 @@ class ArchiveReader(ArchiveLikeReader):
                 and config.always_rewrite_references
             ):
                 try:
+                    if node.archive.startswith(('/', '#')):
+                        # normalize a local reference
+                        target_reference = node.generate_reference(
+                            [v for v in node.archive.lstrip('/#').split('/') if v]
+                        )
+                    else:
+                        target_reference = node.archive
+
                     result_to_write = _convert_ref_to_path_string(
-                        node.archive, node.upload_id
+                        target_reference, node.upload_id
                     )
                 except Exception:  # noqa
                     result_to_write = await self._apply_resolver(node, config)
