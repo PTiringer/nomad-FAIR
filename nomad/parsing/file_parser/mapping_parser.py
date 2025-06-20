@@ -1079,17 +1079,14 @@ class MetainfoParser(MappingParser):
                             **{
                                 n: val_n.get(n)
                                 for n, q in quantities.items()
-                                if not q.derived and n in val_n and n != 'value'
+                                if not q.derived and n in val_n
                             }
                         )
                         root.m_add_sub_section(section, sub_section)
                     self.from_dict(val_n, sub_section)
-                    value = val_n.get('value')
-                    if value is not None:
-                        sub_section.value = value
                 continue
 
-            if key == 'm_def' or key == 'value':
+            if key == 'm_def':
                 continue
 
             try:
