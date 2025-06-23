@@ -1654,7 +1654,7 @@ class MongoReader(GeneralReader):
                 await offload_read(ElasticSearchReader, node.entry_id)
                 continue
 
-            if key == Token.UPLOAD and self.__class__ is EntryReader:
+            if key in (Token.UPLOAD, Token.UPLOADS) and self.__class__ is EntryReader:
                 # hitting the bottom of the current scope
                 await offload_read(UploadReader, node.upload_id)
                 continue
@@ -1671,7 +1671,10 @@ class MongoReader(GeneralReader):
                 await offload_read(ArchiveReader, node.upload_id, node.entry_id)
                 continue
 
-            if key == Token.ENTRIES and self.__class__ is ElasticSearchReader:
+            if (
+                key in (Token.ENTRY, Token.ENTRIES)
+                and self.__class__ is ElasticSearchReader
+            ):
                 # hitting the bottom of the current scope
                 await offload_read(EntryReader, node.archive['entry_id'])
                 continue

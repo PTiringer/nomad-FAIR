@@ -21,7 +21,6 @@ from enum import Enum
 from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.responses import ORJSONResponse
 
-from nomad.app.v1.models.graph import GraphRequest, GraphResponse
 from nomad.graph.graph_reader import (
     ConfigError,
     GeneralReader,
@@ -96,18 +95,20 @@ async def raw_query(query=Body(...), user: User = Depends(create_user_dependency
     This allows for flexible queries, including nested data structures, and avoids over-/under-fetching.
     One can compose complex queries (navigating from one node to another in the graph) and retrieve data in a single request.
     Please refer to the documentation for more details on how to structure the query.""",
-    response_model=GraphResponse,
+    # response_model=GraphResponse,
+    response_class=GraphJSONResponse,
     response_model_exclude_unset=True,
     response_model_exclude_none=True,
 )
 async def basic_query(
-    query: GraphRequest = Body(...),
+    # todo: may need to re-enable validation
+    #   as of June 2025, it is not working
+    # query: GraphRequest = Body(...),
+    query=Body(...),
     user: User = Depends(create_user_dependency()),
 ):
     try:
-        query_dict = query.dict(
-            exclude_none=True, exclude_unset=True, exclude_defaults=True
-        )
+        query_dict = query
         relocate_children(query_dict)
         with MongoReader(query_dict, user=user) as reader:
             response: dict = await reader.read()
