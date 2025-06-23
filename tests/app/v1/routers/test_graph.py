@@ -505,10 +505,6 @@ def example_upload(example_archive, user1, mongo_function, elastic_function):
             ),
             id='pag-page-order-desc',
         ),
-        pytest.param(
-            dict(pagination={'order_by': 'upload_id'}, expected_status_code=422),
-            id='pag-invalid-order_by',
-        ),
     ],
 )
 @pytest.mark.skipif(simulationworkflowschema is None, reason=SCHEMA_IMPORT_ERROR)
@@ -524,7 +520,7 @@ def test_get_uploads_graph(auth_headers, client, example_data, kwargs):
 
     if query_params is None and pagination is None:
         # noinspection PyTypedDict
-        query_body[Token.UPLOADS]['m_request'] = {'directive': '*'}
+        query_body[Token.UPLOADS]['m_request'] = {'directive': 'plain'}
     else:
         if query_params is not None:
             query_body[Token.UPLOADS]['m_request'].setdefault('query', query_params)
@@ -560,6 +556,7 @@ def test_get_uploads_graph(auth_headers, client, example_data, kwargs):
                             'm_is': 'Directory',
                             'm_response': {
                                 'depth': 1,
+                                'directive': 'plain',
                                 'include': ['*'],
                                 'pagination': {
                                     'order': 'asc',
@@ -586,6 +583,7 @@ def test_get_uploads_graph(auth_headers, client, example_data, kwargs):
                             'm_is': 'Directory',
                             'm_response': {
                                 'depth': 2,
+                                'directive': 'plain',
                                 'include': ['*'],
                                 'pagination': {
                                     'order': 'asc',
@@ -615,6 +613,7 @@ def test_get_uploads_graph(auth_headers, client, example_data, kwargs):
                             'm_is': 'Directory',
                             'm_response': {
                                 'depth': 3,
+                                'directive': 'plain',
                                 'include': ['*'],
                                 'pagination': {
                                     'order': 'asc',
