@@ -806,8 +806,7 @@ class PureSubstance(System):
             'MonoisotopicMass': 'monoisotopic_mass',
             'InChI': 'inchi',
             'InChIKey': 'inchi_key',
-            'IsomericSMILES': 'smile',
-            'CanonicalSMILES': 'canonical_smile',
+            'SMILES': 'smile',
         }
         types = {  # Needed because PubChems API sometimes returns floats as strings
             'Title': str,
@@ -818,8 +817,7 @@ class PureSubstance(System):
             'MonoisotopicMass': float,
             'InChI': str,
             'InChIKey': str,
-            'IsomericSMILES': str,
-            'CanonicalSMILES': str,
+            'SMILES': str,
         }
         response = pub_chem_api_get_properties(
             cid=self.pub_chem_cid, properties=properties
