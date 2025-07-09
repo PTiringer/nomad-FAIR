@@ -237,6 +237,15 @@ class Services(ConfigBaseModel):
         return f'{protocol}://{host_and_port}/{base_path}/{api}'
 
 
+class FooterLink(ConfigBaseModel):
+    """
+    A model for links to be displayed in the footer.
+    """
+
+    title: str = Field(description='The title of the link.')
+    url: str = Field(description='The URL of the link.')
+
+
 class Meta(ConfigBaseModel):
     """
     Metadata about the deployment and how it is presented to clients.
@@ -290,6 +299,9 @@ class Meta(ConfigBaseModel):
         description="""
         Additional data that describes how the deployment is labeled as a beta-version in the UI.
     """,
+    )
+    footer_links: list[FooterLink] = Field(
+        [], description='A list of links to be displayed in the footer.'
     )
 
 

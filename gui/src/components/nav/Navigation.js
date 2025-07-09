@@ -23,7 +23,7 @@ import { Snackbar, SnackbarContent, IconButton, Link as MuiLink, Link } from '@m
 import UnderstoodIcon from '@material-ui/icons/Check'
 import { amber } from '@material-ui/core/colors'
 import AppBar, { appBarHeight } from './AppBar'
-import { termsOfServiceURL, guiBase, version } from '../../config'
+import { termsOfServiceURL, guiBase, version, footerLinks } from '../../config'
 import { Routes } from './Routes'
 import { ErrorBoundary } from '../errors'
 import { useCookies } from 'react-cookie'
@@ -134,8 +134,39 @@ const useStyles = makeStyles(theme => ({
     backgroundColor: theme.palette.background.default,
     width: '100%',
     overflow: 'auto'
+  },
+  footer: {
+    padding: theme.spacing(2),
+    backgroundColor: theme.palette.background.paper,
+    textAlign: 'center'
+  },
+  footerLink: {
+    marginLeft: theme.spacing(1),
+    marginRight: theme.spacing(1)
   }
 }))
+
+function Footer() {
+  const classes = useStyles()
+  if (!footerLinks || footerLinks.length === 0) {
+    return null
+  }
+  return (
+    <footer className={classes.footer}>
+      {footerLinks.map(link => (
+        <Link
+          key={link.url}
+          className={classes.footerLink}
+          href={link.url}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {link.title}
+        </Link>
+      ))}
+    </footer>
+  )
+}
 
 export default function Navigation() {
   const classes = useStyles()
@@ -160,6 +191,7 @@ export default function Navigation() {
             <ScrollContext.Provider value={{scrollParentRef: scrollParentRef}}>
               <Routes/>
             </ScrollContext.Provider>
+            <Footer />
           </main>
         </ErrorBoundary>
       </div>
