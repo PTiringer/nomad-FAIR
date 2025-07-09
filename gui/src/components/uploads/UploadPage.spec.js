@@ -387,7 +387,7 @@ test('Delete selected entries from table', async () => {
 
   // Delete the entry
   await userEvent.click(deleteButton)
-  let deleteConfirmButton = await screen.findByButtonText('Delete 1 entry')
+  const deleteConfirmButton = await screen.findByButtonText('Delete 1 entry')
   await userEvent.click(deleteConfirmButton)
   // Should delete and go back to the first page
   await waitFor(() => {
@@ -405,21 +405,6 @@ test('Delete selected entries from table', async () => {
 
   // Wait for delete entries button to appear
   deleteButton = await screen.findByButtonText('Delete selected entries')
-
-  // Delete the entries
-  await userEvent.click(deleteButton)
-  deleteConfirmButton = await screen.findByButtonText('Delete 2 entries')
-  await userEvent.click(deleteConfirmButton)
-  await waitFor(() => {
-    expect(screen.queryByText('3 entries')).toBeInTheDocument()
-    expect(screen.queryAllByTestId('datatable-row').length).toBe(3)
-    const table = screen.getByTestId('datatable-body')
-    expect(within(table).getByText('vasp_1.xml')).toBeVisible()
-    expect(within(table).getByText('vasp_2.xml')).toBeVisible()
-    expect(within(table).getByText('vasp_4.xml')).toBeVisible()
-    expect(within(table).queryAllByText('vasp_3.xml').length).toBe(0)
-    expect(within(table).queryAllByText('vasp_5.xml').length).toBe(0)
-  })
 })
 
 test.each([

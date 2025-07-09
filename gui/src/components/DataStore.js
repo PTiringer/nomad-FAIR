@@ -288,7 +288,7 @@ const DataStore = React.memo(({children}) => {
     const entryDataMissing = requireEntriesPage && !uploadStoreObj.entries
     const pag = uploadStoreObj.pagination
     const pagIs = uploadStoreObj.apiData?.response?.pagination
-    const wrongPagination = requireEntriesPage && !Object.entries(pag).every(([key, value]) => pagIs?.[key] === value)
+    const wrongPagination = requireEntriesPage && !Object.entries(pag).filter(([key, value]) => key !== 'total').every(([key, value]) => pagIs?.[key] === value)
     if (!uploadStoreObj.error && (uploadDataMissing || entryDataMissing || wrongPagination || uploadStoreObj.isProcessing)) {
       // Need to fetch data from the api
       refreshUpload(deploymentUrl, uploadId)
