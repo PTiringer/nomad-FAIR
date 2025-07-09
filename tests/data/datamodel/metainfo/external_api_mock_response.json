@@ -60,8 +60,7 @@
           {
             "CID": 24601,
             "MolecularFormula": "CsI",
-            "CanonicalSMILES": "[I-].[Cs+]",
-            "IsomericSMILES": "[I-].[Cs+]",
+            "SMILES": "[I-].[Cs+]",
             "InChI": "InChI=1S/Cs.HI/h;1H/q+1;/p-1",
             "InChIKey": "XQPRBTXUXXVTKB-UHFFFAOYSA-M",
             "IUPACName": "cesium;iodide",
@@ -77,8 +76,7 @@
           {
             "CID": 24931,
             "MolecularFormula": "I2Pb",
-            "CanonicalSMILES": "I[Pb]I",
-            "IsomericSMILES": "I[Pb]I",
+            "SMILES": "I[Pb]I",
             "InChI": "InChI=1S/2HI.Pb/h2*1H;/q;;+2/p-2",
             "InChIKey": "RQQRAHKHDFPBMC-UHFFFAOYSA-L",
             "IUPACName": "diiodolead",
