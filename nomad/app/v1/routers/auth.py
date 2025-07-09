@@ -80,22 +80,23 @@ def create_user_dependency(
     the authentication is required or not, and which authentication methods are allowed.
     """
 
-    def user_dependency(**kwargs) -> User:
+    def user_dependency(**kwargs) -> User | None:
         user = None
         if basic_auth_allowed:
             user = _get_user_basic_auth(kwargs.get('form_data'))
-        if not user and bearer_token_auth_allowed:
+        if user is None and bearer_token_auth_allowed:
             user = _get_user_bearer_token_auth(kwargs.get('bearer_token'))
-        if not user and upload_token_auth_allowed:
+        if user is None and upload_token_auth_allowed:
             user = _get_user_upload_token_auth(kwargs.get('token'))
-        if not user and signature_token_auth_allowed:
+        if user is None and signature_token_auth_allowed:
             user = _get_user_signature_token_auth(
                 kwargs.get('signature_token'), kwargs.get('request')
             )
+
         if user is None and config.tests.assume_auth_for_username:
             user = datamodel.User.get(username=config.tests.assume_auth_for_username)
 
-        if required and not user:
+        if required and user is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail='Authorization required.',
@@ -103,7 +104,7 @@ def create_user_dependency(
 
         if config.oasis.allowed_users is not None:
             # We're an oasis, and have allowed_users set
-            if not user:
+            if user is None:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail='Authentication is required for this Oasis',
@@ -119,7 +120,7 @@ def create_user_dependency(
                     headers={'WWW-Authenticate': 'Bearer'},
                 )
 
-        if user:
+        if user is not None:
             try:
                 assert datamodel.User.get(user.user_id) is not None
             except Exception as e:
@@ -131,7 +132,7 @@ def create_user_dependency(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail='You are logged in with an unknown user',
                     headers={'WWW-Authenticate': 'Bearer'},
-                )
+                ) from e
 
         return user
 
@@ -193,20 +194,22 @@ def create_user_dependency(
     return wrapper
 
 
-def _get_user_basic_auth(form_data: OAuth2PasswordRequestForm) -> User:
+def _get_user_basic_auth(form_data: OAuth2PasswordRequestForm) -> User | None:
     """
-    Verifies basic auth (username and password), throwing an exception if illegal credentials
-    are provided, and returns the corresponding user object if successful, None if no
-    credentials provided.
+    Verifies basic auth (username and password), throwing an exception
+    if illegal credentials are provided.
+
+    Returns:
+        The corresponding User object if successful,
+        None if no credentials provided.
     """
     if form_data and form_data.username and form_data.password:
         try:
             infrastructure.keycloak.basicauth(form_data.username, form_data.password)
-            user = cast(
+            return cast(
                 datamodel.User,
                 infrastructure.user_management.get_user(form_data.username),
             )
-            return user
         except infrastructure.KeycloakError:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -216,10 +219,13 @@ def _get_user_basic_auth(form_data: OAuth2PasswordRequestForm) -> User:
     return None
 
 
-def _get_user_bearer_token_auth(bearer_token: str) -> User:
+def _get_user_bearer_token_auth(bearer_token: str) -> User | None:
     """
-    Verifies bearer_token (throwing exception if illegal value provided) and returns the
-    corresponding user object, or None if no bearer_token provided.
+    Verifies bearer_token (throwing exception if illegal value provided).
+
+    Returns:
+        The corresponding User object,
+        or None if no bearer_token provided.
     """
     if not bearer_token:
         return None
@@ -229,14 +235,12 @@ def _get_user_bearer_token_auth(bearer_token: str) -> User:
             bearer_token, options={'verify_signature': False}
         )
         if unverified_payload.keys() == {'user', 'exp'}:
-            user = _get_user_from_simple_token(bearer_token)
-            return user
+            return _get_user_from_simple_token(bearer_token)
     except jwt.exceptions.DecodeError:
         pass  # token could be non-JWT, e.g. for testing
 
     try:
-        user = cast(datamodel.User, infrastructure.keycloak.tokenauth(bearer_token))
-        return user
+        return cast(datamodel.User, infrastructure.keycloak.tokenauth(bearer_token))
     except infrastructure.KeycloakError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -245,10 +249,13 @@ def _get_user_bearer_token_auth(bearer_token: str) -> User:
         )
 
 
-def _get_user_upload_token_auth(upload_token: str) -> User:
+def _get_user_upload_token_auth(upload_token: str) -> User | None:
     """
-    Verifies the upload token (throwing exception if illegal value provided) and returns the
-    corresponding user object, or None, if no upload_token provided.
+    Verifies the upload token (throwing exception if illegal value provided).
+
+    Returns:
+        The corresponding User object,
+        or None if no upload_token provided.
     """
     if upload_token:
         try:
@@ -264,10 +271,9 @@ def _get_user_upload_token_auth(upload_token: str) -> User:
 
             if signature_bytes == compare.digest():
                 user_id = str(uuid.UUID(bytes=payload_bytes))
-                user = cast(
+                return cast(
                     datamodel.User, infrastructure.user_management.get_user(user_id)
                 )
-                return user
         except Exception:
             # Decode error, format error, user not found, etc.
             raise HTTPException(
@@ -277,10 +283,15 @@ def _get_user_upload_token_auth(upload_token: str) -> User:
     return None
 
 
-def _get_user_signature_token_auth(signature_token: str, request: Request) -> User:
+def _get_user_signature_token_auth(
+    signature_token: str, request: Request
+) -> User | None:
     """
-    Verifies the signature token (throwing exception if illegal value provided) and returns the
-    corresponding user object, or None, if no upload_token provided.
+    Verifies the signature token (throwing exception if illegal value provided).
+
+    Returns:
+        The corresponding User object,
+        or None if no upload_token provided.
     """
     if signature_token:
         return _get_user_from_simple_token(signature_token)
@@ -309,10 +320,13 @@ def _get_user_signature_token_auth(signature_token: str, request: Request) -> Us
     return None
 
 
-def _get_user_from_simple_token(token):
+def _get_user_from_simple_token(token) -> User | None:
     """
-    Verifies a simple token (throwing exception if illegal value provided) and returns the
-    corresponding user object, or None if no token was provided.
+    Verifies a simple token (throwing exception if illegal value provided).
+
+    Returns:
+        The corresponding user object,
+        or None if no token was provided.
     """
     try:
         decoded = jwt.decode(token, config.services.api_secret, algorithms=['HS256'])
