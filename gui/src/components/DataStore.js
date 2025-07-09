@@ -570,8 +570,14 @@ const DataStore = React.memo(({children}) => {
         }
         stringifiedArchive = YAML.stringify(newArchive, {defaultStringType: 'QUOTE_SINGLE'})
       }
+      const queryObject = {
+        file_name: fileName,
+        wait_for_processing: true,
+        entry_hash: archive.metadata.entry_hash
+      }
+      const queryString = new URLSearchParams(queryObject).toString()
       return new Promise((resolve, reject) => {
-        api.put(`/uploads/${uploadId}/raw/${path}?file_name=${fileName}&wait_for_processing=true&entry_hash=${archive.metadata.entry_hash}`, stringifiedArchive || newArchive, config)
+        api.put(`/uploads/${uploadId}/raw/${path}?${queryString}`, stringifiedArchive || newArchive, config)
           .then(response => {
             requestRefreshEntry(deploymentUrl, entryId)
             resolve()
