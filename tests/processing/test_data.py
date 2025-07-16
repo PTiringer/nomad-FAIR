@@ -166,7 +166,7 @@ def run_processing(uploaded: tuple[str, str], main_author, **kwargs) -> Upload:
 
 
 def assert_processing(
-    upload: Upload, published: bool = False, process='process_upload'
+    upload: Upload, published: bool = False, process='_process_upload'
 ):
     assert not upload.process_running
     assert upload.current_process == process
@@ -296,7 +296,7 @@ def test_publish(
         assert_search_upload(entries, additional_keys, published=True)
 
     assert_processing(
-        Upload.get(processed.upload_id), published=True, process='publish_upload'
+        Upload.get(processed.upload_id), published=True, process='_publish_upload'
     )
 
 
@@ -398,11 +398,11 @@ def test_publish_to_central_nomad(
 
     old_upload.publish_externally(embargo_length=embargo_length)
     old_upload.block_until_complete()
-    assert_processing(old_upload, old_upload.published, 'publish_externally')
+    assert_processing(old_upload, old_upload.published, '_publish_externally')
     old_upload = Upload.get(upload_id)
     new_upload = Upload.get(upload_id + suffix)
     new_upload.block_until_complete()
-    assert_processing(new_upload, old_upload.published, 'import_bundle')
+    assert_processing(new_upload, old_upload.published, '_import_bundle')
     assert len(old_upload.successful_entries) == len(new_upload.successful_entries) == 1
     if embargo_length is None:
         embargo_length = old_upload.embargo_length

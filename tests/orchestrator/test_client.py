@@ -1,0 +1,9 @@
+import pytest
+
+from nomad.orchestrator.client import get_client
+
+
+@pytest.mark.asyncio
+async def test_get_client():
+    client = await get_client()
+    assert client is not None

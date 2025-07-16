@@ -82,6 +82,12 @@ elastic:
   materials_index: nomad_materials_v1
   port: 9200
   timeout: 60
+temporal:
+  enabled: False
+  host: localhost
+  namespace: default
+  port: 7233
+  secret: secret-token
 fs:
   local_tmp: /tmp
   north_home: .volumes/fs/north/users

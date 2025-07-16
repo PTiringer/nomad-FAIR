@@ -1535,6 +1535,7 @@ async def put_upload_raw_path(
                 status.HTTP_400_BAD_REQUEST,
                 detail='The upload is currently blocked by another process.',
             )
+
         # Create response
         if request.headers.get('Accept') == 'application/json':
             response = PutRawFileResponse(
@@ -2551,16 +2552,16 @@ async def post_upload_bundle(
         bundle_importer.open(bundle_path)
         upload = bundle_importer.create_upload_skeleton()
         bundle_importer.close()
-        # Run the import as a @process
+        # Import the bundle using the unified method
         upload.import_bundle(
             bundle_path=bundle_path,
             import_settings=import_settings.dict(),
             embargo_length=embargo_length,
         )
+
         return UploadProcDataResponse(
             upload_id=upload.upload_id, data=upload_to_pydantic(upload)
         )
-
     except Exception as e:
         if bundle_importer:
             bundle_importer.close()

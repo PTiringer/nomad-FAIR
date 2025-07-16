@@ -18,6 +18,7 @@
 
 import hashlib
 import json
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Response, status
 from fastapi.exception_handlers import (
@@ -26,10 +27,12 @@ from fastapi.exception_handlers import (
 from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
+from temporalio.client import Client
 
 from nomad import infrastructure
 from nomad.config import config
 from nomad.config.models.plugins import APIEntryPoint
+from nomad.orchestrator.client import get_client
 
 from .static import GuiFiles
 from .static import app as static_files_app
@@ -59,9 +62,56 @@ class OasisAuthenticationMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from nomad import infrastructure
+    from nomad.cli.dev import get_gui_artifacts_js, get_gui_config
+    from nomad.metainfo.elasticsearch_extension import entry_type
+    from nomad.parsing.parsers import import_all_parsers
+
+    import_all_parsers()
+
+    # each subprocess is supposed disconnect and
+    # connect again: https://jira.mongodb.org/browse/PYTHON-2090
+    try:
+        from mongoengine import disconnect
+
+        disconnect()
+    except Exception:
+        pass
+
+    entry_type.reload_quantities_dynamic()
+    GuiFiles.gui_artifacts_data = get_gui_artifacts_js()
+    GuiFiles.gui_env_data = get_gui_config()
+
+    data = {
+        'artifacts': GuiFiles.gui_artifacts_data,
+        'gui_config': GuiFiles.gui_env_data,
+    }
+    GuiFiles.gui_data_etag = hashlib.md5(
+        json.dumps(data).encode(), usedforsecurity=False
+    ).hexdigest()
+
+    infrastructure.setup()
+
+    if config.temporal.enabled:
+        try:
+            app.state.temporal_client = await get_client()
+            yield
+        except Exception as e:
+            print(f'Failed to connect to temporal {e}')
+            pass
+    else:
+        yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 app_base = config.services.api_base_path
+
+
+def temporal_client() -> Client:
+    return app.state.temporal_client
 
 
 @app.get(f'{app_base}/alive')
@@ -160,36 +210,3 @@ async def http_exception_handler(request, exc):
             },
         },
     )
-
-
-@app.on_event('startup')
-async def startup_event():
-    from nomad import infrastructure
-    from nomad.cli.dev import get_gui_artifacts_js, get_gui_config
-    from nomad.metainfo.elasticsearch_extension import entry_type
-    from nomad.parsing.parsers import import_all_parsers
-
-    import_all_parsers()
-
-    # each subprocess is supposed disconnect and
-    # connect again: https://jira.mongodb.org/browse/PYTHON-2090
-    try:
-        from mongoengine import disconnect
-
-        disconnect()
-    except Exception:
-        pass
-
-    entry_type.reload_quantities_dynamic()
-    GuiFiles.gui_artifacts_data = get_gui_artifacts_js()
-    GuiFiles.gui_env_data = get_gui_config()
-
-    data = {
-        'artifacts': GuiFiles.gui_artifacts_data,
-        'gui_config': GuiFiles.gui_env_data,
-    }
-    GuiFiles.gui_data_etag = hashlib.md5(
-        json.dumps(data).encode(), usedforsecurity=False
-    ).hexdigest()
-
-    infrastructure.setup()

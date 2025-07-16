@@ -445,6 +445,14 @@ class Elastic(ConfigBaseModel):
     materials_index: str = 'nomad_materials_v1'
 
 
+class Temporal(ConfigBaseModel):
+    host: str = 'localhost'
+    port: int = 7233
+    namespace: str = 'default'
+    enabled: bool = False
+    secret: str = 'secret-key'
+
+
 class Keycloak(ConfigBaseModel):
     server_url: str = 'https://nomad-lab.eu/fairdi/keycloak/auth/'
     public_server_url: str = None
@@ -945,6 +953,7 @@ class Config(ConfigBaseModel):
     celery: Celery = Celery()
     fs: FS = FS()
     elastic: Elastic = Elastic()
+    temporal: Temporal = Temporal()
     keycloak: Keycloak = Keycloak()
     mongo: Mongo = Mongo()
     logstash: Logstash = Logstash()

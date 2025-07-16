@@ -33,7 +33,7 @@ docker==7.1.0             # via dockerspawner
 dockerspawner==14.0.0     # via nomad-lab (pyproject.toml)
 docstring-parser==0.16    # via nomad-lab (pyproject.toml)
 elasticsearch==7.17.12    # via elasticsearch-dsl
-elasticsearch-dsl==7.4.1  # via --override (workspace), nomad-lab (pyproject.toml)
+elasticsearch-dsl==7.4.1  # via nomad-lab (pyproject.toml)
 email-validator==2.2.0    # via pydantic
 escapism==1.0.1           # via dockerspawner
 et-xmlfile==2.0.0         # via openpyxl
@@ -92,6 +92,7 @@ plotly==5.24.1            # via pymatgen, nomad-lab (pyproject.toml)
 ply==3.11                 # via jsonpath-ng
 prometheus-client==0.22.0  # via jupyterhub
 prompt-toolkit==3.0.51    # via click-repl
+protobuf==6.31.1          # via temporalio
 psutil==7.0.0 ; sys_platform == 'win32'  # via jupyterhub
 py-spy==0.4.0             # via nomad-lab (pyproject.toml)
 pyasn1==0.6.1             # via pyasn1-modules, rfc3161ng
@@ -106,12 +107,12 @@ pyjwt==2.10.1             # via nomad-lab (pyproject.toml)
 pymatgen==2024.5.1        # via nomad-lab (pyproject.toml)
 pymongo==4.13.0           # via mongoengine, optimade
 pyparsing==3.2.3          # via matplotlib, rdflib
-python-dateutil==2.9.0.post0  # via celery, elasticsearch-dsl, jupyterhub, matplotlib, pandas, rfc3161ng
+python-dateutil==2.9.0.post0  # via celery, elasticsearch-dsl, jupyterhub, matplotlib, pandas, rfc3161ng, temporalio
 python-dotenv==1.1.0      # via pydantic-settings, uvicorn
 python-json-logger==3.3.0  # via jupyter-telemetry
 python-keycloak==5.5.1    # via nomad-lab (pyproject.toml)
 python-logstash==0.4.8    # via nomad-lab (pyproject.toml)
-python-magic==0.4.27      # via --override (workspace), nomad-lab (pyproject.toml)
+python-magic==0.4.27      # via nomad-lab (pyproject.toml)
 python-magic-bin==0.4.14 ; sys_platform == 'win32'  # via nomad-lab (pyproject.toml)
 python-multipart==0.0.20  # via nomad-lab (pyproject.toml)
 pytz==2025.2              # via mongomock, pandas, nomad-lab (pyproject.toml)
@@ -137,6 +138,7 @@ starlette==0.46.2         # via fastapi
 structlog==25.3.0         # via nomad-lab (pyproject.toml)
 sympy==1.14.0             # via pymatgen
 tabulate==0.9.0           # via pymatgen, nomad-lab (pyproject.toml)
+temporalio==1.12.0        # via nomad-lab (pyproject.toml)
 tenacity==9.1.2           # via plotly
 threadpoolctl==3.6.0      # via scikit-learn
 tifffile==2025.5.10 ; python_full_version < '3.11'  # via h5grove
@@ -145,11 +147,12 @@ tomli==2.2.1 ; python_full_version < '3.11'  # via alembic
 tornado==6.5.1            # via jupyterhub
 tqdm==4.67.1              # via pymatgen
 traitlets==5.14.3         # via jupyter-telemetry, jupyterhub
-typing-extensions==4.13.2  # via alembic, anyio, exceptiongroup, fastapi, h5grove, jwcrypto, pydantic, pydantic-core, referencing, spglib, sqlalchemy, structlog, typing-inspection, uvicorn
+types-protobuf==6.30.2.20250516  # via temporalio
+typing-extensions==4.13.2  # via alembic, anyio, exceptiongroup, fastapi, h5grove, jwcrypto, pydantic, pydantic-core, referencing, spglib, sqlalchemy, structlog, temporalio, typing-inspection, uvicorn
 typing-inspection==0.4.1  # via pydantic, pydantic-settings
 tzdata==2025.2            # via kombu, pandas
 uncertainties==3.2.3      # via pymatgen
-unidecode==1.4.0          # via --override (workspace), nomad-lab (pyproject.toml)
+unidecode==1.4.0          # via nomad-lab (pyproject.toml)
 urllib3==1.26.20          # via docker, elasticsearch, requests
 uvicorn==0.34.2           # via h5grove, nomad-lab (pyproject.toml)
 uvloop==0.21.0 ; platform_python_implementation != 'PyPy' and sys_platform != 'cygwin' and sys_platform != 'win32'  # via uvicorn

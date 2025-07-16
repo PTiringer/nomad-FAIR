@@ -3373,7 +3373,7 @@ def test_post_upload_action_publish(
     assert_response(response, expected_status_code)
     if expected_status_code == 200:
         upload = assert_upload(response.json())
-        assert upload['current_process'] == 'publish_upload'
+        assert upload['current_process'] == '_publish_upload'
         assert upload['process_running']
 
         assert_gets_published(
@@ -3427,7 +3427,7 @@ def test_post_upload_action_publish_to_central_nomad(
     assert_response(response, expected_status_code)
     if expected_status_code == 200:
         upload = assert_upload(response.json())
-        assert upload['current_process'] == 'publish_externally'
+        assert upload['current_process'] == '_publish_externally'
         assert upload['process_running']
         assert_processing(client, upload_id, user_auth, published=old_upload.published)
         assert_processing(

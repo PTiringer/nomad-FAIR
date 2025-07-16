@@ -108,6 +108,7 @@ class BundleExporter:
         assert (
             not self.upload.process_running
             or self.upload.current_process == 'publish_externally'
+            or self.upload.current_process == '_publish_externally'
         ), 'Upload is being processed.'
 
         file_source = CombinedFileSource(self._get_file_sources())

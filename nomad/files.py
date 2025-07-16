@@ -897,7 +897,7 @@ class StagingUploadFiles(UploadFiles):
         path: str,
         target_dir: str = '',
         cleanup_source_file_and_dir: bool = False,
-        updated_files: set[str] = None,
+        updated_files: set[str] | None = None,
         auto_decompress: bool = True,
     ) -> None:
         """Adds files or directories to the upload, optionally decompressing archives.
@@ -1020,7 +1020,7 @@ class StagingUploadFiles(UploadFiles):
                 if os.path.exists(parent_dir) and not os.listdir(parent_dir):
                     shutil.rmtree(parent_dir)
 
-    def delete_rawfiles(self, path, updated_files: set[str] = None):
+    def delete_rawfiles(self, path, updated_files: set[str] | None = None):
         assert is_safe_relative_path(path)
         raw_os_path = os.path.join(self.os_path, 'raw')
         os_path = os.path.join(raw_os_path, path)
@@ -1049,7 +1049,7 @@ class StagingUploadFiles(UploadFiles):
         path_to_existing_file,
         path_to_target_file,
         copy_or_move,
-        updated_files: set[str] = None,
+        updated_files: set[str] | None = None,
     ):
         assert is_safe_relative_path(path_to_existing_file)
         assert is_safe_relative_path(path_to_target_file)
