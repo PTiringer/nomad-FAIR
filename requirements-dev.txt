@@ -38,7 +38,7 @@ docker==7.1.0             # via dockerspawner, -r requirements.txt
 dockerspawner==14.0.0     # via -r requirements.txt, nomad-lab (pyproject.toml)
 docstring-parser==0.16    # via -r requirements.txt, nomad-lab (pyproject.toml)
 elasticsearch==7.17.12    # via elasticsearch-dsl, -r requirements.txt
-elasticsearch-dsl==7.4.1  # via --override (workspace), -r requirements.txt, nomad-lab (pyproject.toml)
+elasticsearch-dsl==7.4.1  # via -r requirements.txt, nomad-lab (pyproject.toml)
 email-validator==2.2.0    # via pydantic, -r requirements.txt
 escapism==1.0.1           # via dockerspawner, -r requirements.txt
 essential-generators==1.0  # via nomad-lab (pyproject.toml)
@@ -104,6 +104,7 @@ pluggy==1.6.0             # via pytest
 ply==3.11                 # via jsonpath-ng, -r requirements.txt
 prometheus-client==0.22.0  # via jupyterhub, -r requirements.txt
 prompt-toolkit==3.0.51    # via click-repl, -r requirements.txt
+protobuf==6.31.1          # via temporalio, -r requirements.txt
 psutil==7.0.0 ; sys_platform == 'win32'  # via jupyterhub, -r requirements.txt
 py-spy==0.4.0             # via -r requirements.txt, nomad-lab (pyproject.toml)
 pyasn1==0.6.1             # via pyasn1-modules, rfc3161ng, -r requirements.txt
@@ -125,13 +126,13 @@ pytest-cov==6.1.1         # via nomad-lab (pyproject.toml)
 pytest-split==0.10.0      # via nomad-lab (pyproject.toml)
 pytest-timeout==2.4.0     # via nomad-lab (pyproject.toml)
 pytest-xdist==3.6.1       # via nomad-lab (pyproject.toml)
-python-dateutil==2.9.0.post0  # via celery, elasticsearch-dsl, jupyterhub, matplotlib, pandas, rfc3161ng, -r requirements.txt
+python-dateutil==2.9.0.post0  # via celery, elasticsearch-dsl, jupyterhub, matplotlib, pandas, rfc3161ng, temporalio, -r requirements.txt
 python-dotenv==1.1.0      # via pydantic-settings, uvicorn, -r requirements.txt
 python-gitlab==4.5.0      # via nomad-lab (pyproject.toml)
 python-json-logger==3.3.0  # via jupyter-telemetry, -r requirements.txt
 python-keycloak==5.5.1    # via -r requirements.txt, nomad-lab (pyproject.toml)
 python-logstash==0.4.8    # via -r requirements.txt, nomad-lab (pyproject.toml)
-python-magic==0.4.27      # via --override (workspace), -r requirements.txt, nomad-lab (pyproject.toml)
+python-magic==0.4.27      # via -r requirements.txt, nomad-lab (pyproject.toml)
 python-magic-bin==0.4.14 ; sys_platform == 'win32'  # via -r requirements.txt, nomad-lab (pyproject.toml)
 python-multipart==0.0.20  # via -r requirements.txt, nomad-lab (pyproject.toml)
 pytz==2025.2              # via mongomock, pandas, -r requirements.txt, nomad-lab (pyproject.toml)
@@ -159,6 +160,7 @@ starlette==0.46.2         # via fastapi, -r requirements.txt
 structlog==25.3.0         # via -r requirements.txt, nomad-lab (pyproject.toml)
 sympy==1.14.0             # via pymatgen, -r requirements.txt
 tabulate==0.9.0           # via pymatgen, -r requirements.txt, nomad-lab (pyproject.toml)
+temporalio==1.12.0        # via -r requirements.txt, nomad-lab (pyproject.toml)
 tenacity==9.1.2           # via plotly, -r requirements.txt
 threadpoolctl==3.6.0      # via scikit-learn, -r requirements.txt
 tifffile==2025.5.10 ; python_full_version < '3.11'  # via h5grove, -r requirements.txt
@@ -167,11 +169,12 @@ tomli==2.2.1 ; python_full_version <= '3.11'  # via alembic, coverage, mypy, pyt
 tornado==6.5.1            # via jupyterhub, -r requirements.txt
 tqdm==4.67.1              # via pymatgen, -r requirements.txt
 traitlets==5.14.3         # via jupyter-telemetry, jupyterhub, -r requirements.txt
-typing-extensions==4.13.2  # via alembic, anyio, exceptiongroup, fastapi, h5grove, jwcrypto, mypy, pydantic, pydantic-core, referencing, spglib, sqlalchemy, structlog, typing-inspection, uvicorn, -r requirements.txt
+types-protobuf==6.30.2.20250516  # via temporalio, -r requirements.txt
+typing-extensions==4.13.2  # via alembic, anyio, exceptiongroup, fastapi, h5grove, jwcrypto, mypy, pydantic, pydantic-core, referencing, spglib, sqlalchemy, structlog, temporalio, typing-inspection, uvicorn, -r requirements.txt
 typing-inspection==0.4.1  # via pydantic, pydantic-settings, -r requirements.txt
 tzdata==2025.2            # via kombu, pandas, -r requirements.txt
 uncertainties==3.2.3      # via pymatgen, -r requirements.txt
-unidecode==1.4.0          # via --override (workspace), -r requirements.txt, nomad-lab (pyproject.toml)
+unidecode==1.4.0          # via -r requirements.txt, nomad-lab (pyproject.toml)
 urllib3==1.26.20          # via docker, elasticsearch, requests, -r requirements.txt
 uvicorn==0.34.2           # via h5grove, -r requirements.txt, nomad-lab (pyproject.toml)
 uvloop==0.21.0 ; platform_python_implementation != 'PyPy' and sys_platform != 'cygwin' and sys_platform != 'win32'  # via uvicorn, -r requirements.txt

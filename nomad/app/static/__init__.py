@@ -54,9 +54,9 @@ app.mount(f'/docs', StaticFiles(directory=docs_folder, check_dir=False), name='d
 
 
 class GuiFiles(StaticFiles):
-    gui_artifacts_data = None
-    gui_env_data = None
-    gui_data_etag = None
+    gui_artifacts_data: str | None = None
+    gui_env_data: str | None = None
+    gui_data_etag: str | None = None
 
     async def get_response(self, path: str, scope) -> Response:
         if path not in ['env.js', 'artifacts.js']:

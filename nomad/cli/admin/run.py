@@ -34,6 +34,11 @@ def hub():
     run_hub()
 
 
+@run.command(help='Run the orchestrator internal worker.')
+def orchestrator_internal_worker():
+    run_temporal_worker()
+
+
 @run.command(help='Run the nomad development worker.')
 @click.option('--workers', type=int, default=None, help='Number of celery workers.')
 def worker(**kwargs):
@@ -58,6 +63,14 @@ def worker(**kwargs):
 @click.option('--workers', type=int, help='Passed to uvicorn workers parameter.')
 def app(with_gui: bool, **kwargs):
     run_app(with_gui=with_gui, **kwargs)
+
+
+def run_temporal_worker():
+    import asyncio
+
+    from nomad.orchestrator.workers import internal_worker
+
+    asyncio.run(internal_worker.run_worker())
 
 
 def run_app(
@@ -238,7 +251,10 @@ def run_appworker(
         def _submit(*args, **kwargs):
             results.append(executor.submit(*args, **kwargs))
 
-        _submit(task_worker, workers=celery_workers)
+        if config.temporal.enabled:
+            _submit(run_temporal_worker)
+        else:
+            _submit(task_worker, workers=celery_workers)
         _submit(task_app, workers=fastapi_workers, host=app_host, port=app_port)
 
         try:

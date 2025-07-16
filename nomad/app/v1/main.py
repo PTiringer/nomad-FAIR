@@ -128,7 +128,7 @@ app.include_router(auth.router, prefix='/auth')
 app.include_router(datasets.router, prefix='/datasets')
 app.include_router(entries.router, prefix='/entries')
 app.include_router(federation.router, prefix='/federation')
-app.include_router(graph.router, prefix='/graph')
+app.include_router(graph.router, prefix='/graph')  # type: ignore
 app.include_router(groups.router, prefix='/groups')
 app.include_router(info.router, prefix='/info')
 app.include_router(materials.router, prefix='/materials')
@@ -137,5 +137,5 @@ if config.north.enabled:
     app.include_router(north.router, prefix='/north')
 app.include_router(suggestions.router, prefix='/suggestions')
 app.include_router(systems.router, prefix='/systems')
-app.include_router(uploads.router, prefix='/uploads')
-app.include_router(users.router, prefix='/users')
+app.include_router(uploads.router, prefix='/uploads')  # type: ignore
+app.include_router(users.router, prefix='/users')  # type: ignore

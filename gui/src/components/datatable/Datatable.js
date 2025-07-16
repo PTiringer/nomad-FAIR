@@ -519,7 +519,7 @@ export const DatatableTable = React.memo(function DatatableTable({children, acti
           uncollapsed={row === uncollapsedRow}
           data={row}
           onRowUncollapsed={setUncollapsedRow}
-          progressIcon={row?.current_process === 'delete_upload' && (row?.process_status === 'PENDING' || row?.process_status === 'RUNNING') && <CircularProgress/>}
+          progressIcon={(row?.current_process === 'delete_upload' || row?.current_process === '_delete_upload') && (row?.process_status === 'PENDING' || row?.process_status === 'RUNNING') && <CircularProgress/>}
         />
       ))}
       {isLoading && (
