@@ -131,12 +131,13 @@ class ProcessUploadWorkflow:
 
         # Step 3: Parse next level
         while True:
-            entries_to_be_processed = await workflow.execute_activity(
+            next_level_entries_result = await workflow.execute_activity(
                 next_level_entries,
                 parse_all_input,
                 schedule_to_close_timeout=timedelta(hours=2),
                 retry_policy=retry_policy,
             )
+            entries_to_be_processed = next_level_entries_result.entries_to_be_processed
             if not entries_to_be_processed:
                 break
             # Step 4: Launch child workflows for each entry
@@ -151,7 +152,7 @@ class ProcessUploadWorkflow:
                 for data in entries_to_be_processed
             ]
             await asyncio.gather(*tasks)
-            parse_all_input.min_level += 1
+            parse_all_input.min_level = next_level_entries_result.next_parser_level + 1
 
         await workflow.execute_activity(
             cleanup_activity, input, schedule_to_close_timeout=timedelta(minutes=30)

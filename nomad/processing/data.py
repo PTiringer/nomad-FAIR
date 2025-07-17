@@ -2873,7 +2873,12 @@ class Upload(Proc):
                     # temporal child workflows can't be spawned within an activitiy
                     # so we just process this from the current activity
                     if self.parser_level >= parser.level:
-                        entry._process_entry_local()
+                        try:
+                            entry._process_entry_local()
+                            entry.process_status = ProcessStatus.SUCCESS
+                        except Exception:
+                            entry.process_status = ProcessStatus.FAILURE
+                        entry.save()
                 else:
                     if (
                         self.current_process_flags is not None
