@@ -11,6 +11,7 @@ from nomad.workflows.shared_objects import (
     DeleteUploadWorkflowInput,
     EditUploadMetadataWorkflowInput,
     ImportBundleWorkflowInput,
+    NextLevelEntryResult,
     ProcessEntryActivityInput,
     ProcessExampleUploadWorkflowInput,
     PublishExternallyWorkflowInput,
@@ -86,21 +87,24 @@ async def match_all_activity(input: UploadProcessingWorkflowInput):
 @activity.defn
 async def next_level_entries(
     input: UploadProcessingWorkflowInput,
-) -> list[ProcessEntryActivityInput]:
+) -> NextLevelEntryResult:
     upload = Upload.get(input.upload_id)
     next_entries = upload.next_level_entries(
         min_level=input.min_level,
         path_filter=input.path_filter,
         updated_files=input.updated_files,
     )
-    return [
-        ProcessEntryActivityInput(
-            upload_id=str(upload.upload_id),
-            entry_id=str(entry.entry_id),
-            workflow_id=f'process-entry-workflow-child-id-{entry.entry_id}-{upload.upload_id}-{uuid.uuid4()}',
-        )
-        for entry in next_entries
-    ]
+    return NextLevelEntryResult(
+        next_parser_level=upload.parser_level,
+        entries_to_be_processed=[
+            ProcessEntryActivityInput(
+                upload_id=input.upload_id,
+                entry_id=str(entry.entry_id),
+                workflow_id=f'process-entry-workflow-child-id-{str(entry.entry_id)}-{str(upload.upload_id)}-{uuid.uuid4()}',
+            )
+            for entry in next_entries
+        ],
+    )
 
 
 @activity.defn

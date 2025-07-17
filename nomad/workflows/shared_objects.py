@@ -68,6 +68,12 @@ class UploadWorkflowIdInput:
 
 
 @dataclass
+class NextLevelEntryResult:
+    next_parser_level: int
+    entries_to_be_processed: list[ProcessEntryActivityInput]
+
+
+@dataclass
 class UploadProcessingWorkflowInput:
     upload_id: str
     workflow_id: str
