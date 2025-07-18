@@ -424,66 +424,6 @@ def example_data_schema_python(
                     definition='nomadschemaexample.schema.MySchema.name',
                     path_archive='data.name',
                     str_value=f'test{i}',
-                    segments={
-                        '1': {
-                            'path': 'data',
-                            'definitions': [
-                                'nomadschemaexample.schema.MySchema',
-                                'nomadschemaexample.schema.MyBaseSchemaA',
-                                'nomadschemaexample.schema.MyBaseSchemaB',
-                            ],
-                        },
-                        '-1': {
-                            'path': 'name',
-                            'definitions': [
-                                'nomadschemaexample.schema.MySchema',
-                            ],
-                        },
-                    },
-                ),
-                SearchableQuantity(
-                    id=f'data.inherited_a{schema_separator}{python_schema_name}',
-                    definition='nomadschemaexample.schema.MyBaseSchemaA.inherited_a',
-                    path_archive='data.inherited_a',
-                    str_value=f'test{i}',
-                    segments={
-                        '1': {
-                            'path': 'data',
-                            'definitions': [
-                                'nomadschemaexample.schema.MySchema',
-                                'nomadschemaexample.schema.MyBaseSchemaA',
-                                'nomadschemaexample.schema.MyBaseSchemaB',
-                            ],
-                        },
-                        '-1': {
-                            'path': 'inherited_a',
-                            'definitions': [
-                                'nomadschemaexample.schema.MyBaseSchemaA',
-                            ],
-                        },
-                    },
-                ),
-                SearchableQuantity(
-                    id=f'data.inherited_b{schema_separator}{python_schema_name}',
-                    definition='nomadschemaexample.schema.MyBaseSchemaA.inherited_b',
-                    path_archive='data.inherited_b',
-                    str_value=f'test{i}',
-                    segments={
-                        '1': {
-                            'path': 'data',
-                            'definitions': [
-                                'nomadschemaexample.schema.MySchema',
-                                'nomadschemaexample.schema.MyBaseSchemaA',
-                                'nomadschemaexample.schema.MyBaseSchemaB',
-                            ],
-                        },
-                        '-1': {
-                            'path': 'inherited_b',
-                            'definitions': [
-                                'nomadschemaexample.schema.MyBaseSchemaB',
-                            ],
-                        },
-                    },
                 ),
                 SearchableQuantity(
                     id=f'data.valid{schema_separator}{python_schema_name}',
@@ -548,7 +488,7 @@ def example_data_schema_yaml(
     normalized,
 ):
     """
-    Contains entries that store data using a YAML schema.
+    Contains entries that store data using a python schema.
     """
     data = ExampleData(main_author=user1)
     upload_id = 'id_plugin_schema_published'

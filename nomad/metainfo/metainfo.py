@@ -2316,19 +2316,14 @@ class MSection(metaclass=MObjectMeta):
 
     def m_traverse(
         self,
-    ) -> Iterable[tuple[list[MSection], Any, int, list[str | int]]]:
+    ) -> Iterable[tuple[Any, Any, int, list[str | int]]]:
         """
-        Performs a depth-first traversal of the data and yields a tuple for each
-        encountered property.
-
-        The tuple is organized as follows:
-          1. List of all containing sections from the root to the leaf section.
-          2. Definition of the section or quantity.
-          3. Parent index
-          4. List that contains the path segments to the section or quantity.
+        Performs a depth-first traversal and yield tuples of section, property
+        def, parent index and path for all set properties. If the section has no
+        property the empty section is returned.
         """
         empty = True
-        for key, value in self.__dict__.items():
+        for key in self.__dict__:
             property_def = self.m_def.all_properties.get(key)
             if property_def is None:
                 continue
@@ -2339,33 +2334,18 @@ class MSection(metaclass=MObjectMeta):
                 for i_repeated, sub_section in enumerate(
                     self.m_get_sub_sections(property_def)
                 ):
-                    for (
-                        sub_sections,
-                        definition,
-                        index,
-                        sub_path,
-                    ) in sub_section.m_traverse():
+                    for parent, definition, index, sub_path in sub_section.m_traverse():
                         parent_path: list[str | int] = [key]
-                        parent_sections: list[MSection] = [sub_section]
                         if repeats:
                             parent_path.append(i_repeated)
-                        yield (
-                            parent_sections + sub_sections,
-                            definition,
-                            index,
-                            parent_path + sub_path,
-                        )
-                    yield (
-                        parent_sections,
-                        property_def,
-                        sub_section.m_parent_index,
-                        [key],
-                    )
+                        yield parent, definition, index, parent_path + sub_path
+                    yield self, property_def, sub_section.m_parent_index, [key]
+
             else:
-                yield [], property_def, -1, [key]
+                yield self, property_def, -1, [key]
 
         if empty:
-            yield [], None, -1, []
+            yield self, None, -1, []
 
     def m_pretty_print(self, indent=None):
         """Pretty prints the containment hierarchy"""

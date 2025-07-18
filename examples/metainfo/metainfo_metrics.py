@@ -14,8 +14,7 @@ quantities = dict()
 definitions = set()
 metainfo = all_metainfo_packages()
 
-for sections, _, _, _ in metainfo.m_traverse():
-    definition = sections[-1] if sections else None
+for definition, _, _, _ in metainfo.m_traverse():
     if definition in definitions:
         continue
     definitions.add(definition)

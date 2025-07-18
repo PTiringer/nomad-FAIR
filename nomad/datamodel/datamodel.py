@@ -357,7 +357,6 @@ class EntryArchiveReference(MSection):
 
 
 class SearchableQuantity(MSection):
-    # To be deprecated: 'id' no longer enough to identify the definition
     id = Quantity(
         type=str,
         description="""
@@ -366,7 +365,6 @@ class SearchableQuantity(MSection):
         """,
         a_elasticsearch=[Elasticsearch()],
     )
-    # To be deprecated: definition available in `segments`
     definition = Quantity(
         type=str,
         description='A reference to the quantity definition.',
@@ -374,48 +372,8 @@ class SearchableQuantity(MSection):
     )
     path_archive = Quantity(
         type=str,
-        description='Path of the value within the archive. This path also include list indices, e.g. data.section[0].value',
+        description='Path of the value within the archive.',
         a_elasticsearch=Elasticsearch(),
-    )
-    segments = Quantity(
-        type=JSON,
-        description="""
-        Contains the definitions and path for each segment in the search quantity path.
-        For example, if you have a path `data.subsection.value` defined in a custom
-        schema, the stored segments would be:
-
-        segments = {
-          '1': {
-            'path': 'data'
-            'definitions': [
-                'mypackage.schema_packages.simulation.MySimulation',
-                'mypackage.schema_packages.simulation.Simulation',
-            ]
-          },
-          '2': {
-            'path': 'calculation',
-            'definitions': [
-                'mypackage.schema_packages.simulation.MyCalculation,
-                'mypackage.schema_packages.simulation.Calculation,
-            ']
-          },
-          '-1': {
-            'path': 'value',
-            'definitions': ['mypackage.schema_packages.simulation.Calculation']
-          },
-        }
-
-        Note that:
-         - The keys are the segment indices.
-         - The key 0 is reserved for the root section (i.e. EntryArchive) but none of the
-           information is currently stored.
-         - The key -1 is used for the last segment, which is the quantity. This allows
-           queries starting from the end as well, and helps with retrieving the quantity
-           definition. Note that the definition stored for the quantity points to the
-           section that ultimately defines the quantity, which may not be clear from the
-           definition of the parent section due to inheritance.
-        """,
-        a_elasticsearch=Elasticsearch(mapping={'type': 'object', 'dynamic': True}),
     )
     bool_value = Quantity(
         type=bool,
@@ -999,7 +957,7 @@ class EntryMetadata(MSection):
 
     def apply_archive_metadata(self, archive):
         quantities = set()
-        sections_set = set()
+        sections = set()
         n_quantities = 0
 
         section_paths = {}
@@ -1118,9 +1076,8 @@ class EntryMetadata(MSection):
         if hasattr(archive, 'data') and archive.data:
             schema_name = archive.data.m_def.qualified_name()
 
-        for sections, property_def, _, location in archive.m_traverse():
-            section = sections[-1] if sections else None
-            sections_set.add(section.m_def)
+        for section, property_def, _, location in archive.m_traverse():
+            sections.add(section.m_def)
 
             if property_def is None:
                 continue
@@ -1151,7 +1108,7 @@ class EntryMetadata(MSection):
                 if searchable_quantity := create_searchable_quantity(
                     property_def,
                     quantity_path,
-                    [None] + sections,  # The root section is ignored ATM
+                    section,
                     '.'.join([str(x) for x in location]),
                     schema_name,
                 ):
@@ -1165,12 +1122,12 @@ class EntryMetadata(MSection):
                 for v in EntryArchiveReference.m_def.quantities
             )
             quantities.add('metadata.entry_references')
-            sections_set.add(EntryArchiveReference.m_def)
+            sections.add(EntryArchiveReference.m_def)
 
         if len(quantities) > 0:
             quantities.add('metadata.quantities')
 
-        if len(sections_set) > 0:
+        if len(sections) > 0:
             quantities.add('metadata.sections')
             quantities.add('metadata.section_defs')
             quantities.update(
@@ -1181,7 +1138,7 @@ class EntryMetadata(MSection):
         self.entry_references.extend(entry_references)
         self.search_quantities.extend(search_quantities)
         self.quantities = sorted(list(quantities))
-        self.sections = sorted(section.qualified_name() for section in sections_set)
+        self.sections = sorted(section.qualified_name() for section in sections)
         self.n_quantities = n_quantities
         self.text_search_contents = list(keywords_set)
 
@@ -1208,7 +1165,7 @@ class EntryMetadata(MSection):
                 collect_base_sections(_b, used_directly=False)
 
         section_defs = {}
-        for section in sections_set:
+        for section in sections:
             section_defs[section.qualified_name()] = generate_compatible(
                 section, used_directly=True
             )
