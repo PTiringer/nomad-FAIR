@@ -40,6 +40,7 @@ with workflow.unsafe.imports_passed_through():
         UploadProcessingWorkflowInput,
         UploadWorkflowIdInput,
     )
+    from nomad.workflows.utils import generate_batches
 
 
 @workflow.defn
@@ -82,6 +83,42 @@ class ProcessEntryWorkflow:
             retry_policy=retry_policy,
         )
         return result
+
+
+@workflow.defn
+class BatchProcessEntriesWorkflow:
+    @workflow.run
+    async def run(self, entries_to_be_processed: list[ProcessEntryActivityInput]):
+        retry_policy = RetryPolicy(
+            maximum_attempts=3,
+        )
+        if len(entries_to_be_processed) > 1000:
+            entry_batches = generate_batches(entries_to_be_processed)
+            # Recursively call BatchProcessEntriesWorkflow for each batch
+            await asyncio.gather(
+                *[
+                    workflow.execute_child_workflow(
+                        BatchProcessEntriesWorkflow.run,
+                        batch,
+                        id=f'{workflow.info().workflow_id}-batch-{i}',
+                        retry_policy=retry_policy,
+                    )
+                    for i, batch in enumerate(entry_batches)
+                ]
+            )
+        else:
+            # Process entries directly when <= 1000
+            tasks = [
+                workflow.execute_child_workflow(
+                    ProcessEntryWorkflow.run,
+                    data,
+                    id=data.workflow_id,
+                    parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
+                    retry_policy=retry_policy,
+                )
+                for data in entries_to_be_processed
+            ]
+            await asyncio.gather(*tasks)
 
 
 @workflow.defn
@@ -140,18 +177,15 @@ class ProcessUploadWorkflow:
             entries_to_be_processed = next_level_entries_result.entries_to_be_processed
             if not entries_to_be_processed:
                 break
-            # Step 4: Launch child workflows for each entry
-            tasks = [
-                workflow.execute_child_workflow(
-                    ProcessEntryWorkflow.run,
-                    data,
-                    id=data.workflow_id,
-                    parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
-                    retry_policy=retry_policy,
-                )
-                for data in entries_to_be_processed
-            ]
-            await asyncio.gather(*tasks)
+
+            # Step 4: Start the batch processing workflow
+            await workflow.execute_child_workflow(
+                BatchProcessEntriesWorkflow.run,
+                entries_to_be_processed,
+                id=f'{workflow_info.workflow_id}-batch-processor',
+                retry_policy=retry_policy,
+            )
+
             parse_all_input.min_level = next_level_entries_result.next_parser_level + 1
 
         await workflow.execute_activity(
