@@ -281,6 +281,14 @@ class Meta(ConfigBaseModel):
     name: str = Field(
         'NOMAD', description='Web-site title for the NOMAD UI.', deprecated=True
     )
+    description: str = Field(
+        """This is the central NOMAD deployment hosted by
+        [FAIRmat](https://fairmat-nfdi.eu/). This deployment hosts a wide range of
+        research data with primary focus on condensed-matter physics and the chemical
+        physics of solids. You can access all published data without an account. If you
+        want to provide your own data, please log in or register for an account.""",
+        description='Description of the NOMAD deployment. Shown at the GUI homepage.',
+    )
     homepage: str = Field(
         'https://nomad-lab.eu', description='Provider homepage.', deprecated=True
     )
