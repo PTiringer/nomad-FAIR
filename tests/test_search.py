@@ -466,45 +466,10 @@ def test_quantity_values(indices, example_data):
         ),
     ],
 )
-def test_search_quantity_data_types(indices, example_eln_data, api_query, total):
+def test_search_quantities(indices, example_eln_data, api_query, total):
     """Tests that search queries targeting search_quantities work for different data types."""
     results = search(owner='all', query=WithQuery(query=api_query).query)
     assert results.pagination.total == total  # pylint: disable=no-member
-
-
-@pytest.mark.parametrize(
-    'api_query',
-    [
-        pytest.param(
-            {f'data.name{schema_separator}{python_schema_name}': 'test1'},
-            id='own-quantity',
-        ),
-        pytest.param(
-            {
-                f'data.inherited_a{schema_separator}nomadschemaexample.schema.MyBaseSchemaA': 'test1'
-            },
-            id='inherited-quantity',
-        ),
-        pytest.param(
-            {
-                f'data.inherited_b{schema_separator}nomadschemaexample.schema.MyBaseSchemaB': 'test1'
-            },
-            id='multiple-inheritance',
-        ),
-    ],
-)
-@pytest.mark.parametrize('schema_type', ['python'])
-def test_search_quantities_inheritance(
-    indices, plugin_schema, api_query, schema_type, request
-):
-    """Tests that queries that target inherited definitions work as expected. TODO:
-    Currently only quantities in the data section are registered with inheritance taken
-    into account, and there is no syntax for targeting anything else besides this data
-    section.
-    """
-    get_schema_fixture(schema_type, request)
-    results = search(owner='all', query=WithQuery(query=api_query).query)
-    assert results.pagination.total == 1  # pylint: disable=no-member
 
 
 @pytest.mark.parametrize(

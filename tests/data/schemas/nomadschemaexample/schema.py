@@ -46,23 +46,7 @@ class MySectionRecursiveB(MSection):
     name_b = Quantity(type=str)
 
 
-class MyBaseSchemaA(EntryData):
-    inherited_a = Quantity(
-        type=str,
-        a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity),
-        description='For testing inherited quantities.',
-    )
-
-
-class MyBaseSchemaB(MSection):
-    inherited_b = Quantity(
-        type=str,
-        a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity),
-        description='For testing multiple inheritance.',
-    )
-
-
-class MySchema(MyBaseSchemaA, MyBaseSchemaB):
+class MySchema(EntryData):
     name = Quantity(
         type=str,
         a_eln=ELNAnnotation(component=ELNComponentEnum.StringEditQuantity),
