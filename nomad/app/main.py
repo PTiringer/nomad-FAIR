@@ -18,6 +18,7 @@
 
 import hashlib
 import json
+import re
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Response, status
@@ -40,9 +41,21 @@ from .v1.main import app as v1_app
 
 
 class OasisAuthenticationMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, whitelist: set[str] | None = None) -> None:
+        """
+        Middleware to enforce authentication on protected endpoints.
+
+        Args:
+            app: The ASGI application.
+            whitelist (Iterable[str], optional): A list of regex strings
+                for URL path patterns that are exempt from authentication.
+        """
+        super().__init__(app)
+        self.whitelist_patterns = [re.compile(pat) for pat in (whitelist or [])]
+
     async def dispatch(self, request, call_next):
         path = request.url.path
-        if 'extensions' in path or 'info' in path or 'versions' in path:
+        if any(pat.search(path) for pat in self.whitelist_patterns):
             return await call_next(request)
 
         if 'Authorization' not in request.headers:
@@ -50,14 +63,14 @@ class OasisAuthenticationMiddleware(BaseHTTPMiddleware):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 content='You have to authenticate to use this Oasis endpoint.',
             )
-        else:
-            token = request.headers['Authorization'].split(' ')[1]
-            user, _ = infrastructure.keycloak.tokenauth(token)
-            if user is None or user.email not in config.oasis.allowed_users:
-                return Response(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    content='You are not authorized to access this Oasis endpoint.',
-                )
+
+        token = request.headers['Authorization'].split(' ')[1]
+        user, _ = infrastructure.keycloak.tokenauth(token)
+        if user is None or user.email not in config.oasis.allowed_users:
+            return Response(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content='You are not authorized to access this Oasis endpoint.',
+            )
 
         return await call_next(request)
 
@@ -131,7 +144,10 @@ if config.services.optimade_enabled:
 
     app.mount(f'{app_base}/optimade', optimade_app)
     if config.oasis.allowed_users is not None:
-        optimade_app.add_middleware(OasisAuthenticationMiddleware)
+        optimade_app.add_middleware(
+            OasisAuthenticationMiddleware,
+            whitelist={'/extensions', '/info', '^/versions$'},
+        )
 
 if config.services.dcat_enabled:
     from .dcat.main import app as dcat_app
