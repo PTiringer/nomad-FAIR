@@ -2,6 +2,7 @@ from typing import Any
 
 from nomad.orchestrator.shared.constant import TaskQueue
 from nomad.workflows.workflows import (
+    BatchProcessEntriesWorkflow,
     DeleteUploadWorkflow,
     EditUploadMetadataWorkflow,
     ImportBundleWorkflow,
@@ -15,6 +16,7 @@ from nomad.workflows.workflows import (
 
 def get_nomad_internal_workflows() -> list:
     return [
+        BatchProcessEntriesWorkflow,
         DeleteUploadWorkflow,
         ProcessUploadWorkflow,
         ProcessEntryWorkflow,
