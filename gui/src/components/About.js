@@ -20,7 +20,7 @@ import { ReactComponent as AboutSvg } from '../images/about.svg'
 import PropTypes from 'prop-types'
 import Markdown from './Markdown'
 import { isNil } from 'lodash'
-import { appBase, debug, encyclopediaBase, parserMetadata, toolkitMetadata as tutorials } from '../config'
+import { appBase, debug, encyclopediaBase, parserMetadata, description, toolkitMetadata as tutorials } from '../config'
 import {
   Button,
   Card,
@@ -401,17 +401,10 @@ export default function About() {
         <Markdown>{`
         # **NOMAD** &ndash; Manage and Publish Materials Data
 
-        This is the *graphical user interface* (GUI) of NOMAD. It allows you to **search,
-        access, and download all NOMAD data** in its
-        *raw files* and *processed data* form. You can **upload and manage your own
-        raw materials science data**. You can access all published data without an account.
-        If you want to provide your own data, please login or register for an account.
+        ${description}
 
-        You can learn more about NOMAD on its
-        [homepage](https://nomad-lab.eu/repo-arch), our
-        [documentation](${appBase}/docs/index.html).
-        There is also an [FAQ](https://nomad-lab.eu/repository-archive-faqs)
-        and the more detailed [uploader documentation](${appBase}/docs/web.html).
+        You can learn more about NOMAD on its [homepage](https://nomad-lab.eu/nomad-lab/)
+        or our [documentation](${appBase}/docs/index.html).
         `}</Markdown>
       </Grid>
       <InfoCard xs={6} title="Interactive Search" top>

@@ -90,6 +90,7 @@ export function normalizeConfig(config) {
 
 window.nomadEnv = window.nomadEnv || {}
 export const version = window.nomadEnv.version
+export const description = window.nomadEnv.description
 export const appBase = urlAbs(window.nomadEnv.appBase.replace(/\/$/, ''))
 export const apiBase = `${appBase}/api`
 export const northBase = urlAbs(window.nomadEnv.northBase)
