@@ -45,13 +45,22 @@ from nomad.datamodel.metainfo.annotations import (
 from nomad.datamodel.results import ELN, Material, Results
 from nomad.datamodel.results import ElementalComposition as ResultsElementalComposition
 from nomad.datamodel.util import create_custom_mapping
-from nomad.metainfo import Datetime, Quantity, Section, SectionProxy, SubSection
+from nomad.metainfo import (
+    Datetime,
+    Quantity,
+    SchemaPackage,
+    Section,
+    SectionProxy,
+    SubSection,
+)
 from nomad.metainfo.util import MEnum
 from nomad.units import ureg
 
 PUB_CHEM_PUG_PATH = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound'
 CAS_API_PATH = 'https://commonchemistry.cas.org/api'
 EXTERNAL_API_TIMEOUT = 5
+
+m_package = SchemaPackage()
 
 
 def throttle_wait():
