@@ -32,6 +32,7 @@ from nomad.config import config
 
 from .common import root_path
 from .routers import (
+    apps,
     auth,
     datasets,
     entries,
@@ -125,6 +126,7 @@ async def unicorn_exception_handler(request: Request, e: Exception):
 
 
 app.include_router(auth.router, prefix='/auth')
+app.include_router(apps.router, prefix='/apps')  # type: ignore
 app.include_router(datasets.router, prefix='/datasets')
 app.include_router(entries.router, prefix='/entries')
 app.include_router(federation.router, prefix='/federation')
