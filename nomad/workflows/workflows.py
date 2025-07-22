@@ -183,9 +183,9 @@ class ProcessUploadWorkflow:
                 BatchProcessEntriesWorkflow.run,
                 entries_to_be_processed,
                 id=f'{workflow_info.workflow_id}-batch-processor',
+                parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
                 retry_policy=retry_policy,
             )
-
             parse_all_input.min_level = next_level_entries_result.next_parser_level + 1
 
         await workflow.execute_activity(

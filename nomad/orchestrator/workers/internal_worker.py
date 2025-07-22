@@ -1,4 +1,5 @@
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 from nomad.infrastructure import setup
 from nomad.orchestrator.client import get_client
@@ -7,15 +8,17 @@ from nomad.orchestrator.workers.util import get_worker
 from nomad.workflows.interceptor import NomadTemporalInterceptor
 
 
-async def run_worker():
+async def run_worker(workers: int = 12):
     client = await get_client()
-    worker = get_worker(
-        client=client,
-        task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
-        interceptors=[NomadTemporalInterceptor()],
-    )
-    setup()
-    await worker.run()
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        worker = get_worker(
+            client=client,
+            task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
+            interceptors=[NomadTemporalInterceptor()],
+            activity_executor=executor,
+        )
+        setup()
+        await worker.run()
 
 
 def main():
