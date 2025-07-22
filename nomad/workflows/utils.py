@@ -1,7 +1,10 @@
 import math
+from typing import TypeVar
+
+T = TypeVar('T')
 
 
-def generate_batches[T](
+def generate_batches(
     items: list[T], max_desired_batch_size=1000, max_batches=1000
 ) -> list[list[T]]:
     """
