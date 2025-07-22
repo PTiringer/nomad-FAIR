@@ -35,8 +35,9 @@ def hub():
 
 
 @run.command(help='Run the orchestrator internal worker.')
-def orchestrator_internal_worker():
-    run_temporal_worker()
+@click.option('--workers', type=int, default=12, help='Number of worker threads.')
+def orchestrator_internal_worker(workers: int):
+    run_temporal_worker(workers=workers)
 
 
 @run.command(help='Run the nomad development worker.')
@@ -65,12 +66,12 @@ def app(with_gui: bool, **kwargs):
     run_app(with_gui=with_gui, **kwargs)
 
 
-def run_temporal_worker():
+def run_temporal_worker(workers: int = 12):
     import asyncio
 
     from nomad.orchestrator.workers import internal_worker
 
-    asyncio.run(internal_worker.run_worker())
+    asyncio.run(internal_worker.run_worker(workers=workers))
 
 
 def run_app(
@@ -252,7 +253,7 @@ def run_appworker(
             results.append(executor.submit(*args, **kwargs))
 
         if config.temporal.enabled:
-            _submit(run_temporal_worker)
+            _submit(run_temporal_worker, workers=celery_workers)
         else:
             _submit(task_worker, workers=celery_workers)
         _submit(task_app, workers=fastapi_workers, host=app_host, port=app_port)

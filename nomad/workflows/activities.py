@@ -24,13 +24,13 @@ parser_min_level = min([parser.level for parser in parsers])
 
 
 @activity.defn
-async def delete_upload_search_activity(input: DeleteUploadWorkflowInput):
+def delete_upload_search_activity(input: DeleteUploadWorkflowInput):
     # Delete from search index
     delete_upload(input.upload_id, refresh=True)
 
 
 @activity.defn
-async def delete_upload_files_activity(input: DeleteUploadWorkflowInput):
+def delete_upload_files_activity(input: DeleteUploadWorkflowInput):
     # Delete staging and public files
     for cls in (StagingUploadFiles, PublicUploadFiles):
         if cls.exists_for(input.upload_id):
@@ -38,26 +38,26 @@ async def delete_upload_files_activity(input: DeleteUploadWorkflowInput):
 
 
 @activity.defn
-async def delete_upload_entries_activity(input: DeleteUploadWorkflowInput):
+def delete_upload_entries_activity(input: DeleteUploadWorkflowInput):
     # Delete all entries for this upload
     Entry.objects(upload_id=input.upload_id).delete()  # type: ignore
 
 
 @activity.defn
-async def delete_upload_record_activity(input: DeleteUploadWorkflowInput):
+def delete_upload_record_activity(input: DeleteUploadWorkflowInput):
     # Delete the upload itself
     upload = Upload.get(input.upload_id)
     upload.delete()
 
 
 @activity.defn
-async def process_entry_activity(input: ProcessEntryActivityInput):
+def process_entry_activity(input: ProcessEntryActivityInput):
     entry = Entry.get(input.entry_id)
     entry._process_entry_local()
 
 
 @activity.defn
-async def update_files_activity(
+def update_files_activity(
     input: UploadProcessingWorkflowInput,
 ) -> set[str] | None:
     upload = Upload.get(input.upload_id)
@@ -71,7 +71,7 @@ async def update_files_activity(
 
 
 @activity.defn
-async def match_all_activity(input: UploadProcessingWorkflowInput):
+def match_all_activity(input: UploadProcessingWorkflowInput):
     from nomad.config import config
 
     reprocess_settings = input.reprocess_settings or {}
@@ -85,7 +85,7 @@ async def match_all_activity(input: UploadProcessingWorkflowInput):
 
 
 @activity.defn
-async def next_level_entries(
+def next_level_entries(
     input: UploadProcessingWorkflowInput,
 ) -> NextLevelEntryResult:
     upload = Upload.get(input.upload_id)
@@ -108,7 +108,7 @@ async def next_level_entries(
 
 
 @activity.defn
-async def add_workflow_id_activity(input: UploadWorkflowIdInput):
+def add_workflow_id_activity(input: UploadWorkflowIdInput):
     upload = Upload.get(input.upload_id)
     assert len(upload.workflow_ids) == 0, (  # type: ignore
         'Upload is currently being processed by another workflow'
@@ -118,20 +118,20 @@ async def add_workflow_id_activity(input: UploadWorkflowIdInput):
 
 
 @activity.defn
-async def remove_workflow_id_activity(input: UploadWorkflowIdInput):
+def remove_workflow_id_activity(input: UploadWorkflowIdInput):
     upload = Upload.get(input.upload_id)
     upload.workflow_ids.remove(input.workflow_id)  # type: ignore
     upload.save()
 
 
 @activity.defn
-async def cleanup_activity(input: UploadProcessingWorkflowInput):
+def cleanup_activity(input: UploadProcessingWorkflowInput):
     upload = Upload.get(input.upload_id)
     upload.cleanup()
 
 
 @activity.defn
-async def process_upload_success(input: UploadProcessingWorkflowInput):
+def process_upload_success(input: UploadProcessingWorkflowInput):
     upload = Upload.get(input.upload_id)
     upload.process_status = ProcessStatus.SUCCESS
     for entry in list(
@@ -143,7 +143,7 @@ async def process_upload_success(input: UploadProcessingWorkflowInput):
 
 
 @activity.defn
-async def setup_example_upload_activity(input: ProcessExampleUploadWorkflowInput):
+def setup_example_upload_activity(input: ProcessExampleUploadWorkflowInput):
     upload = Upload.get(input.upload_id)
     upload.setup_example_upload(entry_point_id=input.example_upload_id)
 
@@ -166,13 +166,13 @@ def update_process_failure(workflow_type: str, input: dict, exception: Exception
 
 
 @activity.defn
-async def edit_upload_metadata_activity(input: EditUploadMetadataWorkflowInput):
+def edit_upload_metadata_activity(input: EditUploadMetadataWorkflowInput):
     upload = Upload.get(input.upload_id)
     upload._edit_upload_metadata_local(input.edit_request_json, input.user_id)
 
 
 @activity.defn
-async def import_bundle_activity(input: ImportBundleWorkflowInput):
+def import_bundle_activity(input: ImportBundleWorkflowInput):
     upload = Upload.get(input.upload_id)
     upload._import_bundle_local(
         input.bundle_path, input.import_settings, input.embargo_length
@@ -180,12 +180,12 @@ async def import_bundle_activity(input: ImportBundleWorkflowInput):
 
 
 @activity.defn
-async def publish_upload_activity(input: PublishUploadWorkflowInput):
+def publish_upload_activity(input: PublishUploadWorkflowInput):
     upload = Upload.get(input.upload_id)
     upload._publish_upload_local(input.embargo_length)
 
 
 @activity.defn
-async def publish_externally_activity(input: PublishExternallyWorkflowInput):
+def publish_externally_activity(input: PublishExternallyWorkflowInput):
     upload = Upload.get(input.upload_id)
     upload._publish_externally_local()
