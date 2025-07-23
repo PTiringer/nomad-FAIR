@@ -189,19 +189,24 @@ class ProcessUploadWorkflow:
             parse_all_input.min_level = next_level_entries_result.next_parser_level + 1
 
         await workflow.execute_activity(
-            cleanup_activity, input, schedule_to_close_timeout=timedelta(minutes=30)
+            cleanup_activity,
+            input,
+            schedule_to_close_timeout=timedelta(minutes=30),
+            retry_policy=retry_policy,
         )
 
         await workflow.execute_activity(
             process_upload_success,
             input,
             schedule_to_close_timeout=timedelta(minutes=30),
+            retry_policy=retry_policy,
         )
 
         await workflow.execute_activity(
             remove_workflow_id_activity,
             upload_workflow_input,
             schedule_to_close_timeout=timedelta(minutes=30),
+            retry_policy=retry_policy,
         )
 
 
