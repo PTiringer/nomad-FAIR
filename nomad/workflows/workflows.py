@@ -47,25 +47,32 @@ with workflow.unsafe.imports_passed_through():
 class DeleteUploadWorkflow:
     @workflow.run
     async def run(self, input: DeleteUploadWorkflowInput):
+        retry_policy = RetryPolicy(
+            maximum_attempts=3,
+        )
         await workflow.execute_activity(
             delete_upload_search_activity,
             input,
             schedule_to_close_timeout=timedelta(hours=2),
+            retry_policy=retry_policy,
         )
         await workflow.execute_activity(
             delete_upload_files_activity,
             input,
             schedule_to_close_timeout=timedelta(hours=2),
+            retry_policy=retry_policy,
         )
         await workflow.execute_activity(
             delete_upload_entries_activity,
             input,
             schedule_to_close_timeout=timedelta(hours=2),
+            retry_policy=retry_policy,
         )
         await workflow.execute_activity(
             delete_upload_record_activity,
             input,
             schedule_to_close_timeout=timedelta(hours=2),
+            retry_policy=retry_policy,
         )
 
 

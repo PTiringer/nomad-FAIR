@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, is_dataclass
 
 from temporalio import workflow
@@ -13,6 +14,10 @@ with workflow.unsafe.imports_passed_through():
 
 
 class _NomadWorkflowInterceptor(WorkflowInboundInterceptor):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.executor = ThreadPoolExecutor(max_workers=1)
+
     async def execute_workflow(self, input: ExecuteWorkflowInput):
         workflow_info = workflow.info()
         try:
@@ -21,7 +26,8 @@ class _NomadWorkflowInterceptor(WorkflowInboundInterceptor):
             if not workflow.unsafe.is_replaying():
                 with workflow.unsafe.sandbox_unrestricted():
                     if len(input.args) == 1 and is_dataclass(input.args[0]):
-                        update_process_failure(
+                        self.executor.submit(
+                            update_process_failure,
                             workflow_info.workflow_type,
                             asdict(input.args[0]),  # type: ignore
                             e,  # type: ignore
