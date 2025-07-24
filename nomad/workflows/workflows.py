@@ -8,6 +8,8 @@ from datetime import timedelta
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
+WORKFLOW_TIMEOUT = timedelta(hours=4)
+
 with workflow.unsafe.imports_passed_through():
     from nomad.workflows.activities import (
         add_workflow_id_activity,
@@ -22,6 +24,7 @@ with workflow.unsafe.imports_passed_through():
         next_level_entries,
         parser_min_level,
         process_entry_activity,
+        process_entry_success,
         process_upload_success,
         publish_externally_activity,
         publish_upload_activity,
@@ -53,25 +56,25 @@ class DeleteUploadWorkflow:
         await workflow.execute_activity(
             delete_upload_search_activity,
             input,
-            schedule_to_close_timeout=timedelta(hours=2),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )
         await workflow.execute_activity(
             delete_upload_files_activity,
             input,
-            schedule_to_close_timeout=timedelta(hours=2),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )
         await workflow.execute_activity(
             delete_upload_entries_activity,
             input,
-            schedule_to_close_timeout=timedelta(hours=2),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )
         await workflow.execute_activity(
             delete_upload_record_activity,
             input,
-            schedule_to_close_timeout=timedelta(hours=2),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )
 
@@ -86,7 +89,13 @@ class ProcessEntryWorkflow:
         result = await workflow.execute_activity(
             process_entry_activity,
             input,
-            schedule_to_close_timeout=timedelta(hours=1),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+            retry_policy=retry_policy,
+        )
+        await workflow.execute_activity(
+            process_entry_success,
+            input,
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )
         return result
@@ -125,7 +134,9 @@ class BatchProcessEntriesWorkflow:
                 )
                 for data in entries_to_be_processed
             ]
-            await asyncio.gather(*tasks)
+            # Use return_exceptions=True to allow individual child workflows to fail
+            # without stopping the entire batch or failing the parent workflow
+            await asyncio.gather(*tasks, return_exceptions=True)
 
 
 @workflow.defn
@@ -143,14 +154,14 @@ class ProcessUploadWorkflow:
         await workflow.execute_activity(
             add_workflow_id_activity,
             upload_workflow_input,
-            schedule_to_close_timeout=timedelta(hours=1),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )
         # Step 1: Update files
         updated_files = await workflow.execute_activity(
             update_files_activity,
             input,
-            schedule_to_close_timeout=timedelta(hours=1),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )
 
@@ -169,7 +180,7 @@ class ProcessUploadWorkflow:
         await workflow.execute_activity(
             match_all_activity,
             parse_all_input,
-            schedule_to_close_timeout=timedelta(hours=1),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )
 
@@ -178,7 +189,7 @@ class ProcessUploadWorkflow:
             next_level_entries_result = await workflow.execute_activity(
                 next_level_entries,
                 parse_all_input,
-                schedule_to_close_timeout=timedelta(hours=2),
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
                 retry_policy=retry_policy,
             )
             entries_to_be_processed = next_level_entries_result.entries_to_be_processed
@@ -198,21 +209,21 @@ class ProcessUploadWorkflow:
         await workflow.execute_activity(
             cleanup_activity,
             input,
-            schedule_to_close_timeout=timedelta(minutes=30),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )
 
         await workflow.execute_activity(
             process_upload_success,
             input,
-            schedule_to_close_timeout=timedelta(minutes=30),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )
 
         await workflow.execute_activity(
             remove_workflow_id_activity,
             upload_workflow_input,
-            schedule_to_close_timeout=timedelta(minutes=30),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )
 
@@ -225,7 +236,7 @@ class ProcessExampleUploadWorkflow:
         await workflow.execute_activity(
             setup_example_upload_activity,
             input,
-            schedule_to_close_timeout=timedelta(hours=1),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
         )
         current_workflow_id = workflow.info().workflow_id
 
@@ -261,21 +272,21 @@ class EditUploadMetadataWorkflow:
         await workflow.execute_activity(
             add_workflow_id_activity,
             upload_workflow_input,
-            schedule_to_close_timeout=timedelta(hours=1),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )
         # Step 1: Edit metadata activity
         await workflow.execute_activity(
             edit_upload_metadata_activity,
             input,
-            schedule_to_close_timeout=timedelta(hours=1),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )
         # Step 2: Remove workflow id
         await workflow.execute_activity(
             remove_workflow_id_activity,
             upload_workflow_input,
-            schedule_to_close_timeout=timedelta(minutes=30),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )
 
@@ -290,7 +301,7 @@ class ImportBundleWorkflow:
         await workflow.execute_activity(
             import_bundle_activity,
             input,
-            schedule_to_close_timeout=timedelta(hours=2),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )
 
@@ -309,19 +320,19 @@ class PublishUploadWorkflow:
         await workflow.execute_activity(
             add_workflow_id_activity,
             upload_workflow_input,
-            schedule_to_close_timeout=timedelta(hours=1),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )
         await workflow.execute_activity(
             publish_upload_activity,
             input,
-            schedule_to_close_timeout=timedelta(hours=1),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )
         await workflow.execute_activity(
             remove_workflow_id_activity,
             upload_workflow_input,
-            schedule_to_close_timeout=timedelta(minutes=30),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )
 
@@ -340,18 +351,18 @@ class PublishExternallyWorkflow:
         await workflow.execute_activity(
             add_workflow_id_activity,
             upload_workflow_input,
-            schedule_to_close_timeout=timedelta(hours=1),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )
         await workflow.execute_activity(
             publish_externally_activity,
             input,
-            schedule_to_close_timeout=timedelta(hours=2),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )
         await workflow.execute_activity(
             remove_workflow_id_activity,
             upload_workflow_input,
-            schedule_to_close_timeout=timedelta(minutes=30),
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
         )

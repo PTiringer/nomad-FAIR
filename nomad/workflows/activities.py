@@ -131,14 +131,16 @@ def cleanup_activity(input: UploadProcessingWorkflowInput):
 
 
 @activity.defn
+def process_entry_success(input: ProcessEntryActivityInput):
+    entry = Entry.get(input.entry_id)
+    entry.process_status = ProcessStatus.SUCCESS
+    entry.save()
+
+
+@activity.defn
 def process_upload_success(input: UploadProcessingWorkflowInput):
     upload = Upload.get(input.upload_id)
     upload.process_status = ProcessStatus.SUCCESS
-    for entry in list(
-        Entry.objects(upload_id=str(upload.upload_id), mainfile_key=None)  # type: ignore
-    ):
-        entry.process_status = ProcessStatus.SUCCESS
-        entry.save()
     upload.set_last_status_message('Process completed successfully')
 
 
