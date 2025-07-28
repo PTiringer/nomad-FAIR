@@ -120,7 +120,8 @@ def add_workflow_id_activity(input: UploadWorkflowIdInput):
 @activity.defn
 def remove_workflow_id_activity(input: UploadWorkflowIdInput):
     upload = Upload.get(input.upload_id)
-    upload.workflow_ids.remove(input.workflow_id)  # type: ignore
+    if input.workflow_id in upload.workflow_ids:  # type: ignore
+        upload.workflow_ids.remove(input.workflow_id)  # type: ignore
     upload.save()
 
 
@@ -145,26 +146,28 @@ def process_upload_success(input: UploadProcessingWorkflowInput):
 
 
 @activity.defn
+def process_entry_failure_activity(input: ProcessEntryActivityInput):
+    entry = Entry.get(input.entry_id)
+    entry.process_status = ProcessStatus.FAILURE
+    entry.last_status_message = 'Process process_entry failed'
+    entry.save()
+
+
+@activity.defn
+def process_upload_failure_activity(input: UploadWorkflowIdInput):
+    upload = Upload.get(input.upload_id)
+    upload.process_status = ProcessStatus.FAILURE
+    upload.last_status_message = (
+        input.failure_message if input.failure_message else 'Process upload failed'
+    )
+    upload.workflow_ids = []  # Clear workflow IDs on failure
+    upload.save()
+
+
+@activity.defn
 def setup_example_upload_activity(input: ProcessExampleUploadWorkflowInput):
     upload = Upload.get(input.upload_id)
     upload.setup_example_upload(entry_point_id=input.example_upload_id)
-
-
-def update_process_failure(workflow_type: str, input: dict, exception: Exception):
-    if workflow_type == 'ProcessEntryWorkflow':
-        entry_id = input['entry_id']
-        entry = Entry.get(entry_id)
-        entry.process_status = ProcessStatus.FAILURE
-        entry.last_status_message = f'Process process_entry failed: {exception}'
-        entry.save()
-
-    if workflow_type == 'ProcessUploadWorkflow':
-        upload_id = input['upload_id']
-        upload = Upload.get(upload_id)
-        upload.workflow_ids = []
-        upload.process_status = ProcessStatus.FAILURE
-        upload.last_status_message = f'Process upload failed: {exception}'
-        upload.save()
 
 
 @activity.defn

@@ -1891,6 +1891,8 @@ class Upload(Proc):
         staging files. This starts the celery process of deleting the upload.
         """
         if config.temporal.enabled:
+            self.process_status = ProcessStatus.PENDING
+            self.current_process = 'delete_upload'
             return run_async(self._start_delete_upload_workflow())
         else:
             return self._delete_upload()
@@ -2220,7 +2222,6 @@ class Upload(Proc):
             only_updated_files=only_updated_files,
             workflow_id=workflow_id,
         )
-        print(data)
         try:
             await client.start_workflow(
                 'ProcessUploadWorkflow',

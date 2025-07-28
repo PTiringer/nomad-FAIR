@@ -5,7 +5,6 @@ from nomad.infrastructure import setup
 from nomad.orchestrator.client import get_client
 from nomad.orchestrator.shared.constant import TaskQueue
 from nomad.orchestrator.workers.util import get_worker
-from nomad.workflows.interceptor import NomadTemporalInterceptor
 
 
 async def run_worker(workers: int = 12):
@@ -14,7 +13,6 @@ async def run_worker(workers: int = 12):
         worker = get_worker(
             client=client,
             task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
-            interceptors=[NomadTemporalInterceptor()],
             activity_executor=executor,
         )
         setup()
