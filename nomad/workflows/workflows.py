@@ -24,7 +24,9 @@ with workflow.unsafe.imports_passed_through():
         next_level_entries,
         parser_min_level,
         process_entry_activity,
+        process_entry_failure_activity,
         process_entry_success,
+        process_upload_failure_activity,
         process_upload_success,
         publish_externally_activity,
         publish_upload_activity,
@@ -86,19 +88,35 @@ class ProcessEntryWorkflow:
         retry_policy = RetryPolicy(
             maximum_attempts=3,
         )
-        result = await workflow.execute_activity(
-            process_entry_activity,
-            input,
-            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-            retry_policy=retry_policy,
-        )
-        await workflow.execute_activity(
-            process_entry_success,
-            input,
-            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-            retry_policy=retry_policy,
-        )
-        return result
+
+        try:
+            # Process the entry
+            result = await workflow.execute_activity(
+                process_entry_activity,
+                input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
+
+            # Mark entry as successful
+            await workflow.execute_activity(
+                process_entry_success,
+                input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
+
+            return result
+
+        except Exception as e:
+            # Set entry to failure status
+            await workflow.execute_activity(
+                process_entry_failure_activity,
+                input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
+            raise e
 
 
 @workflow.defn
@@ -150,82 +168,106 @@ class ProcessUploadWorkflow:
         upload_workflow_input = UploadWorkflowIdInput(
             upload_id=input.upload_id, workflow_id=workflow_info.workflow_id
         )
-        # Step 0: Add workflow id to upload
-        await workflow.execute_activity(
-            add_workflow_id_activity,
-            upload_workflow_input,
-            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-            retry_policy=retry_policy,
-        )
-        # Step 1: Update files
-        updated_files = await workflow.execute_activity(
-            update_files_activity,
-            input,
-            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-            retry_policy=retry_policy,
-        )
 
-        # Step 2: Match all, pass updated_files as set
-        parse_all_input = UploadProcessingWorkflowInput(
-            upload_id=input.upload_id,
-            file_operations=input.file_operations,
-            reprocess_settings=input.reprocess_settings,
-            path_filter=input.path_filter,
-            only_updated_files=input.only_updated_files,
-            publish_directly_after_processing=input.publish_directly_after_processing,
-            updated_files=updated_files,
-            min_level=parser_min_level,
-            workflow_id=input.workflow_id,
-        )
-        await workflow.execute_activity(
-            match_all_activity,
-            parse_all_input,
-            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-            retry_policy=retry_policy,
-        )
+        try:
+            # Step 0: Add workflow id to upload
+            await workflow.execute_activity(
+                add_workflow_id_activity,
+                upload_workflow_input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
 
-        # Step 3: Parse next level
-        while True:
-            next_level_entries_result = await workflow.execute_activity(
-                next_level_entries,
+            # Step 1: Update files
+            updated_files = await workflow.execute_activity(
+                update_files_activity,
+                input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
+
+            # Step 2: Match all, pass updated_files as set
+            parse_all_input = UploadProcessingWorkflowInput(
+                upload_id=input.upload_id,
+                file_operations=input.file_operations,
+                reprocess_settings=input.reprocess_settings,
+                path_filter=input.path_filter,
+                only_updated_files=input.only_updated_files,
+                publish_directly_after_processing=input.publish_directly_after_processing,
+                updated_files=updated_files,
+                min_level=parser_min_level,
+                workflow_id=input.workflow_id,
+            )
+            await workflow.execute_activity(
+                match_all_activity,
                 parse_all_input,
                 schedule_to_close_timeout=WORKFLOW_TIMEOUT,
                 retry_policy=retry_policy,
             )
-            entries_to_be_processed = next_level_entries_result.entries_to_be_processed
-            if not entries_to_be_processed:
-                break
 
-            # Step 4: Start the batch processing workflow
-            await workflow.execute_child_workflow(
-                BatchProcessEntriesWorkflow.run,
-                entries_to_be_processed,
-                id=f'{workflow_info.workflow_id}-batch-processor',
-                parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
+            # Step 3: Parse next level
+            while True:
+                next_level_entries_result = await workflow.execute_activity(
+                    next_level_entries,
+                    parse_all_input,
+                    schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                    retry_policy=retry_policy,
+                )
+                entries_to_be_processed = (
+                    next_level_entries_result.entries_to_be_processed
+                )
+                if not entries_to_be_processed:
+                    break
+
+                # Step 4: Start the batch processing workflow
+                await workflow.execute_child_workflow(
+                    BatchProcessEntriesWorkflow.run,
+                    entries_to_be_processed,
+                    id=f'{workflow_info.workflow_id}-{parse_all_input.min_level}-batch-processor',
+                    parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
+                    retry_policy=retry_policy,
+                )
+                next_parser_level = (
+                    next_level_entries_result.next_parser_level
+                    or parse_all_input.min_level
+                )
+                parse_all_input.min_level = next_parser_level + 1
+
+            # Step 4: Cleanup
+            await workflow.execute_activity(
+                cleanup_activity,
+                input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
                 retry_policy=retry_policy,
             )
-            parse_all_input.min_level = next_level_entries_result.next_parser_level + 1
 
-        await workflow.execute_activity(
-            cleanup_activity,
-            input,
-            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-            retry_policy=retry_policy,
-        )
+            # Step 5: Mark as successful
+            await workflow.execute_activity(
+                process_upload_success,
+                input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
 
-        await workflow.execute_activity(
-            process_upload_success,
-            input,
-            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-            retry_policy=retry_policy,
-        )
+        except Exception as e:
+            # Set upload to failure status
+            upload_workflow_input.failure_message = 'Process upload failed'
+            await workflow.execute_activity(
+                process_upload_failure_activity,
+                upload_workflow_input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
+            raise e
 
-        await workflow.execute_activity(
-            remove_workflow_id_activity,
-            upload_workflow_input,
-            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-            retry_policy=retry_policy,
-        )
+        finally:
+            # Always remove workflow id, even if processing failed
+            await workflow.execute_activity(
+                remove_workflow_id_activity,
+                upload_workflow_input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
 
 
 @workflow.defn
@@ -268,27 +310,42 @@ class EditUploadMetadataWorkflow:
             upload_id=input.upload_id, workflow_id=workflow_info.workflow_id
         )
 
-        # Step 0: Add workflow id to upload
-        await workflow.execute_activity(
-            add_workflow_id_activity,
-            upload_workflow_input,
-            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-            retry_policy=retry_policy,
-        )
-        # Step 1: Edit metadata activity
-        await workflow.execute_activity(
-            edit_upload_metadata_activity,
-            input,
-            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-            retry_policy=retry_policy,
-        )
-        # Step 2: Remove workflow id
-        await workflow.execute_activity(
-            remove_workflow_id_activity,
-            upload_workflow_input,
-            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-            retry_policy=retry_policy,
-        )
+        try:
+            # Add workflow id to upload
+            await workflow.execute_activity(
+                add_workflow_id_activity,
+                upload_workflow_input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
+
+            # Edit upload metadata
+            await workflow.execute_activity(
+                edit_upload_metadata_activity,
+                input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
+
+        except Exception as e:
+            # Set upload to failure status
+            upload_workflow_input.failure_message = 'Edit metadata failed'
+            await workflow.execute_activity(
+                process_upload_failure_activity,
+                upload_workflow_input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
+            raise e
+
+        finally:
+            # Always remove workflow id, even if processing failed
+            await workflow.execute_activity(
+                remove_workflow_id_activity,
+                upload_workflow_input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
 
 
 @workflow.defn
@@ -298,12 +355,47 @@ class ImportBundleWorkflow:
         retry_policy = RetryPolicy(
             maximum_attempts=3,
         )
-        await workflow.execute_activity(
-            import_bundle_activity,
-            input,
-            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-            retry_policy=retry_policy,
+        workflow_info = workflow.info()
+        upload_workflow_input = UploadWorkflowIdInput(
+            upload_id=input.upload_id, workflow_id=workflow_info.workflow_id
         )
+
+        try:
+            # Add workflow id to upload
+            await workflow.execute_activity(
+                add_workflow_id_activity,
+                upload_workflow_input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
+
+            # Import bundle
+            await workflow.execute_activity(
+                import_bundle_activity,
+                input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
+
+        except Exception as e:
+            # Set upload to failure status
+            upload_workflow_input.failure_message = 'Import bundle failed'
+            await workflow.execute_activity(
+                process_upload_failure_activity,
+                upload_workflow_input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
+            raise e
+
+        finally:
+            # Always remove workflow id, even if processing failed
+            await workflow.execute_activity(
+                remove_workflow_id_activity,
+                upload_workflow_input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
 
 
 @workflow.defn
@@ -317,24 +409,43 @@ class PublishUploadWorkflow:
         upload_workflow_input = UploadWorkflowIdInput(
             upload_id=input.upload_id, workflow_id=workflow_info.workflow_id
         )
-        await workflow.execute_activity(
-            add_workflow_id_activity,
-            upload_workflow_input,
-            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-            retry_policy=retry_policy,
-        )
-        await workflow.execute_activity(
-            publish_upload_activity,
-            input,
-            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-            retry_policy=retry_policy,
-        )
-        await workflow.execute_activity(
-            remove_workflow_id_activity,
-            upload_workflow_input,
-            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-            retry_policy=retry_policy,
-        )
+
+        try:
+            # Add workflow id to upload
+            await workflow.execute_activity(
+                add_workflow_id_activity,
+                upload_workflow_input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
+
+            # Publish upload
+            await workflow.execute_activity(
+                publish_upload_activity,
+                input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
+
+        except Exception as e:
+            # Set upload to failure status
+            upload_workflow_input.failure_message = 'Publish upload failed'
+            await workflow.execute_activity(
+                process_upload_failure_activity,
+                upload_workflow_input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
+            raise e
+
+        finally:
+            # Always remove workflow id, even if processing failed
+            await workflow.execute_activity(
+                remove_workflow_id_activity,
+                upload_workflow_input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
 
 
 @workflow.defn
@@ -348,21 +459,40 @@ class PublishExternallyWorkflow:
         upload_workflow_input = UploadWorkflowIdInput(
             upload_id=input.upload_id, workflow_id=workflow_info.workflow_id
         )
-        await workflow.execute_activity(
-            add_workflow_id_activity,
-            upload_workflow_input,
-            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-            retry_policy=retry_policy,
-        )
-        await workflow.execute_activity(
-            publish_externally_activity,
-            input,
-            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-            retry_policy=retry_policy,
-        )
-        await workflow.execute_activity(
-            remove_workflow_id_activity,
-            upload_workflow_input,
-            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-            retry_policy=retry_policy,
-        )
+
+        try:
+            # Add workflow id to upload
+            await workflow.execute_activity(
+                add_workflow_id_activity,
+                upload_workflow_input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
+
+            # Publish externally
+            await workflow.execute_activity(
+                publish_externally_activity,
+                input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
+
+        except Exception as e:
+            # Set upload to failure status
+            upload_workflow_input.failure_message = 'Publish externally failed'
+            await workflow.execute_activity(
+                process_upload_failure_activity,
+                upload_workflow_input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
+            raise e
+
+        finally:
+            # Always remove workflow id, even if processing failed
+            await workflow.execute_activity(
+                remove_workflow_id_activity,
+                upload_workflow_input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )

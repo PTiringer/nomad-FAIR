@@ -65,11 +65,12 @@ class ArchiveEntryData:
 class UploadWorkflowIdInput:
     upload_id: str
     workflow_id: str
+    failure_message: str | None = None
 
 
 @dataclass
 class NextLevelEntryResult:
-    next_parser_level: int
+    next_parser_level: int | None
     entries_to_be_processed: list[ProcessEntryActivityInput]
 
 
