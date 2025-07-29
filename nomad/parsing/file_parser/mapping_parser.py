@@ -815,7 +815,7 @@ class MappingParser(ABC):
         return {}
 
     @abstractmethod
-    def to_dict(self, **kwargs) -> dict[str, Any]:
+    def to_dict(self, **kwargs) -> dict[str | int, Any]:
         return {}
 
     @abstractmethod
@@ -1035,7 +1035,7 @@ class MetainfoParser(MappingParser):
                 self.logger.errror('Error loading archive file.')
         return None
 
-    def to_dict(self, **kwargs) -> dict[str, Any]:
+    def to_dict(self, **kwargs) -> dict[str | int, Any]:
         if self.data_object is not None:
             return self.data_object.m_to_dict()
         return {}
@@ -1229,18 +1229,18 @@ class HDF5Parser(MappingParser):
         except Exception:
             self.logger.error('Cannot read HDF5 file.')
 
-    def to_dict(self, **kwargs) -> dict[str, Any]:
+    def to_dict(self, **kwargs) -> dict[str | int, Any]:
         if self.data_object is None:
             return {}
 
-        def set_attributes(val: h5py.Dataset | h5py.Group, dct: dict[str, Any]):
+        def set_attributes(val: h5py.Dataset | h5py.Group, dct: dict[str | int, Any]):
             for name, attr in val.attrs.items():
                 dct[f'{self.attribute_prefix}{name}'] = (
                     attr.tolist() if hasattr(attr, 'tolist') else attr
                 )
 
         def group_to_dict(
-            group: h5py.Group, root: dict[str, Any] | list[dict[str, Any]]
+            group: h5py.Group, root: dict[str | int, Any] | list[dict[str | int, Any]]
         ):
             for key, val in group.items():
                 key = int(key) if key.isdecimal() else key
@@ -1280,7 +1280,7 @@ class HDF5Parser(MappingParser):
                         root[key] = v  # type: ignore
             return root
 
-        dct: dict[str, Any] = {}
+        dct: dict[str | int, Any] = {}
         group_to_dict(self.data_object, dct)
         return dct
 
@@ -1379,7 +1379,7 @@ class XMLParser(MappingParser):
 
         self._data_object = data_to_element('root', dct).getchildren()[0]
 
-    def to_dict(self, **kwargs) -> dict[str, Any]:
+    def to_dict(self, **kwargs) -> dict[str | int, Any]:
         def convert(text: str) -> Any:
             val = text.strip()
             try:
@@ -1391,8 +1391,8 @@ class XMLParser(MappingParser):
             except Exception:
                 return val
 
-        stack: list[dict[str, Any]] = []
-        results: dict[str, Any] = {}
+        stack: list[dict[str | int, Any]] = []
+        results: dict[str | int, Any] = {}
         if self.filepath is None:
             return results
 
@@ -1467,7 +1467,7 @@ class TextParser(MappingParser):
 
     text_parser: TextFileParser = None
 
-    def to_dict(self, **kwargs) -> dict[str, Any]:
+    def to_dict(self, **kwargs) -> dict[str | int, Any]:
         if self.data_object:
             self.data_object.parse()
             return self.data_object._results

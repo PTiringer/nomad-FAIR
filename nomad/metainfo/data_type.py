@@ -1394,7 +1394,7 @@ if not _extra_precision:
     _add_extra_precision()
 
 
-def _normalize_complex(value, complex_type, to_unit: str | ureg.Unit | None):
+def _normalize_complex(value, complex_type, to_unit: str | pint.Unit | None):
     """
     Try to convert a given value to a complex number.
     """

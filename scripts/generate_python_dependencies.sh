@@ -14,18 +14,20 @@ project_dir=$(dirname $(dirname $(realpath $0)))
 
 cd $project_dir
 
-
+# Compile requirements for a production installation
 uv pip compile -U --universal -p 3.10 --annotation-style=line \
     --extra=infrastructure --extra=parsing \
     --output-file=requirements.txt \
     pyproject.toml
 
+# Compile requirements for a dev installation
 uv pip compile -U --universal -p 3.10 --annotation-style=line \
     --extra=dev --extra=infrastructure --extra=parsing \
     --output-file=requirements-dev.txt \
     requirements.txt \
     pyproject.toml
 
+# Compile requirements for the CI installation.
 uv pip compile --universal -p 3.10 --annotation-style=line \
     --output-file=requirements-plugins.txt \
     --unsafe-package nomad-lab \
