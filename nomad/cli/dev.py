@@ -18,7 +18,7 @@
 import json
 import os
 import sys
-from typing import Any
+from typing import Any, cast
 
 import click
 from pint import Unit
@@ -497,7 +497,7 @@ def example_data(username: str):
 def _generate_units_json() -> tuple[Any, Any]:
     from collections import defaultdict
 
-    from pint.converters import ScaleConverter
+    from pint.facets.plain import ScaleConverter
 
     from nomad.units import ureg
 
@@ -509,7 +509,7 @@ def _generate_units_json() -> tuple[Any, Any]:
     prefixes = {}
     for name, prefix in ureg._prefixes.items():
         if isinstance(prefix.converter, int):
-            scale = prefix.converter
+            scale = cast(float, prefix.converter)
         elif isinstance(prefix.converter, ScaleConverter):
             scale = prefix.converter.scale
         else:
@@ -548,7 +548,7 @@ def _generate_units_json() -> tuple[Any, Any]:
 
     # Define a function to check for an SI prefix
     si_prefixes = [
-        value['name'] for value in prefixes.values() if len(value['name']) > 2
+        value['name'] for value in prefixes.values() if len(str(value['name'])) > 2
     ]
 
     def is_prefix_only(unit_base_name):
@@ -589,7 +589,7 @@ def _generate_units_json() -> tuple[Any, Any]:
         if not isinstance(unit, Unit):
             continue
         if hasattr(unit, 'dimensionality'):
-            dimension_name = dimension_def_name_map.get(str(unit.dimensionality))
+            dimension_name = dimension_def_name_map.get(str(unit.dimensionality))  # type: ignore[attr-defined]
             if dimension_name:
                 unit_list.append(get_unit_data(unit_str, dimension_name))
 

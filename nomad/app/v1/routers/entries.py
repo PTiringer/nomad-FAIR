@@ -23,7 +23,7 @@ import os.path
 from collections.abc import AsyncIterator, Iterator
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import Any, cast
 
 import orjson
 import yaml
@@ -1673,7 +1673,9 @@ async def post_entry_edit(
             # update the value.
             if isinstance(section_data, list):
                 if len(section_data) <= next_key:
-                    section_data.extend([None] * (next_key - len(section_data) + 1))
+                    cast(list, section_data).extend(
+                        [None] * (next_key - len(section_data) + 1)
+                    )
 
         if change.action == ArchiveChangeAction.remove:
             del section_data[next_key]
