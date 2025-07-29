@@ -398,6 +398,14 @@ class TestEditUploadMetadataWorkflow:
             {'title': 'Test Upload'}, TEST_USER_ID
         )
 
+        # Verify that the process status is set to SUCCESS
+        assert (
+            mock_data_layer['upload_instance'].process_status == ProcessStatus.SUCCESS
+        )
+        mock_data_layer['upload_instance'].set_last_status_message.assert_called_with(
+            'Process completed successfully'
+        )
+
 
 class TestImportBundleWorkflow:
     """Tests for ImportBundleWorkflow."""
@@ -420,6 +428,14 @@ class TestImportBundleWorkflow:
         # Verify bundle import was called
         mock_data_layer['upload_instance']._import_bundle_local.assert_called_once_with(
             TEST_BUNDLE_PATH, {}, None
+        )
+
+        # Verify that the process status is set to SUCCESS
+        assert (
+            mock_data_layer['upload_instance'].process_status == ProcessStatus.SUCCESS
+        )
+        mock_data_layer['upload_instance'].set_last_status_message.assert_called_with(
+            'Process completed successfully'
         )
 
 
@@ -446,6 +462,14 @@ class TestPublishUploadWorkflow:
             'upload_instance'
         ]._publish_upload_local.assert_called_once_with(None)
 
+        # Verify that the process status is set to SUCCESS
+        assert (
+            mock_data_layer['upload_instance'].process_status == ProcessStatus.SUCCESS
+        )
+        mock_data_layer['upload_instance'].set_last_status_message.assert_called_with(
+            'Process completed successfully'
+        )
+
 
 class TestPublishExternallyWorkflow:
     """Tests for PublishExternallyWorkflow."""
@@ -466,9 +490,17 @@ class TestPublishExternallyWorkflow:
             )
 
             # Verify external publishing was called
-            mock_data_layer[
-                'upload_instance'
-            ]._publish_externally_local.assert_called_once()
+        mock_data_layer[
+            'upload_instance'
+        ]._publish_externally_local.assert_called_once()
+
+        # Verify that the process status is set to SUCCESS
+        assert (
+            mock_data_layer['upload_instance'].process_status == ProcessStatus.SUCCESS
+        )
+        mock_data_layer['upload_instance'].set_last_status_message.assert_called_with(
+            'Process completed successfully'
+        )
 
 
 # Parameterized tests for common patterns

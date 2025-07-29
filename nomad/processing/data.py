@@ -1288,6 +1288,7 @@ class Entry(Proc):
     def process_entry(self):
         """Processes or reprocesses an entry."""
         if config.temporal.enabled:
+            self.process_status = ProcessStatus.PENDING
             return run_async(self._start_process_entry_workflow())
         else:
             return self._process_entry()
@@ -1934,6 +1935,7 @@ class Upload(Proc):
         from nomad.config import config
 
         if config.temporal.enabled:
+            self.process_status = ProcessStatus.PENDING
             return run_async(self._start_publish_upload_workflow(embargo_length))
         else:
             return self._publish_upload(embargo_length)
@@ -1994,6 +1996,7 @@ class Upload(Proc):
         from nomad.config import config
 
         if config.temporal.enabled:
+            self.process_status = ProcessStatus.PENDING
             return run_async(self._start_publish_externally_workflow(embargo_length))
         else:
             return self._publish_externally(embargo_length)
@@ -2086,6 +2089,7 @@ class Upload(Proc):
                 top of the file operations coming from the entry point.
         """
         if config.temporal.enabled:
+            self.process_status = ProcessStatus.PENDING
             # Start temporal workflow
             return run_async(
                 self._start_process_example_upload_workflow(
@@ -2186,6 +2190,7 @@ class Upload(Proc):
         only_updated_files: bool = False,
     ):
         if config.temporal.enabled:
+            self.process_status = ProcessStatus.PENDING
             # Start temporal workflow
             return run_async(
                 self._start_process_upload_workflow(
@@ -3153,6 +3158,7 @@ class Upload(Proc):
         rabbitmq task).
         """
         if config.temporal.enabled:
+            self.process_status = ProcessStatus.PENDING
             return run_async(
                 self._start_edit_upload_metadata_workflow(edit_request_json, user_id)
             )
@@ -3262,6 +3268,7 @@ class Upload(Proc):
         from nomad.config import config
 
         if config.temporal.enabled:
+            self.process_status = ProcessStatus.PENDING
             return run_async(
                 self._start_import_bundle_workflow(
                     bundle_path, import_settings, embargo_length

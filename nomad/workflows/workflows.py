@@ -244,7 +244,7 @@ class ProcessUploadWorkflow:
             # Step 5: Mark as successful
             await workflow.execute_activity(
                 process_upload_success,
-                input,
+                upload_workflow_input,
                 schedule_to_close_timeout=WORKFLOW_TIMEOUT,
                 retry_policy=retry_policy,
             )
@@ -327,6 +327,13 @@ class EditUploadMetadataWorkflow:
                 retry_policy=retry_policy,
             )
 
+            # Mark as successful
+            await workflow.execute_activity(
+                process_upload_success,
+                upload_workflow_input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
         except Exception as e:
             # Set upload to failure status
             upload_workflow_input.failure_message = 'Edit metadata failed'
@@ -377,6 +384,13 @@ class ImportBundleWorkflow:
                 retry_policy=retry_policy,
             )
 
+            # Mark as successful
+            await workflow.execute_activity(
+                process_upload_success,
+                upload_workflow_input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
         except Exception as e:
             # Set upload to failure status
             upload_workflow_input.failure_message = 'Import bundle failed'
@@ -427,6 +441,14 @@ class PublishUploadWorkflow:
                 retry_policy=retry_policy,
             )
 
+            # Mark as successful
+            await workflow.execute_activity(
+                process_upload_success,
+                upload_workflow_input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
+
         except Exception as e:
             # Set upload to failure status
             upload_workflow_input.failure_message = 'Publish upload failed'
@@ -473,6 +495,14 @@ class PublishExternallyWorkflow:
             await workflow.execute_activity(
                 publish_externally_activity,
                 input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
+
+            # Mark as successful
+            await workflow.execute_activity(
+                process_upload_success,
+                upload_workflow_input,
                 schedule_to_close_timeout=WORKFLOW_TIMEOUT,
                 retry_policy=retry_policy,
             )
