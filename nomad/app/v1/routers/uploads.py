@@ -2879,9 +2879,10 @@ def _get_upload_with_write_access(
         )
 
     is_failed_import = (
-        upload.current_process.startswith('import_bundle')
+        upload.current_process
+        and upload.current_process.startswith('import_bundle')
         and upload.process_status == ProcessStatus.FAILURE
-    )
+    ) or upload.last_status_message == 'Import bundle failed'
     if (
         published_requires_admin
         and not user.is_admin
