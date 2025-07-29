@@ -139,7 +139,7 @@ def process_entry_success(input: ProcessEntryActivityInput):
 
 
 @activity.defn
-def process_upload_success(input: UploadProcessingWorkflowInput):
+def process_upload_success(input: UploadWorkflowIdInput):
     upload = Upload.get(input.upload_id)
     upload.process_status = ProcessStatus.SUCCESS
     upload.set_last_status_message('Process completed successfully')
