@@ -33,7 +33,7 @@ dependencies = [
     'openpyxl',
     'orjson>=1.0',
     'pandas>=2',
-    'pint',
+    'pint>=0.23',
     'plotly<6', # version 6.0.0 not fully compatible with our GUI
     'py-spy', # for on-server profiling
     'pydantic>=2',
