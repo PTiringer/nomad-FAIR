@@ -380,7 +380,6 @@ def test_band_structure_phonon():
     assert bs.segment[0].kpoints.shape == (100, 3)
 
 
-@pytest.mark.skip('Phonopy parser not working with Pint >= 0.23')
 @pytest.mark.skipif(simulationworkflowschema is None, reason=SCHEMA_IMPORT_ERROR)
 def test_energy_free_helmholtz(phonon):
     energy_free = phonon.results.properties.vibrational.energy_free_helmholtz
@@ -388,7 +387,6 @@ def test_energy_free_helmholtz(phonon):
     assert energy_free.energies.shape == (11,)
 
 
-@pytest.mark.skip('Phonopy parser not working with Pint >= 0.23')
 @pytest.mark.skipif(simulationworkflowschema is None, reason=SCHEMA_IMPORT_ERROR)
 def test_heat_capacity_constant_volume(phonon):
     heat_cap = phonon.results.properties.vibrational.heat_capacity_constant_volume
