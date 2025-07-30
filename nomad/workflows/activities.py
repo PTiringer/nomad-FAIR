@@ -19,6 +19,7 @@ from nomad.workflows.shared_objects import (
     UploadProcessingWorkflowInput,
     UploadWorkflowIdInput,
 )
+from nomad.workflows.utils import generate_batches
 
 parser_min_level = min([parser.level for parser in parsers])
 
@@ -87,13 +88,33 @@ def match_all_activity(input: UploadProcessingWorkflowInput):
 @activity.defn
 def next_level_entries(
     input: UploadProcessingWorkflowInput,
-) -> NextLevelEntryResult:
+) -> NextLevelEntryResult | None:
     upload = Upload.get(input.upload_id)
     next_entries = upload.next_level_entries(
         min_level=input.min_level,
         path_filter=input.path_filter,
         updated_files=input.updated_files,
     )
+
+    # If no entries exist at this parser level, return None
+    # This signals the workflow that we're completely done (no more parser levels)
+    if not next_entries:
+        return None
+
+    # Split all entries into manageable batches
+    # Temporal imposes a limit of 1.5MB for the serialized result, this helps us stay within those limits.
+    entry_batches = generate_batches(next_entries)
+
+    # Check if the requested batch_id exists
+    if len(entry_batches) <= input.batch_id:
+        # No more batches for this parser level - return empty entries
+        # This signals the workflow to move to the next parser level
+        next_entries = []
+    else:
+        # Get the specific batch requested
+        next_entries = entry_batches[input.batch_id]
+
+    # Return the result with the batch (or empty list if no more batches)
     return NextLevelEntryResult(
         next_parser_level=upload.parser_level,
         entries_to_be_processed=[
@@ -102,7 +123,7 @@ def next_level_entries(
                 entry_id=str(entry.entry_id),
                 workflow_id=f'process-entry-workflow-child-id-{str(entry.entry_id)}-{str(upload.upload_id)}-{uuid.uuid4()}',
             )
-            for entry in next_entries
+            for entry in next_entries  # This will be empty if no more batches
         ],
     )
 

@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, Mock
 import pytest
 
 from nomad.processing.base import ProcessStatus
+from nomad.workflows.activities import next_level_entries
 from nomad.workflows.shared_objects import (
     DeleteUploadWorkflowInput,
     EditUploadMetadataWorkflowInput,
@@ -501,6 +502,62 @@ class TestPublishExternallyWorkflow:
         mock_data_layer['upload_instance'].set_last_status_message.assert_called_with(
             'Process completed successfully'
         )
+
+
+class TestNextLevelEntries:
+    """Tests for the next_level_entries activity."""
+
+    def test_batching_logic(self, mock_data_layer, monkeypatch):
+        """Test that the batching logic works as expected."""
+        # Setup mock entries
+        mock_entries = [Mock(entry_id=f'test-entry-{i}') for i in range(25)]
+        mock_data_layer[
+            'upload_instance'
+        ].next_level_entries.return_value = mock_entries
+
+        # Mock generate_batches to control batching for the test
+        monkeypatch.setattr(
+            'nomad.workflows.activities.generate_batches',
+            lambda items, max_desired_batch_size=10, max_batches=10: [
+                items[i : i + max_desired_batch_size]
+                for i in range(0, len(items), max_desired_batch_size)
+            ],
+        )
+
+        # Test first batch
+        input_data = TestFixtures.upload_processing_input()
+        input_data.batch_id = 0
+        result = next_level_entries(input_data)
+        assert result is not None
+        assert len(result.entries_to_be_processed) == 10
+        assert result.entries_to_be_processed[0].entry_id == 'test-entry-0'
+
+        # Test second batch
+        input_data.batch_id = 1
+        result = next_level_entries(input_data)
+        assert result is not None
+        assert len(result.entries_to_be_processed) == 10
+        assert result.entries_to_be_processed[0].entry_id == 'test-entry-10'
+
+        # Test third batch (partial)
+        input_data.batch_id = 2
+        result = next_level_entries(input_data)
+        assert result is not None
+        assert len(result.entries_to_be_processed) == 5
+        assert result.entries_to_be_processed[0].entry_id == 'test-entry-20'
+
+        # Test out of bounds batch
+        input_data.batch_id = 3
+        result = next_level_entries(input_data)
+        assert result is not None
+        assert len(result.entries_to_be_processed) == 0
+
+    def test_no_entries(self, mock_data_layer):
+        """Test that the activity returns None when there are no entries."""
+        mock_data_layer['upload_instance'].next_level_entries.return_value = []
+        input_data = TestFixtures.upload_processing_input()
+        result = next_level_entries(input_data)
+        assert result is None
 
 
 # Parameterized tests for common patterns

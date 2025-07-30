@@ -206,27 +206,47 @@ class ProcessUploadWorkflow:
             )
 
             # Step 3: Parse next level
-            while True:
-                next_level_entries_result = await workflow.execute_activity(
-                    next_level_entries,
-                    parse_all_input,
-                    schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-                    retry_policy=retry_policy,
-                )
-                entries_to_be_processed = (
-                    next_level_entries_result.entries_to_be_processed
-                )
-                if not entries_to_be_processed:
+            while True:  # Outer loop: Continue until no more parser levels to process
+                parse_all_input.batch_id = 0
+                while True:  # Inner loop: Process all batches for the current parser level and current batch
+                    next_level_entries_result = await workflow.execute_activity(
+                        next_level_entries,
+                        parse_all_input,
+                        schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                        retry_policy=retry_policy,
+                    )
+
+                    # If None returned: no entries exist for this parser level at all
+                    # then we're done with all parser levels.
+                    # This breaks the inner loop and the outer loop
+                    if not next_level_entries_result:
+                        break
+
+                    entries_to_be_processed = (
+                        next_level_entries_result.entries_to_be_processed
+                    )
+
+                    # If empty array returned: no more batches for this parser level
+                    # This breaks the inner loop and moves to next parser level
+                    if not entries_to_be_processed:
+                        break
+
+                    # Step 4: Start the batch processing workflow for this batch
+                    await workflow.execute_child_workflow(
+                        BatchProcessEntriesWorkflow.run,
+                        entries_to_be_processed,
+                        id=f'{workflow_info.workflow_id}-{parse_all_input.min_level}-batch-processor',
+                        parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
+                        retry_policy=retry_policy,
+                    )
+
+                    parse_all_input.batch_id += 1
+
+                # If no entries existed for this parser level (None returned)
+                # then we're done with all parser levels - break outer loop
+                if not next_level_entries_result:
                     break
 
-                # Step 4: Start the batch processing workflow
-                await workflow.execute_child_workflow(
-                    BatchProcessEntriesWorkflow.run,
-                    entries_to_be_processed,
-                    id=f'{workflow_info.workflow_id}-{parse_all_input.min_level}-batch-processor',
-                    parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
-                    retry_policy=retry_policy,
-                )
                 next_parser_level = (
                     next_level_entries_result.next_parser_level
                     or parse_all_input.min_level

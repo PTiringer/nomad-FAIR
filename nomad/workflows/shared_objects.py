@@ -85,6 +85,7 @@ class UploadProcessingWorkflowInput:
     publish_directly_after_processing: bool = False
     updated_files: set[str] | None = None
     min_level: int = 0
+    batch_id: int = 0
 
 
 @dataclass
