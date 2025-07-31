@@ -2118,6 +2118,7 @@ class Upload(Proc):
                     example_upload_id=entry_point_id,
                     file_operations=file_operations,
                     publish_directly=self.publish_directly,
+                    workflow_tmp_dir=create_tmp_dir(f'{self.upload_id}_{workflow_id}'),
                 ),
                 id=workflow_id,
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS.value,
@@ -2226,6 +2227,7 @@ class Upload(Proc):
             path_filter=path_filter,
             only_updated_files=only_updated_files,
             workflow_id=workflow_id,
+            workflow_tmp_dir=create_tmp_dir(f'{self.upload_id}_{workflow_id}'),
         )
         try:
             await client.start_workflow(
