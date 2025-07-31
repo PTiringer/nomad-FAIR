@@ -8,17 +8,19 @@ from datetime import timedelta
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
-WORKFLOW_TIMEOUT = timedelta(hours=4)
+WORKFLOW_TIMEOUT = timedelta(hours=2)
 
 with workflow.unsafe.imports_passed_through():
     from nomad.workflows.activities import (
         add_workflow_id_activity,
         cleanup_activity,
+        cleanup_workflow_tmp_dir_activity,
         delete_upload_entries_activity,
         delete_upload_files_activity,
         delete_upload_record_activity,
         delete_upload_search_activity,
         edit_upload_metadata_activity,
+        get_entry_batch_from_file,
         import_bundle_activity,
         match_all_activity,
         next_level_entries,
@@ -37,6 +39,7 @@ with workflow.unsafe.imports_passed_through():
     from nomad.workflows.shared_objects import (
         DeleteUploadWorkflowInput,
         EditUploadMetadataWorkflowInput,
+        EntryBatchFromFileInput,
         ImportBundleWorkflowInput,
         ProcessEntryActivityInput,
         ProcessExampleUploadWorkflowInput,
@@ -168,7 +171,6 @@ class ProcessUploadWorkflow:
         upload_workflow_input = UploadWorkflowIdInput(
             upload_id=input.upload_id, workflow_id=workflow_info.workflow_id
         )
-
         try:
             # Step 0: Add workflow id to upload
             await workflow.execute_activity(
@@ -197,6 +199,7 @@ class ProcessUploadWorkflow:
                 updated_files=updated_files,
                 min_level=parser_min_level,
                 workflow_id=input.workflow_id,
+                workflow_tmp_dir=input.workflow_tmp_dir,
             )
             await workflow.execute_activity(
                 match_all_activity,
@@ -207,30 +210,45 @@ class ProcessUploadWorkflow:
 
             # Step 3: Parse next level
             while True:  # Outer loop: Continue until no more parser levels to process
-                parse_all_input.batch_id = 0
-                while True:  # Inner loop: Process all batches for the current parser level and current batch
-                    next_level_entries_result = await workflow.execute_activity(
-                        next_level_entries,
-                        parse_all_input,
-                        schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-                        retry_policy=retry_policy,
-                    )
+                next_level_entries_result = await workflow.execute_activity(
+                    next_level_entries,
+                    parse_all_input,
+                    schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                    retry_policy=retry_policy,
+                )
 
-                    # If None returned: no entries exist for this parser level at all
-                    # then we're done with all parser levels.
-                    # This breaks the inner loop and the outer loop
-                    if not next_level_entries_result:
-                        break
+                # If None returned: no entries exist for this parser level at all
+                # then we're done with all parser levels.
+                if not next_level_entries_result:
+                    break
 
-                    entries_to_be_processed = (
-                        next_level_entries_result.entries_to_be_processed
-                    )
+                # Handle two processing modes: small datasets (entries in memory) vs large datasets
+                # (entries stored in files). This dual approach optimizes for both performance and scalability.
+                if entry_batch_directory := next_level_entries_result.directory:
+                    # entries are stored in files
+                    for batch_id in range(next_level_entries_result.total_batches):
+                        entries_to_be_processed = await workflow.execute_activity(
+                            get_entry_batch_from_file,
+                            EntryBatchFromFileInput(
+                                upload_id=input.upload_id,
+                                batch_dir_path=entry_batch_directory,
+                                batch_id=batch_id,
+                            ),
+                            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                            retry_policy=retry_policy,
+                        )
 
-                    # If empty array returned: no more batches for this parser level
-                    # This breaks the inner loop and moves to next parser level
-                    if not entries_to_be_processed:
-                        break
+                        # Step 4: Start the batch processing workflow for this batch
+                        await workflow.execute_child_workflow(
+                            BatchProcessEntriesWorkflow.run,
+                            entries_to_be_processed,
+                            id=f'{workflow_info.workflow_id}-{parse_all_input.min_level}-batch-processor',
+                            parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
+                            retry_policy=retry_policy,
+                        )
 
+                elif entries_to_be_processed := next_level_entries_result.entries:
+                    # entries in memory
                     # Step 4: Start the batch processing workflow for this batch
                     await workflow.execute_child_workflow(
                         BatchProcessEntriesWorkflow.run,
@@ -239,13 +257,6 @@ class ProcessUploadWorkflow:
                         parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
                         retry_policy=retry_policy,
                     )
-
-                    parse_all_input.batch_id += 1
-
-                # If no entries existed for this parser level (None returned)
-                # then we're done with all parser levels - break outer loop
-                if not next_level_entries_result:
-                    break
 
                 next_parser_level = (
                     next_level_entries_result.next_parser_level
@@ -288,6 +299,12 @@ class ProcessUploadWorkflow:
                 schedule_to_close_timeout=WORKFLOW_TIMEOUT,
                 retry_policy=retry_policy,
             )
+            await workflow.execute_activity(
+                cleanup_workflow_tmp_dir_activity,
+                input.workflow_tmp_dir,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
 
 
 @workflow.defn
@@ -308,6 +325,7 @@ class ProcessExampleUploadWorkflow:
             file_operations=input.file_operations,
             publish_directly_after_processing=input.publish_directly,
             workflow_id=current_workflow_id,
+            workflow_tmp_dir=input.workflow_tmp_dir,
         )
 
         await workflow.execute_child_workflow(

@@ -1,3 +1,4 @@
+import tempfile
 import uuid
 
 import pytest
@@ -41,6 +42,7 @@ async def test_process_upload_workflow_integration(
         only_updated_files=False,
         publish_directly_after_processing=False,
         workflow_id=f'integration-test-workflow-{upload_id}',
+        workflow_tmp_dir=tempfile.mkdtemp(),
     )
 
     async with temporal_worker() as env:
@@ -92,6 +94,7 @@ async def test_publish_upload_workflow_integration(
         only_updated_files=False,
         publish_directly_after_processing=False,
         workflow_id=f'integration-test-workflow-process-{upload_id}',
+        workflow_tmp_dir=tempfile.mkdtemp(),
     )
 
     async with temporal_worker() as env:
@@ -171,6 +174,7 @@ async def test_publish_with_embargo_and_lift(
             dict(op='ADD', path=upload_path, target_dir='', temporary=False)
         ],
         workflow_id=f'integration-test-workflow-process-{upload_id}',
+        workflow_tmp_dir=tempfile.mkdtemp(),
     )
 
     async with temporal_worker() as env:

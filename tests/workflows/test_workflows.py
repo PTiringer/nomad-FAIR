@@ -1,10 +1,10 @@
+import tempfile
 import uuid
 from unittest.mock import MagicMock, Mock
 
 import pytest
 
 from nomad.processing.base import ProcessStatus
-from nomad.workflows.activities import next_level_entries
 from nomad.workflows.shared_objects import (
     DeleteUploadWorkflowInput,
     EditUploadMetadataWorkflowInput,
@@ -50,6 +50,7 @@ class TestFixtures:
             only_updated_files=False,
             publish_directly_after_processing=True,
             workflow_id=str(uuid.uuid4()),
+            workflow_tmp_dir=tempfile.mkdtemp(),
         )
 
     @staticmethod
@@ -59,6 +60,7 @@ class TestFixtures:
             file_operations=[dict(op='CREATE', temporary=True)],
             publish_directly=True,
             example_upload_id=TEST_EXAMPLE_UPLOAD_ID,
+            workflow_tmp_dir=tempfile.mkdtemp(),
         )
 
     @staticmethod
@@ -504,62 +506,6 @@ class TestPublishExternallyWorkflow:
         )
 
 
-class TestNextLevelEntries:
-    """Tests for the next_level_entries activity."""
-
-    def test_batching_logic(self, mock_data_layer, monkeypatch):
-        """Test that the batching logic works as expected."""
-        # Setup mock entries
-        mock_entries = [Mock(entry_id=f'test-entry-{i}') for i in range(25)]
-        mock_data_layer[
-            'upload_instance'
-        ].next_level_entries.return_value = mock_entries
-
-        # Mock generate_batches to control batching for the test
-        monkeypatch.setattr(
-            'nomad.workflows.activities.generate_batches',
-            lambda items, max_desired_batch_size=10, max_batches=10: [
-                items[i : i + max_desired_batch_size]
-                for i in range(0, len(items), max_desired_batch_size)
-            ],
-        )
-
-        # Test first batch
-        input_data = TestFixtures.upload_processing_input()
-        input_data.batch_id = 0
-        result = next_level_entries(input_data)
-        assert result is not None
-        assert len(result.entries_to_be_processed) == 10
-        assert result.entries_to_be_processed[0].entry_id == 'test-entry-0'
-
-        # Test second batch
-        input_data.batch_id = 1
-        result = next_level_entries(input_data)
-        assert result is not None
-        assert len(result.entries_to_be_processed) == 10
-        assert result.entries_to_be_processed[0].entry_id == 'test-entry-10'
-
-        # Test third batch (partial)
-        input_data.batch_id = 2
-        result = next_level_entries(input_data)
-        assert result is not None
-        assert len(result.entries_to_be_processed) == 5
-        assert result.entries_to_be_processed[0].entry_id == 'test-entry-20'
-
-        # Test out of bounds batch
-        input_data.batch_id = 3
-        result = next_level_entries(input_data)
-        assert result is not None
-        assert len(result.entries_to_be_processed) == 0
-
-    def test_no_entries(self, mock_data_layer):
-        """Test that the activity returns None when there are no entries."""
-        mock_data_layer['upload_instance'].next_level_entries.return_value = []
-        input_data = TestFixtures.upload_processing_input()
-        result = next_level_entries(input_data)
-        assert result is None
-
-
 # Parameterized tests for common patterns
 class TestWorkflowCommonPatterns:
     """Tests for common patterns across workflows."""
@@ -810,3 +756,141 @@ class TestWorkflowErrorHandling:
         assert (
             mock_data_layer['upload_instance'].save.call_count >= 2
         )  # Add + remove workflow ID calls
+
+
+class TestWorkflowPerformanceAndScalability:
+    """Tests focusing on performance and scalability improvements."""
+
+    @pytest.mark.asyncio
+    async def test_workflow_handles_very_large_datasets(
+        self, mock_data_layer, monkeypatch, temporal_worker, temporal_test_queue
+    ):
+        """Test workflow can handle very large datasets without memory issues."""
+        # Simulate a very large dataset
+        huge_file_set = {f'file_{i}.txt' for i in range(5000)}  # 5K files
+        huge_entry_set = [
+            Mock(entry_id=f'entry-{i}') for i in range(100)
+        ]  # 100 entries
+
+        mock_data_layer['upload_instance'].update_files.return_value = huge_file_set
+
+        call_count = 0
+
+        def mock_next_level_entries_huge(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+
+            if call_count == 1:
+                return huge_entry_set
+            else:
+                return []
+
+        mock_data_layer[
+            'upload_instance'
+        ].next_level_entries.side_effect = mock_next_level_entries_huge
+
+        # Mock generate_batches for large batches
+        def mock_generate_batches_large(
+            items, max_desired_batch_size=10, max_batches=10
+        ):
+            return [
+                items[i : i + max_desired_batch_size]
+                for i in range(0, len(items), max_desired_batch_size)
+            ]
+
+        monkeypatch.setattr(
+            'nomad.workflows.activities.generate_batches', mock_generate_batches_large
+        )
+        monkeypatch.setattr('nomad.workflows.activities.parser_min_level', 0)
+
+        async with temporal_worker() as env:
+            input_data = UploadProcessingWorkflowInput(
+                upload_id='test-upload',
+                workflow_id='test-workflow-huge-dataset',
+                workflow_tmp_dir=tempfile.mkdtemp(),
+            )
+
+            await env.client.execute_workflow(
+                'ProcessUploadWorkflow',
+                input_data,
+                id='test-process-upload-huge-dataset',
+                task_queue=temporal_test_queue,
+            )
+
+        # Verify workflow completed successfully with large dataset
+        mock_data_layer['upload_instance'].match_all.assert_called_once()
+        match_all_call = mock_data_layer['upload_instance'].match_all.call_args
+        assert match_all_call[1]['updated_files'] == huge_file_set
+
+    @pytest.mark.asyncio
+    async def test_workflow_multiple_parser_levels_with_file_batches(
+        self, mock_data_layer, monkeypatch, temporal_worker, temporal_test_queue
+    ):
+        """Test workflow processes multiple parser levels with file-based batching."""
+        # Setup multiple parser levels with different entry counts
+        level_entries = {
+            1: [Mock(entry_id=f'level1-entry-{i}') for i in range(30)],
+            2: [Mock(entry_id=f'level2-entry-{i}') for i in range(20)],
+            3: [],  # End processing
+        }
+
+        call_count = 0
+        current_parser_level = 0
+
+        def mock_next_level_entries_multi_level(*args, **kwargs):
+            nonlocal call_count, current_parser_level
+            call_count += 1
+
+            # Simulate parser level progression
+            if call_count == 1:
+                current_parser_level = 1
+                return level_entries[1]
+            elif call_count == 2:
+                current_parser_level = 2
+                return level_entries[2]
+            else:
+                return level_entries[3]
+
+        mock_data_layer[
+            'upload_instance'
+        ].next_level_entries.side_effect = mock_next_level_entries_multi_level
+        mock_data_layer['upload_instance'].update_files.return_value = {'file1.txt'}
+
+        # Mock parser_level to change with each call
+        def mock_parser_level_side_effect():
+            return current_parser_level
+
+        type(mock_data_layer['upload_instance']).parser_level = property(
+            mock_parser_level_side_effect
+        )
+
+        # Mock generate_batches for multiple batches
+        def mock_generate_batches_multi(
+            items, max_desired_batch_size=10, max_batches=10
+        ):
+            return [
+                items[i : i + max_desired_batch_size]
+                for i in range(0, len(items), max_desired_batch_size)
+            ]
+
+        monkeypatch.setattr(
+            'nomad.workflows.activities.generate_batches', mock_generate_batches_multi
+        )
+        monkeypatch.setattr('nomad.workflows.activities.parser_min_level', 0)
+
+        async with temporal_worker() as env:
+            input_data = UploadProcessingWorkflowInput(
+                upload_id='test-upload',
+                workflow_id='test-workflow-multi-level',
+                workflow_tmp_dir=tempfile.mkdtemp(),
+            )
+
+            await env.client.execute_workflow(
+                'ProcessUploadWorkflow',
+                input_data,
+                id='test-process-upload-multi-level',
+                task_queue=temporal_test_queue,
+            )
+
+        # Verify workflow processed multiple levels
+        assert mock_data_layer['upload_instance'].next_level_entries.call_count == 3
