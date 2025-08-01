@@ -77,6 +77,41 @@ def pre_spawn(spawner):
         if tool.get('default_url'):
             spawner.default_url = tool.get('default_url')
 
+        extra_host_config = {}
+        if tool.get('privileged'):
+            extra_host_config['privileged'] = True
+
+        if tool.get('seccomp_unconfined'):
+            extra_host_config['security_opt'] = ['seccomp=unconfined']
+
+        if tool.get('use_gpu'):
+            import os
+
+            import docker
+
+            # Check if any GPUs are available
+            nvidia_version_path = '/proc/driver/nvidia/version'
+            if os.path.exists(nvidia_version_path):
+                with open(nvidia_version_path) as file:
+                    version_info = file.read()
+                spawner.log.info(
+                    f'Enabling nvidia driver with driver info:\n{version_info}.'
+                )
+                extra_host_config['device_requests'] = [
+                    docker.types.DeviceRequest(
+                        count=-1,
+                        capabilities=[['gpu']],
+                    ),
+                ]
+            else:
+                spawner.log.warning(
+                    'GPU requested but no nvidia driver found on host. Disabling GPU usage for this container.'
+                )
+                tool['use_gpu'] = False
+
+        if extra_host_config:
+            spawner.extra_host_config.update(extra_host_config)
+
 
 c.Spawner.pre_spawn_hook = pre_spawn
 
