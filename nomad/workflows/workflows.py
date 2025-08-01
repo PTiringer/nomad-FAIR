@@ -39,6 +39,7 @@ with workflow.unsafe.imports_passed_through():
     from nomad.workflows.shared_objects import (
         DeleteUploadWorkflowInput,
         EditUploadMetadataWorkflowInput,
+        EntriesToBeProcessedResult,
         EntryBatchFromFileInput,
         ImportBundleWorkflowInput,
         ProcessEntryActivityInput,
@@ -91,7 +92,6 @@ class ProcessEntryWorkflow:
         retry_policy = RetryPolicy(
             maximum_attempts=3,
         )
-
         try:
             # Process the entry
             result = await workflow.execute_activity(
@@ -124,40 +124,86 @@ class ProcessEntryWorkflow:
 
 @workflow.defn
 class BatchProcessEntriesWorkflow:
+    """
+    Handles processing of entry batches.
+
+    Architecture:
+    - Processes batches sequentially to prevent task queue overload
+    - Within each batch, processes up to 1000 entries concurrently
+    - Handles both file-based storage (large datasets) and in-memory storage (small datasets)
+
+    Note: 1000 is the limit set by Temporal for max number of child workflows.
+    """
+
     @workflow.run
-    async def run(self, entries_to_be_processed: list[ProcessEntryActivityInput]):
+    async def run(self, next_level_entries_result: EntriesToBeProcessedResult):
         retry_policy = RetryPolicy(
             maximum_attempts=3,
         )
-        if len(entries_to_be_processed) > 1000:
-            entry_batches = generate_batches(entries_to_be_processed)
-            # Recursively call BatchProcessEntriesWorkflow for each batch
-            await asyncio.gather(
-                *[
-                    workflow.execute_child_workflow(
-                        BatchProcessEntriesWorkflow.run,
-                        batch,
-                        id=f'{workflow.info().workflow_id}-batch-{i}',
-                        retry_policy=retry_policy,
-                    )
-                    for i, batch in enumerate(entry_batches)
-                ]
-            )
-        else:
-            # Process entries directly when <= 1000
-            tasks = [
-                workflow.execute_child_workflow(
-                    ProcessEntryWorkflow.run,
-                    data,
-                    id=data.workflow_id,
+
+        # Handle file-based entry storage (used for very large uploads)
+        # Entries are stored in batch files to avoid memory constraints
+        if entry_batch_directory := next_level_entries_result.directory:
+            # Process each file-based batch sequentially to prevent overwhelming the task queue
+            # Each batch will internally process up to 1000 entries concurrently
+            for batch_id in range(next_level_entries_result.total_batches):
+                # Load entries from the batch file
+                entries_to_be_processed = await workflow.execute_activity(
+                    get_entry_batch_from_file,
+                    EntryBatchFromFileInput(
+                        upload_id=next_level_entries_result.upload_id,
+                        batch_dir_path=entry_batch_directory,
+                        batch_id=batch_id,
+                    ),
+                    schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                    retry_policy=retry_policy,
+                )
+
+                # Recursively process this batch (which may further subdivide if >1000 entries)
+                await workflow.execute_child_workflow(
+                    BatchProcessEntriesWorkflow.run,
+                    EntriesToBeProcessedResult(
+                        entries=entries_to_be_processed,
+                        upload_id=next_level_entries_result.upload_id,
+                    ),
+                    id=f'{workflow.info().workflow_id}-file-batch-{batch_id}',
                     parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
                     retry_policy=retry_policy,
                 )
-                for data in entries_to_be_processed
-            ]
-            # Use return_exceptions=True to allow individual child workflows to fail
-            # without stopping the entire batch or failing the parent workflow
-            await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Handle in-memory entry processing (from small uploads or loaded file batches)
+        elif entries_to_be_processed := next_level_entries_result.entries:
+            # Two-tier processing strategy based on batch size:
+            # 1. Large batches (>1000): Split into smaller batches and process sequentially
+            # 2. Small batches (≤1000): Process all entries concurrently
+            if len(entries_to_be_processed) > 1000:
+                entry_batches = generate_batches(entries_to_be_processed)
+                # Each sub-batch will be processed with up to 1000 concurrent entries
+                for i, batch in enumerate(entry_batches):
+                    await workflow.execute_child_workflow(
+                        BatchProcessEntriesWorkflow.run,
+                        EntriesToBeProcessedResult(
+                            entries=batch,
+                            upload_id=next_level_entries_result.upload_id,
+                        ),
+                        id=f'{workflow.info().workflow_id}-batch-{i}',
+                        retry_policy=retry_policy,
+                    )
+            else:
+                # Process entries directly when <= 1000
+                tasks = [
+                    workflow.execute_child_workflow(
+                        ProcessEntryWorkflow.run,
+                        data,
+                        id=data.workflow_id,
+                        parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
+                        retry_policy=retry_policy,
+                    )
+                    for data in entries_to_be_processed
+                ]
+                # Use return_exceptions=True to allow individual child workflows to fail
+                # without stopping the entire batch or failing the parent workflow
+                await asyncio.gather(*tasks, return_exceptions=True)
 
 
 @workflow.defn
@@ -222,41 +268,14 @@ class ProcessUploadWorkflow:
                 if not next_level_entries_result:
                     break
 
-                # Handle two processing modes: small datasets (entries in memory) vs large datasets
-                # (entries stored in files). This dual approach optimizes for both performance and scalability.
-                if entry_batch_directory := next_level_entries_result.directory:
-                    # entries are stored in files
-                    for batch_id in range(next_level_entries_result.total_batches):
-                        entries_to_be_processed = await workflow.execute_activity(
-                            get_entry_batch_from_file,
-                            EntryBatchFromFileInput(
-                                upload_id=input.upload_id,
-                                batch_dir_path=entry_batch_directory,
-                                batch_id=batch_id,
-                            ),
-                            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-                            retry_policy=retry_policy,
-                        )
-
-                        # Step 4: Start the batch processing workflow for this batch
-                        await workflow.execute_child_workflow(
-                            BatchProcessEntriesWorkflow.run,
-                            entries_to_be_processed,
-                            id=f'{workflow_info.workflow_id}-{parse_all_input.min_level}-batch-processor',
-                            parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
-                            retry_policy=retry_policy,
-                        )
-
-                elif entries_to_be_processed := next_level_entries_result.entries:
-                    # entries in memory
-                    # Step 4: Start the batch processing workflow for this batch
-                    await workflow.execute_child_workflow(
-                        BatchProcessEntriesWorkflow.run,
-                        entries_to_be_processed,
-                        id=f'{workflow_info.workflow_id}-{parse_all_input.min_level}-batch-processor',
-                        parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
-                        retry_policy=retry_policy,
-                    )
+                # Delegate all batch processing complexity to BatchProcessEntriesWorkflow
+                await workflow.execute_child_workflow(
+                    BatchProcessEntriesWorkflow.run,
+                    next_level_entries_result,
+                    id=f'{workflow_info.workflow_id}-{parse_all_input.min_level}-batch-processor',
+                    parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
+                    retry_policy=retry_policy,
+                )
 
                 next_parser_level = (
                     next_level_entries_result.next_parser_level

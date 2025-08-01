@@ -136,7 +136,9 @@ def next_level_entries(
             for entry in next_entries
         ]
         return EntriesToBeProcessedResult(
-            entries=entries_list, next_parser_level=upload.parser_level
+            entries=entries_list,
+            next_parser_level=upload.parser_level,
+            upload_id=input.upload_id,
         )
 
     # If many batches, save all entries to json files
@@ -152,6 +154,7 @@ def next_level_entries(
         directory=str(batch_dir),
         total_batches=len(entry_batches),
         next_parser_level=upload.parser_level,
+        upload_id=input.upload_id,
     )
 
 

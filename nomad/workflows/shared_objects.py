@@ -115,6 +115,7 @@ class EntryBatchFromFileInput:
 
 @dataclass
 class EntriesToBeProcessedResult:
+    upload_id: str
     entries: list[ProcessEntryActivityInput] | None = None
     directory: str | None = None
     total_batches: int = 0
