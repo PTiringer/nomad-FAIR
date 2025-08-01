@@ -154,12 +154,12 @@ class DisplayAnnotation(BaseModel):
 
 class QuantityDisplayAnnotation(DisplayAnnotation):
     """
-    This annotations control how quantities are displayed in the GUI.  Use the
+    This annotations control how quantities are displayed in the GUI. Use the
     key `display` to add this annotation. For example in Python:
 
     ```python
     class Example(EntryData):
-        sample_id = Quantity(type=str, a_display={'visible': False})
+        sample_weight = Quantity(type=float, unit='g', a_display={'unit': 'kg'})
     ```
 
     or in YAML:
@@ -167,11 +167,12 @@ class QuantityDisplayAnnotation(DisplayAnnotation):
     definitions:
       Example:
         quantities:
-          sample_id:
-            type: str
+          sample_weight:
+            type: float
+            unit: g
             m_annotations:
               display:
-                visible: false
+                unit: kg
     ```
     """
 
