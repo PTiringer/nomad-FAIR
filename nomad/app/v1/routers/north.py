@@ -302,6 +302,8 @@ async def start_tool(
             'image': tool.image,
             'cmd': tool.cmd,
             'privileged': tool.privileged,
+            'seccomp_unconfined': tool.seccomp_unconfined,
+            'use_gpu': tool.use_gpu,
             'default_url': tool.default_url,
         },
         'environment': {
