@@ -93,7 +93,6 @@ from nomad.metainfo.data_type import JSON, Datatype
 from nomad.metainfo.data_type import Any as AnyType
 from nomad.metainfo.util import MSubSectionList, split_python_definition
 from nomad.processing import Entry, ProcessStatus, Upload
-from nomad.utils import timer
 
 logger = utils.get_logger(__name__)
 
@@ -1626,14 +1625,7 @@ class MongoReader(GeneralReader):
                 reader_cls: type[GeneralReader], *args, read_list=False
             ):
                 try:
-                    with (
-                        reader_cls(value, **offload_pack) as reader,
-                        timer(
-                            logger,
-                            '/'.join(node.current_path + [key]),
-                            reader_type=reader_cls.__name__,
-                        ),
-                    ):
+                    with reader_cls(value, **offload_pack) as reader:
                         await _populate_result(
                             node.result_root,
                             node.current_path + [key],
@@ -1869,20 +1861,13 @@ class MongoReader(GeneralReader):
         ):
             offload_reader = __M_SEARCHABLE__[node.current_path[-2]]
             try:
-                with (
-                    offload_reader(
-                        config,
-                        user=self.user,
-                        init=False,
-                        config=config,
-                        global_root=self.global_root,
-                    ) as reader,
-                    timer(
-                        logger,
-                        '/'.join(node.current_path),
-                        reader_type=offload_reader.__name__,
-                    ),
-                ):
+                with offload_reader(
+                    config,
+                    user=self.user,
+                    init=False,
+                    config=config,
+                    global_root=self.global_root,
+                ) as reader:
                     await _populate_result(
                         node.result_root,
                         node.current_path,
@@ -2661,20 +2646,13 @@ class ArchiveReader(ArchiveLikeReader):
                         f'Only support "m_def" token on sections, try defining "m_def" request on the parent.'
                     )
                     continue
-                with (
-                    DefinitionReader(
-                        value,
-                        user=self.user,
-                        init=False,
-                        config=current_config,
-                        global_root=self.global_root,
-                    ) as reader,
-                    timer(
-                        logger,
-                        '/'.join(node.current_path + [Token.DEF]),
-                        reader_type='DefinitionReader',
-                    ),
-                ):
+                with DefinitionReader(
+                    value,
+                    user=self.user,
+                    init=False,
+                    config=current_config,
+                    global_root=self.global_root,
+                ) as reader:
                     await _populate_result(
                         node.result_root,
                         node.current_path + [Token.DEF],
@@ -2941,20 +2919,13 @@ class ArchiveReader(ArchiveLikeReader):
                 definition = node.definition
                 if isinstance(definition, SubSection):
                     definition = definition.sub_section.m_resolved()
-                with (
-                    DefinitionReader(
-                        RequestConfig(directive=DirectiveType.plain),
-                        user=self.user,
-                        init=False,
-                        config=config,
-                        global_root=self.global_root,
-                    ) as reader,
-                    timer(
-                        logger,
-                        '/'.join(node.current_path + [Token.DEF]),
-                        reader_type='DefinitionReader',
-                    ),
-                ):
+                with DefinitionReader(
+                    RequestConfig(directive=DirectiveType.plain),
+                    user=self.user,
+                    init=False,
+                    config=config,
+                    global_root=self.global_root,
+                ) as reader:
                     await _populate_result(
                         node.result_root,
                         node.current_path + [Token.DEF],
@@ -2971,20 +2942,13 @@ class ArchiveReader(ArchiveLikeReader):
             return node
 
         if config.include_definition is not DefinitionType.none:
-            with (
-                DefinitionReader(
-                    RequestConfig(directive=DirectiveType.plain),
-                    user=self.user,
-                    init=False,
-                    config=config,
-                    global_root=self.global_root,
-                ) as reader,
-                timer(
-                    logger,
-                    '/'.join(node.current_path + [Token.DEF]),
-                    reader_type='DefinitionReader',
-                ),
-            ):
+            with DefinitionReader(
+                RequestConfig(directive=DirectiveType.plain),
+                user=self.user,
+                init=False,
+                config=config,
+                global_root=self.global_root,
+            ) as reader:
                 await _populate_result(
                     node.result_root,
                     node.current_path + [Token.DEF],
