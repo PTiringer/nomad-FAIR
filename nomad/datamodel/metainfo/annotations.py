@@ -1185,8 +1185,10 @@ class Mapper(BaseModel):
         'jmespath', description="""Name of the parser for paths."""
     )
     unit: str = Field(None, description="""Pint unit to be applied to value.""")
-    indices: str = Field(
-        None, description="""Name of function to evaluate indices to include in data"""
+    indices: str | list[int] = Field(
+        None,
+        description="""Name of function to evaluate indices or the list of"""
+        """ indices to include in data""",
     )
     search: str = Field(None, description="""Path to search on value.""")
 
