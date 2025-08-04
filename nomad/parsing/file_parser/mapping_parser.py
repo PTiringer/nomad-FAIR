@@ -637,9 +637,9 @@ class Transformer(BaseMapper):
                 if not self.function_kwargs
                 else func(*args, **self.function_kwargs)
             )
-        except Exception:
-            # if self.function_name == 'get_positions':
-            #     raise
+        except Exception as e:
+            if kwargs.get('debug'):
+                raise RuntimeError(f'Error evaluating {self.function_name}: {e}')
             return None
 
 
@@ -908,6 +908,7 @@ class MappingParser(ABC):
         mapper: 'BaseMapper' = None,
         update_mode: str = 'merge',
         remove: bool = False,
+        debug: bool = False,
     ):
         if mapper is None:
             mapper = target.mapper
@@ -916,7 +917,7 @@ class MappingParser(ABC):
         source_data = self.data
         if mapper.source:
             source_data = mapper.source.get_data(self.data, self)
-        result = mapper.get_data(source_data, self, remove=remove)
+        result = mapper.get_data(source_data, self, remove=remove, debug=debug)
         target.set_data(result, target.data, update_mode=update_mode)
         target.from_dict(target.data)
 
@@ -1010,7 +1011,7 @@ class MetainfoParser(MappingParser):
 
     def __init__(self, **kwargs):
         self._annotation_key: str = kwargs.get('annotation_key', 'mapping')
-        self.max_nested_level: int = 1
+        self.max_nested_level: int = 3
         super().__init__(**kwargs)
 
     @property
@@ -1084,6 +1085,12 @@ class MetainfoParser(MappingParser):
                         )
                         root.m_add_sub_section(section, sub_section)
                     self.from_dict(val_n, sub_section)
+                    if not [
+                        v
+                        for v in sub_section.values()
+                        if (isinstance(v, list | np.ndarray) and len(v)) or v
+                    ]:
+                        root.m_remove_sub_section(section, index=n)
                 continue
 
             if key == 'm_def':
