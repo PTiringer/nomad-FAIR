@@ -1235,6 +1235,8 @@ class StagingUploadFiles(UploadFiles):
             with zipfile.ZipFile(raw_zip_file_object.os_path, mode='w') as raw_zip:
                 for path_info in self.raw_directory_list(recursive=True):
                     basename = os.path.basename(path_info.path)
+                    # TODO remove extra handling of POTCAR files once processed uploads
+                    # are published.
                     if basename.startswith('POTCAR'):
                         if not basename.endswith('.stripped'):
                             continue  # Skip the unstripped POTCAR files when publishing

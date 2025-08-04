@@ -2535,11 +2535,17 @@ class Upload(Proc):
             # Unstripped POTCAR file found
             # create checksum
             hash = hashlib.sha224()
+            is_potcar = False
             with open(
                 self.staging_upload_files.raw_file_object(path).os_path, 'rb'
             ) as orig_f:
                 for line in orig_f.readlines():
                     hash.update(line)
+                    # check if this is indeed a POTCAR file
+                    if b'END of PSCTR' in line:
+                        is_potcar = True
+            if not is_potcar:
+                return
 
             checksum = hash.hexdigest()
 
@@ -2560,6 +2566,10 @@ class Upload(Proc):
                     /END of PSCTR/ {{ dump=0 }}'
                 """
             )
+            if config.process.exclude_potcar:
+                # remove unstripped POTCAR file
+                self.warning('Removing POTCAR file from upload.')
+                self.update_files([dict(op='DELETE', path=path)], True)
 
     def match_mainfiles(
         self, path_filter: str | None = None, updated_files: set[str] | None = None
@@ -2599,6 +2609,8 @@ class Upload(Proc):
             for path_info in path_infos:
                 self._preprocess_files(path_info.path)
 
+                if not staging_upload_files.raw_path_exists(path_info.path):
+                    continue
                 if skip_matching and path_info.path not in entries_metadata:
                     continue
 

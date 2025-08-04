@@ -176,6 +176,7 @@ process:
   store_package_definition_in_mongo: false
   use_empty_parsers: false
   write_definition_id_to_archive: false
+  exclude_potcar: true
 rabbitmq:
   host: localhost
   password: rabbitmq
