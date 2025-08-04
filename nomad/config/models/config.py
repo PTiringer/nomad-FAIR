@@ -742,6 +742,12 @@ class Process(ConfigBaseModel):
     """,
     )
     rfc3161_skip_published: bool = False
+    exclude_potcar: bool = Field(
+        True,
+        description="""
+        True will exclude original VASP POTCAR file from upload.
+        """,
+    )
 
 
 class Reprocess(ConfigBaseModel):
