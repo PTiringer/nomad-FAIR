@@ -20,7 +20,6 @@ from collections import OrderedDict
 from enum import Enum
 from io import BytesIO, StringIO
 
-import ase.build
 import ase.io
 import numpy as np
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status

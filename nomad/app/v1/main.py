@@ -19,7 +19,6 @@
 import traceback
 
 from fastapi import FastAPI, Request, status
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, ORJSONResponse, RedirectResponse
 from pyinstrument import Profiler
 from starlette.middleware import Middleware
@@ -87,16 +86,8 @@ app = FastAPI(
     ),
     default_response_class=ORJSONResponse,
     middleware=[
-        Middleware(  # type: ignore
-            CORSMiddleware,  # type: ignore
-            allow_origins=['*'],
-            allow_credentials=True,
-            allow_methods=['*'],
-            allow_headers=['*'],
-            expose_headers=['Content-Disposition'],
-        ),
-        Middleware(LoggingMiddleware),  # type: ignore
-        Middleware(BaseHTTPMiddleware, dispatch=profile_request),  # type: ignore
+        Middleware(LoggingMiddleware),
+        Middleware(BaseHTTPMiddleware, dispatch=profile_request),
     ],
 )
 
@@ -130,7 +121,7 @@ app.include_router(apps.router, prefix='/apps')  # type: ignore
 app.include_router(datasets.router, prefix='/datasets')
 app.include_router(entries.router, prefix='/entries')
 app.include_router(federation.router, prefix='/federation')
-app.include_router(graph.router, prefix='/graph')  # type: ignore
+app.include_router(graph.router, prefix='/graph')
 app.include_router(groups.router, prefix='/groups')
 app.include_router(info.router, prefix='/info')
 app.include_router(materials.router, prefix='/materials')
@@ -139,5 +130,5 @@ if config.north.enabled:
     app.include_router(north.router, prefix='/north')
 app.include_router(suggestions.router, prefix='/suggestions')
 app.include_router(systems.router, prefix='/systems')
-app.include_router(uploads.router, prefix='/uploads')  # type: ignore
-app.include_router(users.router, prefix='/users')  # type: ignore
+app.include_router(uploads.router, prefix='/uploads')
+app.include_router(users.router, prefix='/users')

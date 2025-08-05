@@ -50,7 +50,7 @@ class StaticFiles(StarletteStaticFiles):
         return super().is_not_modified(response_headers, request_headers)
 
 
-app.mount(f'/docs', StaticFiles(directory=docs_folder, check_dir=False), name='docs')
+app.mount('/docs', StaticFiles(directory=docs_folder, check_dir=False), name='docs')
 
 
 class GuiFiles(StaticFiles):
@@ -80,7 +80,7 @@ class GuiFiles(StaticFiles):
 
 
 gui_files_app = GuiFiles(directory=gui_folder, check_dir=False)
-app.mount(f'/gui', gui_files_app, name='gui')
+app.mount('/gui', gui_files_app, name='gui')
 
 max_cache_ages = {
     r'\.[a-f0-9]+\.chunk\.(js|css)$': 3600 * 24 * 7,
@@ -103,7 +103,7 @@ async def add_header(request: Request, call_next):
         response.headers['Cache-Control'] = f'max-age={max_age}, must-revalidate'
     else:
         response.headers['Cache-Control'] = (
-            f'max-age=0, no-cache, no-store, must-revalidate'
+            'max-age=0, no-cache, no-store, must-revalidate'
         )
 
     # The etags that we and starlette produce do not follow the RFC, because they do not

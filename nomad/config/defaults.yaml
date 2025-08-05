@@ -159,6 +159,7 @@ oasis:
   central_nomad_deployment_url: https://nomad-lab.eu/prod/v1/api
   is_oasis: false
   uses_central_user_management: false
+  require_authentication: false
 process:
   add_definition_id_to_reference: false
   auxfile_cutoff: 100

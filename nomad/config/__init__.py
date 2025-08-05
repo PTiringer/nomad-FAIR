@@ -32,12 +32,13 @@ and .yaml files. This is done automatically on import. The precedence is env ove
 over defaults.
 """
 
+import logging
 import os
 import sys
-import yaml
-import logging
-import os.path
 from typing import Any
+
+import yaml
+
 from nomad.config.models.config import Config
 
 # use std python logger, since logging is not configured while loading configuration
