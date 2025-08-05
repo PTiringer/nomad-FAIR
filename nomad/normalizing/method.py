@@ -1121,6 +1121,8 @@ class BasisSetFHIAims(MethodNormalizerBasisSet):
                 result.append(cls._values_to_dict(v, level=level + 1))
         elif isinstance(data, (np.ndarray)):
             result = data.tolist()
+        elif isinstance(data, (MSection)):
+            result = data.m_to_dict()
         else:
             result = data
         return result
