@@ -316,7 +316,8 @@ def get_gui_config() -> str:
         else None,
         'oasis': config.oasis.is_oasis,
         'version': config.meta.beta if config.meta.beta else {},
-        'globalLoginRequired': config.oasis.allowed_users is not None,
+        'globalLoginRequired': config.oasis.allowed_users is not None
+        or config.oasis.require_authentication,
         'servicesUploadLimit': config.services.upload_limit,
         'appTokenMaxExpiresIn': config.services.app_token_max_expires_in,
         'uploadMembersGroupSearchEnabled': config.services.upload_members_group_search_enabled,

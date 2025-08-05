@@ -350,6 +350,12 @@ class Oasis(ConfigBaseModel):
         The URL of the terms of service.
     """,
     )
+    require_authentication: bool = Field(
+        False,
+        description="""
+        If True, authentication is required to access sensitive API endpoints.
+    """,
+    )
 
 
 class RabbitMQ(ConfigBaseModel):
