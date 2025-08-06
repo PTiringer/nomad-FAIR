@@ -562,6 +562,66 @@ class ArchiveParser(MatchingParser):
         self.validate_definitions(archive, logger)
 
 
+class ElnMatchingParser(MatchingParser):
+    """A parser implementation that matches mainfiles and creates an ELN section
+    for the data file.
+    This parser is used to create an ELN section for the data file, which can be
+    used to annotate the data file with metadata and other information.
+    """
+
+    def __init__(
+        self,
+        eln_m_def: str = None,
+        raw_file_m_def: str = None,
+        update: bool = False,
+        data_type: str = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.eln_m_def = eln_m_def
+        self.raw_file_m_def = raw_file_m_def
+        self.update = update
+        self.data_type = data_type
+
+    def eln_section(self, mainfile: str, archive: EntryArchive) -> dict:
+        return dict(
+            m_def=self.eln_m_def,
+            data_file=archive.m_context.get_relative_path(mainfile),
+        )
+
+    def eln_name(self, mainfile: str, archive: EntryArchive) -> str:
+        relative_path = archive.m_context.get_relative_path(mainfile)
+        return f'{".".join(relative_path.split(".")[:-1])}.archive.json'
+
+    def parse(
+        self, mainfile: str, archive: EntryArchive, logger=None, child_archives=None
+    ):
+        context = archive.m_context
+        eln_name = self.eln_name(mainfile, archive)
+
+        archive.m_update_from_dict(
+            dict(
+                data=dict(
+                    m_def=self.raw_file_m_def,
+                    eln=f'{context.get_reference(eln_name)}#/data',
+                    data_type=self.data_type,
+                    file_ending=os.path.splitext(mainfile)[1],
+                    file_size=os.path.getsize(mainfile),
+                ),
+            )
+        )
+        archive.metadata.entry_name = f'Data file {context.get_relative_path(mainfile)}'
+
+        if not self.update and context.raw_path_exists(eln_name):
+            return
+
+        with context.update_entry(eln_name, write=True, process=True) as content:
+            data_dict: dict = content.get('data', {})
+            update_dict = self.eln_section(mainfile, archive)
+            data_dict.update(update_dict)
+            content['data'] = data_dict
+
+
 class MissingParser(MatchingParser):
     """
     A parser implementation that just fails and is used to match mainfiles with known

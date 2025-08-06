@@ -17,7 +17,7 @@
 #
 
 import os.path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from cachetools import TTLCache, cached
 from pydantic import Field
@@ -37,6 +37,9 @@ from nomad.metainfo.metainfo import (
 )
 from nomad.metainfo.pydantic_extension import PydanticModel
 
+if TYPE_CHECKING:
+    from nomad.datamodel.context import Context
+
 
 class ArchiveSection(MSection):
     """
@@ -45,6 +48,8 @@ class ArchiveSection(MSection):
     """
 
     normalizer_level = 0
+
+    m_context: 'Context'
 
     def normalize(self, archive, logger):
         """
