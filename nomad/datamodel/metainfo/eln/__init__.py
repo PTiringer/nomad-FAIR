@@ -41,6 +41,7 @@ from nomad.datamodel.metainfo.basesections.v1 import (
     Activity,
     Analysis,
     AnalysisResult,
+    BaseSection,
     Collection,
     CompositeSystem,
     ElementalComposition,
@@ -80,6 +81,11 @@ from nomad.datamodel.results import ElementalComposition as ResultsElementalComp
 from nomad.metainfo import Datetime, Package, Quantity, Reference, Section, SubSection
 from nomad.metainfo.metainfo import Category, MCategory, MEnum, MProxy, MSection
 from nomad.units import ureg
+
+if TYPE_CHECKING:
+    from structlog.stdlib import BoundLogger
+
+    from nomad.datamodel import EntryArchive
 
 
 class _LazyEQEAnalyzer:
@@ -555,6 +561,54 @@ class ElnFileManager(ElnBaseSection, EntryData):
     Files = SubSection(
         section_def=AnnotatedFile,
         repeats=True,
+    )
+
+
+class ElnParserSection(BaseSection, EntryData):
+    """
+    An electronic lab notebook section that is used to annotate data from a raw file.
+    """
+
+    data_file = Quantity(type=str)
+
+    def data_file_name(self, archive: 'EntryArchive') -> str:
+        """
+        Returns the name of the data file associated with this section.
+        Args:
+            archive (EntryArchive): The archive containing the section.
+        Returns:
+            str: The name of the data file.
+        """
+        with archive.m_context.raw_file(self.data_file) as file:
+            return file.name
+
+
+class ElnParserRawFile(EntryData):
+    """
+    An entry data section that is used to index a raw file with an associated ELN entry.
+    This section (and any of its subsections) should not contain ELN annotations.
+    If you need ELN annotations, you should create an `ElnParserSection` and reference
+    this section in the `eln` quantity of the `ElnParserRawFile`.
+    """
+
+    eln = Quantity(
+        type=ElnParserSection,
+        description='An ELN section that is used to annotate the raw file.',
+    )
+    data_type = Quantity(
+        type=str,
+        description="""
+        The type of the data contained in the raw file, e.g. X-Ray Diffraction.
+        """,
+    )
+    file_ending = Quantity(
+        type=str,
+        description='The file ending of the raw file, e.g. .txt, .csv, .hdf5.',
+    )
+    file_size = Quantity(
+        type=np.float64,
+        description='The size of the raw file in bytes.',
+        unit='bytes',
     )
 
 

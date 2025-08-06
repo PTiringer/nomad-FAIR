@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 import os.path
 import re
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
@@ -211,6 +212,10 @@ class Context(MetainfoContext):
         """The path to the uploads raw files directory."""
         return os.path.curdir
 
+    def raw_file(self, path: str, *args, **kwargs):
+        """Open a raw file for reading or writing."""
+        raise NotImplementedError
+
     def process_updated_raw_file(self, path, allow_modify=False):
         """
         Use when parsing or normalizing a file causes another file to be added or modified.
@@ -274,6 +279,29 @@ class Context(MetainfoContext):
     def cache_archive(self, url: str, archive):
         self.archives[url] = archive
         self.urls[archive] = url
+
+    def get_reference(self, mainfile: str) -> str:
+        """
+        Get the reference for the given file name.
+        """
+        raise NotImplementedError
+
+    def get_relative_path(self, mainfile: str) -> str:
+        """
+        Get the relative path for the given file name.
+        """
+        raise NotImplementedError
+
+    @contextmanager
+    def update_entry(
+        self,
+        mainfile: str,
+        *,
+        write: bool = False,
+        process: bool = False,
+        **kwargs,
+    ) -> Iterator[dict]:
+        raise NotImplementedError
 
 
 class ServerContext(Context):
@@ -458,6 +486,15 @@ class ServerContext(Context):
 
         if process:
             self.upload.process_updated_raw_file(mainfile, True)
+
+    def get_reference(self, mainfile: str) -> str:
+        from nomad.utils import hash
+
+        entry_id = hash(self.upload_id, mainfile)
+        return f'../uploads/{self.upload_id}/archive/{entry_id}'
+
+    def get_relative_path(self, mainfile):
+        return mainfile.split('/raw/', 1)[1]
 
 
 class ServerLocalContext(Context):
@@ -666,3 +703,11 @@ class ClientContext(Context):
                     file_path.absolute().as_posix(), **(self._recursive_kwargs | kwargs)
                 )
             )
+
+    def get_reference(self, mainfile: str) -> str:
+        # TODO: use self.local_dir
+        return mainfile.split('/')[-1]
+
+    def get_relative_path(self, mainfile):
+        # TODO: use self.local_dir
+        return mainfile.split('/')[-1]

@@ -222,6 +222,42 @@ class ParserEntryPoint(EntryPoint, metaclass=ABCMeta):
         return self.model_dump(include=keys, exclude_none=True)
 
 
+class ElnParserEntryPoint(ParserEntryPoint):
+    """Parser entry point model for matching of a file to generate an associated ELN
+    archive.
+    """
+
+    eln_m_def: str = Field(
+        'nomad.datamodel.metainfo.eln.ElnParserSection',
+        description="""
+        The ELN schema that is used for the data section of the created archive.
+        """,
+    )
+    raw_file_m_def: str = Field(
+        'nomad.datamodel.metainfo.eln.ElnParserRawFile',
+        description="""
+        The schema that is set as the data section of the matched mainfile.
+        """,
+    )
+    update: bool = Field(
+        False,
+        description="""
+        If True, the parser will update the existing ELN data.
+        """,
+    )
+    data_type: str = Field(
+        'raw file',
+        description="""
+        The type of the data that is in the matched file.
+        """,
+    )
+
+    def load(self) -> 'ParserBaseClass':
+        from nomad.parsing.parser import ElnMatchingParser
+
+        return ElnMatchingParser(**self.model_dump())
+
+
 class UploadResource(BaseModel):
     """Represents a request to include a certain resource into an example
     upload. Can point to a local folder/file, or alternatively to an online
