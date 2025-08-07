@@ -73,8 +73,8 @@ def write_pdb(atoms: NOMADAtoms, entry_id: str = None, formula: str = None) -> s
         lines.append(f'REMARK 285 PBC (A, B, C): {pbc[0]}, {pbc[1]}, {pbc[2]}\n')
 
     stream = StringIO()
-    atoms = ase_atoms_from_nomad_atoms(atoms)
-    ase.io.write(stream, atoms, format='proteindatabank')
+    ase_atoms = ase_atoms_from_nomad_atoms(atoms)
+    ase.io.write(stream, ase_atoms, format='proteindatabank')
     stream.seek(0)
     content = ''.join(lines)
     content += stream.read()
@@ -85,8 +85,8 @@ def write_cif(atoms: NOMADAtoms, entry_id: str = None, formula: str = None) -> s
     """For writing a CIF file."""
     # The ASE CIF writer expects a BytesIO, unlike other formats supported by ASE.
     byte_stream = BytesIO()
-    atoms = ase_atoms_from_nomad_atoms(atoms)
-    ase.io.write(byte_stream, atoms, format='cif')
+    ase_atoms = ase_atoms_from_nomad_atoms(atoms)
+    ase.io.write(byte_stream, ase_atoms, format='cif')
     byte_stream.seek(0)
     content = ''
     if entry_id is not None:
@@ -99,8 +99,8 @@ def write_cif(atoms: NOMADAtoms, entry_id: str = None, formula: str = None) -> s
 def write_xyz(atoms: NOMADAtoms, entry_id: str, formula: str = None) -> str:
     """For writing an XYZ file."""
     stream = StringIO()
-    atoms = ase_atoms_from_nomad_atoms(atoms)
-    ase.io.write(stream, atoms, format='extxyz')
+    ase_atoms = ase_atoms_from_nomad_atoms(atoms)
+    ase.io.write(stream, ase_atoms, format='extxyz')
     stream.seek(0)
     content = stream.read()
     if entry_id is not None:

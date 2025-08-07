@@ -19,10 +19,11 @@
 import json
 import pathlib
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 import numpy as np
 from ase import Atoms
-from ase.data import chemical_symbols
+from ase.data import chemical_symbols as _chemical_symbols
 from matid.classification.classifications import (
     Atom,
     Class0D,
@@ -57,9 +58,12 @@ from nomad.normalizing.common import (
     wyckoff_sets_from_matid,
 )
 
-conventional_description = 'The conventional cell of the material from which the subsystem is constructed from.'
-subsystem_description = 'Automatically detected subsystem.'
-chemical_symbols = np.array(chemical_symbols)
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+conventional_description: str = 'The conventional cell of the material from which the subsystem is constructed from.'
+subsystem_description: str = 'Automatically detected subsystem.'
+chemical_symbols: 'NDArray[np.str_]' = np.array(_chemical_symbols)
 with open(pathlib.Path(__file__).parent / 'data/top_50k_material_ids.json') as fin:
     top_50k_material_ids = json.load(fin)
 

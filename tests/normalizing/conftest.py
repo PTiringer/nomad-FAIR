@@ -2202,7 +2202,7 @@ def mos2_topology() -> list[ResultSystem]:
     return [subsystem, convsystem]
 
 
-def stacked_graphene_boron_nitride_topology() -> Atoms:
+def stacked_graphene_boron_nitride_topology() -> list[ResultSystem]:
     topologies_c = graphene_topology()
     topologies_bn = boron_nitride_topology()
 
