@@ -81,9 +81,19 @@ def assert_list(l1, l2):
 
 
 def assert_dict(d1, d2):
-    assert set(d1.keys()) == set(d2.keys())
-    for k, v in d1.items():
-        if isinstance(v, dict):
+    # we do not check if the definition_id/m_def_id is exactly the same
+    # as the slightest change made here and there will result in a different ID
+    # only check the existence to make maintenance easier
+    d1_keys = set(d1.keys())
+    if 'm_def_id' in d1_keys:
+        assert 'm_def' in d1
+        d1_keys.remove('m_def_id')
+    assert d1_keys == set(d2.keys())
+    for k in d1_keys:
+        v = d1[k]
+        if k == 'definition_id':
+            assert k in d2
+        elif isinstance(v, dict):
             assert_dict(v, d2[k])
         elif isinstance(v, list):
             assert_list(v, d2[k])
@@ -108,6 +118,7 @@ def assert_dict(d1, d2):
                             None,
                             {
                                 'name': 'Holder',
+                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'base',
@@ -116,6 +127,7 @@ def assert_dict(d1, d2):
                                             'type_data': f'{prefix}/1',
                                         },
                                         'shape': [],
+                                        'definition_id': '',
                                     },
                                     {
                                         'name': 'derived',
@@ -124,12 +136,14 @@ def assert_dict(d1, d2):
                                             'type_data': f'{prefix}/2',
                                         },
                                         'shape': [],
+                                        'definition_id': '',
                                     },
                                 ],
                                 'sub_sections': [
                                     {
                                         'name': 'derived_section',
                                         'sub_section': f'{prefix}/2',
+                                        'definition_id': '',
                                     }
                                 ],
                             },
@@ -159,6 +173,7 @@ def assert_dict(d1, d2):
                         'section_definitions': [
                             {
                                 'name': 'Inner',
+                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'n_impurities',
@@ -166,11 +181,13 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '',
                                     }
                                 ],
                             },
                             {
                                 'name': 'Base',
+                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'dimensionality',
@@ -178,6 +195,7 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '',
                                     },
                                     {
                                         'name': 'n_points',
@@ -185,11 +203,13 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '',
                                     },
                                 ],
                             },
                             {
                                 'name': 'Derived',
+                                'definition_id': '',
                                 'base_sections': [f'{prefix}/1'],
                                 'quantities': [
                                     {
@@ -199,6 +219,7 @@ def assert_dict(d1, d2):
                                             'type_data': 'float64',
                                         },
                                         'shape': ['*'],
+                                        'definition_id': '',
                                     },
                                     {
                                         'name': 'inner',
@@ -206,11 +227,13 @@ def assert_dict(d1, d2):
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/0',
                                         },
+                                        'definition_id': '',
                                     },
                                 ],
                             },
                             {
                                 'name': 'Holder',
+                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'base',
@@ -219,6 +242,7 @@ def assert_dict(d1, d2):
                                             'type_data': f'{prefix}/1',
                                         },
                                         'shape': [],
+                                        'definition_id': '',
                                     },
                                     {
                                         'name': 'derived',
@@ -227,6 +251,7 @@ def assert_dict(d1, d2):
                                             'type_data': f'{prefix}/2',
                                         },
                                         'shape': [],
+                                        'definition_id': '',
                                     },
                                 ],
                                 'sub_sections': [f'{prefix}/2'],
@@ -249,6 +274,7 @@ def assert_dict(d1, d2):
                             None,
                             {
                                 'name': 'Base',
+                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'dimensionality',
@@ -256,6 +282,7 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '',
                                     },
                                     {
                                         'name': 'n_points',
@@ -263,11 +290,13 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '',
                                     },
                                 ],
                             },
                             {
                                 'name': 'Derived',
+                                'definition_id': '',
                                 'base_sections': [f'{prefix}/1'],
                                 'quantities': [
                                     {
@@ -277,6 +306,7 @@ def assert_dict(d1, d2):
                                             'type_data': 'float64',
                                         },
                                         'shape': ['*'],
+                                        'definition_id': '',
                                     },
                                     {
                                         'name': 'inner',
@@ -284,11 +314,13 @@ def assert_dict(d1, d2):
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/0',
                                         },
+                                        'definition_id': '',
                                     },
                                 ],
                             },
                             {
                                 'name': 'Holder',
+                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'base',
@@ -297,6 +329,7 @@ def assert_dict(d1, d2):
                                             'type_data': f'{prefix}/1',
                                         },
                                         'shape': [],
+                                        'definition_id': '',
                                     },
                                     {
                                         'name': 'derived',
@@ -305,6 +338,7 @@ def assert_dict(d1, d2):
                                             'type_data': f'{prefix}/2',
                                         },
                                         'shape': [],
+                                        'definition_id': '',
                                     },
                                 ],
                                 'sub_sections': [f'{prefix}/2'],
@@ -355,6 +389,7 @@ def assert_dict(d1, d2):
                         'section_definitions': [
                             {
                                 'name': 'Inner',
+                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'n_impurities',
@@ -362,11 +397,13 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '',
                                     }
                                 ],
                             },
                             {
                                 'name': 'Base',
+                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'dimensionality',
@@ -374,6 +411,7 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '',
                                     },
                                     {
                                         'name': 'n_points',
@@ -381,11 +419,13 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '',
                                     },
                                 ],
                             },
                             {
                                 'name': 'Derived',
+                                'definition_id': '',
                                 'base_sections': [f'{prefix}/1'],
                                 'quantities': [
                                     {
@@ -395,6 +435,7 @@ def assert_dict(d1, d2):
                                             'type_data': 'float64',
                                         },
                                         'shape': ['*'],
+                                        'definition_id': '',
                                     },
                                     {
                                         'name': 'inner',
@@ -402,6 +443,7 @@ def assert_dict(d1, d2):
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/0',
                                         },
+                                        'definition_id': '',
                                     },
                                 ],
                             },
@@ -418,6 +460,7 @@ def assert_dict(d1, d2):
                                             'type_data': f'{prefix}/1',
                                         },
                                         'shape': [],
+                                        'definition_id': '',
                                     },
                                     {
                                         'name': 'derived',
@@ -426,6 +469,7 @@ def assert_dict(d1, d2):
                                             'type_data': f'{prefix}/2',
                                         },
                                         'shape': [],
+                                        'definition_id': '',
                                     },
                                 ],
                             },
@@ -445,6 +489,7 @@ def assert_dict(d1, d2):
                             None,
                             {
                                 'name': 'Base',
+                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'dimensionality',
@@ -452,6 +497,7 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '',
                                     },
                                     {
                                         'name': 'n_points',
@@ -459,11 +505,13 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '',
                                     },
                                 ],
                             },
                             {
                                 'name': 'Derived',
+                                'definition_id': '',
                                 'base_sections': [f'{prefix}/1'],
                                 'quantities': [
                                     {
@@ -473,6 +521,7 @@ def assert_dict(d1, d2):
                                             'type_data': 'float64',
                                         },
                                         'shape': ['*'],
+                                        'definition_id': '',
                                     },
                                     {
                                         'name': 'inner',
@@ -480,6 +529,7 @@ def assert_dict(d1, d2):
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/0',
                                         },
+                                        'definition_id': '',
                                     },
                                 ],
                             },
@@ -496,6 +546,7 @@ def assert_dict(d1, d2):
                                             'type_data': f'{prefix}/1',
                                         },
                                         'shape': [],
+                                        'definition_id': '',
                                     },
                                     {
                                         'name': 'derived',
@@ -504,6 +555,7 @@ def assert_dict(d1, d2):
                                             'type_data': f'{prefix}/2',
                                         },
                                         'shape': [],
+                                        'definition_id': '',
                                     },
                                 ],
                             },
@@ -529,6 +581,7 @@ def assert_dict(d1, d2):
                         'section_definitions': [
                             {
                                 'name': 'Inner',
+                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'n_impurities',
@@ -536,11 +589,13 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '',
                                     }
                                 ],
                             },
                             {
                                 'name': 'Base',
+                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'dimensionality',
@@ -548,6 +603,7 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '',
                                     },
                                     {
                                         'name': 'n_points',
@@ -555,11 +611,13 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '',
                                     },
                                 ],
                             },
                             {
                                 'name': 'Derived',
+                                'definition_id': '',
                                 'base_sections': [
                                     'metainfo/tests.graph.test_definition_reader/section_definitions/1'
                                 ],
@@ -571,6 +629,7 @@ def assert_dict(d1, d2):
                                             'type_data': 'float64',
                                         },
                                         'shape': ['*'],
+                                        'definition_id': '',
                                     },
                                     {
                                         'name': 'inner',
@@ -578,6 +637,7 @@ def assert_dict(d1, d2):
                                             'type_kind': 'reference',
                                             'type_data': 'metainfo/tests.graph.test_definition_reader/section_definitions/0',
                                         },
+                                        'definition_id': '',
                                     },
                                 ],
                             },
