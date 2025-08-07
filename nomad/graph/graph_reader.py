@@ -109,6 +109,7 @@ class Token:
     """
 
     DEF = 'm_def'
+    DEFID = 'm_def_id'
     RAW = 'files'
     ARCHIVE = 'archive'
     ENTRY = 'entry'
@@ -3029,6 +3030,7 @@ class DefinitionReader(ArchiveLikeReader):
     async def read(self, archive: Definition) -> dict:
         with self._prepare_reading() as response:
             response[Token.DEF] = {}
+            response[Token.DEFID] = archive.definition_id
 
             await self._walk(
                 GraphNode(
@@ -3276,7 +3278,9 @@ class DefinitionReader(ArchiveLikeReader):
             await _populate_result(
                 node.result_root,
                 node.current_path,
-                node.archive.m_to_dict(with_out_meta=True, transform=__override_path),
+                node.archive.m_to_dict(
+                    with_out_meta=True, with_def_id=True, transform=__override_path
+                ),
                 # the target location may contain a reference string already
                 # the string was added during switching root
                 # we allow it to be overwritten here
