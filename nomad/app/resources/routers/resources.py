@@ -28,6 +28,7 @@ import ase.io
 import bs4
 import httpx
 from anyio.from_thread import start_blocking_portal
+from ase import Atoms
 from fastapi import APIRouter
 from fastapi import Query as FastApiQuery
 from mongoengine import (
@@ -365,8 +366,8 @@ async def _get_resources_aflow_prototypes(
         structure_file = io.StringIO()
         structure_file.write(response.text)
         structure_file.seek(0)
-        atoms = ase.io.read(structure_file, format='cif')
-        data['lattice_vectors'] = atoms.get_cell().tolist()
+        atoms: Atoms = ase.io.read(structure_file, format='cif')  # type: ignore
+        data['lattice_vectors'] = atoms.get_cell().tolist()  # type: ignore
         data['atom_positions'] = atoms.get_positions().tolist()
         data['atom_labels'] = atoms.get_chemical_symbols()
     # resource.data = data
