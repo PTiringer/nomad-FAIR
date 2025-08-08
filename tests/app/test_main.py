@@ -236,8 +236,6 @@ def collect_all_routes(
             return 'dcat_app'
         elif path.startswith('/h5grove'):
             return 'h5grove_app'
-        elif path.startswith('/resources'):
-            return 'resources_app'
 
         return 'main_app'
 

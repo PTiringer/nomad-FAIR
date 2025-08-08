@@ -99,7 +99,6 @@ OASIS_AUTH_WHITELIST: dict[str, set[str]] = {
     'optimade_app': {'/extensions', '/info', '^/versions$'},
     'dcat_app': {'^/extensions/docs', '^/openapi.json$'},
     'h5grove_app': {'^/docs', '^/redoc$', '^/openapi.json$'},
-    'resources_app': {'^/extensions/'},
 }
 
 
@@ -205,15 +204,6 @@ if config.services.h5grove_enabled:
     h5grove_app.add_middleware(
         OasisAuthenticationMiddleware,
         whitelist=OASIS_AUTH_WHITELIST['h5grove_app'],
-    )
-
-if config.resources.enabled:
-    from .resources.main import app as resources_app
-
-    app.mount(f'{app_base}/resources', resources_app)
-    resources_app.add_middleware(
-        OasisAuthenticationMiddleware,
-        whitelist=OASIS_AUTH_WHITELIST['resources_app'],
     )
 
 # Add API plugins
