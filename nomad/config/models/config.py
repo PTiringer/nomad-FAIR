@@ -691,24 +691,6 @@ class Normalize(ConfigBaseModel):
         return values
 
 
-class Resources(ConfigBaseModel):
-    enabled: bool = False
-    db_name: str = 'nomad_v1_resources'
-    max_time_in_mongo: float = Field(
-        60 * 60 * 24 * 365.0,
-        description='Maximum time a resource is stored in mongodb before being updated.',
-    )
-    download_retries: int = Field(
-        2, description='Number of retries when downloading resources.'
-    )
-    download_retry_delay: int = Field(
-        10, description='Delay between retries in seconds.'
-    )
-    max_connections: int = Field(
-        10, description='Maximum simultaneous connections used to download resources.'
-    )
-
-
 class Client(ConfigBaseModel):
     user: str = None
     password: str = None
@@ -981,7 +963,6 @@ class Config(ConfigBaseModel):
     tests: Tests = Tests()
     mail: Mail = Mail()
     normalize: Normalize = Normalize()
-    resources: Resources = Resources()
     client: Client = Client()
     datacite: DataCite = DataCite()
     gitlab: GitLab = GitLab()

@@ -24,7 +24,7 @@ import {
 } from 'recoil'
 import PropTypes from 'prop-types'
 import Cookies from 'universal-cookie'
-import { apiBase, globalLoginRequired, appBase, searchQuantities } from '../config'
+import { apiBase, globalLoginRequired, searchQuantities } from '../config'
 import { Box, Typography, withStyles } from '@material-ui/core'
 import LoginLogout from './LoginLogout'
 import { useKeycloak } from '@react-keycloak/web'
@@ -90,22 +90,6 @@ function handleApiError(e) {
     error = new Error(errorMessage)
   }
   throw error
-}
-
-class ResourcesApi {
-  constructor(api) {
-    this.api = api
-    this.apiKey = null
-    this.axios = axios.create({
-      baseURL: `${appBase}/resources`,
-      paramsSerializer: {indexes: null}
-    })
-  }
-
-  async get(path, query, config) {
-    const GET = (path, body, config) => this.axios.get(path, config)
-    return this.api.doHttpRequest(GET, path, null, {params: query, methodName: 'GET', ...config})
-  }
 }
 
 class Api {
@@ -416,7 +400,6 @@ export const APIProvider = React.memo(({
 
   const value = useMemo(() => ({
     api: api,
-    resourcesApi: new ResourcesApi(api),
     user: user
   }), [api, user])
 

@@ -68,4 +68,3 @@ from nomad.processing.base import (
     ProcessAlreadyRunning,
 )
 from nomad.processing.data import Upload, Entry, MetadataEditRequestHandler
-from nomad.app.resources import main

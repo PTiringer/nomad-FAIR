@@ -189,13 +189,6 @@ reprocess:
   rematch_published: true
   reprocess_existing_entries: true
   use_original_parser: false
-resources:
-  db_name: nomad_v1_resources
-  download_retries: 2
-  download_retry_delay: 10
-  enabled: false
-  max_connections: 10
-  max_time_in_mongo: 31536000.0
 rfc3161_timestamp:
   hash_algorithm: sha256
   server: http://zeitstempel.dfn.de

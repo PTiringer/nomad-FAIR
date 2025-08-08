@@ -324,7 +324,6 @@ def get_gui_config() -> str:
         'ui': config.ui.dict(exclude_none=True) if config.ui else {},
         'plugins': plugins,
         'dataciteEnabled': config.datacite.enabled,
-        'resourcesEnabled': config.resources.enabled,
         'termsOfServiceURL': config.oasis.terms_of_service_url,
         'footerLinks': [link.dict() for link in config.meta.footer_links],
         'description': config.meta.description,

@@ -35,7 +35,6 @@ import DynamicalPropertiesCard from '../entry/properties/DynamicalPropertiesCard
 import StructuralPropertiesCard from '../entry/properties/StructuralPropertiesCard'
 import GeometryOptimizationCard from '../entry/properties/GeometryOptimizationCard'
 import SpectroscopicPropertiesCard from './properties/SpectroscopicPropertiesCard'
-import RelatedResourcesCard from '../entry/properties/RelatedResourcesCard'
 import WorkflowCard from './properties/WorkflowCard'
 import { MethodMetadata } from './EntryDetails'
 import Page from '../Page'
@@ -209,8 +208,7 @@ const OverviewView = React.memo(() => {
       spectroscopic: SpectroscopicPropertiesCard,
       workflow: WorkflowCard,
       references: ReferenceUsingCard,
-      history: SampleHistoryUsingCard,
-      relatedResources: RelatedResourcesCard
+      history: SampleHistoryUsingCard
     }
 
     if (isEmpty(cards?.options)) {
