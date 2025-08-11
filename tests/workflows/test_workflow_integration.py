@@ -3,6 +3,7 @@ import uuid
 
 import pytest
 
+from nomad.orchestrator.shared.constant import TaskQueue
 from nomad.processing.base import ProcessStatus
 from nomad.processing.data import Entry, Upload
 from nomad.workflows.shared_objects import (
@@ -14,7 +15,6 @@ from nomad.workflows.shared_objects import (
 
 @pytest.mark.asyncio
 async def test_process_upload_workflow_integration(
-    temporal_test_queue,
     non_empty_uploaded,
     user1,
     temporal_worker,
@@ -50,7 +50,7 @@ async def test_process_upload_workflow_integration(
             'ProcessUploadWorkflow',
             input_data,
             id=input_data.workflow_id,
-            task_queue=temporal_test_queue,
+            task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
         )
 
     # Check upload is processed
@@ -66,7 +66,6 @@ async def test_process_upload_workflow_integration(
 
 @pytest.mark.asyncio
 async def test_publish_upload_workflow_integration(
-    temporal_test_queue,
     non_empty_uploaded,
     user1,
     temporal_worker,
@@ -102,7 +101,7 @@ async def test_publish_upload_workflow_integration(
             'ProcessUploadWorkflow',
             process_input,
             id=process_input.workflow_id,
-            task_queue=temporal_test_queue,
+            task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
         )
 
         upload.reload()
@@ -115,7 +114,7 @@ async def test_publish_upload_workflow_integration(
             'PublishUploadWorkflow',
             publish_input,
             id=f'integration-test-workflow-publish-{upload_id}',
-            task_queue=temporal_test_queue,
+            task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
         )
 
     # Check upload is published
@@ -128,7 +127,6 @@ async def test_publish_upload_workflow_integration(
 
 @pytest.mark.asyncio
 async def test_delete_upload_workflow_integration(
-    temporal_test_queue,
     user1,
     temporal_worker,
 ):
@@ -147,7 +145,7 @@ async def test_delete_upload_workflow_integration(
             'DeleteUploadWorkflow',
             delete_input,
             id=f'integration-test-workflow-delete-{upload_id}',
-            task_queue=temporal_test_queue,
+            task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
         )
 
     with pytest.raises(Exception):  # Should raise KeyError
@@ -156,7 +154,6 @@ async def test_delete_upload_workflow_integration(
 
 @pytest.mark.asyncio
 async def test_publish_with_embargo_and_lift(
-    temporal_test_queue,
     non_empty_uploaded,
     user1,
     temporal_worker,
@@ -182,7 +179,7 @@ async def test_publish_with_embargo_and_lift(
             'ProcessUploadWorkflow',
             process_input,
             id=process_input.workflow_id,
-            task_queue=temporal_test_queue,
+            task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
         )
         upload.reload()
         assert upload.process_status == ProcessStatus.SUCCESS
@@ -195,7 +192,7 @@ async def test_publish_with_embargo_and_lift(
             'PublishUploadWorkflow',
             publish_input,
             id=f'integration-test-workflow-publish-{upload_id}',
-            task_queue=temporal_test_queue,
+            task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
         )
         upload.reload()
         assert upload.with_embargo
@@ -208,7 +205,7 @@ async def test_publish_with_embargo_and_lift(
             'PublishUploadWorkflow',
             publish_input,
             id=f'integration-test-workflow-lift-embargo-{upload_id}',
-            task_queue=temporal_test_queue,
+            task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
         )
         upload.reload()
         assert not upload.with_embargo
