@@ -2,13 +2,23 @@ import os
 import shutil
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import asynccontextmanager
+from datetime import timedelta
 
 import elasticsearch
 import elasticsearch.exceptions
 import pytest
+from temporalio.testing import WorkflowEnvironment
+from temporalio.worker import Worker
 
 from nomad import infrastructure
 from nomad.config import config
+from nomad.orchestrator import client
+from nomad.orchestrator.activities.util import get_nomad_internal_activities
+from nomad.orchestrator.shared.constant import TaskQueue
+from nomad.orchestrator.workflows.util import get_nomad_internal_workflows
+from nomad.workflows import workflows
 
 elastic_test_entries_index = 'nomad_entries_v1_test'
 elastic_test_materials_index = 'nomad_materials_v1_test'
@@ -229,12 +239,40 @@ def proc_infra(worker, elastic_function, mongo_function, raw_files_function):
 
 
 @pytest.fixture(scope='function')
-def temporal_proc_infra(
-    elastic_function, mongo_function, raw_files_function, monkeypatch
+def temporal_worker(
+    elastic_function,
+    mongo_function,
+    raw_files_function,
+    monkeypatch,
 ):
     """Combines all fixtures necessary for temporal processing (elastic, files, mongo)"""
     from nomad.config import config
 
-    monkeypatch.setattr(config.temporal, 'enabled', True)
+    temporal_activities = get_nomad_internal_activities()
+    temporal_workflows = get_nomad_internal_workflows()
 
-    return dict(elastic=elastic_function)
+    # Much smaller timeout for tests.
+    monkeypatch.setattr(config.temporal, 'enabled', True)
+    monkeypatch.setattr(workflows, 'WORKFLOW_TIMEOUT', timedelta(seconds=120))
+
+    @asynccontextmanager
+    async def worker_context():
+        async with await WorkflowEnvironment.start_local() as env:
+
+            async def mock_get_client():
+                return env.client
+
+            # mock the get_client function to use the client from the local test server
+            monkeypatch.setattr(client, 'get_client', mock_get_client)
+
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                async with Worker(
+                    env.client,
+                    task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
+                    workflows=temporal_workflows,
+                    activities=temporal_activities,
+                    activity_executor=executor,
+                ):
+                    yield env
+
+    return worker_context

@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 
+from nomad.orchestrator.shared.constant import TaskQueue
 from nomad.processing.base import ProcessStatus
 from nomad.workflows.shared_objects import (
     DeleteUploadWorkflowInput,
@@ -158,7 +159,9 @@ class TestDeleteUploadWorkflow:
 
     @pytest.mark.asyncio
     async def test_successful_deletion(
-        self, mock_data_layer, temporal_worker, temporal_test_queue
+        self,
+        mock_data_layer,
+        temporal_worker,
     ):
         """Test successful upload deletion with all activities succeeding."""
         async with temporal_worker() as env:
@@ -168,7 +171,7 @@ class TestDeleteUploadWorkflow:
                 'DeleteUploadWorkflow',
                 input_data,
                 id='test-delete-upload-workflow',
-                task_queue=temporal_test_queue,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
             )
 
             # Verify data layer calls
@@ -192,7 +195,9 @@ class TestDeleteUploadWorkflow:
 
     @pytest.mark.asyncio
     async def test_deletion_with_no_files(
-        self, mock_data_layer, temporal_worker, temporal_test_queue
+        self,
+        mock_data_layer,
+        temporal_worker,
     ):
         """Test deletion when no files exist."""
         # Configure mocks - no files exist
@@ -206,7 +211,7 @@ class TestDeleteUploadWorkflow:
                 'DeleteUploadWorkflow',
                 input_data,
                 id='test-delete-upload-workflow-no-files',
-                task_queue=temporal_test_queue,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
             )
 
             # Verify file deletion was not called since files don't exist
@@ -219,7 +224,9 @@ class TestProcessEntryWorkflow:
 
     @pytest.mark.asyncio
     async def test_successful_entry_processing(
-        self, mock_data_layer, temporal_worker, temporal_test_queue
+        self,
+        mock_data_layer,
+        temporal_worker,
     ):
         """Test successful entry processing."""
         async with temporal_worker() as env:
@@ -229,7 +236,7 @@ class TestProcessEntryWorkflow:
                 'ProcessEntryWorkflow',
                 input_data,
                 id='test-process-entry-workflow',
-                task_queue=temporal_test_queue,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
             )
 
             # Verify entry processing calls
@@ -249,7 +256,9 @@ class TestBatchProcessEntriesWorkflow:
 
     @pytest.mark.asyncio
     async def test_small_batch_direct_processing(
-        self, mock_data_layer, temporal_worker, temporal_test_queue
+        self,
+        mock_data_layer,
+        temporal_worker,
     ):
         """Test processing small batch (<=1000 entries) directly."""
         entries = [TestFixtures.process_entry_input() for _ in range(5)]
@@ -265,7 +274,7 @@ class TestBatchProcessEntriesWorkflow:
                 'BatchProcessEntriesWorkflow',
                 entries_result,
                 id='test-batch-process-small',
-                task_queue=temporal_test_queue,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
             )
 
         # Verify entries were processed
@@ -275,7 +284,10 @@ class TestBatchProcessEntriesWorkflow:
 
     @pytest.mark.asyncio
     async def test_large_batch_sequential_processing(
-        self, mock_data_layer, monkeypatch, temporal_worker, temporal_test_queue
+        self,
+        mock_data_layer,
+        monkeypatch,
+        temporal_worker,
     ):
         """Test processing large batch (>1000 entries) with sequential sub-batching."""
         # Create 1500 entries to trigger batch splitting
@@ -302,7 +314,7 @@ class TestBatchProcessEntriesWorkflow:
                 'BatchProcessEntriesWorkflow',
                 entries_result,
                 id='test-batch-process-large',
-                task_queue=temporal_test_queue,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
             )
 
         # Verify entries were processed (should be processed in sub-batches)
@@ -311,7 +323,9 @@ class TestBatchProcessEntriesWorkflow:
 
     @pytest.mark.asyncio
     async def test_file_based_batch_processing(
-        self, mock_data_layer, temporal_worker, temporal_test_queue
+        self,
+        mock_data_layer,
+        temporal_worker,
     ):
         """Test processing entries stored in files (large dataset scenario)."""
 
@@ -336,7 +350,7 @@ class TestBatchProcessEntriesWorkflow:
                 'BatchProcessEntriesWorkflow',
                 entries_result,
                 id='test-batch-process-file-based',
-                task_queue=temporal_test_queue,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
             )
 
         # Verify that entries were processed for each batch file
@@ -345,7 +359,9 @@ class TestBatchProcessEntriesWorkflow:
 
     @pytest.mark.asyncio
     async def test_empty_entries_result(
-        self, mock_data_layer, temporal_worker, temporal_test_queue
+        self,
+        mock_data_layer,
+        temporal_worker,
     ):
         """Test handling of empty entries result."""
 
@@ -360,7 +376,7 @@ class TestBatchProcessEntriesWorkflow:
                 'BatchProcessEntriesWorkflow',
                 entries_result,
                 id='test-batch-process-empty',
-                task_queue=temporal_test_queue,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
             )
 
         # Should complete without processing any entries
@@ -372,7 +388,10 @@ class TestProcessUploadWorkflow:
 
     @pytest.mark.asyncio
     async def test_complete_upload_processing(
-        self, mock_data_layer, monkeypatch, temporal_worker, temporal_test_queue
+        self,
+        mock_data_layer,
+        monkeypatch,
+        temporal_worker,
     ):
         """Test complete upload processing workflow."""
 
@@ -402,7 +421,7 @@ class TestProcessUploadWorkflow:
                 'ProcessUploadWorkflow',
                 input_data,
                 id='test-process-upload-workflow',
-                task_queue=temporal_test_queue,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
             )
 
         # Verify workflow ID management
@@ -414,7 +433,10 @@ class TestProcessUploadWorkflow:
 
     @pytest.mark.asyncio
     async def test_processing_loop_multiple_levels(
-        self, mock_data_layer, monkeypatch, temporal_worker, temporal_test_queue
+        self,
+        mock_data_layer,
+        monkeypatch,
+        temporal_worker,
     ):
         """Test processing loop with multiple parser levels."""
         call_count = 0
@@ -440,7 +462,7 @@ class TestProcessUploadWorkflow:
                 'ProcessUploadWorkflow',
                 input_data,
                 id='test-process-upload-workflow-levels',
-                task_queue=temporal_test_queue,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
             )
 
         # Verify next_level_entries was called multiple times
@@ -452,7 +474,10 @@ class TestProcessExampleUploadWorkflow:
 
     @pytest.mark.asyncio
     async def test_example_upload_processing(
-        self, mock_data_layer, monkeypatch, temporal_worker, temporal_test_queue
+        self,
+        mock_data_layer,
+        monkeypatch,
+        temporal_worker,
     ):
         """Test example upload processing workflow."""
         # Mock to prevent the processing loop from running
@@ -465,7 +490,7 @@ class TestProcessExampleUploadWorkflow:
                 'ProcessExampleUploadWorkflow',
                 input_data,
                 id='test-process-example-upload-workflow',
-                task_queue=temporal_test_queue,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
             )
 
             # Verify setup activity was called
@@ -481,7 +506,9 @@ class TestEditUploadMetadataWorkflow:
 
     @pytest.mark.asyncio
     async def test_successful_metadata_edit(
-        self, mock_data_layer, temporal_worker, temporal_test_queue
+        self,
+        mock_data_layer,
+        temporal_worker,
     ):
         """Test successful metadata editing."""
         async with temporal_worker() as env:
@@ -491,7 +518,7 @@ class TestEditUploadMetadataWorkflow:
                 'EditUploadMetadataWorkflow',
                 input_data,
                 id='test-edit-upload-metadata-workflow',
-                task_queue=temporal_test_queue,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
             )
 
         # Verify metadata editing was called
@@ -515,7 +542,9 @@ class TestImportBundleWorkflow:
 
     @pytest.mark.asyncio
     async def test_successful_bundle_import(
-        self, mock_data_layer, temporal_worker, temporal_test_queue
+        self,
+        mock_data_layer,
+        temporal_worker,
     ):
         """Test successful bundle import."""
         async with temporal_worker() as env:
@@ -525,7 +554,7 @@ class TestImportBundleWorkflow:
                 'ImportBundleWorkflow',
                 input_data,
                 id='test-import-bundle-workflow',
-                task_queue=temporal_test_queue,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
             )
 
         # Verify bundle import was called
@@ -547,7 +576,9 @@ class TestPublishUploadWorkflow:
 
     @pytest.mark.asyncio
     async def test_successful_upload_publish(
-        self, mock_data_layer, temporal_worker, temporal_test_queue
+        self,
+        mock_data_layer,
+        temporal_worker,
     ):
         """Test successful upload publishing."""
         async with temporal_worker() as env:
@@ -557,7 +588,7 @@ class TestPublishUploadWorkflow:
                 'PublishUploadWorkflow',
                 input_data,
                 id='test-publish-upload-workflow',
-                task_queue=temporal_test_queue,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
             )
 
         # Verify publishing was called
@@ -579,7 +610,9 @@ class TestPublishExternallyWorkflow:
 
     @pytest.mark.asyncio
     async def test_successful_external_publish(
-        self, mock_data_layer, temporal_worker, temporal_test_queue
+        self,
+        mock_data_layer,
+        temporal_worker,
     ):
         """Test successful external publishing."""
         async with temporal_worker() as env:
@@ -589,7 +622,7 @@ class TestPublishExternallyWorkflow:
                 'PublishExternallyWorkflow',
                 input_data,
                 id='test-publish-externally-workflow',
-                task_queue=temporal_test_queue,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
             )
 
             # Verify external publishing was called
@@ -638,7 +671,6 @@ class TestWorkflowCommonPatterns:
         input_data,
         activity_method,
         temporal_worker,
-        temporal_test_queue,
     ):
         """Test that workflows properly manage workflow IDs."""
         async with temporal_worker() as env:
@@ -646,7 +678,7 @@ class TestWorkflowCommonPatterns:
                 workflow_class,
                 input_data,
                 id=f'test-{workflow_class.lower()}-{uuid.uuid4()}',
-                task_queue=temporal_test_queue,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
             )
 
             # Verify workflow ID management calls occurred
@@ -666,7 +698,9 @@ class TestWorkflowErrorHandling:
 
     @pytest.mark.asyncio
     async def test_upload_workflow_id_assertion_error(
-        self, mock_data_layer, temporal_worker, temporal_test_queue
+        self,
+        mock_data_layer,
+        temporal_worker,
     ):
         """Test that workflows fail when upload is already being processed."""
         # Set up upload to already have a workflow ID
@@ -681,7 +715,7 @@ class TestWorkflowErrorHandling:
                     'EditUploadMetadataWorkflow',
                     input_data,
                     id='test-workflow-id-conflict',
-                    task_queue=temporal_test_queue,
+                    task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
                 )
 
     @pytest.mark.parametrize(
@@ -742,7 +776,6 @@ class TestWorkflowErrorHandling:
         mock_target_name,
         expected_status_message,
         temporal_worker,
-        temporal_test_queue,
     ):
         """Test that workflows handle failures consistently with a try-catch-finally pattern."""
         # Mock the activity to fail
@@ -762,7 +795,7 @@ class TestWorkflowErrorHandling:
                     workflow_class,
                     input_data,
                     id=f'test-{workflow_class.lower()}-{uuid.uuid4()}-failure-pattern',
-                    task_queue=temporal_test_queue,
+                    task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
                 )
 
         # Verify consistent failure handling
@@ -778,7 +811,9 @@ class TestWorkflowErrorHandling:
 
     @pytest.mark.asyncio
     async def test_workflow_id_cleanup_on_success(
-        self, mock_data_layer, temporal_worker, temporal_test_queue
+        self,
+        mock_data_layer,
+        temporal_worker,
     ):
         """Test that workflow IDs are properly cleaned up on successful execution."""
         async with temporal_worker() as env:
@@ -788,7 +823,7 @@ class TestWorkflowErrorHandling:
                 'EditUploadMetadataWorkflow',
                 input_data,
                 id='test-workflow-id-cleanup-success',
-                task_queue=temporal_test_queue,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
             )
 
         # Verify workflow ID was added and then removed (cleanup)
@@ -797,7 +832,10 @@ class TestWorkflowErrorHandling:
 
     @pytest.mark.asyncio
     async def test_partial_entry_failure_upload_success(
-        self, mock_data_layer, monkeypatch, temporal_worker, temporal_test_queue
+        self,
+        mock_data_layer,
+        monkeypatch,
+        temporal_worker,
     ):
         """Test that when individual entries fail, the upload itself is not marked as a failure."""
 
@@ -838,7 +876,7 @@ class TestWorkflowErrorHandling:
                 'ProcessUploadWorkflow',
                 input_data,
                 id='test-partial-entry-failure',
-                task_queue=temporal_test_queue,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
             )
 
         # Verify that the upload is still marked as successful despite entry failures
@@ -863,7 +901,10 @@ class TestWorkflowPerformanceAndScalability:
 
     @pytest.mark.asyncio
     async def test_workflow_handles_very_large_datasets(
-        self, mock_data_layer, monkeypatch, temporal_worker, temporal_test_queue
+        self,
+        mock_data_layer,
+        monkeypatch,
+        temporal_worker,
     ):
         """Test workflow can handle very large datasets without memory issues."""
         # Simulate a very large dataset
@@ -914,7 +955,7 @@ class TestWorkflowPerformanceAndScalability:
                 'ProcessUploadWorkflow',
                 input_data,
                 id='test-process-upload-huge-dataset',
-                task_queue=temporal_test_queue,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
             )
 
         # Verify workflow completed successfully with large dataset
@@ -924,7 +965,10 @@ class TestWorkflowPerformanceAndScalability:
 
     @pytest.mark.asyncio
     async def test_workflow_multiple_parser_levels_with_file_batches(
-        self, mock_data_layer, monkeypatch, temporal_worker, temporal_test_queue
+        self,
+        mock_data_layer,
+        monkeypatch,
+        temporal_worker,
     ):
         """Test workflow processes multiple parser levels with file-based batching."""
         # Setup multiple parser levels with different entry counts
@@ -989,7 +1033,7 @@ class TestWorkflowPerformanceAndScalability:
                 'ProcessUploadWorkflow',
                 input_data,
                 id='test-process-upload-multi-level',
-                task_queue=temporal_test_queue,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
             )
 
         # Verify workflow processed multiple levels
