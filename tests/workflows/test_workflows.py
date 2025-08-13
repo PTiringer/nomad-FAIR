@@ -638,6 +638,41 @@ class TestPublishExternallyWorkflow:
             'Process completed successfully'
         )
 
+    @pytest.mark.asyncio
+    async def test_failed_publish_externally(
+        self,
+        temporal_worker,
+        mock_data_layer,
+    ):
+        """Test behavior when publish externally fails"""
+        error_message = 'test error message'
+
+        def raise_generic_error():
+            raise Exception(error_message)
+
+        mock_upload_instance = mock_data_layer['upload_instance']
+        mock_upload_instance.errors = ['old error']
+        mock_upload_instance._publish_externally_local = raise_generic_error
+        with pytest.raises(Exception):
+            async with temporal_worker() as env:
+                input_data = TestFixtures.publish_externally_input()
+
+                await env.client.execute_workflow(
+                    'PublishExternallyWorkflow',
+                    input_data,
+                    id='test-publish-externally-workflow-fail',
+                    task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
+                )
+
+        assert mock_upload_instance.last_status_message == 'Publish externally failed'
+        assert mock_upload_instance.process_status == ProcessStatus.FAILURE
+
+        # Check if the old error was cleaned up
+        assert len(mock_upload_instance.errors) == 1
+
+        # Check that the error information is actually being stored in the upload
+        assert error_message in mock_upload_instance.errors[0]
+
 
 # Parameterized tests for common patterns
 class TestWorkflowCommonPatterns:
@@ -710,7 +745,7 @@ class TestWorkflowErrorHandling:
             input_data = TestFixtures.edit_upload_metadata_input()
             with pytest.raises(
                 Exception
-            ):  # Should raise AssertionError from add_workflow_id_activity
+            ):  # Should raise AssertionError from setup_upload_for_workflow_process
                 await env.client.execute_workflow(
                     'EditUploadMetadataWorkflow',
                     input_data,

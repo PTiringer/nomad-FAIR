@@ -2,7 +2,6 @@ from collections.abc import Callable
 
 from nomad.orchestrator.shared.constant import TaskQueue
 from nomad.workflows.activities import (
-    add_workflow_id_activity,
     cleanup_activity,
     cleanup_workflow_tmp_dir_activity,
     delete_upload_entries_activity,
@@ -23,6 +22,7 @@ from nomad.workflows.activities import (
     publish_upload_activity,
     remove_workflow_id_activity,
     setup_example_upload_activity,
+    setup_upload_for_workflow_process,
     update_files_activity,
 )
 
@@ -45,7 +45,7 @@ def get_nomad_internal_activities() -> list[Callable]:
         match_all_activity,
         update_files_activity,
         setup_example_upload_activity,
-        add_workflow_id_activity,
+        setup_upload_for_workflow_process,
         remove_workflow_id_activity,
         edit_upload_metadata_activity,
         import_bundle_activity,
