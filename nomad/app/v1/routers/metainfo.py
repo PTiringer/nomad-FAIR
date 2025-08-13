@@ -157,8 +157,6 @@ def get_package_by_section_definition_id(section_definition_id: str) -> dict:
     result = packages.first()
 
     pkg_definition = result.package_definition
-    # add entry_id_based_name as a field which will be later used as the package name
-    pkg_definition['entry_id_based_name'] = str(result.qualified_name)
     if result.upload_id:
         pkg_definition['upload_id'] = result.upload_id
     if result.entry_id:
