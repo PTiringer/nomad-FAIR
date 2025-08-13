@@ -20,7 +20,7 @@ import { ReactComponent as AboutSvg } from '../images/about.svg'
 import PropTypes from 'prop-types'
 import Markdown from './Markdown'
 import { isNil } from 'lodash'
-import { appBase, debug, encyclopediaBase, parserMetadata, description, toolkitMetadata as tutorials } from '../config'
+import { appBase, debug, encyclopediaBase, parserMetadata, description, toolkitMetadata as tutorials, footerLinks } from '../config'
 import {
   Button,
   Card,
@@ -32,12 +32,54 @@ import {
   Grid,
   Link,
   makeStyles,
-  Typography
+  Typography,
+  Container
 } from '@material-ui/core'
 import { Link as RouterLink, useHistory } from 'react-router-dom'
 import InputConfig from './search/input/InputConfig'
 import { useInfo } from './api'
 import { pluralize } from '../utils'
+
+const useStylesFooter = makeStyles(theme => ({
+  root: {
+    backgroundColor: theme.palette.grey[200],
+    marginTop: theme.spacing(2),
+    flexShrink: 0
+  },
+  footerContainer: {
+    paddingTop: theme.spacing(3),
+    paddingBottom: theme.spacing(3),
+    textAlign: 'center'
+  },
+  footerLink: {
+    marginLeft: theme.spacing(1),
+    marginRight: theme.spacing(1)
+  }
+}))
+
+function Footer() {
+  const classes = useStylesFooter()
+  if (!footerLinks || footerLinks.length === 0) {
+    return null
+  }
+  return (
+    <footer className={classes.root}>
+      <Container className={classes.footerContainer}>
+        {footerLinks.map(link => (
+          <Link
+            key={link.url}
+            className={classes.footerLink}
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {link.title}
+          </Link>
+        ))}
+      </Container>
+    </footer>
+  )
+}
 
 /**
  * Displays an info dialog.
@@ -312,9 +354,17 @@ InfoCard.propTypes = {
 
 const useStyles = makeStyles(theme => ({
   root: {
+    height: "100dvh",
+    display: 'flex',
+    flexDirection: 'column'
+  },
+  mainContent: {
+    flex: '1 0 auto',
     padding: theme.spacing(3)
   },
   container: {
+    padding: theme.spacing(3),
+    boxSizing: 'content-box',
     maxWidth: 1024,
     margin: 'auto',
     width: '100%'
@@ -523,5 +573,6 @@ export default function About() {
         <DistributionInfo data={info} />
       </Grid>
     </Grid>
+    <Footer />
   </div>
 }
