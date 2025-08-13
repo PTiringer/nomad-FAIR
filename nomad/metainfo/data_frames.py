@@ -69,6 +69,7 @@ class Values(MSection):
     def xarray_attrs(self) -> dict[str, str]:
         return dict(
             units=self.m_def.all_quantities['values'].unit,
+            long_name=self.m_def.all_quantities['values'].label,
             description=self.m_def.all_quantities['values'].description,
             iri=self.m_def.all_quantities['values'].iri,
         )
@@ -182,7 +183,10 @@ class DataFrame(MSection):
         return xr.Dataset(
             data_vars=data_vars,
             coords=coords,
-            attrs=dict(description=self.m_def.description),
+            attrs=dict(
+                description=self.m_def.description,
+                long_name=self.m_def.label,
+            ),
         )
 
     def to_pandas(self):

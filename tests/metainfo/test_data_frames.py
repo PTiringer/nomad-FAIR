@@ -363,6 +363,7 @@ time = ureg.Quantity([1.0, 2.0, 3.0], 's')
                         temperature,
                         dict(
                             units='kelvin',
+                            long_name=None,
                             description=None,
                             iri='https://www.wikidata.org/wiki/Q11466',
                         ),
@@ -372,6 +373,7 @@ time = ureg.Quantity([1.0, 2.0, 3.0], 's')
                         pressure,
                         dict(
                             units='pascal',
+                            long_name=None,
                             description=None,
                             iri='https://www.wikidata.org/wiki/Q39552',
                         ),
@@ -383,6 +385,7 @@ time = ureg.Quantity([1.0, 2.0, 3.0], 's')
                         time,
                         dict(
                             units='second',
+                            long_name=None,
                             description=None,
                             iri='https://www.wikidata.org/wiki/Q11471',
                         ),
@@ -390,6 +393,7 @@ time = ureg.Quantity([1.0, 2.0, 3.0], 's')
                 ),
                 attrs=dict(
                     description=None,
+                    long_name=None,
                 ),
             ),
             id='single-variable, multiple-fields',
