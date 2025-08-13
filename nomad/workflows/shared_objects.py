@@ -67,6 +67,7 @@ class UploadWorkflowIdInput:
     upload_id: str
     workflow_id: str
     failure_message: str | None = None
+    error_details: str | None = None
 
 
 @dataclass

@@ -182,12 +182,13 @@ def get_entry_batch_from_file(
 
 
 @activity.defn
-def add_workflow_id_activity(input: UploadWorkflowIdInput):
+def setup_upload_for_workflow_process(input: UploadWorkflowIdInput):
     upload = Upload.get(input.upload_id)
     assert len(upload.workflow_ids) == 0, (  # type: ignore
         'Upload is currently being processed by another workflow'
     )
     upload.workflow_ids.append(input.workflow_id)  # type: ignore
+    upload.errors = []
     upload.save()
 
 
@@ -234,6 +235,8 @@ def process_upload_failure_activity(input: UploadWorkflowIdInput):
     upload.last_status_message = (
         input.failure_message if input.failure_message else 'Process upload failed'
     )
+    if input.error_details:
+        upload.errors.append(input.error_details)  # type: ignore
     upload.workflow_ids = []  # Clear workflow IDs on failure
     upload.save()
 

@@ -7,12 +7,12 @@ from datetime import timedelta
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
+from temporalio.exceptions import ActivityError
 
 WORKFLOW_TIMEOUT = timedelta(hours=2)
 
 with workflow.unsafe.imports_passed_through():
     from nomad.workflows.activities import (
-        add_workflow_id_activity,
         cleanup_activity,
         cleanup_workflow_tmp_dir_activity,
         delete_upload_entries_activity,
@@ -34,6 +34,7 @@ with workflow.unsafe.imports_passed_through():
         publish_upload_activity,
         remove_workflow_id_activity,
         setup_example_upload_activity,
+        setup_upload_for_workflow_process,
         update_files_activity,
     )
     from nomad.workflows.shared_objects import (
@@ -220,7 +221,7 @@ class ProcessUploadWorkflow:
         try:
             # Step 0: Add workflow id to upload
             await workflow.execute_activity(
-                add_workflow_id_activity,
+                setup_upload_for_workflow_process,
                 upload_workflow_input,
                 schedule_to_close_timeout=WORKFLOW_TIMEOUT,
                 retry_policy=retry_policy,
@@ -370,7 +371,7 @@ class EditUploadMetadataWorkflow:
         try:
             # Add workflow id to upload
             await workflow.execute_activity(
-                add_workflow_id_activity,
+                setup_upload_for_workflow_process,
                 upload_workflow_input,
                 schedule_to_close_timeout=WORKFLOW_TIMEOUT,
                 retry_policy=retry_policy,
@@ -427,7 +428,7 @@ class ImportBundleWorkflow:
         try:
             # Add workflow id to upload
             await workflow.execute_activity(
-                add_workflow_id_activity,
+                setup_upload_for_workflow_process,
                 upload_workflow_input,
                 schedule_to_close_timeout=WORKFLOW_TIMEOUT,
                 retry_policy=retry_policy,
@@ -484,7 +485,7 @@ class PublishUploadWorkflow:
         try:
             # Add workflow id to upload
             await workflow.execute_activity(
-                add_workflow_id_activity,
+                setup_upload_for_workflow_process,
                 upload_workflow_input,
                 schedule_to_close_timeout=WORKFLOW_TIMEOUT,
                 retry_policy=retry_policy,
@@ -542,7 +543,7 @@ class PublishExternallyWorkflow:
         try:
             # Add workflow id to upload
             await workflow.execute_activity(
-                add_workflow_id_activity,
+                setup_upload_for_workflow_process,
                 upload_workflow_input,
                 schedule_to_close_timeout=WORKFLOW_TIMEOUT,
                 retry_policy=retry_policy,
@@ -567,6 +568,11 @@ class PublishExternallyWorkflow:
         except Exception as e:
             # Set upload to failure status
             upload_workflow_input.failure_message = 'Publish externally failed'
+            if isinstance(e, ActivityError):
+                upload_workflow_input.error_details = str(e.cause)
+            else:
+                upload_workflow_input.error_details = str(e)
+
             await workflow.execute_activity(
                 process_upload_failure_activity,
                 upload_workflow_input,
