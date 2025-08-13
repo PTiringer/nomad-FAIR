@@ -3656,22 +3656,27 @@ def test_custom_schema_archive_and_definition(user1, custom_data):
                         {'name': 'EntryDataCategory'},
                         {
                             'name': 'ElnIntegrationCategory',
+                            'label': 'Third-party ELN Integration',
                             'categories': ['/category_definitions/0'],
                         },
                         {
                             'name': 'BasicElnCategory',
+                            'label': 'Basic ELN',
                             'categories': ['/category_definitions/0'],
                         },
                         {
                             'name': 'ElnExampleCategory',
+                            'label': 'Example ELNs',
                             'categories': ['/category_definitions/0'],
                         },
                         {
                             'name': 'UseCaseElnCategory',
+                            'label': 'Use-cases',
                             'categories': ['/category_definitions/0'],
                         },
                         {
                             'name': 'WorkflowsElnCategory',
+                            'label': 'Workflows',
                             'categories': ['/category_definitions/0'],
                         },
                     ],
