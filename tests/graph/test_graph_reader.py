@@ -22,7 +22,7 @@ from datetime import datetime
 import pytest
 import yaml
 
-from nomad.datamodel import EntryArchive
+from nomad.datamodel import EntryArchive, ServerContext
 from nomad.graph.graph_reader import (
     EntryReader,
     FileSystemReader,
@@ -3335,7 +3335,7 @@ data:
   - '2022-04-02'
 """
     )
-    archive = EntryArchive.m_from_dict(yaml_archive)
+    archive = EntryArchive.m_from_dict(yaml_archive, m_context=ServerContext())
     data = ExampleData(main_author=user1)
 
     data.create_upload(

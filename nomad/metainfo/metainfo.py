@@ -804,16 +804,10 @@ class Context:
             definition_reference, definition_id
         )
 
-        entry_id_based_name = pkg_definition.pop('entry_id_based_name')
-        upload_id = pkg_definition.pop('upload_id', None)
-        entry_id = pkg_definition.pop('entry_id', None)
-        pkg: Package = Package.m_from_dict(pkg_definition)
-        if entry_id_based_name != '*':
-            pkg.entry_id_based_name = entry_id_based_name
-        pkg.upload_id = upload_id
-        pkg.entry_id = entry_id
+        pkg: Package = Package.m_from_dict(pkg_definition, m_context=self)
+        pkg.upload_id = pkg_definition.get('upload_id', None)
+        pkg.entry_id = pkg_definition.get('entry_id', None)
 
-        pkg.m_context = self
         pkg.init_metainfo()
 
         for section in pkg.section_definitions:
@@ -2166,7 +2160,7 @@ class MSection(metaclass=MObjectMeta):
         # need to deserialize the definitions first as they are needed for the rest
         # need to deserialize the metadata first as they are needed for the rest
         processed = []
-        for item in ('definitions', 'metadata'):
+        for item in ('metadata', 'definitions'):
             if item in data:
                 try:
                     self.m_set(item, data[item], context=m_context)
@@ -2175,7 +2169,16 @@ class MSection(metaclass=MObjectMeta):
                     pass
 
         if 'definitions' in processed:
-            self.definitions.archive = self
+            if self.metadata:
+                self.definitions.entry_id = self.metadata.entry_id
+                self.definitions.upload_id = self.metadata.upload_id
+            else:
+                self.definitions.entry_id = data.get('metadata', {}).get(
+                    'entry_id', None
+                )
+                self.definitions.upload_id = data.get('metadata', {}).get(
+                    'upload_id', None
+                )
 
         for name, value in data.items():
             if name in processed or name.startswith(('m_', 'a_')):
@@ -3011,10 +3014,6 @@ class Definition(MSection):
 
         if definition_reference.startswith('entry_id:'):
             # This is not from a python module, use archive reference instead
-            # two cases:
-            # 1. loaded from file so archive.definitions.archive is set by parser
-            # 2. loaded from versioned mongo so entry_id_based_name is set by mongo
-            # second one has no metadata, so do not create reference
             if context := self.m_root().m_context:
                 relative_name = context.create_reference(source, None, self, **kwargs)
                 if relative_name:
@@ -3470,7 +3469,7 @@ class Quantity(Property):
             str: The generated unique representation.
         """
         if isinstance(self.type, Reference):
-            reference_seed = f'Ref->{self.type.target_section_def.qualified_name()}'
+            reference_seed = f'Ref->{self.type.target_section_def.definition_id}'
         else:
             reference_seed = json.dumps(_adapter.serialize(self.type, section=self))
 
@@ -4123,8 +4122,6 @@ class Package(Definition):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.errors, self.warnings = [], []
-        self.archive = None
-        self.entry_id_based_name = None
         self.upload_id = None
         self.entry_id = None
 
@@ -4197,22 +4194,10 @@ class Package(Definition):
         return super().m_from_dict(data, **kwargs)
 
     def qualified_name(self):
-        # packages loaded from files have a hot qualified name based on entry id
-        # this name is not serialized which causes '*' name when reloaded from cold
-        # we store this name in a `str` and it will be reloaded from cold
-        # see Context.resolve_section_definition()
-        if self.entry_id_based_name:
-            return self.entry_id_based_name
-
-        if self.archive:
-            # If the package was defined within a regular uploaded archive file, we
-            # use its id, which is a globally unique identifier for the package.
-            if self.archive.metadata and self.archive.metadata.entry_id:
-                self.entry_id_based_name = f'entry_id:{self.archive.metadata.entry_id}'
-            else:
-                self.entry_id_based_name = f'entry_id:*'
-
-            return self.entry_id_based_name
+        if self.entry_id or self.m_parent is not None:
+            # if entry_id is set, it is coming from custom definition stored in archive or mongo
+            # check m_parent as well as the above condition may not be met in tests
+            return f'entry_id:{self.entry_id or "*"}'
 
         return super().qualified_name()
 

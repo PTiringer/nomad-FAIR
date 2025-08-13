@@ -58,9 +58,7 @@ def test_metainfo_section_id_endpoint(metainfo_data, mongo_module, client):
 
     response = client.get(f'metainfo/{section_id}')
     assert response.status_code == 200
-    pkg_definition = response.json()['data']
-    del pkg_definition['entry_id_based_name']
-    assert pkg_definition == metainfo_data
+    assert response.json()['data'] == metainfo_data
 
     response = client.get(f'metainfo/{section_id[::-1]}')
     assert response.status_code == 404
