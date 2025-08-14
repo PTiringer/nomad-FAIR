@@ -23,7 +23,7 @@ from collections.abc import Mapping
 from enum import Enum
 from typing import Annotated, Any
 
-from fastapi import Body, HTTPException, Request
+from fastapi import Body, HTTPException, Request, status
 from fastapi import Query as FastApiQuery
 from pydantic import (  # noqa: F401
     BaseModel,
@@ -261,7 +261,6 @@ class Criteria(BaseModel):
 
 class Empty(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    pass
 
 
 Query = And | Or | Not | Nested | Criteria | Empty | Mapping[str, CriteriaValue]
@@ -471,7 +470,7 @@ class QueryParameters:
             fragments = parameter.split('__')
             if len(fragments) == 1 or len(fragments) > 3:
                 raise HTTPException(
-                    422,
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=[
                         {
                             'loc': ['query', 'q'],
@@ -488,7 +487,7 @@ class QueryParameters:
                     doc_type = material_entry_type
                 else:
                     raise HTTPException(
-                        422,
+                        status.HTTP_422_UNPROCESSABLE_ENTITY,
                         detail=[
                             {
                                 'loc': ['query', parameter],
@@ -499,7 +498,7 @@ class QueryParameters:
 
             if quantity_name not in doc_type.quantities:
                 raise HTTPException(
-                    422,
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=[
                         {
                             'loc': ['query', parameter],
@@ -550,7 +549,7 @@ class QueryParameters:
             elif op in ops:
                 if len(values) > 1:
                     raise HTTPException(
-                        status_code=422,
+                        status.HTTP_422_UNPROCESSABLE_ENTITY,
                         detail=[
                             {
                                 'loc': ['query', key],
@@ -561,7 +560,7 @@ class QueryParameters:
                 query[quantity_name] = ops[op](**{op: values[0]})
             else:
                 raise HTTPException(
-                    422,
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=[
                         {'loc': ['query', key], 'msg': f'operator {op} is unknown'}
                     ],
@@ -573,7 +572,7 @@ class QueryParameters:
                 query.update(**json.loads(json_query))
             except Exception:
                 raise HTTPException(
-                    422,
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=[{'loc': ['json_query'], 'msg': 'cannot parse json_query'}],
                 )
 
