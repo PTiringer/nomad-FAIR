@@ -244,6 +244,9 @@ for entry_point in enabled_entry_points:
     if isinstance(entry_point, ParserEntryPoint):
         entry_point_name = entry_point.id
         instance = entry_point.load()
+        assert isinstance(instance, Parser), (
+            f'Error loading entry point "{entry_point.id}": The load method of a parser entry point must return a Parser instance'
+        )
         instance.name = entry_point_name
         instance.aliases = entry_point.aliases
         parsers.append(instance)
