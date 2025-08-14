@@ -20,7 +20,6 @@ import importlib
 import os
 import shutil
 import sys
-from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Literal, Union, cast
 
 from pydantic import BaseModel, Field, model_validator
@@ -87,7 +86,7 @@ class AppEntryPoint(EntryPoint):
         )
 
 
-class SchemaPackageEntryPoint(EntryPoint, metaclass=ABCMeta):
+class SchemaPackageEntryPoint(EntryPoint):
     """Base model for schema package plugin entry points."""
 
     entry_point_type: Literal['schema_package'] = Field(
@@ -96,7 +95,6 @@ class SchemaPackageEntryPoint(EntryPoint, metaclass=ABCMeta):
         json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
 
-    @abstractmethod
     def load(self) -> 'SchemaPackage':
         """Used to lazy-load a schema package instance. You should override this
         method in your subclass. Note that any Python module imports required
@@ -104,7 +102,7 @@ class SchemaPackageEntryPoint(EntryPoint, metaclass=ABCMeta):
         pass
 
 
-class NormalizerEntryPoint(EntryPoint, metaclass=ABCMeta):
+class NormalizerEntryPoint(EntryPoint):
     """Base model for normalizer plugin entry points."""
 
     entry_point_type: Literal['normalizer'] = Field(
@@ -121,7 +119,6 @@ class NormalizerEntryPoint(EntryPoint, metaclass=ABCMeta):
         """,
     )
 
-    @abstractmethod
     def load(self) -> 'NormalizerBaseClass':
         """Used to lazy-load a normalizer instance. You should override this
         method in your subclass. Note that any Python module imports required
@@ -129,7 +126,7 @@ class NormalizerEntryPoint(EntryPoint, metaclass=ABCMeta):
         pass
 
 
-class ParserEntryPoint(EntryPoint, metaclass=ABCMeta):
+class ParserEntryPoint(EntryPoint):
     """Base model for parser plugin entry points."""
 
     entry_point_type: Literal['parser'] = Field(
@@ -205,7 +202,6 @@ class ParserEntryPoint(EntryPoint, metaclass=ABCMeta):
     """,
     )
 
-    @abstractmethod
     def load(self) -> 'ParserBaseClass':
         """Used to lazy-load a parser instance. You should override this method
         in your subclass. Note that any Python module imports required for the
@@ -457,7 +453,7 @@ class ExampleUploadEntryPoint(EntryPoint):
         return values
 
 
-class APIEntryPoint(EntryPoint, metaclass=ABCMeta):
+class APIEntryPoint(EntryPoint):
     """Base model for API plugin entry points."""
 
     entry_point_type: Literal['api'] = Field(
@@ -490,7 +486,6 @@ class APIEntryPoint(EntryPoint, metaclass=ABCMeta):
         v['prefix'] = v['prefix'].strip('/')
         return v
 
-    @abstractmethod
     def load(self) -> 'FastAPI':
         """Used to lazy-load the API instance. You should override this
         method in your subclass. Note that any Python module imports required

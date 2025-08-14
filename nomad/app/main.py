@@ -210,6 +210,9 @@ if config.services.h5grove_enabled:
 for entry_point in config.plugins.entry_points.filtered_values():
     if isinstance(entry_point, APIEntryPoint):
         api_app = entry_point.load()
+        assert isinstance(api_app, FastAPI), (
+            f'Error loading entry point "{entry_point.id}": The load method of an API entry point must return a FastAPI instance'
+        )
         app.mount(f'{app_base}/{entry_point.prefix}', api_app)
 
 # Make sure to mount this last, as it is a catch-all routes that are not yet mounted.
