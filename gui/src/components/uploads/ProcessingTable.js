@@ -115,8 +115,7 @@ export default function ProcessingTable(props) {
     if (selected === 'all') {
       return {'upload_id': upload.upload_id}
     }
-
-    return {entry_id: [...selected]}
+    return {'entry_id:any': [...selected]}
   }, [selected, upload])
 
   return <Paper data-testid={'processing-table'}>
