@@ -57,6 +57,7 @@ from mongoengine import (
 from pymongo import UpdateOne
 from structlog import wrap_logger
 from structlog.processors import StackInfoRenderer, TimeStamper, format_exc_info
+from temporalio.service import RPCError
 
 from nomad import client, datamodel, infrastructure, metainfo, parsing, search, utils
 from nomad.app.v1.models import (
@@ -2419,6 +2420,34 @@ class Upload(Proc):
                 search.delete_entry(entry_id=entry_id, update_materials=True)
                 old_entries_dict[entry_id].delete()
         return main_entry
+
+    async def _stop_processing_workflows(self):
+        client = await get_client()
+        for workflow_id in self.workflow_ids:  # type: ignore
+            try:
+                await client.get_workflow_handle(workflow_id).terminate()
+            except Exception as e:
+                if isinstance(e, RPCError):
+                    if e.status == 5:
+                        # Upload is already terminated
+                        pass
+                    else:
+                        raise e
+                else:
+                    pass
+
+    def stop_processing(self):
+        if not config.temporal.enabled:
+            raise ProcessFailure(
+                'This functionality is only available when temporal is enabled.'
+            )
+
+        run_async(self._stop_processing_workflows())
+
+        self.workflow_ids = []
+        self.process_status = ProcessStatus.READY
+        self.last_status_message = 'Processing stopped'
+        self.save()
 
     @property
     def upload_files(self) -> UploadFiles:

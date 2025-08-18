@@ -26,6 +26,7 @@ import DialogContentText from '@material-ui/core/DialogContentText'
 import FormControlLabel from '@material-ui/core/FormControlLabel'
 import ReprocessIcon from '@material-ui/icons/Autorenew'
 import DownloadIcon from '@material-ui/icons/CloudDownload'
+import StopIcon from '@material-ui/icons/Stop'
 import UploadIcon from '@material-ui/icons/CloudUpload'
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore'
 import MembersIcon from '@material-ui/icons/Group'
@@ -33,7 +34,7 @@ import ReloadIcon from '@material-ui/icons/Replay'
 import PropTypes from 'prop-types'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { appBase, oasis } from '../../config'
+import { appBase, oasis, temporalProcessingEnabled } from '../../config'
 import { formatTimestamp } from '../../utils'
 import { CodeList } from '../About'
 import { useDataStore } from "../DataStore"
@@ -461,6 +462,12 @@ function UploadOverview(props) {
       .catch(raiseError)
   }
 
+  const handleStopProcessing = () => {
+    api.post(`/uploads/${uploadId}/action/stop-processing`)
+      .then(results => updateUpload({upload: results.data}))
+      .catch(raiseError)
+  }
+
   const handleDelete = () => {
     api.delete(`/uploads/${uploadId}`)
       .then(results => updateUpload({upload: results.data}))
@@ -493,15 +500,17 @@ function UploadOverview(props) {
         <Grid item>
           <Box display={'flex'}>
             <UploadSearchMenu uploadId={uploadId}/>
-            <IconButton
-              onClick={() => setOpenEditMembersDialog(true)}
-              disabled={!isWriter || isProcessing}
-              data-testid='edit-members-action'
-            >
-              <Tooltip title="Edit upload members">
-                <MembersIcon/>
+            <Tooltip title="Edit upload members">
+              <span>
+                <IconButton
+                  onClick={() => setOpenEditMembersDialog(true)}
+                  disabled={!isWriter || isProcessing}
+                  data-testid='edit-members-action'
+                >
+                  <MembersIcon/>
+                </IconButton>
+              </span>
               </Tooltip>
-            </IconButton>
             <EditMembersDialog open={openEditMembersDialog} setOpen={setOpenEditMembersDialog} />
             <Download
               component={IconButton} tooltip="Download files"
@@ -510,16 +519,28 @@ function UploadOverview(props) {
             >
               <DownloadIcon />
             </Download>
-            <IconButton onClick={handleReload}>
-              <Tooltip title="Reload">
-                <ReloadIcon />
-              </Tooltip>
-            </IconButton>
-            <IconButton disabled={isPublished || !isWriter} onClick={handleReprocess} data-testid='upload-reprocess-action'>
-              <Tooltip title="Reprocess">
-                <ReprocessIcon />
-              </Tooltip>
-            </IconButton>
+            <Tooltip title="Reload">
+              <span>
+                <IconButton onClick={handleReload}>
+                  <ReloadIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Reprocess">
+              <span>
+                <IconButton disabled={isPublished || !isWriter} onClick={handleReprocess} data-testid='upload-reprocess-action'>
+                  <ReprocessIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+            {temporalProcessingEnabled &&
+              <Tooltip title="Stop processing">
+                <span>
+                  <IconButton disabled={isPublished || !isWriter || upload.process_status !== 'PENDING'} onClick={handleStopProcessing} data-testid='upload-stop-processing-action'>
+                    <StopIcon />
+                  </IconButton>
+                </span>
+              </Tooltip>}
             <SourceApiDialogButton maxWidth="lg" fullWidth>
               <SourceApiCall {...apiData} />
             </SourceApiDialogButton>

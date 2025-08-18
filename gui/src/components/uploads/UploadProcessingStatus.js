@@ -23,12 +23,10 @@ import { useUploadPageContext } from './UploadPageContext'
 const useStyles = makeStyles(theme => ({
   root: {
     position: 'absolute',
+    bottom: 0,
     left: 0,
     right: 0,
-    marginTop: -20,
-    margin: -10,
-    padding: 10,
-    paddingTop: 20,
+    padding: theme.spacing(2),
     zIndex: 1000
   }
 }))
@@ -42,8 +40,8 @@ const UploadProcessingStatus = React.memo(function ProcessingStatus() {
   }
 
   return (
-    <Slide direction="down" in={isProcessing} mountOnEnter unmountOnExit>
-      <Paper className={classes.root}>
+    <Slide direction="up" in={isProcessing} mountOnEnter unmountOnExit>
+      <Paper className={classes.root} elevation={3}>
         <Page limitedWidth>
           <Grid container spacing={2} alignItems="center">
             <Grid item>
