@@ -1235,5 +1235,10 @@ class EntryArchive(ArchiveSection):
         if not archive.metadata.entry_name and archive.metadata.mainfile:
             archive.metadata.entry_name = os.path.basename(archive.metadata.mainfile)
 
+    def m_update_from_dict(self, data: dict, **kwargs) -> None:
+        super().m_update_from_dict(data, **kwargs)
+        if self.definitions is not None:
+            self.definitions.archive = self
+
 
 m_package.__init_metainfo__()
