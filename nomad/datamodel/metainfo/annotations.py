@@ -316,6 +316,34 @@ class ELNAnnotation(AnnotationModel):
         None,
         description="""
         A dictionary with additional props that are passed to the edit component.
+
+        Examples:
+
+        ```yaml
+        description:
+          type: str
+          m_annotations:
+            eln:
+              component: RichTextEditQuantity
+              props:
+                height: 200
+        time:
+          type: Datetime
+          m_annotations:
+            eln:
+              component: DateTimeEditQuantity
+              props:
+                format: "yyyy-MM-dd HH:mm:ss"
+                views: ["hours", "minutes", "seconds"]
+        search:
+          type: Query
+          m_annotations:
+            eln:
+              component: QueryEditQuantity
+              props:
+                maxData: 30
+                storeInArchive: true
+        ```
     """,
     )
 
