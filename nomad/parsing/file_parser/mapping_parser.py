@@ -1076,13 +1076,16 @@ class MetainfoParser(MappingParser):
                     except Exception:
                         sub_section = None
                     if sub_section is None:
-                        sub_section = section_def.section_cls(
-                            **{
-                                n: val_n.get(n)
-                                for n, q in quantities.items()
-                                if not q.derived and n in val_n
-                            }
-                        )
+                        sub_section = section_def.section_cls()
+                        # sub_section = section_def.section_cls(
+                        #     **{
+                        #         n: val_n.get(n)
+                        #         for n, q in quantities.items()
+                        #         if not q.derived and n in val_n
+                        #     }
+                        # )
+                        if root.m_context:
+                            sub_section.m_root().m_context = root.m_context
                         root.m_add_sub_section(section, sub_section)
                     self.from_dict(val_n, sub_section)
                     if not [
