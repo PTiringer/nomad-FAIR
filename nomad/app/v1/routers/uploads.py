@@ -2942,3 +2942,38 @@ def _check_upload_not_processing(upload: Upload):
             status.HTTP_400_BAD_REQUEST,
             detail='The upload is currently being processed, operation not allowed.',
         )
+
+
+@router.post(
+    '/{upload_id}/action/stop-processing',
+    tags=[APITag.ACTION],
+    summary='Stops the processing of the upload.',
+    response_model=UploadProcDataResponse,
+    responses=create_responses(
+        _upload_not_found, _not_authorized_to_upload, _bad_request
+    ),
+    response_model_exclude_unset=True,
+    response_model_exclude_none=True,
+)
+async def stop_upload_processing(
+    upload_id: str = Path(..., description='The unique id of the upload.'),
+    user: User = Depends(create_user_dependency(required=True)),
+):
+    """
+    Stops the processing of the specified upload.
+    """
+    upload = _get_upload_with_write_access(upload_id, user, include_published=False)
+
+    if not config.temporal.enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='This functionality is only available when temporal is enabled.',
+        )
+    if upload.process_status != ProcessStatus.PENDING:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='This functionality is only available when upload process state is pending.',
+        )
+    upload.stop_processing()
+
+    return UploadProcDataResponse(upload_id=upload_id, data=upload_to_pydantic(upload))
