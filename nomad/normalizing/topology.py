@@ -79,7 +79,7 @@ def get_topology_id(index: int) -> str:
     return f'results/material/topology/{index}'
 
 
-def get_topology_original(atoms=None, archive: EntryArchive = None) -> System:
+def get_topology_original(atoms=None, archive: EntryArchive | None = None) -> System:
     """
     Creates a new topology item for the original structure.
     """
@@ -117,7 +117,7 @@ def get_topology_original(atoms=None, archive: EntryArchive = None) -> System:
 def add_system_info(
     system: System,
     topologies: dict[str, System],
-    masses: list[float] | dict[str, float] = None,
+    masses: list[float] | dict[str, float] | None = None,
 ) -> None:
     """Given a system with minimal information, attempts to add all values than
     can be derived.

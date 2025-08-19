@@ -512,18 +512,18 @@ class ElectronicMethod(ABC):
     def __init__(
         self,
         logger,
-        entry_archive: EntryArchive = None,
+        entry_archive: EntryArchive | None = None,
         methods: list[ArchiveSection] = [None],
-        repr_method: ArchiveSection = None,
-        repr_system: MSection = None,
-        method: Method = None,
+        repr_method: ArchiveSection | None = None,
+        repr_system: MSection | None = None,
+        method: Method | None = None,
         method_def: dict = {},
         method_name: str = config.services.unavailable_value,
         settings_basis_set: RestrictedDict = RestrictedDict(
             mandatory_keys=[None], optional_keys=[None], forbidden_values=[None]
         ),
         functional_long_name: str = '',
-        xs_method: ArchiveSection = None,
+        xs_method: ArchiveSection | None = None,
     ) -> None:
         self._logger = logger
         self._entry_archive = entry_archive

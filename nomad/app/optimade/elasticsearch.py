@@ -111,7 +111,7 @@ class StructureCollection(EntryCollection):
         self,
         es_result: dict,
         response_fields: set[str],
-        upload_files_cache: dict[str, files.UploadFiles] = None,
+        upload_files_cache: dict[str, files.UploadFiles] | None = None,
     ) -> StructureResource:
         if upload_files_cache is None:
             upload_files_cache = {}

@@ -114,10 +114,10 @@ class AggType(str, Enum):
 
 def update_by_query(
     update_script: str,
-    query: Any = None,
-    owner: str = None,
-    user_id: str = None,
-    index: str = None,
+    query: Any | None = None,
+    owner: str | None = None,
+    user_id: str | None = None,
+    index: str | None = None,
     refresh: bool = False,
     **kwargs,
 ):
@@ -165,8 +165,8 @@ def update_by_query(
 
 def delete_by_query(
     query: dict,
-    owner: str = None,
-    user_id: str = None,
+    owner: str | None = None,
+    user_id: str | None = None,
     update_materials: bool = False,
     refresh: bool = False,
 ):
@@ -254,7 +254,7 @@ def index_materials(entries: EntryArchive | list[EntryArchive], **kwargs):
 
 
 # TODO this depends on how we merge section metadata
-def publish(entries: Iterable[EntryMetadata], index: str = None) -> int:
+def publish(entries: Iterable[EntryMetadata], index: str | None = None) -> int:
     """
     Publishes the given entries based on their entry metadata. Sets publishes to true,
     and updates most user provided metadata with a partial update. Returns the number
@@ -267,7 +267,7 @@ def publish(entries: Iterable[EntryMetadata], index: str = None) -> int:
 
 def update_metadata(
     entries: Iterable[EntryMetadata],
-    index: str = None,
+    index: str | None = None,
     update_materials: bool = False,
     refresh: bool = False,
     **kwargs,
@@ -320,7 +320,9 @@ def delete_upload(upload_id: str, refresh: bool = False, **kwargs):
         _refresh()
 
 
-def delete_entry(entry_id: str, index: str = None, refresh: bool = False, **kwargs):
+def delete_entry(
+    entry_id: str, index: str | None = None, refresh: bool = False, **kwargs
+):
     """
     Deletes the given entry.
     """
@@ -441,7 +443,7 @@ def _es_to_api_pagination(
 
     # For dynamic YAML quantities the field name is normalized to not include
     # the data type
-    request_pagination = pagination.dict()
+    request_pagination = pagination.model_dump()
     if order_quantity.dynamic:
         request_pagination['order_by'] = order_quantity.qualified_name
 
@@ -539,7 +541,7 @@ def _es_to_entry_dict(
 
 def _owner_es_query(
     owner: str,
-    user_id: str = None,
+    user_id: str | None = None,
     doc_type: DocumentType = entry_type,
 ):
     def query(query_type='term', **kwargs):
@@ -637,7 +639,9 @@ def get_definition(path):
 
 
 def validate_quantity(
-    quantity_name: str, doc_type: DocumentType = None, loc: list[str] = None
+    quantity_name: str,
+    doc_type: DocumentType | None = None,
+    loc: list[str] | None = None,
 ) -> SearchQuantity:
     """
     Validates the given quantity name against the given document type.
@@ -694,7 +698,7 @@ def validate_quantity(
 
 
 def normalize_api_query(
-    query: Query, doc_type: DocumentType, prefix: str = None
+    query: Query, doc_type: DocumentType, prefix: str | None = None
 ) -> Query:
     """
     Normalizes the given query. Should be applied before _api_to_es_query, which
@@ -852,7 +856,10 @@ def remove_quantity_from_query(query: Query, quantity: str, prefix=None):
 
 
 def _api_to_es_query(
-    query: Query, doc_type: DocumentType, owner_query: EsQuery, prefix: str = None
+    query: Query,
+    doc_type: DocumentType,
+    owner_query: EsQuery,
+    prefix: str | None = None,
 ) -> EsQuery:
     """
     Creates an ES query based on the API's query model. This needs to be a normalized
@@ -966,7 +973,7 @@ def _api_to_es_query(
 
 
 def validate_pagination(
-    pagination: Pagination, doc_type: DocumentType, loc: list[str] = None
+    pagination: Pagination, doc_type: DocumentType, loc: list[str] | None = None
 ):
     order_quantity = None
     if pagination.order_by is not None:
@@ -1003,7 +1010,7 @@ def validate_pagination(
 
 
 def _api_to_es_sort(
-    pagination: Pagination, doc_type: DocumentType, loc: list[str] = None
+    pagination: Pagination, doc_type: DocumentType, loc: list[str] | None = None
 ) -> tuple[dict[str, Any], SearchQuantity, str]:
     """
     Creates an ES sort based on the API's pagination model.
@@ -1286,7 +1293,7 @@ def _api_to_es_aggregation(
         if agg.offset is not None:
             params['offset'] = agg.offset
         if agg.extended_bounds is not None:
-            params['extended_bounds'] = agg.extended_bounds.dict()
+            params['extended_bounds'] = agg.extended_bounds.model_dump()
         es_agg = es_aggs.bucket(
             agg_name,
             A(
@@ -1346,7 +1353,7 @@ def _es_to_api_aggregation(
     the given aggregation.
     """
     es_aggs = es_response.aggs
-    aggregation_dict = agg.dict(by_alias=True)
+    aggregation_dict = agg.model_dump(by_alias=True)
     filtered_agg_name = f'agg:{name}:filtered'
     if filtered_agg_name in es_response.aggs:
         es_aggs = es_aggs[f'agg:{name}:filtered']
@@ -1567,7 +1574,7 @@ def _buckets_to_interval(
     owner: str = 'public',
     query: Query | EsQuery = None,
     aggregations: dict[str, Aggregation] = {},
-    user_id: str = None,
+    user_id: str | None = None,
     index: Index = entry_index,
 ) -> tuple[dict[str, Aggregation], dict[str, HistogramAggregation], dict[str, float]]:
     """Converts any histogram aggregations with the number of buckets into a
@@ -1675,10 +1682,10 @@ def _buckets_to_interval(
 def search(
     owner: str = 'public',
     query: Query | EsQuery = None,
-    pagination: MetadataPagination = None,
-    required: MetadataRequired = None,
+    pagination: MetadataPagination | None = None,
+    required: MetadataRequired | None = None,
     aggregations: dict[str, Aggregation] = {},
-    user_id: str = None,
+    user_id: str | None = None,
     index: Index = entry_index,
 ) -> MetadataResponse:
     # If histogram aggregations only provide the number of buckets, we need to
@@ -1874,9 +1881,9 @@ def search_iterator(
     owner: str = 'public',
     query: Query | EsQuery = None,
     order_by: str = 'entry_id',
-    required: MetadataRequired = None,
+    required: MetadataRequired | None = None,
     aggregations: dict[str, Aggregation] = {},
-    user_id: str = None,
+    user_id: str | None = None,
     index: Index = entry_index,
 ) -> Iterator[dict[str, Any]]:
     """

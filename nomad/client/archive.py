@@ -63,7 +63,7 @@ def run_async(func, *args, **kwargs):
 
 
 def _collect(
-    required, parent_section: mi.Section = None, parent_path: str = None
+    required, parent_section: mi.Section | None = None, parent_path: str | None = None
 ) -> set:
     """
     Flatten required quantities for uncoupled query
@@ -142,15 +142,15 @@ class ArchiveQuery:
     def __init__(
         self,
         owner: str = 'visible',
-        query: dict = None,
-        required: dict = None,
-        url: str = None,
-        after: str = None,
+        query: dict | None = None,
+        required: dict | None = None,
+        url: str | None = None,
+        after: str | None = None,
         results_max: int = 1000,
         page_size: int = 100,
         batch_size: int = 10,
-        username: str = None,
-        password: str = None,
+        username: str | None = None,
+        password: str | None = None,
         retry: int = 1,
         sleep_time: float = 4.0,
         from_api: bool = False,
@@ -570,7 +570,7 @@ class ArchiveQuery:
 
     def entries_to_dataframe(
         self,
-        keys_to_filter: list[str] = None,
+        keys_to_filter: list[str] | None = None,
         resolve_references: bool = False,
         query_selection: str | list[str] = 'last',
     ):

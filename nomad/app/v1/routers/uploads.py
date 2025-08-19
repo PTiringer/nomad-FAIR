@@ -315,14 +315,14 @@ entry_proc_data_pagination_parameters = parameter_dependency_from_model(
 
 
 class UploadProcDataResponse(BaseModel):
-    upload_id: str = Field(
+    upload_id: str | None = Field(
         None,
         description=strip(
             """
         Unique id of the upload."""
         ),
     )
-    data: UploadProcData = Field(
+    data: UploadProcData | None = Field(
         None,
         description=strip(
             """
@@ -386,7 +386,7 @@ upload_proc_data_query_parameters = parameter_dependency_from_model(
 class UploadProcDataQueryResponse(BaseModel):
     query: UploadProcDataQuery = Field()
     pagination: PaginationResponse = Field()
-    data: list[UploadProcData] = Field(
+    data: list[UploadProcData] | None = Field(
         None,
         description=strip(
             """
@@ -403,7 +403,7 @@ class EntryProcDataResponse(BaseModel):
 
 class EntryProcDataQueryResponse(BaseModel):
     pagination: PaginationResponse = Field()
-    processing_successful: int = Field(
+    processing_successful: int | None = Field(
         None,
         description=strip(
             """
@@ -411,7 +411,7 @@ class EntryProcDataQueryResponse(BaseModel):
         """
         ),
     )
-    processing_failed: int = Field(
+    processing_failed: int | None = Field(
         None,
         description=strip(
             """
@@ -419,7 +419,7 @@ class EntryProcDataQueryResponse(BaseModel):
         """
         ),
     )
-    upload: UploadProcData = Field(
+    upload: UploadProcData | None = Field(
         None,
         description=strip(
             """
@@ -427,7 +427,7 @@ class EntryProcDataQueryResponse(BaseModel):
         """
         ),
     )
-    data: list[EntryProcData] = Field(
+    data: list[EntryProcData] | None = Field(
         None,
         description=strip(
             """
@@ -527,14 +527,14 @@ class ProcessingData(BaseModel):
 
 
 class PutRawFileResponse(BaseModel):
-    upload_id: str = Field(
+    upload_id: str | None = Field(
         None,
         description=strip(
             """
         Unique id of the upload."""
         ),
     )
-    data: UploadProcData = Field(
+    data: UploadProcData | None = Field(
         None,
         description=strip(
             """
@@ -895,8 +895,8 @@ async def get_upload_entries(
     ).query
     metadata_entries = search(
         pagination=MetadataPagination(page_size=len(entries)),
-        owner='admin' if user and user.is_admin else 'visible',
-        user_id=user.user_id if user else None,
+        owner='admin' if user is not None and user.is_admin else 'visible',
+        user_id=user.user_id if user is not None else None,
         query=metadata_entries_query,
     )
     metadata_entries_map = {
@@ -1541,7 +1541,7 @@ async def put_upload_raw_path(
             response = PutRawFileResponse(
                 upload_id=upload_id, data=upload_to_pydantic(upload)
             )
-            response_text = response.json()
+            response_text = response.model_dump_json()
             media_type = 'application/json'
         else:
             response_text = _thank_you_message
@@ -1607,7 +1607,8 @@ async def put_upload_raw_path(
         )
 
         return StreamingResponse(
-            create_stream_from_string(response.json()), media_type='application/json'
+            create_stream_from_string(response.model_dump_json()),
+            media_type='application/json',
         )
     except HTTPException:
         raise
@@ -1814,7 +1815,7 @@ async def post_upload(
             Specifies the name of the file, when using method 2."""
         ),
     ),
-    upload_name: str = FastApiQuery(
+    upload_name: str | None = FastApiQuery(
         None,
         description=strip(
             """
@@ -1961,7 +1962,7 @@ async def post_upload(
         upload_proc_data_response = UploadProcDataResponse(
             upload_id=upload_id, data=upload_to_pydantic(upload)
         )
-        response_text = upload_proc_data_response.json()
+        response_text = upload_proc_data_response.model_dump_json()
         media_type = 'application/json'
     else:
         response_text = _thank_you_message
@@ -2513,8 +2514,8 @@ async def post_upload_bundle(
         )
     )
 
-    bundle_importer: BundleImporter = None
-    bundle_path: str = None
+    bundle_importer: BundleImporter | None = None
+    bundle_path: str | None = None
     method = None
 
     if local_path:
@@ -2555,7 +2556,9 @@ async def post_upload_bundle(
         # Import the bundle using the unified method
         upload.import_bundle(
             bundle_path=bundle_path,
-            import_settings=import_settings.dict(),
+            import_settings=import_settings.model_dump()
+            if import_settings is not None
+            else {},
             embargo_length=embargo_length,
         )
 
@@ -2900,7 +2903,7 @@ def upload_to_pydantic(
     upload: Upload, *, include_total_count: bool = True
 ) -> UploadProcData:
     """Converts the mongo db object to an UploadProcData object."""
-    pydantic_upload = UploadProcData.from_orm(upload)
+    pydantic_upload = UploadProcData.model_validate(upload)
     if include_total_count:
         pydantic_upload.entries = upload.total_entries_count
     try:
@@ -2919,7 +2922,7 @@ def entry_to_pydantic(
     Converts the mongo db object to an EntryProcData object, and optionally also adds metadata
     from ES
     """
-    rv = EntryProcData.from_orm(entry)
+    rv = EntryProcData.model_validate(entry)
     if add_es_metadata:
         # load entries's metadata from search
         metadata_entries = search(

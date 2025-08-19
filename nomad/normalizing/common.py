@@ -126,8 +126,8 @@ def lattice_parameters_from_array(lattice_vectors: np.ndarray) -> LatticeParamet
 
 def cell_from_ase_atoms(
     atoms: Atoms,
-    masses: list[float] | dict[Any, Any] = None,
-    atom_labels: list[str] = None,
+    masses: list[float] | dict[Any, Any] | None = None,
+    atom_labels: list[str] | None = None,
 ) -> Cell:
     """Extracts Cell metainfo from the given ASE Atoms.
     Undefined angle values are not stored.
@@ -165,7 +165,7 @@ def cell_from_ase_atoms(
 
 
 def structure_from_ase_atoms(
-    system: Atoms, wyckoff_sets: list[WyckoffSetMatID] = None, logger=None
+    system: Atoms, wyckoff_sets: list[WyckoffSetMatID] | None = None, logger=None
 ) -> Structure:
     """Returns a populated NOMAD Structure instance from an ase.Atoms-object.
 

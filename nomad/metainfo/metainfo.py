@@ -176,9 +176,9 @@ class MProxy:
     def __init__(
         self,
         m_proxy_value: str | int,
-        m_proxy_section: MSection = None,
-        m_proxy_context: Context = None,
-        m_proxy_type: Reference = None,
+        m_proxy_section: MSection | None = None,
+        m_proxy_context: Context | None = None,
+        m_proxy_type: Reference | None = None,
     ):
         self.m_proxy_value = m_proxy_value
         self.m_proxy_section = m_proxy_section
@@ -936,9 +936,11 @@ class MSection(metaclass=MObjectMeta):
     .. automethod:: m_to_json
     """
 
-    m_def: Section = None
+    m_def: Section | None = None
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+    def __init__(
+        self, m_def: Section | None = None, m_context: Context | None = None, **kwargs
+    ):
         self.m_def: Section = m_def
         self.m_parent: MSection | None = None
         self.m_parent_sub_section: SubSection | None = None
@@ -1661,7 +1663,7 @@ class MSection(metaclass=MObjectMeta):
     def m_create(
         self,
         section_cls: type[MSectionBound],
-        sub_section_def: SubSection = None,
+        sub_section_def: SubSection | None = None,
         **kwargs,
     ) -> MSectionBound:
         """Creates a section instance and adds it to this section provided there is a
@@ -1774,10 +1776,10 @@ class MSection(metaclass=MObjectMeta):
         include_defaults: bool = False,
         include_derived: bool = False,
         resolve_references: bool = False,
-        categories: list[Category | type[MCategory]] = None,
-        include: TypingCallable[[Definition, MSection], bool] = None,
-        exclude: TypingCallable[[Definition, MSection], bool] = None,
-        transform: TypingCallable[[Definition, MSection, Any, str], Any] = None,
+        categories: list[Category | type[MCategory]] | None = None,
+        include: TypingCallable[[Definition, MSection], bool] | None = None,
+        exclude: TypingCallable[[Definition, MSection], bool] | None = None,
+        transform: TypingCallable[[Definition, MSection, Any, str], Any] | None = None,
         subsection_as_dict: bool = False,
     ) -> dict:
         """
@@ -2227,8 +2229,8 @@ class MSection(metaclass=MObjectMeta):
     def from_dict(
         dct: dict[str, Any],
         cls: type[MSectionBound] = None,
-        m_parent: MSection = None,
-        m_context: Context = None,
+        m_parent: MSection | None = None,
+        m_context: Context | None = None,
         **kwargs,
     ) -> MSectionBound:
         """Creates a section from the given serializable data dictionary.
@@ -2289,7 +2291,7 @@ class MSection(metaclass=MObjectMeta):
         self,
         depth_first: bool = False,
         include_self: bool = False,
-        stop: TypingCallable[[MSection], bool] = None,
+        stop: TypingCallable[[MSection], bool] | None = None,
     ) -> Iterable[MSection]:
         """
         Returns an iterable over all sub and sub subsections.
@@ -2371,7 +2373,7 @@ class MSection(metaclass=MObjectMeta):
                     yield sub_section
 
     def m_path(
-        self, *, quantity_def: Quantity = None, package_path: bool = False
+        self, *, quantity_def: Quantity | None = None, package_path: bool = False
     ) -> str:
         """
         Returns the path of this section or the given quantity within the section hierarchy.
@@ -2502,7 +2504,7 @@ class MSection(metaclass=MObjectMeta):
 
         return _check_definition_id(target_id, cast(MSectionBound, section))
 
-    def m_get_annotation(self, key: str | type[T], default: T = None) -> T:
+    def m_get_annotation(self, key: str | type[T], default: T | None = None) -> T:
         return self.m_get_annotations(key, default)
 
     def m_get_annotations(self, key: str | type, default=None, as_list: bool = False):
@@ -2712,7 +2714,7 @@ class MSection(metaclass=MObjectMeta):
 
 
 class MCategory(metaclass=MObjectMeta):
-    m_def: Category = None
+    m_def: Category | None = None
 
     @classmethod
     def __init_cls__(cls):
@@ -4279,7 +4281,7 @@ class Category(Definition):
         self.definitions: set[Definition] = set()
 
     def get_all_definitions(
-        self, definitions: set[Definition] = None
+        self, definitions: set[Definition] | None = None
     ) -> set[Definition]:
         """
         Helper method that collects all non category definitions, including those

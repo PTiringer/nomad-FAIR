@@ -157,13 +157,13 @@ def match_parser(
 def run_parser(
     mainfile_path: str,
     parser: Parser,
-    mainfile_keys: list[str] = None,
+    mainfile_keys: list[str] | None = None,
     logger=None,
     server_context: bool = False,
-    username: str = None,
-    password: str = None,
+    username: str | None = None,
+    password: str | None = None,
     *,
-    recursive_kwargs: dict = None,
+    recursive_kwargs: dict | None = None,
 ) -> list[EntryArchive]:
     """
     Parses a file, given the path, the parser, and mainfile_keys, as returned by
@@ -227,7 +227,9 @@ def run_parser(
 
 parsers = []
 config.load_plugins()
-enabled_entry_points = config.plugins.entry_points.filtered_values()
+enabled_entry_points = []
+if config.plugins is not None:
+    enabled_entry_points = config.plugins.entry_points.filtered_values()
 
 # Load parsers using old plugin mechanism
 parsers.extend(

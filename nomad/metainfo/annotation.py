@@ -70,7 +70,7 @@ class AnnotationModel(Annotation, BaseModel):
         exclude=True,
     )
 
-    m_error: str = Field(
+    m_error: str | None = Field(
         None, description='Holds a potential validation error.', exclude=True
     )
 

@@ -399,7 +399,7 @@ class ArchiveReadCounter:
 
 class ArchiveItem:  # noqa: PLW1641
     def __init__(
-        self, f: BytesIO, offset: int = 0, *, counter: ArchiveReadCounter = None
+        self, f: BytesIO, offset: int = 0, *, counter: ArchiveReadCounter | None = None
     ):
         self._f: BytesIO = f
         self._offset: int = offset
@@ -432,7 +432,7 @@ class ArchiveItem:  # noqa: PLW1641
     def _read(self, start: int, end: int):
         return Utility.unpackb(self._readb(start, end))
 
-    def _child(self, toc: dict, offset: int = None):
+    def _child(self, toc: dict, offset: int | None = None):
         child_offset: int = offset or self._offset
 
         self._accessed_items += 1
@@ -482,7 +482,7 @@ class ArchiveList(ArchiveItem):
         f: BytesIO,
         offset: int = 0,
         *,
-        counter: ArchiveReadCounter = None,
+        counter: ArchiveReadCounter | None = None,
     ):
         super().__init__(f, offset, counter=counter)
         self._toc: list = toc.get('toc', [])  # if empty, it's a list of small objects
@@ -570,7 +570,7 @@ class ArchiveDict(ArchiveItem):
         f: BytesIO,
         offset: int = 0,
         *,
-        counter: ArchiveReadCounter = None,
+        counter: ArchiveReadCounter | None = None,
     ):
         super().__init__(f, offset, counter=counter)
         self._toc: dict = toc['toc']
@@ -623,7 +623,7 @@ class ArchiveReader(ArchiveItem):
     def __init__(
         self,
         file_or_path: str | BytesIO,
-        counter: ArchiveReadCounter = None,
+        counter: ArchiveReadCounter | None = None,
     ):
         self._file_or_path: str | BytesIO = file_or_path
 

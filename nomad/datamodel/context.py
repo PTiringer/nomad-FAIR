@@ -57,7 +57,7 @@ class Context(MetainfoContext):
     The nomad implementation of a metainfo context.
     """
 
-    def __init__(self, installation_url: str = None):
+    def __init__(self, installation_url: str | None = None):
         # take installation_url and ensure it has no trailing slash
         if installation_url is None:
             self.installation_url = config.api_url(api='api/v1')
@@ -199,7 +199,7 @@ class Context(MetainfoContext):
         raise NotImplementedError()
 
     def load_raw_file(
-        self, path: str, upload_id: str, installation_url: str, url: str = None
+        self, path: str, upload_id: str, installation_url: str, url: str | None = None
     ) -> MSection:
         """Loads a raw file based on the given upload and path. Interpret as metainfo data."""
         raise NotImplementedError()
@@ -365,7 +365,7 @@ class ServerContext(Context):
         return EntryArchive.m_from_dict(archive_dict, m_context=context)
 
     def load_raw_file(
-        self, path: str, upload_id: str, installation_url: str, url: str = None
+        self, path: str, upload_id: str, installation_url: str, url: str | None = None
     ) -> EntryArchive:
         upload_files = self._get_upload_files(upload_id, installation_url)
 
@@ -526,13 +526,13 @@ class ClientContext(Context):
 
     def __init__(
         self,
-        installation_url: str = None,
+        installation_url: str | None = None,
         *,
-        local_dir: str = None,
-        upload_id: str = None,
-        username: str = None,
-        password: str = None,
-        recursive_kwargs: dict = None,
+        local_dir: str | None = None,
+        upload_id: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+        recursive_kwargs: dict | None = None,
         auth=None,
     ):
         super().__init__(
@@ -590,7 +590,7 @@ class ClientContext(Context):
         )
 
     def load_raw_file(
-        self, path: str, upload_id: str, installation_url: str, url: str = None
+        self, path: str, upload_id: str, installation_url: str, url: str | None = None
     ) -> MSection:
         # TODO currently upload_id might be None
         if upload_id is None:

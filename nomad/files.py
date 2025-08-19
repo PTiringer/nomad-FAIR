@@ -311,7 +311,7 @@ class DiskFileSource(BrowsableFileSource):
     relative to the `base_path`.
     """
 
-    def __init__(self, base_path: str, relative_path: str = None):
+    def __init__(self, base_path: str, relative_path: str | None = None):
         assert os.path.isdir(base_path)
         if relative_path:
             assert is_safe_relative_path(relative_path), 'Unsafe relative_path received'

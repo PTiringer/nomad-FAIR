@@ -213,7 +213,10 @@ async def start_tool(
             # TODO
             logger.error('could not create north user', user_id=user.user_id)
 
-    if user.username in config.fs.north_home_user_folder_map.keys():
+    if (
+        config.fs.north_home_user_folder_map is not None
+        and user.username in config.fs.north_home_user_folder_map.keys()
+    ):
         user_home_folder = config.fs.north_home_user_folder_map[user.username]
     else:
         user_home_folder = user.user_id
@@ -237,7 +240,7 @@ async def start_tool(
     upload_query &= Q(publish_time=None)
 
     uploads: list[dict] = []
-    for upload in Upload.objects.filter(upload_query):
+    for upload in Upload.objects.filter(upload_query):  # type: ignore
         if not hasattr(upload.upload_files, 'external_os_path'):
             # In case the files are missing for one reason or another
             logger.info(

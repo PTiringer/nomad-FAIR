@@ -40,10 +40,11 @@ class StaticFiles(StarletteStaticFiles):
         try:
             if_none_match = request_headers['if-none-match']
             match = re.match(StaticFiles.etag_re, if_none_match)
-            if_none_match = match.group(2)
-            etag = response_headers['etag']
-            if if_none_match == etag:
-                return True
+            if match is not None:
+                if_none_match = match.group(2)
+                etag = response_headers['etag']
+                if if_none_match == etag:
+                    return True
         except KeyError:
             pass
 

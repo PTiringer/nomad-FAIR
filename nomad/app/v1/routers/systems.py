@@ -43,7 +43,9 @@ class APITag(str, Enum):
     DEFAULT = 'systems'
 
 
-def write_pdb(atoms: NOMADAtoms, entry_id: str = None, formula: str = None) -> str:
+def write_pdb(
+    atoms: NOMADAtoms, entry_id: str | None = None, formula: str | None = None
+) -> str:
     """For writing a PDB file."""
 
     # Add custom title that contains the entry id.
@@ -81,7 +83,9 @@ def write_pdb(atoms: NOMADAtoms, entry_id: str = None, formula: str = None) -> s
     return content
 
 
-def write_cif(atoms: NOMADAtoms, entry_id: str = None, formula: str = None) -> str:
+def write_cif(
+    atoms: NOMADAtoms, entry_id: str | None = None, formula: str | None = None
+) -> str:
     """For writing a CIF file."""
     # The ASE CIF writer expects a BytesIO, unlike other formats supported by ASE.
     byte_stream = BytesIO()
@@ -96,7 +100,7 @@ def write_cif(atoms: NOMADAtoms, entry_id: str = None, formula: str = None) -> s
     return content
 
 
-def write_xyz(atoms: NOMADAtoms, entry_id: str, formula: str = None) -> str:
+def write_xyz(atoms: NOMADAtoms, entry_id: str, formula: str | None = None) -> str:
     """For writing an XYZ file."""
     stream = StringIO()
     ase_atoms = ase_atoms_from_nomad_atoms(atoms)

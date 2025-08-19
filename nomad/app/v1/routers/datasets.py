@@ -249,7 +249,7 @@ dataset_pagination_parameters = parameter_dependency_from_model(
 
 
 class DatasetsResponse(BaseModel):
-    pagination: PaginationResponse = Field(None)
+    pagination: PaginationResponse | None = Field(None)
     data: list[Dataset] = Field(None)  # type: ignore
 
 
@@ -392,7 +392,7 @@ async def post_datasets(
     # TODO this should be part of a new edit API
     if dataset_type != DatasetType.owned:
         if create.query is not None:
-            dataset.query = create.dict()['query']
+            dataset.query = create.model_dump()['query']
         dataset.entrys = create.entries
         empty = True
     else:
@@ -516,7 +516,7 @@ async def assign_doi(
         )
 
     if dataset.doi is not None:
-        doi = DOI.objects(doi=dataset.doi).first()
+        doi = DOI.objects(doi=dataset.doi).first()  # type: ignore
         if type(doi) is DOI and not (doi.state == 'findable'):
             _delete_dataset(user=user, dataset_id=dataset_id, dataset=dataset)
             raise HTTPException(

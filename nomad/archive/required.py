@@ -143,7 +143,7 @@ class RequiredReader:
     def __init__(
         self,
         required: dict | str,
-        root_section_def: Section = None,
+        root_section_def: Section | None = None,
         resolve_inplace: bool = False,
         user=None,
     ):
@@ -497,8 +497,8 @@ class RequiredReader:
         def __resolve_definition_in_archive(
             _root: dict,
             _path_stack: list,
-            _upload_id: str = None,
-            _entry_id: str = None,
+            _upload_id: str | None = None,
+            _entry_id: str | None = None,
         ):
             custom_def_package: Package = Package.m_from_dict(_root, m_context=context)
             custom_def_package.entry_id = _entry_id

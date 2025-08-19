@@ -295,7 +295,12 @@ class UserManagement:
     def search_user(self, query: str):
         raise NotImplementedError()
 
-    def get_user(self, user_id: str = None, username: str = None, email: str = None):
+    def get_user(
+        self,
+        user_id: str | None = None,
+        username: str | None = None,
+        email: str | None = None,
+    ):
         """
         Retrives all available information about a user from the local keycloak admin
         interface or the central NOMAD installation. This can be used to retrieve
@@ -306,7 +311,7 @@ class UserManagement:
 
 
 class OasisUserManagement(UserManagement):
-    def __init__(self, users_api_url: str = None):
+    def __init__(self, users_api_url: str | None = None):
         if users_api_url:
             self._users_api_url = users_api_url
         else:
@@ -335,7 +340,12 @@ class OasisUserManagement(UserManagement):
 
         return list(self.__user_from_api_user(user) for user in response.json()['data'])
 
-    def get_user(self, user_id: str = None, username: str = None, email: str = None):
+    def get_user(
+        self,
+        user_id: str | None = None,
+        username: str | None = None,
+        email: str | None = None,
+    ):
         import requests
 
         kwargs = {}
@@ -506,7 +516,12 @@ class KeycloakUserManagement(UserManagement):
             for keycloak_user in keycloak_results
         ]
 
-    def get_user(self, user_id: str = None, username: str = None, email: str = None):
+    def get_user(
+        self,
+        user_id: str | None = None,
+        username: str | None = None,
+        email: str | None = None,
+    ):
         if username is not None and user_id is None:
             with utils.lnr(logger, 'Could not use keycloak admin client'):
                 user_id = self._admin_client.get_user_id(username)

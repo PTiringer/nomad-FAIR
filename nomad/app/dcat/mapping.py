@@ -53,7 +53,9 @@ class Mapping:
 
         self.persons = {}
 
-    def map_catalog(self, entries, total: int, after: str, modified_since, slim=True):
+    def map_catalog(
+        self, entries, total: int, after: str | None, modified_since, slim=True
+    ):
         def uri_ref(after):
             kwargs = dict()
             if after is not None:

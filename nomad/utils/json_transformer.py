@@ -256,7 +256,7 @@ class Transformer:
     def transform(
         self,
         source_data: dict[str, Any],
-        mapping_name: str = None,
+        mapping_name: str | None = None,
         target_data: Any | None = None,
     ) -> Any:
         """
