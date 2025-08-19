@@ -33,7 +33,7 @@ _bytes_per_block = _entries_per_block * _toc_item_size
 
 
 def unpackb(o):
-    return msgspec.msgpack.decode(o)
+    return msgspec.msgpack.decode(o)  # type: ignore
 
 
 def _decode(position: bytes) -> tuple[int, int]:

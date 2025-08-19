@@ -101,7 +101,7 @@ def clean(dry, skip_entries, skip_fs, skip_es, staging_too, force):
         to_delete = list(
             path
             for upload, path in upload_dirs
-            if processing.Upload.objects(upload_id=upload).first() is None
+            if processing.Upload.objects(upload_id=upload).first() is None  # type: ignore
         )
 
         if not dry and len(to_delete) > 0:
@@ -147,7 +147,7 @@ def clean(dry, skip_entries, skip_fs, skip_es, staging_too, force):
         to_delete = list(
             (bucket.value, bucket.count)
             for bucket in es_upload_buckets
-            if processing.Upload.objects(upload_id=bucket.value).first() is None
+            if processing.Upload.objects(upload_id=bucket.value).first() is None  # type: ignore
         )
 
         entries = 0

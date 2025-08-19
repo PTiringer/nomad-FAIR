@@ -352,7 +352,7 @@ class ServerContext(Context):
                 )
             from nomad.processing import Entry
 
-            if entry := Entry.objects(entry_id=entry_id).first():
+            if entry := Entry.objects(entry_id=entry_id).first():  # type: ignore
                 return self.load_raw_file(entry.mainfile, upload_id, installation_url)
             raise MetainfoReferenceError(f'Could not load {entry_id}.')
 

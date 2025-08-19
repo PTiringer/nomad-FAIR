@@ -183,7 +183,7 @@ class Keycloak:
                 self.__public_keys = {}
                 for jwk in jwks['keys']:
                     kid = jwk['kid']
-                    self.__public_keys[kid] = jwt.algorithms.RSAAlgorithm.from_jwk(
+                    self.__public_keys[kid] = jwt.algorithms.RSAAlgorithm.from_jwk(  # type: ignore
                         json.dumps(jwk)
                     )
             except Exception as e:

@@ -525,7 +525,7 @@ class RequiredReader:
                 entry_id = match.groups()[0]
                 from nomad.processing import Entry
 
-                upload_id = Entry.objects(entry_id=entry_id).first().upload_id
+                upload_id = Entry.objects(entry_id=entry_id).first().upload_id  # type: ignore
                 archive = self._retrieve_archive('archive', entry_id, upload_id)
                 return __resolve_definition_in_archive(
                     to_json(archive['definitions']),
@@ -646,7 +646,7 @@ class RequiredReader:
             # get the corresponding entry id
             from nomad.processing import Entry
 
-            entry: Entry = Entry.objects(
+            entry: Entry = Entry.objects(  # type: ignore
                 upload_id=upload_id, mainfile=id_or_path
             ).first()
             if not entry:

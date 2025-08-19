@@ -87,9 +87,9 @@ def create_collections_if_needed(db_dst: Database):
     MongoDocument class.
     """
     if 'upload' not in db_dst.list_collection_names():
-        Upload.objects()
+        Upload.objects()  # type: ignore
     if 'entry' not in db_dst.list_collection_names():
-        Entry.objects()
+        Entry.objects()  # type: ignore
     if 'dataset' not in db_dst.list_collection_names():
         Dataset.m_def.a_mongo.objects()
 

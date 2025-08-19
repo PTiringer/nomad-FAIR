@@ -285,7 +285,7 @@ class GraphNode:
         if kind == 'raw':
             # it is a path to raw file
             # get the corresponding entry id
-            other_entry: Entry = Entry.objects(
+            other_entry: Entry = Entry.objects(  # type: ignore
                 upload_id=other_upload_id, mainfile=id_or_file
             ).first()
             if not other_entry:
@@ -1048,7 +1048,7 @@ class GeneralReader:
             return entry_id
 
         def _retrieve():
-            return Entry.objects(entry_id=entry_id).first()
+            return Entry.objects(entry_id=entry_id).first()  # type: ignore
 
         return self._overwrite_entry(await asyncio.to_thread(_retrieve))
 
@@ -1260,7 +1260,7 @@ class ArchiveLikeReader(GeneralReader):
                 custom_package.upload_id = _upload_id
                 custom_package.init_metainfo()
                 if (
-                    upload := Upload.objects(upload_id=_upload_id).first()
+                    upload := Upload.objects(upload_id=_upload_id).first()  # type: ignore
                 ) is not None and upload.published:
                     _cache_package(cache_key, custom_package)
 
@@ -1280,7 +1280,7 @@ class ArchiveLikeReader(GeneralReader):
             if m_def.startswith('entry_id:'):
                 tokens = m_def[9:].split('.')
                 entry_id = tokens.pop(0)
-                entry_record = Entry.objects(entry_id=entry_id).first()
+                entry_record = Entry.objects(entry_id=entry_id).first()  # type: ignore
                 upload_id = entry_record.upload_id
                 if (
                     cached_package := _fetch_package(f'{upload_id}:{entry_id}')
@@ -1305,11 +1305,11 @@ class ArchiveLikeReader(GeneralReader):
 class MongoReader(GeneralReader):
     @functools.cached_property
     def entries(self):
-        return Entry.objects(upload_id__in=[v.upload_id for v in self.uploads])
+        return Entry.objects(upload_id__in=[v.upload_id for v in self.uploads])  # type: ignore
 
     @functools.cached_property
     def uploads(self):
-        return Upload.objects(
+        return Upload.objects(  # type: ignore
             Q(main_author=self.auth_user_id)
             | Q(reviewers=self.auth_user_id)
             | Q(coauthors=self.auth_user_id)
@@ -1951,7 +1951,7 @@ class UploadReader(MongoReader):
 
     @functools.cached_property
     def entries(self):
-        return Entry.objects(upload_id=self.target_upload_id)
+        return Entry.objects(upload_id=self.target_upload_id)  # type: ignore
 
     # noinspection PyMethodOverriding
     async def read(self, upload_id: str) -> dict:  # type: ignore
@@ -2002,11 +2002,11 @@ class DatasetReader(MongoReader):
 
     @functools.cached_property
     def entries(self):
-        return Entry.objects(datasets=self.target_dataset_id)
+        return Entry.objects(datasets=self.target_dataset_id)  # type: ignore
 
     @functools.cached_property
     def uploads(self):
-        return Upload.objects(
+        return Upload.objects(  # type: ignore
             upload_id__in=list({v['upload_id'] for v in self.entries})
         )
 
@@ -2142,7 +2142,7 @@ class UserReader(MongoReader):
 
     @functools.cached_property
     def entries(self):
-        return Entry.objects(upload_id__in=[v.upload_id for v in self.uploads])
+        return Entry.objects(upload_id__in=[v.upload_id for v in self.uploads])  # type: ignore
 
     @functools.cached_property
     def uploads(self):
@@ -2159,7 +2159,7 @@ class UserReader(MongoReader):
                 | Q(coauthors=self.auth_user_id)
             )
 
-        return Upload.objects(mongo_query)
+        return Upload.objects(mongo_query)  # type: ignore
 
     @functools.cached_property
     def datasets(self):
@@ -2489,7 +2489,7 @@ class FileSystemReader(GeneralReader):
     async def _offload(
         self, upload_id: str, main_file: str, required, parent_config: RequestConfig
     ) -> dict:
-        if entry := Entry.objects(upload_id=upload_id, mainfile=main_file).first():
+        if entry := Entry.objects(upload_id=upload_id, mainfile=main_file).first():  # type: ignore  # type: ignore
             with EntryReader(
                 required,
                 user=self.user,

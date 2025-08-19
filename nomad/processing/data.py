@@ -863,7 +863,7 @@ class MetadataEditRequestHandler:
                 yield Entry.get(result['entry_id'])
         else:
             # We have no query. Return all entries for the upload
-            yield from Entry.objects(upload_id=upload.upload_id)
+            yield from Entry.objects(upload_id=upload.upload_id)  # type: ignore
 
     def _verified_file_metadata(self, path_dir: str) -> dict[str, Any]:
         """
@@ -1334,7 +1334,7 @@ class Entry(Proc):
 
         # Get child entries, if any
         self._child_entries = list(
-            Entry.objects(
+            Entry.objects(  # type: ignore
                 upload_id=self.upload_id, mainfile=self.mainfile, mainfile_key__ne=None
             )
         )
@@ -1808,7 +1808,7 @@ class Upload(Proc):
     @classmethod
     def user_uploads(cls, user: datamodel.User, **kwargs) -> Sequence['Upload']:
         """Returns all uploads for the given user. Kwargs are passed to mongo query."""
-        return cls.objects(main_author=str(user.user_id), **kwargs)
+        return cls.objects(main_author=str(user.user_id), **kwargs)  # type: ignore
 
     @property
     def main_author_user(self) -> datamodel.User:
@@ -1860,7 +1860,7 @@ class Upload(Proc):
 
     def delete(self):
         """Deletes this upload and its entries."""
-        Entry.objects(upload_id=self.upload_id).delete()
+        Entry.objects(upload_id=self.upload_id).delete()  # type: ignore
         super().delete()
 
     def delete_upload_local(self):
@@ -2362,7 +2362,7 @@ class Upload(Proc):
         # Process entries, if matched; remove existing entries if unmatched.
         old_entries_dict: dict[str, Entry] = {
             e.entry_id: e
-            for e in Entry.objects(upload_id=self.upload_id, mainfile=target_path)
+            for e in Entry.objects(upload_id=self.upload_id, mainfile=target_path)  # type: ignore
         }
         entry_ids_to_delete = set(old_entries_dict.keys())
         main_entry: Entry = None
@@ -2695,7 +2695,7 @@ class Upload(Proc):
                 old_entries = set()
                 processing_entries = []
                 with utils.timer(logger, 'existing entries scanned'):
-                    for entry in Entry.objects(upload_id=self.upload_id):
+                    for entry in Entry.objects(upload_id=self.upload_id):  # type: ignore  # type: ignore  # type: ignore
                         if entry.process_running:
                             processing_entries.append(entry.entry_id)
                         if self._passes_process_filter(
@@ -2734,7 +2734,7 @@ class Upload(Proc):
 
                 with utils.timer(logger, 'storing entry metadata to mongo'):
                     if entries:
-                        Entry.objects.insert(entries)
+                        Entry.objects.insert(entries)  # type: ignore
 
                         # Delete old entries
                     if len(old_entries) > 0:
@@ -2870,7 +2870,7 @@ class Upload(Proc):
         next_entries: list[Entry] = []
         with utils.timer(logger, 'entries processing called'):
             # Determine what the next level is and which entries belongs to this level
-            for entry in Entry.objects(upload_id=self.upload_id, mainfile_key=None):
+            for entry in Entry.objects(upload_id=self.upload_id, mainfile_key=None):  # type: ignore
                 parser = parser_dict.get(entry.parser_name)
                 if parser:
                     level = parser.level
@@ -3125,12 +3125,12 @@ class Upload(Proc):
 
     def get_entry(self, entry_id) -> Entry:
         """Returns the upload entry with the given id or ``None``."""
-        return Entry.objects(upload_id=self.upload_id, entry_id=entry_id).first()
+        return Entry.objects(upload_id=self.upload_id, entry_id=entry_id).first()  # type: ignore
 
     @property
     def processed_entries_count(self) -> int:
         """The number of entries that have finished processing (process_status == SUCCESS | FAILURE)."""
-        return Entry.objects(
+        return Entry.objects(  # type: ignore
             upload_id=self.upload_id,
             process_status__in=[ProcessStatus.SUCCESS, ProcessStatus.FAILURE],
         ).count()
@@ -3138,12 +3138,12 @@ class Upload(Proc):
     @property
     def total_entries_count(self) -> int:
         """The total number of entries for this upload (regardless of process status)."""
-        return Entry.objects(upload_id=self.upload_id).count()
+        return Entry.objects(upload_id=self.upload_id).count()  # type: ignore
 
     @property
     def failed_entries_count(self) -> int:
         """The number of entries with failed processing."""
-        return Entry.objects(
+        return Entry.objects(  # type: ignore
             upload_id=self.upload_id, process_status=ProcessStatus.FAILURE
         ).count()
 
@@ -3156,7 +3156,7 @@ class Upload(Proc):
             end: the end index of the requested page
             order_by: the property to order by
         """
-        query = Entry.objects(upload_id=self.upload_id)[start:end]
+        query = Entry.objects(upload_id=self.upload_id)[start:end]  # type: ignore
         if not order_by:
             return query
         if isinstance(order_by, str):
@@ -3167,7 +3167,7 @@ class Upload(Proc):
     @property
     def successful_entries(self) -> Sequence[Entry]:
         """All successfully processed entries."""
-        return Entry.objects(
+        return Entry.objects(  # type: ignore
             upload_id=self.upload_id, process_status=ProcessStatus.SUCCESS
         )
 
@@ -3181,7 +3181,7 @@ class Upload(Proc):
             # read all entry objects first to avoid missing cursor errors
             yield [
                 entry.full_entry_metadata(self)
-                for entry in list(Entry.objects(upload_id=self.upload_id))
+                for entry in list(Entry.objects(upload_id=self.upload_id))  # type: ignore
             ]
 
         finally:
@@ -3192,9 +3192,9 @@ class Upload(Proc):
         Returns a list of :class:`EntryMetadata` containing the mongo metadata
         only, for all entries of this upload.
         """
-        return [
+        return [  # type: ignore
             entry.mongo_metadata(self)
-            for entry in Entry.objects(upload_id=self.upload_id)
+            for entry in Entry.objects(upload_id=self.upload_id)  # type: ignore
         ]
 
     def edit_upload_metadata(self, edit_request_json: dict[str, Any], user_id: str):
@@ -3300,7 +3300,7 @@ class Upload(Proc):
                 )
 
     def entry_ids(self) -> list[str]:
-        return [entry.entry_id for entry in Entry.objects(upload_id=self.upload_id)]
+        return [entry.entry_id for entry in Entry.objects(upload_id=self.upload_id)]  # type: ignore
 
     def import_bundle(
         self,

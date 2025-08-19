@@ -236,7 +236,7 @@ def _get_user_bearer_token_auth(bearer_token: str) -> User | None:
         )
         if unverified_payload.keys() == {'user', 'exp'}:
             return _get_user_from_simple_token(bearer_token)
-    except jwt.exceptions.DecodeError:
+    except jwt.DecodeError:
         pass  # token could be non-JWT, e.g. for testing
 
     try:

@@ -319,7 +319,7 @@ class Proc(Document):
         return False
 
     def get_logger(self):
-        process = billiard.current_process()  # pylint: disable=no-member
+        process = billiard.current_process()  # type: ignore # pylint: disable=no-member
         worker_id = getattr(process, '_nomad_id', None)
         if worker_id is None:
             worker_id = utils.create_uuid()
