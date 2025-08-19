@@ -53,10 +53,10 @@ class Counter:
 def convert_archive(
     original_path: str,
     *,
-    transform: Callable = None,
+    transform: Callable | None = None,
     overwrite: bool = False,
     delete_old: bool = False,
-    counter: Counter = None,
+    counter: Counter | None = None,
     force_repack: bool = False,
     size_limit: int = -1,
 ):
@@ -168,9 +168,9 @@ def convert_archive(
 def convert_folder(
     folders: str | list[str],
     *,
-    processes: int = os.cpu_count(),
-    transform: Callable = None,
-    if_include: Callable = None,
+    processes: int | None = os.cpu_count(),
+    transform: Callable | None = None,
+    if_include: Callable | None = None,
     overwrite: bool = False,
     delete_old: bool = False,
     force_repack: bool = False,
@@ -248,9 +248,9 @@ def convert_folder(
 def convert_upload(
     uploads: Upload | Iterable[Upload] | str | Iterable[str],
     *,
-    processes: int = os.cpu_count(),
-    transform: Callable = None,
-    if_include: Callable = None,
+    processes: int | None = os.cpu_count(),
+    transform: Callable | None = None,
+    if_include: Callable | None = None,
     overwrite: bool = False,
     delete_old: bool = False,
     force_repack: bool = False,

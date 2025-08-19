@@ -50,7 +50,7 @@ def _create_dataset_url(doi: str) -> str:
     return f'{config.gui_url()}/dataset/doi/{doi}'
 
 
-def edit_doi_url(doi: str, url: str = None):
+def edit_doi_url(doi: str, url: str | None = None):
     """Changes the URL of an already findable DOI."""
     if url is None:
         url = _create_dataset_url(doi)
@@ -92,7 +92,7 @@ def edit_doi_url(doi: str, url: str = None):
         )
 
 
-def _xml(parent, element: str, value: str = None):
+def _xml(parent, element: str, value: str | None = None):
     path = element.split('/')
     el = parent
     for segment in path:

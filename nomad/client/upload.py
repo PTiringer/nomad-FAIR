@@ -25,7 +25,7 @@ from .api import Auth
 def upload_file(
     file_path: str,
     auth: Auth,
-    upload_name: str = None,
+    upload_name: str | None = None,
     local_path: bool = False,
     publish: bool = False,
 ):

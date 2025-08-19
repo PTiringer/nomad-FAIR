@@ -169,7 +169,9 @@ def decode_handle_id(handle_str: str):
     return result
 
 
-def generate_entry_id(upload_id: str, mainfile: str, mainfile_key: str = None) -> str:
+def generate_entry_id(
+    upload_id: str, mainfile: str, mainfile_key: str | None = None
+) -> str:
     """
     Generates an id for an entry.
     Arguments:
@@ -255,7 +257,7 @@ def timer(
     logger,
     event,
     method='info',
-    lnr_event: str = None,
+    lnr_event: str | None = None,
     log_memory: bool = False,
     **kwargs,
 ):
@@ -436,9 +438,9 @@ class RestrictedDict(OrderedDict):
 
     def __init__(
         self,
-        mandatory_keys: Iterable = None,
-        optional_keys: Iterable = None,
-        forbidden_values: Iterable = None,
+        mandatory_keys: Iterable | None = None,
+        optional_keys: Iterable | None = None,
+        forbidden_values: Iterable | None = None,
         lazy: bool = True,
     ):
         """

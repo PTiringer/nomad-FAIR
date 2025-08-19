@@ -232,21 +232,21 @@ class EntriesRaw(WithQuery):
 
 
 class EntryRawDirFile(BaseModel):
-    path: str = Field(None)
-    size: int = Field(None)
+    path: str | None = Field(None)
+    size: int | None = Field(None)
 
 
 class EntryRawDir(BaseModel):
-    entry_id: str = Field(None)
-    upload_id: str = Field(None)
-    mainfile: str = Field(None)
+    entry_id: str | None = Field(None)
+    upload_id: str | None = Field(None)
+    mainfile: str | None = Field(None)
     mainfile_key: str | None = Field(None)
-    files: list[EntryRawDirFile] = Field(None)
+    files: list[EntryRawDirFile] | None = Field(None)
 
 
 class EntriesRawDirResponse(EntriesRawDir):
     pagination: PaginationResponse = Field(None)  # type: ignore
-    data: list[EntryRawDir] = Field(None)
+    data: list[EntryRawDir] | None = Field(None)
 
 
 class EntryRawDirResponse(BaseModel):
@@ -255,25 +255,25 @@ class EntryRawDirResponse(BaseModel):
 
 
 class EntryArchive(BaseModel):
-    entry_id: str = Field(None)
-    upload_id: str = Field(None)
-    parser_name: str = Field(None)
-    archive: dict[str, Any] = Field(None)
+    entry_id: str | None = Field(None)
+    upload_id: str | None = Field(None)
+    parser_name: str | None = Field(None)
+    archive: dict[str, Any] | None = Field(None)
 
 
 class EntriesArchiveResponse(EntriesArchive):
     pagination: PaginationResponse = Field(None)  # type: ignore
-    data: list[EntryArchive] = Field(None)
+    data: list[EntryArchive] | None = Field(None)
 
 
 class EntryArchiveResponse(EntryArchiveRequest):
     entry_id: str = Field(...)
-    data: EntryArchive = Field(None)
+    data: EntryArchive | None = Field(None)
 
 
 class EntryMetadataResponse(BaseModel):
-    entry_id: str = Field(None)
-    required: MetadataRequired = Field(None)
+    entry_id: str | None = Field(None)
+    required: MetadataRequired | None = Field(None)
     data: Any = Field(None, description=strip("""The entry metadata as dictionary."""))
 
 
@@ -319,10 +319,10 @@ class EntryMetadataEdit(WithQuery):
 
 
 class EntryMetadataEditResponse(EntryMetadataEdit):
-    success: bool = Field(
+    success: bool | None = Field(
         None, description='If the overall edit can/could be done. Only in API response.'
     )
-    message: str = Field(
+    message: str | None = Field(
         None,
         description='A message that details the overall edit result. Only in API response.',
     )
@@ -528,7 +528,7 @@ async def post_entries_metadata_query(
     and aggregated data over all search results.
     """
     res = perform_search(
-        owner=data.owner,
+        owner=data.owner if data.owner is not None else Owner.public,
         query=data.query,
         pagination=data.pagination,
         required=data.required,
@@ -763,7 +763,9 @@ def _answer_entries_raw_request(owner: Owner, query: Query, files: Files, user: 
                 re_pattern=files_params.re_pattern,
                 recursive=False,
                 create_manifest_file=True,
-                compress=files_params.compress,
+                compress=files_params.compress
+                if files_params.compress is not None
+                else False,
             ),
             headers=browser_download_headers(
                 filename='raw_files.zip', media_type='application/zip'
@@ -808,7 +810,12 @@ async def post_entries_rawdir_query(
     user: User = Depends(create_user_dependency()),
 ):
     return _answer_entries_rawdir_request(
-        owner=data.owner, query=data.query, pagination=data.pagination, user=user
+        owner=data.owner if data.owner is not None else Owner.public,
+        query=data.query,
+        pagination=data.pagination
+        if data.pagination is not None
+        else MetadataPagination(),
+        user=user,
     )
 
 
@@ -829,7 +836,10 @@ async def get_entries_rawdir(
     user: User = Depends(create_user_dependency()),
 ):
     res = _answer_entries_rawdir_request(
-        owner=with_query.owner, query=with_query.query, pagination=pagination, user=user
+        owner=with_query.owner if with_query.owner is not None else Owner.public,
+        query=with_query.query,
+        pagination=pagination,
+        user=user,
     )
     res.pagination.populate_urls(request)
     return res
@@ -868,7 +878,10 @@ async def post_entries_raw_query(
     data: EntriesRaw, user: User = Depends(create_user_dependency())
 ):
     return _answer_entries_raw_request(
-        owner=data.owner, query=data.query, files=data.files, user=user
+        owner=data.owner if data.owner is not None else Owner.public,
+        query=data.query,
+        files=data.files if data.files is not None else Files(),
+        user=user,
     )
 
 
@@ -886,7 +899,10 @@ async def get_entries_raw(
     user: User = Depends(create_user_dependency(signature_token_auth_allowed=True)),
 ):
     return _answer_entries_raw_request(
-        owner=with_query.owner, query=with_query.query, files=files, user=user
+        owner=with_query.owner if with_query.owner is not None else Owner.public,
+        query=with_query.query,
+        files=files,
+        user=user,
     )
 
 
@@ -945,7 +961,7 @@ async def export_entries_metadata(
         yield b'['  # Start of JSON array
 
         for entry_metadata in _do_exhaustive_search(
-            owner=with_query.owner,
+            owner=with_query.owner if with_query.owner is not None else Owner.public,
             query=with_query.query,
             user=user,
             required=required,
@@ -965,7 +981,7 @@ async def export_entries_metadata(
         writer: csv.DictWriter | None = None
 
         for entry_metadata in _do_exhaustive_search(
-            owner=with_query.owner,
+            owner=with_query.owner if with_query.owner is not None else Owner.public,
             query=with_query.query,
             user=user,
             required=required,
@@ -1112,7 +1128,7 @@ async def _answer_entries_archive_request(
     )
     if populate_url:
         response.pagination.populate_urls(request)
-    result = response.dict(exclude_none=True)
+    result = response.model_dump(exclude_none=True)
     result['data'] = list(filter(None, response_data))
 
     return ORJSONResponse(result)
@@ -1145,9 +1161,11 @@ async def post_entries_archive_query(
 ):
     res = await _answer_entries_archive_request(
         request=request,
-        owner=data.owner,
+        owner=data.owner if data.owner is not None else Owner.public,
         query=data.query,
-        pagination=data.pagination,
+        pagination=data.pagination
+        if data.pagination is not None
+        else MetadataPagination(),
         required=data.required,
         user=user,
     )
@@ -1180,7 +1198,7 @@ async def get_entries_archive_query(
 ):
     return await _answer_entries_archive_request(
         request=request,
-        owner=with_query.owner,
+        owner=with_query.owner if with_query.owner is not None else Owner.public,
         query=with_query.query,
         pagination=pagination,
         required=None,
@@ -1263,7 +1281,12 @@ def _answer_entries_archive_download_request(
 
     with _Uploads() as uploads:
         return StreamingResponse(
-            create_zipstream_async(streamed_files(), compress=files_params.compress),
+            create_zipstream_async(
+                streamed_files(),
+                compress=files_params.compress
+                if files_params.compress is not None
+                else False,
+            ),
             headers=browser_download_headers(
                 filename='archives.zip', media_type='application/zip'
             ),
@@ -1293,10 +1316,10 @@ async def post_entries_archive_download_query(
     data: EntriesArchiveDownload, user: User = Depends(create_user_dependency())
 ):
     return _answer_entries_archive_download_request(
-        owner=data.owner,
+        owner=data.owner if data.owner is not None else Owner.public,
         query=data.query,
         required=data.required,
-        files=data.files,
+        files=data.files if data.files is not None else Files(),
         user=user,
     )
 
@@ -1317,7 +1340,7 @@ async def get_entries_archive_download(
     user: User = Depends(create_user_dependency(signature_token_auth_allowed=True)),
 ):
     return _answer_entries_archive_download_request(
-        owner=with_query.owner,
+        owner=with_query.owner if with_query.owner is not None else Owner.public,
         query=with_query.query,
         required='*',
         files=files,
@@ -1502,6 +1525,11 @@ async def get_entry_raw_file(
     upload_id, mainfile = entry_metadata['upload_id'], entry_metadata['mainfile']
     # The user is allowed to access all files, because the entry is in the "visible" scope
     upload_files = files.UploadFiles.get(upload_id)
+    if upload_files is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            detail='Upload files not found.',
+        )
 
     entry_path = os.path.dirname(mainfile)
     path = os.path.join(entry_path, path)
@@ -1514,11 +1542,17 @@ async def get_entry_raw_file(
     # We only provide a specific mime-type, if the whole file is requested. Otherwise,
     # it is unlikely that the provided contents will match the overall file mime-type.
     mime_type = 'application/octet-stream'
-    if offset == 0 and length < 0:
+    if offset == 0 and (length is None or length < 0):
         mime_type = upload_files.raw_file_mime_type(path)
 
     return StreamingResponse(
-        create_download_stream_raw_file(upload_files, path, offset, length, decompress),
+        create_download_stream_raw_file(
+            upload_files,
+            path,
+            offset if offset is not None else 0,
+            length if length is not None else -1,
+            decompress,
+        ),
         media_type=mime_type,
     )
 
@@ -1625,7 +1659,7 @@ async def post_entry_edit(
     upload_id = entry_data.get('upload_id')
     upload = Upload.get(upload_id)
     context = ServerContext(upload)
-    archive_data: dict = None
+    archive_data: dict | None = None
     with context.raw_file(mainfile, 'rt') as f:
         if mainfile.endswith('.archive.json'):
             archive_data = json.load(f)
@@ -1775,7 +1809,7 @@ async def post_entry_archive_query(
 
 
 def edit(
-    query: Query, user: User, mongo_update: dict[str, Any] = None, re_index=True
+    query: Query, user: User, mongo_update: dict[str, Any] | None = None, re_index=True
 ) -> list[str]:
     # get all entries that have to change
     entry_ids: list[str] = []
@@ -1795,7 +1829,7 @@ def edit(
     # perform the update on the mongo db
     with utils.timer(logger, 'edit mongo update executed', size=len(entry_ids)):
         if mongo_update is not None:
-            n_updated = proc.Entry.objects(entry_id__in=entry_ids).update(
+            n_updated = proc.Entry.objects(entry_id__in=entry_ids).update(  # type: ignore
                 multi=True, **mongo_update
             )
             if n_updated != len(entry_ids):
@@ -1807,7 +1841,7 @@ def edit(
     with utils.timer(logger, 'edit elastic update executed', size=len(entry_ids)):
         if re_index:
             updated_metadata: list[datamodel.EntryMetadata] = []
-            for entry in proc.Entry.objects(entry_id__in=entry_ids):
+            for entry in proc.Entry.objects(entry_id__in=entry_ids):  # type: ignore
                 entry_metadata = entry.mongo_metadata(entry.upload)
                 # Ensure that updated fields are marked as "set", even if they are cleared
                 entry_metadata.m_update_from_dict(mongo_update, force_none=True)
@@ -1867,7 +1901,7 @@ async def post_entry_metadata_edit(
 
     # checking the edit actions and preparing a mongo update on the fly
     query = data.query
-    data = EntryMetadataEditResponse(**data.dict())
+    data = EntryMetadataEditResponse(**data.model_dump())
     data.query = query  # to dict from dict does not work with the op aliases in queries
     actions = data.actions
     verify = data.verify
@@ -2032,7 +2066,7 @@ async def post_entry_metadata_edit(
     # remove potentially empty old datasets
     if removed_datasets is not None:
         for dataset in removed_datasets:
-            if proc.Entry.objects(datasets=dataset).first() is None:
+            if proc.Entry.objects(datasets=dataset).first() is None:  # type: ignore
                 datamodel.Dataset.m_def.a_mongo.objects(dataset_id=dataset).delete()
 
     return data
@@ -2070,7 +2104,7 @@ async def post_entries_edit(
     edit_request_json = await request.json()
     try:
         verified_json = proc.MetadataEditRequestHandler.edit_metadata(
-            edit_request_json, None, user
+            edit_request_json, upload_id=None, user=user
         )
         return verified_json
     except RequestValidationError:

@@ -45,7 +45,7 @@ class APITag(str, Enum):
 
 
 class MetainfoModel(BaseModel):
-    all_package: str = Field(
+    all_package: str | None = Field(
         None,
         description=strip(
             """
@@ -54,7 +54,7 @@ class MetainfoModel(BaseModel):
         ),
     )
 
-    root_section: str = Field(
+    root_section: str | None = Field(
         None,
         description=strip(
             """
@@ -65,17 +65,17 @@ class MetainfoModel(BaseModel):
 
 
 class StatisticsModel(BaseModel):
-    n_entries: int = Field(None, description='Number of entries in NOMAD')
-    n_uploads: int = Field(None, description='Number of uploads in NOMAD')
-    n_quantities: int = Field(
+    n_entries: int | None = Field(None, description='Number of entries in NOMAD')
+    n_uploads: int | None = Field(None, description='Number of uploads in NOMAD')
+    n_quantities: int | None = Field(
         None,
         description='Accumulated number of quantities over all entries in the Archive',
     )
-    n_calculations: int = Field(
+    n_calculations: int | None = Field(
         None,
         description='Accumulated number of calculations, e.g. total energy calculations in the Archive',
     )
-    n_materials: int = Field(None, description='Number of materials in NOMAD')
+    n_materials: int | None = Field(None, description='Number of materials in NOMAD')
     # TODO raw_file_size, archive_file_size
 
 
@@ -91,22 +91,24 @@ class InfoModel(BaseModel):
     metainfo_packages: list[str]
     codes: list[CodeInfoModel]
     normalizers: list[str]
-    plugin_entry_points: list[dict] = Field(
+    plugin_entry_points: list[dict] | None = Field(
         None,
         description='List of plugin entry points that are activated in this deployment.',
     )
-    plugin_packages: list[dict] = Field(
+    plugin_packages: list[dict] | None = Field(
         None,
         description='List of plugin packages that are installed in this deployment.',
     )
-    statistics: StatisticsModel = Field(None, description='General NOMAD statistics')
+    statistics: StatisticsModel | None = Field(
+        None, description='General NOMAD statistics'
+    )
     search_quantities: dict
     version: str
     deployment: str
     oasis: bool
     # TODO this should be removed in later releases, once most regular NOMAD users
     # should have switched to a new GUI version.
-    git: dict = Field(
+    git: dict | None = Field(
         None,
         description=strip(
             """
@@ -117,7 +119,7 @@ class InfoModel(BaseModel):
     )
 
 
-_statistics: dict[str, Any] = None
+_statistics: dict[str, Any] | None = None
 
 
 def statistics():
@@ -142,7 +144,14 @@ def statistics():
                 )
             )
         )
-        _statistics.update(**search_response.aggregations['statistics'].statistics.data)  # pylint: disable=no-member
+        if (
+            search_response.aggregations['statistics'] is not None
+            and search_response.aggregations['statistics'].statistics is not None
+            and search_response.aggregations['statistics'].statistics.data is not None
+        ):
+            _statistics.update(
+                **search_response.aggregations['statistics'].statistics.data
+            )  # pylint: disable=no-member
 
     return _statistics
 
@@ -191,11 +200,15 @@ async def get_info():
             'plugin_entry_points': [
                 entry_point.dict_safe()
                 for entry_point in config.plugins.entry_points.filtered_values()
-            ],
+            ]
+            if config.plugins and config.plugins.entry_points
+            else [],
             'plugin_packages': [
-                plugin_package.dict()
+                plugin_package.model_dump()
                 for plugin_package in config.plugins.plugin_packages.values()
-            ],
+            ]
+            if config.plugins and config.plugins.plugin_packages
+            else [],
             'statistics': statistics(),
             'search_quantities': {
                 s.qualified_name: {

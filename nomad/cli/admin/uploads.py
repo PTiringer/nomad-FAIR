@@ -260,7 +260,7 @@ def _query_uploads(
     if entries_mongo_query:
         entries_mongo_query_q = Q(**json.loads(entries_mongo_query))
 
-    entries_query_uploads: set[str] = None
+    entries_query_uploads: set[str] | None = None
 
     if entries_es_query is not None:
         entries_es_query_dict = json.loads(entries_es_query)
@@ -282,6 +282,7 @@ def _query_uploads(
         entries_query_uploads = {
             cast(str, bucket.value)
             for bucket in results.aggregations['uploads'].terms.data
+            if results.aggregations['uploads'].terms.data is not None
         }  # pylint: disable=no-member
 
     if outdated:
@@ -412,9 +413,10 @@ def export(ctx, uploads, required, output: str):
             entry_count += 1
             total_count += 1
             try:
-                archive = upload_files.read_archive(entry_id)
-                archive_data = required_reader.read(archive, entry_id, upload_id)
-                write(entry_id, archive_data)
+                if upload_files is not None:  # Added check
+                    archive = upload_files.read_archive(entry_id)
+                    archive_data = required_reader.read(archive, entry_id, upload_id)
+                    write(entry_id, archive_data)
             except ArchiveQueryError as e:
                 logger.error('could not read archive', exc_info=e, entry_id=entry_id)
             except KeyError as e:
@@ -425,7 +427,8 @@ def export(ctx, uploads, required, output: str):
                     f'{upload_count:5}/{len(uploads)} {entry_count:5}/{len(entry_ids)} {total_count:5} {(get_rss() - start_time)} {upload_id}'
                 )
 
-        upload_files.close()
+        if upload_files is not None:  # Added check
+            upload_files.close()
 
     output_file.close()
 
@@ -1211,7 +1214,7 @@ def export_bundle(
             # Invalid setting provided
             print(e)
             print('\nAvailable settings and their configured default values:')
-            for k, v in default_export_settings.dict().items():
+            for k, v in default_export_settings.model_dump().items():
                 print(f'    {k:<40}: {v}')
             return -1
     else:
@@ -1360,7 +1363,7 @@ def import_bundle(
             if BundleImporter.looks_like_a_bundle(bundle_path):
                 count += 1
                 print(f'Importing bundle: {bundle_path}')
-                bundle_importer: BundleImporter = None
+                bundle_importer: BundleImporter | None = None
                 try:
                     bundle_importer = BundleImporter(
                         None, import_settings, embargo_length

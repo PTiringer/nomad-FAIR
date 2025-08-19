@@ -61,6 +61,8 @@ def open_zipped_h5_file(
         raise create_error(404, 'File not found!')
 
     upload_files = files.UploadFiles.get(match['upload_id'])
+    if upload_files is None:
+        raise create_error(404, 'File not found!')
     path_or_id = match['path_or_id']
     try:
         file_object: IO | str

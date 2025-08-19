@@ -83,7 +83,7 @@ def get_summed_mass(atomic_numbers=None, masses=None, indices=None, atom_labels=
 
 
 def get_masses_from_computational_model(
-    archive, repr_system: System = None, method_index: int = -1
+    archive, repr_system: System | None = None, method_index: int = -1
 ) -> list[float] | dict[str, float]:
     """
     Gets the masses based on the masses provided in atom parameters
@@ -214,7 +214,7 @@ def translate_pretty(fractional: np.ndarray, pbc: bool | np.ndarray) -> np.ndarr
 
 def get_center_of_positions(
     positions: np.ndarray,
-    cell: np.ndarray = None,
+    cell: np.ndarray | None = None,
     pbc: bool | np.ndarray = True,
     weights=None,
     relative=False,
@@ -270,7 +270,7 @@ def get_center_of_positions(
 
 def wrap_positions(
     positions: np.ndarray,
-    cell: np.ndarray = None,
+    cell: np.ndarray | None = None,
     pbc: bool | np.ndarray = True,
     center: tuple = (0.5, 0.5, 0.5),
     pretty_translation=False,
@@ -368,7 +368,7 @@ def chemical_symbols(atomic_numbers: Iterable[int]) -> list[str]:
     return [ase.data.chemical_symbols[x] for x in atomic_numbers]
 
 
-def to_scaled(positions: np.ndarray, cell: np.ndarray = None) -> np.ndarray:
+def to_scaled(positions: np.ndarray, cell: np.ndarray | None = None) -> np.ndarray:
     """
     Converts cartesian positions into scaled position one using the given
     cell lattice vectors as a basis.
@@ -383,7 +383,7 @@ def to_scaled(positions: np.ndarray, cell: np.ndarray = None) -> np.ndarray:
     return np.linalg.solve(complete_cell(cell).T, positions.T).T
 
 
-def to_cartesian(positions: np.ndarray, cell: np.ndarray = None) -> np.ndarray:
+def to_cartesian(positions: np.ndarray, cell: np.ndarray | None = None) -> np.ndarray:
     """
     Converts scaled positions into cartesian one using the given cell
     lattice vectors as a basis.
@@ -452,7 +452,7 @@ def find_match(pos: np.ndarray, positions: np.ndarray, eps: float) -> int | None
 def cellpar_to_cell(
     cellpar: np.ndarray,
     ab_normal: tuple = (0, 0, 1),
-    a_direction: np.ndarray = None,
+    a_direction: np.ndarray | None = None,
     degrees=False,
 ) -> np.ndarray:
     """

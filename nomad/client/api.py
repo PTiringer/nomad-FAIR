@@ -75,8 +75,8 @@ class Auth(requests.auth.AuthBase):
 
     def __init__(
         self,
-        user: str = config.client.user,
-        password: str = config.client.password,
+        user: str | None = config.client.user,
+        password: str | None = config.client.password,
         from_api: bool = False,
     ):
         self.user = user

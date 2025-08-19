@@ -324,7 +324,7 @@ class MetadataEditRequestHandler:
         logger,
         user: datamodel.User,
         edit_request: StagingUploadFiles | dict[str, Any],
-        upload_id: str = None,
+        upload_id: str | None = None,
     ):
         # Initialization
         assert user, 'Must specify `user`'
@@ -356,20 +356,20 @@ class MetadataEditRequestHandler:
         ] = {}  # { ref : dataset | None }, ref = dataset_id | dataset_name
 
         # Used when edit_request = json dict
-        self.edit_request_obj: MetadataEditRequest = None
+        self.edit_request_obj: MetadataEditRequest | None = None
         self.verified_metadata: dict[
             str, Any
         ] = {}  # The metadata specified at the top/root level
         self.verified_entries: dict[
             str, dict[str, Any]
         ] = {}  # Metadata specified for individual entries
-        self.affected_uploads: list[Upload] = (
+        self.affected_uploads: list[Upload] | None = (
             None  # A MetadataEditRequest may involve multiple uploads
         )
 
         # Used when edit_request = files
         self.verified_file_metadata_cache: dict[str, dict[str, Any]] = {}
-        self.root_file_entries: dict[str, dict[str, Any]] = (
+        self.root_file_entries: dict[str, dict[str, Any]] | None = (
             None  # `entries` defined in the root metadata file
         )
 
@@ -544,7 +544,7 @@ class MetadataEditRequestHandler:
         raw_metadata: dict[str, Any],
         loc: tuple[str, ...],
         can_edit_upload_quantities: bool,
-        auth_level: AuthLevel = None,
+        auth_level: AuthLevel | None = None,
     ) -> dict[str, Any]:
         """
         Performs basic validation of a dictionary with *raw* metadata (i.e. metadata with
@@ -656,7 +656,7 @@ class MetadataEditRequestHandler:
             return False, None
 
     def _verified_value_single(
-        self, definition: metainfo.Definition, value: Any, op: str = None
+        self, definition: metainfo.Definition, value: Any, op: str | None = None
     ) -> Any:
         """
         Verifies a *singular* raw value (i.e. for list quantities we should run this method
@@ -813,7 +813,7 @@ class MetadataEditRequestHandler:
             self.encountered_datasets[ref] = dataset
         return dataset
 
-    def _restricted_request_query(self, upload_id: str = None):
+    def _restricted_request_query(self, upload_id: str | None = None):
         """
         Gets the query of the request, if it has any. If we have a query and if an `upload_id`
         is specified, we return a modified query, by restricting the original query to this upload.
@@ -1739,7 +1739,7 @@ class Upload(Proc):
     id_field = 'upload_id'
 
     upload_id = StringField(primary_key=True)
-    upload_name = StringField(default=None)
+    upload_name: str | None = StringField(default=None)
     upload_create_time = DateTimeField(required=True)
     external_db = StringField()
     main_author = StringField(required=True)
@@ -1837,7 +1837,7 @@ class Upload(Proc):
         return logger
 
     @classmethod
-    def create(cls, main_author: datamodel.User = None, **kwargs) -> 'Upload':
+    def create(cls, main_author: datamodel.User | None = None, **kwargs) -> 'Upload':
         """
         Creates a new upload for the given main_author, a user given upload_name is optional.
         It will populate the record with a signed url and pending :class:`UploadProc`.
@@ -1932,7 +1932,7 @@ class Upload(Proc):
 
         return ProcessStatus.DELETED  # Signal deletion to the process framework
 
-    def publish_upload(self, embargo_length: int = None):
+    def publish_upload(self, embargo_length: int | None = None):
         from nomad.config import config
 
         if config.temporal.enabled:
@@ -1941,7 +1941,7 @@ class Upload(Proc):
         else:
             return self._publish_upload(embargo_length)
 
-    async def _start_publish_upload_workflow(self, embargo_length: int = None):
+    async def _start_publish_upload_workflow(self, embargo_length: int | None = None):
         client = await get_client()
         workflow_id = f'publish-upload-{self.upload_id}-{uuid.uuid4()}'
         try:
@@ -1958,7 +1958,7 @@ class Upload(Proc):
             raise ProcessFailure(f'Failed to start temporal workflow: {e}')
 
     @process(is_blocking=True)
-    def _publish_upload(self, embargo_length: int = None):
+    def _publish_upload(self, embargo_length: int | None = None):
         self._publish_upload_local(embargo_length)
 
     def _publish_upload_local(self, embargo_length: int | None = None):
@@ -1993,7 +1993,7 @@ class Upload(Proc):
                     self.last_update = datetime.utcnow()
                     self.save()
 
-    def publish_externally(self, embargo_length: int = None):
+    def publish_externally(self, embargo_length: int | None = None):
         from nomad.config import config
 
         if config.temporal.enabled:
@@ -2002,7 +2002,9 @@ class Upload(Proc):
         else:
             return self._publish_externally(embargo_length)
 
-    async def _start_publish_externally_workflow(self, embargo_length: int = None):
+    async def _start_publish_externally_workflow(
+        self, embargo_length: int | None = None
+    ):
         client = await get_client()
         workflow_id = f'publish-externally-{self.upload_id}-{uuid.uuid4()}'
         try:
@@ -2019,10 +2021,10 @@ class Upload(Proc):
             raise ProcessFailure(f'Failed to start temporal workflow: {e}')
 
     @process(is_blocking=True)
-    def _publish_externally(self, embargo_length: int = None):
+    def _publish_externally(self, embargo_length: int | None = None):
         self._publish_externally_local(embargo_length)
 
-    def _publish_externally_local(self, embargo_length: int = None):
+    def _publish_externally_local(self, embargo_length: int | None = None):
         assert self.published, (
             'Only published uploads can be published to the central NOMAD.'
         )
@@ -2077,7 +2079,7 @@ class Upload(Proc):
             PathObject(tmp_dir).delete()
 
     def process_example_upload(
-        self, entry_point_id: str, file_operations: list[dict[str, Any]] = None
+        self, entry_point_id: str, file_operations: list[dict[str, Any]] | None = None
     ):
         """Used to initiate the processing of an example upload entry point.
         This process is only triggered once per example upload, and any further
@@ -2103,7 +2105,7 @@ class Upload(Proc):
     async def _start_process_example_upload_workflow(
         self,
         entry_point_id: str,
-        file_operations: list[dict[str, Any]] = None,
+        file_operations: list[dict[str, Any]] | None = None,
     ):
         """
         Internal method to start a temporal process example upload workflow.
@@ -2167,7 +2169,7 @@ class Upload(Proc):
 
     @process()
     def _process_example_upload(
-        self, entry_point_id: str, file_operations: list[dict[str, Any]] = None
+        self, entry_point_id: str, file_operations: list[dict[str, Any]] | None = None
     ):
         """Used to initiate the processing of an example upload entry point.
         This process is only triggered once per example upload, and any further
@@ -2186,9 +2188,9 @@ class Upload(Proc):
 
     def process_upload(
         self,
-        file_operations: list[dict[str, Any]] = None,
-        reprocess_settings: dict[str, Any] = None,
-        path_filter: str = None,
+        file_operations: list[dict[str, Any]] | None = None,
+        reprocess_settings: dict[str, Any] | None = None,
+        path_filter: str | None = None,
         only_updated_files: bool = False,
     ):
         if config.temporal.enabled:
@@ -2210,9 +2212,9 @@ class Upload(Proc):
 
     async def _start_process_upload_workflow(
         self,
-        file_operations: list[dict[str, Any]] = None,
-        reprocess_settings: dict[str, Any] = None,
-        path_filter: str = None,
+        file_operations: list[dict[str, Any]] | None = None,
+        reprocess_settings: dict[str, Any] | None = None,
+        path_filter: str | None = None,
         only_updated_files: bool = False,
     ):
         """
@@ -2245,9 +2247,9 @@ class Upload(Proc):
     @process()
     def _process_upload(
         self,
-        file_operations: list[dict[str, Any]] = None,
-        reprocess_settings: dict[str, Any] = None,
-        path_filter: str = None,
+        file_operations: list[dict[str, Any]] | None = None,
+        reprocess_settings: dict[str, Any] | None = None,
+        path_filter: str | None = None,
         only_updated_files: bool = False,
     ):
         """
@@ -2282,9 +2284,9 @@ class Upload(Proc):
 
     def _process_upload_local(
         self,
-        file_operations: list[dict[str, Any]] = None,
-        reprocess_settings: dict[str, Any] = None,
-        path_filter: str = None,
+        file_operations: list[dict[str, Any]] | None = None,
+        reprocess_settings: dict[str, Any] | None = None,
+        path_filter: str | None = None,
         only_updated_files: bool = False,
     ):
         """
@@ -2327,7 +2329,7 @@ class Upload(Proc):
 
     @process_local
     def put_file_and_process_local(
-        self, path, target_dir, reprocess_settings: Reprocess = None
+        self, path, target_dir, reprocess_settings: Reprocess | None = None
     ) -> Entry:
         """
         Pushes a raw file, matches it, and if matched, runs the processing - all as a local process.
@@ -2823,7 +2825,10 @@ class Upload(Proc):
         return entry, was_created, metadata_handler
 
     def parse_next_level(
-        self, min_level: int, path_filter: str = None, updated_files: set[str] = None
+        self,
+        min_level: int,
+        path_filter: str | None = None,
+        updated_files: set[str] | None = None,
     ) -> bool:
         """
         Triggers processing on the next level of parsers (parsers with level >= min_level).
@@ -3301,7 +3306,7 @@ class Upload(Proc):
         self,
         bundle_path: str,
         import_settings: dict[str, Any],
-        embargo_length: int = None,
+        embargo_length: int | None = None,
     ):
         """
         A method that imports data from an upload bundle to the current upload (which should
@@ -3324,7 +3329,7 @@ class Upload(Proc):
         self,
         bundle_path: str,
         import_settings: dict[str, Any],
-        embargo_length: int = None,
+        embargo_length: int | None = None,
     ):
         client = await get_client()
         workflow_id = f'import-bundle-{self.upload_id}-{uuid.uuid4()}'
@@ -3348,7 +3353,7 @@ class Upload(Proc):
         self,
         bundle_path: str,
         import_settings: dict[str, Any],
-        embargo_length: int = None,
+        embargo_length: int | None = None,
     ):
         """
         A @process that imports data from an upload bundle to the current upload (which should

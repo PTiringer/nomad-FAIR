@@ -258,7 +258,7 @@ class Proc(Document):
             NOTE: This value is managed by the framework, do not tamper with this value.
     """
 
-    id_field: str = None
+    id_field: str | None = None
     meta: Any = {
         'abstract': True,
     }
@@ -267,7 +267,7 @@ class Proc(Document):
 
     errors = ListField(StringField())
     warnings = ListField(StringField())
-    last_status_message = StringField(default=None)
+    last_status_message: str | None = StringField(default=None)
 
     current_process = StringField(default=None)
     process_status = StringField(default=ProcessStatus.READY)
@@ -350,7 +350,7 @@ class Proc(Document):
     def reset(
         self,
         force: bool = False,
-        worker_hostname: str = None,
+        worker_hostname: str | None = None,
         process_status: str = ProcessStatus.READY,
         errors: list[str] = [],
         clear_queue: bool = True,
@@ -373,7 +373,7 @@ class Proc(Document):
     @classmethod
     def reset_pymongo_update(
         cls,
-        worker_hostname: str = None,
+        worker_hostname: str | None = None,
         process_status=ProcessStatus.READY,
         errors: list[str] = [],
         clear_queue: bool = True,

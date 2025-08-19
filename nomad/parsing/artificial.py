@@ -69,7 +69,7 @@ class TemplateParser(Parser):
         mime: str,
         buffer: bytes,
         decoded_buffer: str,
-        compression: str = None,
+        compression: str | None = None,
     ) -> bool:
         return filename.endswith('template.json')
 
@@ -111,7 +111,7 @@ class ChaosParser(Parser):
         mime: str,
         buffer: bytes,
         decoded_buffer: str,
-        compression: str = None,
+        compression: str | None = None,
     ) -> bool:
         return filename.endswith('chaos.json')
 
@@ -207,7 +207,7 @@ class GenerateRandomParser(TemplateParser):
         mime: str,
         buffer: bytes,
         decoded_buffer: str,
-        compression: str = None,
+        compression: str | None = None,
     ) -> bool:
         return re.match(r'.*?random_\d+', filename) is not None
 

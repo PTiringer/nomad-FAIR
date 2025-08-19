@@ -462,7 +462,7 @@ class APIEntryPoint(EntryPoint):
         json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
 
-    prefix: str = Field(
+    prefix: str | None = Field(
         None,
         description=(
             'The prefix for the API. The URL for the API will be the base URL of the NOMAD '
@@ -803,7 +803,13 @@ def add_plugin(plugin: Schema) -> None:
         sys.path.insert(0, plugin.package_path)
 
     # Add plugin to config
-    config.plugins.entry_points.options[plugin.key] = plugin
+    if (
+        config.plugins is not None
+        and config.plugins.entry_points is not None
+        and config.plugins.entry_points.options is not None
+        and plugin.key is not None
+    ):
+        config.plugins.entry_points.options[plugin.key] = plugin
 
     # Add plugin to Package registry
     package = importlib.import_module(plugin.python_package)
@@ -827,7 +833,13 @@ def remove_plugin(plugin) -> None:
         pass
 
     # Remove package as plugin
-    del config.plugins.entry_points.options[plugin.key]
+    if (
+        config.plugins is not None
+        and config.plugins.entry_points is not None
+        and config.plugins.entry_points.options is not None
+        and plugin.key is not None
+    ):
+        del config.plugins.entry_points.options[plugin.key]
 
     # Remove plugin from Package registry
     package = importlib.import_module(plugin.python_package).m_package

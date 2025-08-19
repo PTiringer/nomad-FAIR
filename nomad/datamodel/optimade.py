@@ -60,7 +60,7 @@ class Optimade(DefinitionAnnotation):
         query: bool = False,
         entry: bool = False,
         sortable: bool = False,
-        type: str = None,
+        type: str | None = None,
     ):
         self.sortable = sortable
         self.type = type

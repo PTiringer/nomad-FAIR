@@ -297,12 +297,21 @@ def get_gui_config() -> str:
         return d
 
     # We save a single list of enabled entry points
-    plugins = _sort_dict(config.plugins.dict(exclude_unset=True))
-    entry_points = [
-        entry_point.dict_safe()
-        for entry_point in config.plugins.entry_points.filtered_values()
-    ]
-    plugins['entry_points'] = entry_points
+    plugins = (
+        _sort_dict(config.plugins.model_dump(exclude_unset=True))
+        if config.plugins is not None
+        else {}
+    )
+    entry_points = (
+        [
+            entry_point.dict_safe()
+            for entry_point in config.plugins.entry_points.filtered_values()
+        ]
+        if config.plugins is not None
+        else []
+    )
+    if config.plugins is not None:
+        plugins['entry_points'] = entry_points
 
     data = {
         'appBase': config.ui.app_base,
@@ -421,14 +430,16 @@ def update_parser_readmes(parser):
         else:
             # replace header for the single parser with that for a group of parsers
             parser_header_re = r'(\nThis is a NOMAD parser[\s\S]+?Archive format\.\n)'
-            parser_header = re.search(parser_header_re, contents).group(1)
+            match = re.search(parser_header_re, contents)
+            parser_header = match.group(1) if match is not None else ''
             group_header = 'This is a collection of the NOMAD parsers for the following $codeName$ codes:\n\n$parserList$'
             contents = re.sub(parser_header_re, group_header, contents)
             # remove individual parser specs
             parser_specs_re = (
                 r'(For \$codeLabel\$ please provide[\s\S]+?\$tableOfFiles\$)\n\n'
             )
-            parser_specs = re.search(parser_specs_re, contents).group(1)
+            match = re.search(parser_specs_re, contents)
+            parser_specs = match.group(1) if match is not None else ''
             contents = re.sub(parser_specs_re, '', contents)
             metadata = dict(
                 gitPath=f'{project_name}-parsers',

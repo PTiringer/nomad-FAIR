@@ -172,7 +172,7 @@ class BundleImporter:
         self,
         user: datamodel.User,
         import_settings: BundleImportSettings,
-        embargo_length: int = None,
+        embargo_length: int | None = None,
     ):
         """
         Class for importing an upload from a *bundle*.
@@ -237,8 +237,8 @@ class BundleImporter:
             )
 
         if not is_admin:
-            for k, v in self.import_settings.dict().items():
-                if v != config.bundle_import.default_settings.dict().get(k):
+            for k, v in self.import_settings.model_dump().items():
+                if v != config.bundle_import.default_settings.model_dump().get(k):
                     raise HTTPException(
                         status_code=status.HTTP_401_UNAUTHORIZED,
                         detail=f'Changing the setting {k} requires an admin user',

@@ -146,8 +146,8 @@ def get_compression_format(path: str) -> Literal['zip', 'tar', 'error'] | None:
 
 def extract_file(
     filepath: str,
-    directory: str = None,
-    format: Literal['zip', 'tar', 'error'] = None,
+    directory: str | None = None,
+    format: Literal['zip', 'tar', 'error'] | None = None,
     remove_archive: bool = True,
 ):
     """Extracts the given file in place. Supports extracting .zip and .tar

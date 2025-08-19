@@ -222,7 +222,7 @@ class GraphNode:
         """
         return dataclasses.replace(self, **kwargs)
 
-    def generate_reference(self, path: list = None) -> str:
+    def generate_reference(self, path: list | None = None) -> str:
         """
         Generate a reference string using a given path or the current path.
         """
@@ -252,6 +252,8 @@ class GraphNode:
             raise ArchiveError(f'Circular reference detected: {reference_url}.')
 
         try:
+            if self.archive_root is None:
+                raise ArchiveError(f'Archive root is None for {reference}.')
             target = await _goto_path(self.archive_root, path_stack)
         except (KeyError, IndexError):
             raise ArchiveError(f'Archive {self.entry_id} does not contain {reference}.')
@@ -307,6 +309,10 @@ class GraphNode:
 
         # get the archive
         other_archive_root = self.reader.load_archive(other_upload_id, other_entry_id)
+        if other_archive_root is None:
+            raise ArchiveError(
+                f'Could not load archive for {other_upload_id}/{other_entry_id}.'
+            )
 
         try:
             # now go to the target path
@@ -370,7 +376,7 @@ async def _if_exists(target_root: dict, path_stack: list) -> bool:
 
 
 @functools.lru_cache(maxsize=1024)
-def _convert_ref_to_path(ref: str, upload_id: str = None) -> list:
+def _convert_ref_to_path(ref: str, upload_id: str | None = None) -> list:
     # test module name
     if '.' in (stripped_ref := ref.strip('.')) or re.compile(r'^\w*(\.\w*)*$').match(
         ref.split('/section_definitions')[0]
@@ -410,11 +416,11 @@ def _convert_ref_to_path(ref: str, upload_id: str = None) -> list:
 
 
 @functools.lru_cache(maxsize=1024)
-def _convert_ref_to_path_string(ref: str, upload_id: str = None) -> str:
+def _convert_ref_to_path_string(ref: str, upload_id: str | None = None) -> str:
     return '/'.join(_convert_ref_to_path(ref, upload_id))
 
 
-def _to_response_config(config: RequestConfig, exclude: list = None, **kwargs):
+def _to_response_config(config: RequestConfig, exclude: list | None = None, **kwargs):
     response_config = config.model_dump(exclude_unset=True, exclude_none=True)
 
     for item in ('include', 'exclude'):
@@ -572,8 +578,8 @@ def _normalise_required(
     required,
     config: RequestConfig,
     *,
-    key: str = None,
-    reader_type: type[GeneralReader] = None,
+    key: str | None = None,
+    reader_type: type[GeneralReader] | None = None,
 ):
     """
     Normalise the required dictionary.
@@ -800,8 +806,8 @@ class GeneralReader:
         *,
         user=None,
         init: bool = True,
-        config: RequestConfig = None,
-        global_root: dict = None,
+        config: RequestConfig | None = None,
+        global_root: dict | None = None,
     ):
         """
         Supports two modes of initialisation:
@@ -1232,8 +1238,8 @@ class ArchiveLikeReader(GeneralReader):
         async def __resolve_definition_in_archive(
             _root,
             _path_stack: list,
-            _upload_id: str = None,
-            _entry_id: str = None,
+            _upload_id: str | None = None,
+            _entry_id: str | None = None,
         ):
             cache_key: str = f'{_upload_id}:{_entry_id}'
 
@@ -2271,7 +2277,7 @@ class FileSystemReader(GeneralReader):
         super().__init__(*args, **kwargs)
         self._root_path: list = []
 
-    async def read(self, upload_id: str, path: str = None) -> dict:
+    async def read(self, upload_id: str, path: str | None = None) -> dict:
         self._root_path = [v for v in path.split('/') if v] if path else []
 
         with self._prepare_reading() as response:

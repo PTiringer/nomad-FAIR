@@ -41,7 +41,12 @@ class FileParser(ABC):
         open: function to open file
     """
 
-    def __init__(self, mainfile: str | IO = None, logger=None, open: Callable = None):
+    def __init__(
+        self,
+        mainfile: str | IO | None = None,
+        logger=None,
+        open: Callable | None = None,
+    ):
         self._mainfile: str = None
         self._mainfile_obj: IO = None
         if isinstance(mainfile, str):
@@ -219,7 +224,7 @@ class FileParser(ABC):
         return section.m_from_dict(self.to_dict())
 
     @abstractmethod
-    def parse(self, quantity_key: str = None, **kwargs):
+    def parse(self, quantity_key: str | None = None, **kwargs):
         pass
 
     def pop(self, key, default=None):
@@ -268,10 +273,10 @@ class FileParser(ABC):
 
 
 class ArchiveWriter(ABC):
-    mainfile: str = None
-    archive: EntryArchive = None
+    mainfile: str | None = None
+    archive: EntryArchive | None = None
     logger = None
-    child_archives: dict[str, EntryArchive] = None
+    child_archives: dict[str, EntryArchive] | None = None
 
     def get_mainfile_keys(self, filename: str, decoded_buffer: str) -> bool | list[str]:
         """

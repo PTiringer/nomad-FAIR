@@ -33,7 +33,7 @@ router = APIRouter()
 
 # This is a dynamically create enum class for enumerating all allowed
 # quantities. FastAPI uses python enums to validate and document options.
-suggestable_quantities: set[str] = None
+suggestable_quantities: set[str] | None = None
 
 
 class SuggestionError(Exception):
@@ -41,12 +41,12 @@ class SuggestionError(Exception):
 
 
 class Suggestion(BaseModel):
-    value: str = Field(None, description='The returned suggestion.')
+    value: str | None = Field(None, description='The returned suggestion.')
     weight: float | None = Field(None, description='The suggestion weight.')
 
 
 class Quantity(BaseModel):
-    name: str = Field(None, description='The name of the targeted quantity.')
+    name: str | None = Field(None, description='The name of the targeted quantity.')
     size: int = Field(
         5,
         description='The maximum number of suggestion results to query for this quantity.',
@@ -54,10 +54,10 @@ class Quantity(BaseModel):
 
 
 class SuggestionsRequest(BaseModel):
-    quantities: list[Quantity] = Field(  # type: ignore
+    quantities: list[Quantity] | None = Field(  # type: ignore
         None, description='List of quantities for which the suggestions are retrieved.'
     )
-    input: str = Field(
+    input: str | None = Field(
         None,
         description='The input that is used as a basis for returning a suggestion.',
     )
@@ -82,7 +82,7 @@ async def get_suggestions(
 
     search = Search(index=entry_index.index_name)
     names = [x.name for x in data.quantities]
-    names_es = [x.name.replace('.', '-') for x in data.quantities]
+    names_es = [x.name.replace('.', '-') for x in data.quantities if x.name is not None]
     for index, quantity in enumerate(data.quantities):
         name_es = names_es[index]
         if quantity.name not in suggestable_quantities:
@@ -139,7 +139,11 @@ async def get_suggestions(
             # better than the text returned by the completion suggester
             # (option.text), since it can match several items if there are
             # multiple values per quantity.
-            text = data.input.lower().strip()
+            text = data.input
+            if text is not None:
+                text = text.lower().strip()
+            else:
+                text = ''
 
             # Nested fields use the nested document as _source: we need to
             # modify the path accordingly.

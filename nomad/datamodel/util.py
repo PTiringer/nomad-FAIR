@@ -45,7 +45,7 @@ _regex_form_b = re.compile(
 )
 
 
-def parse_path(url: str, upload_id: str = None):
+def parse_path(url: str, upload_id: str | None = None):
     """
     Parse a reference path.
 
@@ -121,7 +121,9 @@ def create_custom_mapping(
 
             annotation = quantity.m_get_annotations(annotation_name)
             annotation = annotation[0] if isinstance(annotation, list) else annotation
-            annotation = annotation_type.parse_obj(annotation) if annotation else None
+            annotation = (
+                annotation_type.model_validate(annotation) if annotation else None
+            )
             if annotation and getattr(annotation, annotation_attr, None):
                 prop = getattr(annotation, annotation_attr)
 

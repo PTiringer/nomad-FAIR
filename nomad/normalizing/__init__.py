@@ -110,7 +110,9 @@ class NormalizerInterfaceNew:
 
 
 config.load_plugins()
-enabled_entry_points = config.plugins.entry_points.filtered_values()
+enabled_entry_points = []
+if config.plugins is not None:
+    enabled_entry_points = config.plugins.entry_points.filtered_values()
 normalizers = SortedNormalizers([])
 
 # Load normalizers using old plugin mechanism

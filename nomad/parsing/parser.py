@@ -28,7 +28,6 @@ from typing import IO, Any
 
 import numpy as np
 import yaml
-from pydantic import BaseModel, Extra  # noqa: F401
 
 from nomad import utils
 from nomad.config import config
@@ -61,7 +60,7 @@ class Parser(metaclass=ABCMeta):
         mime: str,
         buffer: bytes,
         decoded_buffer: str,
-        compression: str = None,
+        compression: str | None = None,
     ) -> bool | Iterable[str]:
         """
         Checks if a file is a mainfile for the parser. Should return True or a set of
@@ -95,7 +94,7 @@ class Parser(metaclass=ABCMeta):
         mainfile: str,
         archive: EntryArchive,
         logger=None,
-        child_archives: dict[str, EntryArchive] = None,
+        child_archives: dict[str, EntryArchive] | None = None,
     ) -> None:
         """
         Runs the parser on the given mainfile and populates the result in the given
@@ -124,7 +123,7 @@ class Parser(metaclass=ABCMeta):
         pass
 
     @classmethod
-    def main(cls, mainfile, mainfile_keys: list[str] = None):
+    def main(cls, mainfile, mainfile_keys: list[str] | None = None):
         archive = EntryArchive()
         archive.m_create(EntryMetadata)
         if mainfile_keys:
@@ -165,7 +164,7 @@ class BrokenParser(Parser):
         mime: str,
         buffer: bytes,
         decoded_buffer: str,
-        compression: str = None,
+        compression: str | None = None,
     ) -> bool:
         if decoded_buffer is not None:
             for pattern in self._patterns:
@@ -202,20 +201,20 @@ class MatchingParser(Parser):
 
     def __init__(
         self,
-        name: str = None,
-        code_name: str = None,
-        code_homepage: str = None,
-        code_category: str = None,
-        mainfile_contents_re: str = None,
-        mainfile_binary_header: bytes = None,
-        mainfile_binary_header_re: bytes = None,
+        name: str | None = None,
+        code_name: str | None = None,
+        code_homepage: str | None = None,
+        code_category: str | None = None,
+        mainfile_contents_re: str | None = None,
+        mainfile_binary_header: bytes | None = None,
+        mainfile_binary_header_re: bytes | None = None,
         mainfile_mime_re: str = r'text/.*',
         mainfile_name_re: str = r'.*',
         mainfile_alternative: bool = False,
-        mainfile_contents_dict: dict = None,
+        mainfile_contents_dict: dict | None = None,
         level: int = 0,
         domain='dft',
-        metadata: dict = None,
+        metadata: dict | None = None,
         supported_compressions: list[str] = [],
         **kwargs,
     ) -> None:
@@ -271,7 +270,7 @@ class MatchingParser(Parser):
         mime: str,
         buffer: bytes,
         decoded_buffer: str,
-        compression: str = None,
+        compression: str | None = None,
     ) -> bool | Iterable[str]:
         if self._mainfile_binary_header is not None:
             if self._mainfile_binary_header not in buffer:
@@ -415,7 +414,7 @@ def to_hdf5(value: Any, f: str | IO, path: str):
     return f'{f if isinstance(f, str) else os.path.basename(f.name)}#{path}'
 
 
-def import_class(class_name, class_description: str = None):
+def import_class(class_name, class_description: str | None = None):
     logger = utils.get_logger(__name__)
     try:
         module_path, cls = class_name.rsplit('.', 1)
@@ -483,7 +482,7 @@ class MatchingParserInterface(MatchingParser):
         mime: str,
         buffer: bytes,
         decoded_buffer: str,
-        compression: str = None,
+        compression: str | None = None,
     ) -> bool | Iterable[str]:
         is_mainfile = super().is_mainfile(
             filename=filename,
@@ -571,10 +570,10 @@ class ElnMatchingParser(MatchingParser):
 
     def __init__(
         self,
-        eln_m_def: str = None,
-        raw_file_m_def: str = None,
+        eln_m_def: str | None = None,
+        raw_file_m_def: str | None = None,
         update: bool = False,
-        data_type: str = None,
+        data_type: str | None = None,
         **kwargs,
     ):
         super().__init__(**kwargs)

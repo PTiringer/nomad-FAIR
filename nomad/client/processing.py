@@ -29,13 +29,13 @@ from .api import Auth
 
 def parse(
     mainfile_path: str,
-    parser_name: str = None,
-    backend_factory: typing.Callable = None,
+    parser_name: str | None = None,
+    backend_factory: typing.Callable | None = None,
     strict: bool = True,
     logger=None,
     server_context: bool = False,
-    username: str = None,
-    password: str = None,
+    username: str | None = None,
+    password: str | None = None,
 ) -> list[datamodel.EntryArchive]:
     """
     Run the given parser on the provided mainfile. If parser_name is given, we only try
@@ -136,7 +136,7 @@ class LocalEntryProcessing:
     """
 
     def __init__(
-        self, entry_id: str, override: bool = False, auth: Auth = None
+        self, entry_id: str, override: bool = False, auth: Auth | None = None
     ) -> None:
         from nomad import files
         from nomad.client import api
@@ -214,7 +214,9 @@ class LocalEntryProcessing:
         if exception:
             sys.exit(1)
 
-    def parse(self, parser_name: str = None, **kwargs) -> list[datamodel.EntryArchive]:
+    def parse(
+        self, parser_name: str | None = None, **kwargs
+    ) -> list[datamodel.EntryArchive]:
         """
         Run the given parser on the downloaded entry. If no parser is given,
         do parser matching and use the respective parser.

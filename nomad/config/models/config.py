@@ -218,8 +218,8 @@ class Services(ConfigBaseModel):
         self,
         ssl: bool = True,
         api: str = 'api',
-        api_host: str = None,
-        api_port: int = None,
+        api_host: str | None = None,
+        api_port: int | None = None,
     ):
         """
         Returns the url of the current running nomad API. This is for server-side use.
@@ -259,11 +259,11 @@ class Meta(ConfigBaseModel):
     deployment: str = Field(
         'devel', description='Human-friendly name of this nomad deployment.'
     )
-    deployment_url: str = Field(
+    deployment_url: str | None = Field(
         None,
         description="The NOMAD deployment's url. If not explicitly set, will default to the (api url) read from the configuration.",
     )
-    label: str = Field(
+    label: str | None = Field(
         None,
         description="""
         An additional log-stash data key-value pair added to all logs. Can be used
@@ -557,7 +557,7 @@ class Logtransfer(ConfigBaseModel):
 
 class Tests(ConfigBaseModel):
     default_timeout: int = 60
-    assume_auth_for_username: str = Field(
+    assume_auth_for_username: str | None = Field(
         None,
         description=(
             'Will assume that all API calls with no authentication have authentication for '
@@ -692,8 +692,8 @@ class Normalize(ConfigBaseModel):
 
 
 class Client(ConfigBaseModel):
-    user: str = None
-    password: str = None
+    user: str | None = None
+    password: str | None = None
     access_token: str = None
     url: str = 'http://nomad-lab.eu/prod/v1/api'
 
@@ -759,8 +759,8 @@ class RFC3161Timestamp(ConfigBaseModel):
         'sha256',
         description='Hash algorithm used by the rfc3161ng timestamping server.',
     )
-    username: str = None
-    password: str = None
+    username: str | None = None
+    password: str | None = None
 
 
 class BundleExportSettings(ConfigBaseModel):
@@ -979,8 +979,8 @@ class Config(ConfigBaseModel):
         self,
         ssl: bool = True,
         api: str = 'api',
-        api_host: str = None,
-        api_port: int = None,
+        api_host: str | None = None,
+        api_port: int | None = None,
     ):
         """
         Returns the url of the current running nomad API. This is for server-side use.
@@ -988,7 +988,7 @@ class Config(ConfigBaseModel):
         """
         return self.services.api_url(ssl, api, api_host, api_port)
 
-    def gui_url(self, page: str = None):
+    def gui_url(self, page: str | None = None):
         base = self.api_url(True)[:-3]
         if base.endswith('/'):
             base = base[:-1]

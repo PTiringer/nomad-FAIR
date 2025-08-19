@@ -405,7 +405,10 @@ class Data(BaseModel, validate_assignment=True):
         return values
 
     def get_data(
-        self, source_data: dict[str, Any], parser: 'MappingParser' = None, **kwargs
+        self,
+        source_data: dict[str, Any],
+        parser: 'MappingParser | None' = None,
+        **kwargs,
     ) -> Any:
         if self.transformer:
             value = self.transformer.get_data(source_data, parser, **kwargs)
@@ -440,7 +443,9 @@ class BaseMapper(BaseModel):
         return data
 
     @staticmethod
-    def from_dict(dct: dict[str, Any], parent: 'BaseMapper' = None) -> 'BaseMapper':
+    def from_dict(
+        dct: dict[str, Any], parent: 'BaseMapper | None' = None
+    ) -> 'BaseMapper':
         """
         Convert dictionary to a BaseMapper object. Dictionary may contain the following
             source: str or Path or tuple or Transformer to extract source data
@@ -905,7 +910,7 @@ class MappingParser(ABC):
     def convert(
         self,
         target: 'MappingParser',
-        mapper: 'BaseMapper' = None,
+        mapper: 'BaseMapper | None' = None,
         update_mode: str = 'merge',
         remove: bool = False,
         debug: bool = False,
@@ -950,7 +955,9 @@ class MappingParser(ABC):
 
 class MetainfoBaseMapper(BaseMapper):
     @staticmethod
-    def from_dict(dct: dict[str, Any], parent: BaseMapper = None) -> 'BaseMapper':
+    def from_dict(
+        dct: dict[str, Any], parent: BaseMapper | None = None
+    ) -> 'BaseMapper':
         parent = BaseMapper.from_dict(dct) if parent is None else parent
 
         if isinstance(parent, Transformer):
@@ -1041,7 +1048,7 @@ class MetainfoParser(MappingParser):
             return self.data_object.m_to_dict()
         return {}
 
-    def from_dict(self, dct: dict[str, Any], root: MSection = None) -> None:
+    def from_dict(self, dct: dict[str, Any], root: MSection | None = None) -> None:
         # if self.data_object is not None:
         #     self.data_object = self.data_object.m_from_dict(dct)
         # return
@@ -1104,7 +1111,7 @@ class MetainfoParser(MappingParser):
             except Exception:
                 pass
 
-    def build_mapper(self, max_level: int = None) -> BaseMapper:
+    def build_mapper(self, max_level: int | None = None) -> BaseMapper:
         """
         Builds a mapper for source data from the another parser with path or operator
         specified in metainfo annotation with key annotation_key. The target path is

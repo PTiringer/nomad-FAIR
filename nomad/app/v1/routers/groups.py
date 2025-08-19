@@ -111,7 +111,7 @@ async def get_user_groups(
 
     start = pagination.get_simple_index()
     end = start + pagination.page_size
-    data = [UserGroup.from_orm(group) for group in db_groups[start:end]]
+    data = [UserGroup.model_validate(group) for group in db_groups[start:end]]
     return {'pagination': pagination_response, 'data': data}
 
 
@@ -140,7 +140,7 @@ async def create_user_group(
     user: User = Depends(create_user_dependency(required=True)),
 ):
     """Create user group."""
-    user_group_dict = user_group_edit.dict(exclude_none=True)
+    user_group_dict = user_group_edit.model_dump(exclude_none=True)
     members = user_group_dict.get('members')
     if members is not None:
         check_user_ids(members)
@@ -165,7 +165,7 @@ async def update_user_group(
     user_group = get_user_group_or_404(group_id)
     check_user_may_edit_user_group(user, user_group)
 
-    user_group_dict = user_group_edit.dict(exclude_none=True)
+    user_group_dict = user_group_edit.model_dump(exclude_none=True)
     members = user_group_dict.get('members')
     if members is not None:
         check_user_ids(members)
