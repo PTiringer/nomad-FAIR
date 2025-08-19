@@ -303,6 +303,11 @@ class ProcessUploadWorkflow:
         except Exception as e:
             # Set upload to failure status
             upload_workflow_input.failure_message = 'Process upload failed'
+            if isinstance(e, ActivityError):
+                upload_workflow_input.error_details = str(e.cause)
+            else:
+                upload_workflow_input.error_details = str(e)
+
             await workflow.execute_activity(
                 process_upload_failure_activity,
                 upload_workflow_input,
@@ -395,6 +400,11 @@ class EditUploadMetadataWorkflow:
         except Exception as e:
             # Set upload to failure status
             upload_workflow_input.failure_message = 'Edit metadata failed'
+            if isinstance(e, ActivityError):
+                upload_workflow_input.error_details = str(e.cause)
+            else:
+                upload_workflow_input.error_details = str(e)
+
             await workflow.execute_activity(
                 process_upload_failure_activity,
                 upload_workflow_input,
@@ -452,6 +462,11 @@ class ImportBundleWorkflow:
         except Exception as e:
             # Set upload to failure status
             upload_workflow_input.failure_message = 'Import bundle failed'
+            if isinstance(e, ActivityError):
+                upload_workflow_input.error_details = str(e.cause)
+            else:
+                upload_workflow_input.error_details = str(e)
+
             await workflow.execute_activity(
                 process_upload_failure_activity,
                 upload_workflow_input,
@@ -510,6 +525,11 @@ class PublishUploadWorkflow:
         except Exception as e:
             # Set upload to failure status
             upload_workflow_input.failure_message = 'Publish upload failed'
+            if isinstance(e, ActivityError):
+                upload_workflow_input.error_details = str(e.cause)
+            else:
+                upload_workflow_input.error_details = str(e)
+
             await workflow.execute_activity(
                 process_upload_failure_activity,
                 upload_workflow_input,
