@@ -813,7 +813,7 @@ def add_plugin(plugin: Schema) -> None:
 
     # Add plugin to Package registry
     package = importlib.import_module(plugin.python_package)
-    package.m_package.__init_metainfo__()
+    package.m_package.__init_metainfo__()  # type: ignore
 
     # Reload the dynamic quantities so that API is aware of the plugin
     # quantities.
@@ -842,7 +842,7 @@ def remove_plugin(plugin) -> None:
         del config.plugins.entry_points.options[plugin.key]
 
     # Remove plugin from Package registry
-    package = importlib.import_module(plugin.python_package).m_package
+    package = importlib.import_module(plugin.python_package).m_package  # type: ignore
     for key, i_package in Package.registry.items():
         if i_package is package:
             del Package.registry[key]

@@ -129,7 +129,7 @@ class ExampleData:
 
         for upload_id in self.upload_entries:
             search.delete_upload(upload_id, refresh=True)
-            upload_proc = proc.Upload.objects(upload_id=upload_id).first()
+            upload_proc = proc.Upload.objects(upload_id=upload_id).first()  # type: ignore
             if upload_proc is not None:
                 upload_proc.delete()
             upload_files = files.UploadFiles.get(upload_id)

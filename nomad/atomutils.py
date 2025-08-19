@@ -487,7 +487,7 @@ def cellpar_to_cell(
     if not degrees:
         cellpar[3:6] *= 180.0 / np.pi
 
-    return ase.geometry.cell.cellpar_to_cell(cellpar, ab_normal, a_direction)
+    return ase.geometry.cell.cellpar_to_cell(cellpar, ab_normal, a_direction)  # type: ignore
 
 
 def cell_to_cellpar(cell: np.ndarray, degrees=False) -> np.ndarray:

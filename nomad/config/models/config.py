@@ -1113,7 +1113,7 @@ class Config(ConfigBaseModel):
                 config_override['id'] = key
                 config_instance = entry_point.load()
                 package_metadata = entry_point.dist.metadata
-                url_list = package_metadata.get_all('Project-URL')
+                url_list = package_metadata.get_all('Project-URL')  # type: ignore
                 url_dict = {}
                 for url in url_list or []:
                     name, value = url.split(',')
@@ -1121,7 +1121,7 @@ class Config(ConfigBaseModel):
                 if package_name not in plugin_packages:
                     plugin_package = PluginPackage(
                         name=package_name,
-                        description=package_metadata.get('Summary'),
+                        description=package_metadata.get('Summary'),  # type: ignore
                         version=entry_point.dist.version,
                         homepage=url_dict.get('homepage'),
                         documentation=url_dict.get('documentation'),

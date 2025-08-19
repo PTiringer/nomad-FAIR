@@ -812,7 +812,7 @@ async def get_uploads(
     end = start + pagination.page_size
 
     # Fetch data from DB
-    mongodb_query = pagination.order_result(Upload.objects.filter(mongo_query))
+    mongodb_query = pagination.order_result(Upload.objects.filter(mongo_query))  # type: ignore
 
     data = [upload_to_pydantic(upload) for upload in mongodb_query[start:end]]
 
@@ -1022,7 +1022,7 @@ async def get_upload_rawdir_path(
                 name=os.path.basename(path), size=upload_files.raw_file_size(path)
             )
             if include_entry_info:
-                entry: Entry = Entry.objects(
+                entry: Entry = Entry.objects(  # type: ignore
                     upload_id=upload_id, mainfile=path, mainfile_key=None
                 ).first()
                 if entry:
@@ -1052,7 +1052,7 @@ async def get_upload_rawdir_path(
                         path_to_element[path_info.path] = element
 
             if include_entry_info and content:
-                for entry in Entry.objects(
+                for entry in Entry.objects(  # type: ignore  # type: ignore
                     upload_id=upload_id,
                     mainfile__in=path_to_element.keys(),
                     mainfile_key=None,
@@ -2726,7 +2726,7 @@ async def _get_files_if_provided(
 
 
 def _query_mongodb(**kwargs):
-    return Upload.objects(**kwargs)
+    return Upload.objects(**kwargs)  # type: ignore
 
 
 def get_role_query(roles: list[UploadRole], user: User, include_all=False) -> Q:

@@ -301,11 +301,11 @@ def _query_uploads(
         # and not the entry collection. This ensures that we will also catch uploads that
         # do not have an entry.
         mongo_entry_based_uploads = set(
-            proc.Upload.objects().distinct(field='upload_id')
+            proc.Upload.objects().distinct(field='upload_id')  # type: ignore
         )
     else:
         mongo_entry_based_uploads = set(
-            proc.Entry.objects(entries_mongo_query_q).distinct(field='upload_id')
+            proc.Entry.objects(entries_mongo_query_q).distinct(field='upload_id')  # type: ignore
         )
 
     if entries_query_uploads is not None:
@@ -346,7 +346,7 @@ def _query_uploads(
     if uploads is not None:
         final_query &= Q(upload_id__in=list(uploads))
 
-    return final_query, proc.Upload.objects(final_query)
+    return final_query, proc.Upload.objects(final_query)  # type: ignore
 
 
 @uploads.command(help='List selected uploads')
@@ -407,7 +407,7 @@ def export(ctx, uploads, required, output: str):
         upload_id = upload.upload_id
         upload_files = UploadFiles.get(upload_id)
         upload_count += 1
-        entry_ids = list(entry.entry_id for entry in Entry.objects(upload_id=upload_id))
+        entry_ids = list(entry.entry_id for entry in Entry.objects(upload_id=upload_id))  # type: ignore
         entry_count = 0
         for entry_id in entry_ids:
             entry_count += 1
@@ -662,7 +662,7 @@ def delete_upload(
 
     # delete mongo
     if not skip_mongo:
-        proc.Entry.objects(upload_id=upload.upload_id).delete()
+        proc.Entry.objects(upload_id=upload.upload_id).delete()  # type: ignore
         upload.delete()
 
 
@@ -841,9 +841,9 @@ def stop(ctx, uploads, entries: bool, kill: bool, no_celery: bool):
     running_query = query & mongoengine.Q(
         process_status__in=proc.ProcessStatus.STATUSES_PROCESSING
     )
-    stop_all(proc.Entry.objects(running_query))
+    stop_all(proc.Entry.objects(running_query))  # type: ignore
     if not entries:
-        stop_all(proc.Upload.objects(running_query))
+        stop_all(proc.Upload.objects(running_query))  # type: ignore
 
 
 @uploads.command(
@@ -998,7 +998,7 @@ def integrity(
 
         upload_files = StagingUploadFiles(upload.upload_id)  # type: ignore
 
-        entries = Entry.objects(upload_id=upload.upload_id)
+        entries = Entry.objects(upload_id=upload.upload_id)  # type: ignore
         if not check_all_entries:
             entries = [entries.first()]
 
@@ -1085,7 +1085,7 @@ def integrity(
 
         upload_files = StagingUploadFiles(upload.upload_id)  # type: ignore
 
-        entries = Entry.objects(upload_id=upload.upload_id)
+        entries = Entry.objects(upload_id=upload.upload_id)  # type: ignore
         if not check_all_entries:
             entries = [entries.first()]
 
@@ -1121,7 +1121,7 @@ def integrity(
 
         upload_files = StagingUploadFiles(upload.upload_id)  # type: ignore
 
-        entries = Entry.objects(upload_id=upload.upload_id)
+        entries = Entry.objects(upload_id=upload.upload_id)  # type: ignore
         if not check_all_entries:
             entries = [entries.first()]
 

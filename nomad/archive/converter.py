@@ -281,7 +281,7 @@ def convert_upload(
 
     if isinstance(uploads[0], str):  # type: ignore
         setup()
-        uploads = Upload.objects(upload_id__in=uploads)
+        uploads = Upload.objects(upload_id__in=uploads)  # type: ignore
 
     all_folders: list = []
 

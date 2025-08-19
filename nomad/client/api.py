@@ -54,7 +54,7 @@ def url(path):
     return f'{config.client.url}/v1/{path}'
 
 
-class Auth(requests.auth.AuthBase):
+class Auth(requests.auth.AuthBase):  # type: ignore
     """
     A request Auth class that can be used to authenticate in request callcs like this:
 

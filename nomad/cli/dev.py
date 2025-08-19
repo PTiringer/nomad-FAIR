@@ -130,8 +130,8 @@ def api_model(model):
             generate_response_model,
         )
 
-        sys.modules['nomad.app.v1.models.graph.utils'].ref_prefix = '#/definitions'
-        sys.modules['nomad.app.v1.models.graph.utils'].graph_model_export = True
+        sys.modules['nomad.app.v1.models.graph.utils'].ref_prefix = '#/definitions'  # type: ignore
+        sys.modules['nomad.app.v1.models.graph.utils'].graph_model_export = True  # type: ignore
 
         if model == 'nomad.app.v1.models.graph.GraphRequest':
             model = generate_request_model(Graph)

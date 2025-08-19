@@ -648,7 +648,7 @@ def update_prototypes(ctx, filepath, matches_only):
             cif_file.write(cif_str)
             cif_file.seek(0)
             try:
-                atoms = ase.io.read(cif_file, format='cif')
+                atoms = ase.io.read(cif_file, format='cif')  # type: ignore
             except Exception:
                 print(
                     'Error in getting prototype structure from CIF: {}', format(cifurl)
@@ -665,7 +665,7 @@ def update_prototypes(ctx, filepath, matches_only):
                     poscar_file = io.StringIO()
                     poscar_file.write(poscar_str)
                     poscar_file.seek(0)
-                    atoms = ase.io.read(poscar_file, format='vasp')
+                    atoms = ase.io.read(poscar_file, format='vasp')  # type: ignore
                 except Exception:
                     print(
                         f'Error in getting prototype structure from POSCAR: {poscarurl}'

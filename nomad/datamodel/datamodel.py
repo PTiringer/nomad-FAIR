@@ -1025,7 +1025,7 @@ class EntryMetadata(MSection):
 
             from ..processing import Entry
 
-            entry_objects = Entry.objects(entry_id=entry_id)
+            entry_objects = Entry.objects(entry_id=entry_id)  # type: ignore
             ref_item.target_mainfile = (
                 entry_objects.first().mainfile if entry_objects.count() == 1 else None
             )
