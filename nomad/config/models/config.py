@@ -345,7 +345,7 @@ class Oasis(ConfigBaseModel):
     """,
     )
     terms_of_service_url: str = Field(
-        'https://nomad-lab.eu/nomad-lab/terms.html',
+        '',
         description="""
         The URL of the terms of service.
     """,
