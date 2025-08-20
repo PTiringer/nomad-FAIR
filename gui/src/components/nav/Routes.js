@@ -329,12 +329,6 @@ export const routes = [
         menu: 'Sources',
         href: 'https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR',
         tooltip: 'NOMAD\'s main Gitlab project'
-      },
-      {
-        menu: 'Terms',
-        consent: true,
-        tooltip: 'The terms of service',
-        href: 'https://nomad-lab.eu/nomad-lab/terms.html'
       }
     ]
   },

@@ -55,9 +55,12 @@ function TermsSnack() {
   >
     <SnackbarContent
       message={<span>
-        NOMAD only uses cookies that are strictly necessary for this site&apos;s functionality.
-        No tracking or marketing cookies are used. By using this site you agree to
-        our <Link className={classes.termsLink} href={termsOfServiceURL} title="terms of service">terms of service</Link>.
+        NOMAD only uses cookies that are strictly necessary for this site&apos;s
+        functionality. No tracking or marketing cookies are used.
+        {termsOfServiceURL && <>
+        By using this site you agree to our <Link className={classes.termsLink}
+        href={termsOfServiceURL} title="terms of service">terms of service</Link>.
+        </>}
       </span>}
       action={[
         <IconButton
