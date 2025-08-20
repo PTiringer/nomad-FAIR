@@ -31,7 +31,6 @@ from pydantic.main import BaseModel
 from nomad import normalizing
 from nomad.app.v1.models import Aggregation, StatisticsAggregation
 from nomad.config import config
-from nomad.metainfo.elasticsearch_extension import entry_type
 from nomad.parsing import parsers
 from nomad.parsing.parsers import code_metadata
 from nomad.search import search
@@ -102,7 +101,7 @@ class InfoModel(BaseModel):
     statistics: StatisticsModel | None = Field(
         None, description='General NOMAD statistics'
     )
-    search_quantities: dict
+    search_quantities: dict | None = Field(None, deprecated=True)
     version: str
     deployment: str
     oasis: bool
@@ -210,15 +209,6 @@ async def get_info():
             if config.plugins and config.plugins.plugin_packages
             else [],
             'statistics': statistics(),
-            'search_quantities': {
-                s.qualified_name: {
-                    'name': s.qualified_name,
-                    'description': s.definition.description,
-                    'many': not s.definition.is_scalar,
-                }
-                for s in entry_type.quantities.values()
-                if 'optimade' not in s.qualified_name
-            },
             'version': config.meta.version,
             'deployment': config.meta.deployment,
             'oasis': config.oasis.is_oasis,
