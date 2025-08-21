@@ -548,7 +548,7 @@ class KeycloakUserManagement(UserManagement):
             if str(getattr(e, 'response_code', 404)) == '404':
                 raise KeyError('User does not exist')
 
-            logger.error('Could not retrieve user from keycloak', exc_info=e)
+            # logger.error('Could not retrieve user from keycloak', exc_info=e)
             raise e
 
         return self.__user_from_keycloak_user(keycloak_user)
