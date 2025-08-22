@@ -13,11 +13,11 @@ customized NOMAD version and with their own compute and storage resources.
 
 See also the more detailed [contributing guide](https://nomad-lab.eu/docs/howto/develop/contrib.html) in the documentation.
 
-There are two forks of this repository, one on **GitHUB** and one on MPCDF's **GitLab**.
+There are two forks of this repository, one on **GitHub** and one on MPCDF's **GitLab**.
 
-NOMAD's [GitHUB project](https://github.com/nomad-coe/nomad) always contains the current `develop` branch.
+NOMAD's [GitHub project](https://github.com/FAIRmat-NFDI/nomad) always contains the current `develop` branch.
 It can be used to report issues, fork the project, and to create pull requests. After review, pull requests
-will be pushed to the GitLab project and merged there. Use the regular GitHUB flow to contribute
+will be pushed to the GitLab project and merged there. Use the regular GitHub flow to contribute
 as an external developer here.
 
 NOMAD's [GitLab project](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR) at [MPCDF](https://www.mpcdf.mpg.de/)
@@ -25,7 +25,7 @@ is used for the main development activities. It runs all CI/CD pipelines and off
 It is openly readable, but requires an MPCDF account for active contributions. If you
 are a member of the FAIRmat or NOMAD CoE project, contribute here.
 
-Most sub-modules, e.g. NOMAD's parsers, are hosted in individual projects on GitHUB
+Most sub-modules, e.g. NOMAD's parsers, are hosted in individual projects on GitHub
 within the [nomad-coe organization](https://github.com/nomad-coe).
 
 ## Getting started
