@@ -530,7 +530,7 @@ export default function About() {
         support@nomad-lab.eu . If you think
         that this web-page is not working as expected, or if you want to start a discussion
         about possible features, feel free to open an issue on our
-        [github project](https://github.com/nomad-coe/nomad/issues).
+        [github project](https://github.com/FAIRmat-NFDI/nomad/issues).
 
         ### Developer Documentation
         The [in-depth documentation](${appBase}/docs/index.html)
