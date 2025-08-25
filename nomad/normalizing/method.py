@@ -1011,6 +1011,7 @@ class DMFTMethod(ElectronicMethod):
         dmft.inverse_temperature = self._repr_method.dmft.inverse_temperature
         dmft.magnetic_state = self._repr_method.dmft.magnetic_state
         # taking U,JH values from the first atom
+        hubbard_parameters = None
         if self._repr_method.m_xpath('starting_method_ref.lattice_model_hamiltonian'):
             hubbard_parameters = (
                 self._repr_method.starting_method_ref.lattice_model_hamiltonian[

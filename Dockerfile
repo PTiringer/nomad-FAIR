@@ -20,92 +20,63 @@
 # If you need more help, visit the Dockerfile reference guide at
 # https://docs.docker.com/engine/reference/builder/
 
+# ================================================================================
+# GUI cached base layers
+# ================================================================================
+
 # node20 image local copy
 FROM gitlab-registry.mpcdf.mpg.de/nomad-lab/nomad-fair:node AS base_node
+
+RUN mkdir -p /app/gui
+WORKDIR /app/gui
+
+ENV PATH=/app/node_modules/.bin:$PATH
+ENV NODE_OPTIONS="--max_old_space_size=4096 --openssl-legacy-provider"
+
+# ================================================================================
+# Python cached base layers
+# ================================================================================
+
 FROM ghcr.io/astral-sh/uv:0.5-python3.12-bookworm-slim AS base_python
 # Keeps Python from buffering stdout and stderr to avoid situations where
 # the application crashes without emitting any logs due to buffering.
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH="${PYTHONPATH}:/backend/"
 ENV UV_SYSTEM_PYTHON=1
-
-FROM base_python AS base_final
-
-RUN apt-get update \
- && apt-get install --yes --quiet --no-install-recommends \
-       libgomp1 \
-       libmagic1 \
-       curl \
-       zip \
-       unzip \
- && curl -fsSL https://deb.nodesource.com/setup_16.x | bash - \
- && apt-get install --yes --quiet --no-install-recommends \
-       nodejs \
- && rm -rf /var/lib/apt/lists/* \
- && npm install -g configurable-http-proxy \
- && npm uninstall -g npm
-
-FROM base_python AS base_builder
+ENV UV_NO_CACHE=1
 
 RUN apt-get update \
- && apt-get install --yes --quiet --no-install-recommends \
-      libgomp1 \
-      libmagic1 \
-      file \
-      gcc \
-      build-essential \
-      curl \
-      zip \
-      unzip \
-      git \
- && rm -rf /var/lib/apt/lists/*
+     && apt-get install --yes --quiet --no-install-recommends \
+     build-essential \
+     curl \
+     file \
+     gcc \
+     git \
+     libgomp1 \
+     libmagic1 \
+     unzip \
+     zip \
+     && rm -rf /var/lib/apt/lists/*
 
+RUN mkdir /app
 WORKDIR /app
 
-
-# Python environment
-COPY requirements.txt .
-
-RUN uv pip install -q -r requirements.txt
-
+# ================================================================================
 
 FROM base_python AS dev_python
 
 # Prevents Python from writing pyc files.
 ENV PYTHONDONTWRITEBYTECODE=1
-
 ENV RUNTIME=docker
 
-WORKDIR /app
-
-RUN apt-get update \
- && apt-get install --yes --quiet --no-install-recommends \
-      libgomp1 \
-      libmagic1 \
-      file \
-      gcc \
-      build-essential \
-      curl \
-      zip \
-      unzip \
-      git \
- && rm -rf /var/lib/apt/lists/*
-
-# Python environment
 COPY requirements-dev.txt .
-
 RUN uv pip install -r requirements-dev.txt
 
 # ================================================================================
-# Built the GUI in the gui build image
+# Built the GUI
 # ================================================================================
 
 FROM base_node AS dev_node
-
-WORKDIR /app/gui
-
-ENV PATH=/app/node_modules/.bin:$PATH
-ENV NODE_OPTIONS="--max_old_space_size=4096 --openssl-legacy-provider"
 
 # Fetch and cache all (but only) the dependencies
 COPY gui/yarn.lock gui/package.json gui/postinstall.js ./
@@ -119,17 +90,23 @@ COPY tests/states/archives/dft.json  /app/tests/states/archives/dft.json
 COPY gui .
 RUN echo "REACT_APP_BACKEND_URL=/fairdi/nomad/latest" > .env
 
+# ================================================================================
+
 FROM dev_node AS build_node
 
 RUN yarn run build
 
+# ================================================================================
+# Built the Python package
+# ================================================================================
+
 FROM dev_python AS dev_package
 
-WORKDIR /app
+# Files required for artifact generation/testing
+COPY ops/docker-compose ./ops/docker-compose
 
 COPY nomad ./nomad
 COPY scripts ./scripts
-COPY tests ./tests
 COPY .coveragerc \
      AUTHORS \
      LICENSE \
@@ -137,12 +114,13 @@ COPY .coveragerc \
      pyproject.toml \
      README.md \
      README.parsers.md \
-     requirements.txt \
      setup.py \
      ./
 
-# Files required for artifact generation/testing
-COPY ops/docker-compose ./ops/docker-compose
+# for testing purposes
+# todo: do we really need this to be bundled in the image?
+COPY tests/data/parsers/archive.json ./tests/data/parsers/archive.json
+COPY tests/data/examples/example.out ./tests/data/examples/example.out
 
 # Build documentation with static version
 RUN SETUPTOOLS_SCM_PRETEND_VERSION='0.0' uv pip install ".[parsing,infrastructure,dev]"
@@ -157,59 +135,4 @@ ARG SETUPTOOLS_SCM_PRETEND_VERSION='0.0'
 RUN uv pip install ".[parsing,infrastructure,dev]"
 
 # Build the python package.
-RUN uv build 
-
-
-# ================================================================================
-# We use slim for the final image
-# ================================================================================
-FROM base_builder AS builder
-
-# install
-COPY --from=dev_package /app/dist/nomad-lab-*.tar.gz .
-RUN pip install nomad-lab-*.tar.gz
-
-# Install default plugins. TODO: This can be removed once we have a proper
-# distribution project.
-COPY requirements-plugins.txt .
-RUN uv pip install -r requirements-plugins.txt -c requirements.txt
-
-
-# ================================================================================
-# We use slim for the final image
-# ================================================================================
-
-FROM base_final AS final
-
-WORKDIR /app
-
-RUN useradd -u 1000 nomad
-
-# transfer installed packages from the build stage
-COPY --chown=nomad:1000 scripts/run.sh .
-COPY --chown=nomad:1000 scripts/run-worker.sh .
-COPY --chown=nomad:1000 nomad/jupyterhub_config.py ./nomad/jupyterhub_config.py
-
-COPY --chown=nomad:1000 --from=dev_package /app/examples/data /app/examples/data
-COPY --chown=nomad:1000 --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-COPY --chown=nomad:1000 --from=builder /usr/local/share/jupyterhub /usr/local/share/jupyterhub
-COPY --chown=nomad:1000 --from=builder /usr/local/share/jupyter /usr/local/share/jupyter
-COPY --chown=nomad:1000 --from=builder /usr/local/bin/nomad /usr/local/bin/nomad
-COPY --chown=nomad:1000 --from=builder /usr/local/bin/jupyter* /usr/local/bin/
-
-RUN mkdir -p /app/.volumes/fs \
- && chown -R nomad:1000 /app \
- && chown -R nomad:1000 /usr/local/lib/python3.12/site-packages/nomad
-
-# for attaching profiler to running processes
-RUN echo "kernel.yama.ptrace_scope = 0" > /etc/sysctl.d/10-ptrace.conf
-
-USER nomad
-
-# The application ports
-EXPOSE 8000
-EXPOSE 9000
-
-ENV PYTHONPATH=/app/plugins
-
-VOLUME /app/.volumes/fs
+RUN uv build

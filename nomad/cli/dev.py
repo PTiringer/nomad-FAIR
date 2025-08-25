@@ -18,7 +18,7 @@
 import json
 import os
 import sys
-from typing import Any
+from typing import Any, cast
 
 import click
 from pint import Unit
@@ -323,6 +323,10 @@ def get_gui_config() -> str:
         'ui': config.ui.dict(exclude_none=True) if config.ui else {},
         'plugins': plugins,
         'dataciteEnabled': config.datacite.enabled,
+        'resourcesEnabled': config.resources.enabled,
+        'termsOfServiceURL': config.oasis.terms_of_service_url,
+        'footerLinks': [link.dict() for link in config.meta.footer_links],
+        'description': config.meta.description,
     }
 
     return f'window.nomadEnv = {json.dumps(data, indent=2)}'
@@ -493,7 +497,7 @@ def example_data(username: str):
 def _generate_units_json() -> tuple[Any, Any]:
     from collections import defaultdict
 
-    from pint.converters import ScaleConverter
+    from pint.facets.plain import ScaleConverter
 
     from nomad.units import ureg
 
@@ -505,7 +509,7 @@ def _generate_units_json() -> tuple[Any, Any]:
     prefixes = {}
     for name, prefix in ureg._prefixes.items():
         if isinstance(prefix.converter, int):
-            scale = prefix.converter
+            scale = cast(float, prefix.converter)
         elif isinstance(prefix.converter, ScaleConverter):
             scale = prefix.converter.scale
         else:
@@ -544,7 +548,7 @@ def _generate_units_json() -> tuple[Any, Any]:
 
     # Define a function to check for an SI prefix
     si_prefixes = [
-        value['name'] for value in prefixes.values() if len(value['name']) > 2
+        value['name'] for value in prefixes.values() if len(str(value['name'])) > 2
     ]
 
     def is_prefix_only(unit_base_name):
@@ -585,31 +589,23 @@ def _generate_units_json() -> tuple[Any, Any]:
         if not isinstance(unit, Unit):
             continue
         if hasattr(unit, 'dimensionality'):
-            dimension_name = dimension_def_name_map.get(str(unit.dimensionality))
+            dimension_name = dimension_def_name_map.get(str(unit.dimensionality))  # type: ignore[attr-defined]
             if dimension_name:
                 unit_list.append(get_unit_data(unit_str, dimension_name))
 
-    # Some units need to be added manually.
-    unit_list.extend(
-        [
-            # Kilogram as SI base unit
-            {
-                'name': 'kilogram',
-                'dimension': 'mass',
-                'label': 'Kilogram',
-                'abbreviation': 'kg',
-            },
-            # Dimensionless
-            {
-                'name': 'dimensionless',
-                'dimension': 'dimensionless',
-                'label': 'Dimensionless',
-                'abbreviation': '',
-            },
-        ]
+    # Add kilogram as SI base unit
+    unit_list.append(
+        {
+            'name': 'kilogram',
+            'dimension': 'mass',
+            'label': 'Kilogram',
+            'abbreviation': 'kg',
+        }
     )
 
-    # Add the unit definition and offset that come from the Pint setup
+    # Add the unit definition and offset that come from the Pint setup.
+    dimensionless_units = []
+    units = []
     for value in unit_list:
         i_unit = value['name']
         j_unit = str(ureg.Quantity(1, getattr(ureg, i_unit)).to_base_units().units)
@@ -640,10 +636,28 @@ def _generate_units_json() -> tuple[Any, Any]:
             value['definition'] = str(a).replace('**', '^')
             value['offset'] = b / a.magnitude
 
+        if value['dimension'] == '' and not value.get('definition'):
+            dimensionless_units.append(value)
+        else:
+            units.append(value)
+
+    # Pint does not contain a separate definition for the dimensionless unit, but contains
+    # definitions for aliases of the dimensionless unit. In the JS version we instead have
+    # an explicit dimensionless unit and add aliases to it.
+    units.append(
+        {
+            'name': 'dimensionless',
+            'dimension': 'dimensionless',
+            'label': 'Dimensionless',
+            'abbreviation': '',
+            'aliases': [value['name'] for value in dimensionless_units],
+        }
+    )
+
     # Reorder unit list so that base dimensions come first. Units are registered
     # in the list order and base units need to be registered before derived
     # ones.
-    unit_list.sort(key=lambda x: x.get('name'))
-    unit_list.sort(key=lambda x: 0 if x.get('definition') is None else 1)
+    units.sort(key=lambda x: x.get('name'))
+    units.sort(key=lambda x: 0 if x.get('definition') is None else 1)
 
-    return unit_list, prefixes
+    return units, prefixes

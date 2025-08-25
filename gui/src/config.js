@@ -90,6 +90,7 @@ export function normalizeConfig(config) {
 
 window.nomadEnv = window.nomadEnv || {}
 export const version = window.nomadEnv.version
+export const description = window.nomadEnv.description
 export const appBase = urlAbs(window.nomadEnv.appBase.replace(/\/$/, ''))
 export const apiBase = `${appBase}/api`
 export const northBase = urlAbs(window.nomadEnv.northBase)
@@ -113,6 +114,9 @@ export const globalLoginRequired = window.nomadEnv.globalLoginRequired || false
 export const appTokenMaxExpiresIn = window.nomadEnv.appTokenMaxExpiresIn || "2023-10-25"
 export const uploadMembersGroupSearchEnabled = window.nomadEnv.uploadMembersGroupSearchEnabled || false
 export const dataciteEnabled = window.nomadEnv.dataciteEnabled || false
+export const resourcesEnabled = window.nomadEnv.resourcesEnabled || false
+export const termsOfServiceURL = window.nomadEnv.termsOfServiceURL
+export const footerLinks = window.nomadEnv.footerLinks
 export const email = 'support@nomad-lab.eu'
 export const maxLogsToShow = 50
 export const schemaSeparator = '#'

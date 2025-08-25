@@ -362,7 +362,9 @@ class RowActionURL(RowAction):
         description="""JMESPath pointing to a path in the archive that contains the URL."""
     )
     type: Literal['url'] = Field(
-        'url', description='Set as `url` to get this action type.', hidden=True
+        'url',
+        description='Set as `url` to get this action type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
 
     @model_validator(mode='before')
@@ -382,7 +384,9 @@ class RowActionNorth(RowAction):
     )
     tool_name: str = Field(description="""Name of the NORTH tool to open.""")
     type: Literal['north'] = Field(
-        'north', description='Set as `north` to get this action type.', hidden=True
+        'north',
+        description='Set as `north` to get this action type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
 
     @model_validator(mode='before')
@@ -588,7 +592,8 @@ class TermsBase(ConfigBaseModel):
     )
     search_quantity: str = Field(description='The targeted search quantity.')
     type: Literal['terms'] = Field(
-        description='Set as `terms` to get this type.', hidden=True
+        description='Set as `terms` to get this type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
     scale: ScaleEnum = Field(ScaleEnum.LINEAR, description='Statistics scaling.')
     show_input: bool = Field(True, description='Whether to show text input field.')
@@ -627,7 +632,8 @@ class HistogramBase(ConfigBaseModel):
     """Base model for configuring histogram components."""
 
     type: Literal['histogram'] = Field(
-        description='Set as `histogram` to get this widget type.', hidden=True
+        description='Set as `histogram` to get this widget type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
     quantity: str | None = Field(
         None,
@@ -707,7 +713,8 @@ class PeriodicTableBase(ConfigBaseModel):
     """Base model for configuring periodic table components."""
 
     type: Literal['periodic_table'] = Field(
-        description='Set as `periodic_table` to get this widget type.', hidden=True
+        description='Set as `periodic_table` to get this widget type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
     quantity: str | None = Field(
         None,
@@ -822,7 +829,8 @@ class MenuItemVisibility(MenuItem):
     """Menu item that shows a radio button that can be used to change the visiblity."""
 
     type: Literal['visibility'] = Field(
-        description='Set as `visibility` to get this menu item type.', hidden=True
+        description='Set as `visibility` to get this menu item type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
 
     @model_validator(mode='before')
@@ -838,7 +846,8 @@ class MenuItemDefinitions(MenuItem):
     """Menu item that shows a tree for filtering data by the presence of definitions."""
 
     type: Literal['definitions'] = Field(
-        description='Set as `definitions` to get this menu item type.', hidden=True
+        description='Set as `definitions` to get this menu item type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
 
     @model_validator(mode='before')
@@ -854,7 +863,8 @@ class MenuItemOptimade(MenuItem):
     """Menu item that shows a dialog for entering OPTIMADE queries."""
 
     type: Literal['optimade'] = Field(
-        description='Set as `optimade` to get this menu item type.', hidden=True
+        description='Set as `optimade` to get this menu item type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
 
     @model_validator(mode='before')
@@ -874,7 +884,7 @@ class MenuItemCustomQuantities(MenuItem):
 
     type: Literal['custom_quantities'] = Field(
         description='Set as `custom_quantities` to get this menu item type.',
-        hidden=True,
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
 
     @model_validator(mode='before')
@@ -910,7 +920,8 @@ class MenuItemNestedObject(MenuItem):
     """
 
     type: Literal['nested_object'] = Field(
-        description='Set as `nested_object` to get this menu item type.', hidden=True
+        description='Set as `nested_object` to get this menu item type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
     path: str = Field(
         description='Path of the nested object. Typically a section name.'
@@ -954,7 +965,8 @@ class Menu(MenuItem):
     """
 
     type: Literal['menu'] = Field(
-        description='Set as `nested_object` to get this menu item type.', hidden=True
+        description='Set as `nested_object` to get this menu item type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
     size: MenuSizeEnum | str | None = Field(
         MenuSizeEnum.SM,
@@ -1073,7 +1085,8 @@ class WidgetTerms(Widget, TermsBase):
     """Terms widget configuration."""
 
     type: Literal['terms'] = Field(
-        description='Set as `terms` to get this widget type.', hidden=True
+        description='Set as `terms` to get this widget type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
 
 
@@ -1081,7 +1094,8 @@ class WidgetHistogram(Widget, HistogramBase):
     """Histogram widget configuration."""
 
     type: Literal['histogram'] = Field(
-        description='Set as `histogram` to get this widget type.', hidden=True
+        description='Set as `histogram` to get this widget type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
 
 
@@ -1089,7 +1103,8 @@ class WidgetPeriodicTable(Widget, PeriodicTableBase):
     """Periodic table widget configuration."""
 
     type: Literal['periodic_table'] = Field(
-        description='Set as `periodic_table` to get this widget type.', hidden=True
+        description='Set as `periodic_table` to get this widget type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
 
 
@@ -1097,7 +1112,8 @@ class WidgetPeriodicTableDeprecated(WidgetPeriodicTable):
     """Deprecated copy of WidgetPeriodicTable with a misspelled type."""
 
     type: Literal['periodictable'] = Field(  # type: ignore[assignment]
-        description='Set as `periodictable` to get this widget type.', hidden=True
+        description='Set as `periodictable` to get this widget type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
 
     @model_validator(mode='before')
@@ -1127,7 +1143,8 @@ class WidgetScatterPlot(Widget):
     """Scatter plot widget configuration."""
 
     type: Literal['scatter_plot'] = Field(
-        description='Set as `scatter_plot` to get this widget type.', hidden=True
+        description='Set as `scatter_plot` to get this widget type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
     x: AxisLimitedScale | str = Field(
         description='Configures the information source and display options for the x-axis.'
@@ -1192,7 +1209,8 @@ class WidgetScatterPlotDeprecated(WidgetScatterPlot):
     """Deprecated copy of WidgetScatterPlot with a misspelled type."""
 
     type: Literal['scatterplot'] = Field(  # type: ignore[assignment]
-        description='Set as `scatterplot` to get this type.', hidden=True
+        description='Set as `scatterplot` to get this type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
 
     @model_validator(mode='before')
@@ -1874,11 +1892,20 @@ class App(ConfigBaseModel):
                     ),
                     'heterogeneouscatalyst': Menu(
                         items=[
-                            MenuItemTerms(
-                                search_quantity='results.properties.catalytic.reaction.name',
+                            Menu(
+                                title='Catalytic Reactions',
+                                indentation=1,
+                                size='md',
+                                items=[
+                                    MenuItemTerms(
+                                        search_quantity='results.properties.catalytic.reaction.name',
+                                    ),
+                                ],
                             ),
-                            MenuItemNestedObject(
-                                path='results.properties.catalytic.reaction.reactants',
+                            Menu(
+                                title='Reactants',
+                                indentation=2,
+                                size='md',
                                 items=[
                                     MenuItemTerms(
                                         search_quantity='results.properties.catalytic.reaction.reactants.name',
@@ -1894,8 +1921,10 @@ class App(ConfigBaseModel):
                                     ),
                                 ],
                             ),
-                            MenuItemNestedObject(
-                                path='results.properties.catalytic.reaction.products',
+                            Menu(
+                                title='Products',
+                                indentation=2,
+                                size='md',
                                 items=[
                                     MenuItemTerms(
                                         search_quantity='results.properties.catalytic.reaction.products.name',
@@ -1908,11 +1937,38 @@ class App(ConfigBaseModel):
                                     ),
                                 ],
                             ),
-                            MenuItemHistogram(
-                                x='results.properties.catalytic.reaction.reaction_conditions.temperature',
+                            Menu(
+                                title='Reaction Conditions',
+                                indentation=2,
+                                size='md',
+                                items=[
+                                    MenuItemHistogram(
+                                        x='results.properties.catalytic.reaction.reaction_conditions.temperature',
+                                    ),
+                                    MenuItemHistogram(
+                                        x={
+                                            'search_quantity': 'results.properties.catalytic.reaction.reaction_conditions.pressure',
+                                            'unit': 'bar',
+                                        }
+                                    ),
+                                    MenuItemHistogram(
+                                        x={
+                                            'search_quantity': 'results.properties.catalytic.reaction.reaction_conditions.time_on_stream',
+                                            'unit': 'hr',
+                                        }
+                                    ),
+                                    MenuItemHistogram(
+                                        x={
+                                            'search_quantity': 'results.properties.catalytic.reaction.reaction_conditions.weight_hourly_space_velocity',
+                                            'unit': 'mL / (g hr)',
+                                        },
+                                    ),
+                                ],
                             ),
-                            MenuItemNestedObject(
-                                path='results.properties.catalytic.catalyst',
+                            Menu(
+                                title='Catalyst Materials',
+                                indentation=1,
+                                size='md',
                                 items=[
                                     MenuItemTerms(
                                         search_quantity='results.properties.catalytic.catalyst.catalyst_type',
@@ -1930,7 +1986,10 @@ class App(ConfigBaseModel):
                                         search_quantity='results.properties.catalytic.catalyst.characterization_methods',
                                     ),
                                     MenuItemHistogram(
-                                        x='results.properties.catalytic.catalyst.surface_area',
+                                        x={
+                                            'search_quantity': 'results.properties.catalytic.catalyst.surface_area',
+                                            'unit': 'm^2/g',
+                                        }
                                     ),
                                 ],
                             ),

@@ -118,7 +118,7 @@ class Author(MSection):
 
     name = Quantity(
         type=str,
-        derived=lambda user: (f'{user.first_name} {user.last_name}').strip(),
+        derived=lambda user: f'{user.first_name} {user.last_name}'.strip(),
         a_elasticsearch=[
             Elasticsearch(material_entry_type, _es_field='keyword'),
             Elasticsearch(
@@ -152,7 +152,7 @@ class User(Author):
         affiliation_address: The address of the given affiliation
         created: The time the account was created
         repo_user_id: The id that was used to identify this user in the NOMAD CoE Repository
-        is_admin: Bool that indicated, iff the user the use admin user
+        is_admin: Bool that indicated, if the user is the admin
     """
 
     m_def = Section(a_pydantic=PydanticModel())
@@ -266,7 +266,7 @@ class Query(JSON):
         class QueryResult(MetadataResponse):
             filters: dict[str, Any] | None = Field(None)
 
-        return QueryResult().parse_obj(value).dict()
+        return QueryResult.model_validate(value).model_dump(by_alias=True)
 
 
 Schema = EntryData

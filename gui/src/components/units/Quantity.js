@@ -33,7 +33,7 @@ export class Quantity {
    * normalized to base units.
    */
   constructor(value, unit, normalized = false) {
-    this.unit = new Unit(unit)
+    this.unit = unit ? new Unit(unit) : new Unit('dimensionless')
     if (!isNumber(value) && !isArray(value)) {
       throw Error('Please provide the value for a Quantity as a number, or as a multidimensional array of numbers.')
     }

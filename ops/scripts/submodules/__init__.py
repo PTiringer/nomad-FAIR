@@ -66,7 +66,7 @@ def move_submodule_to_github(path: str):
     github_giturl = f'git@github.com:nomad-coe/nomad-parser-{name}.git'
 
     if requests.get(github_url).status_code != 404:
-        print(f'Skip {path}. It is already on GitHUB at {github_url}.')
+        print(f'Skip {path}. It is already on GitHub at {github_url}.')
         return
 
     origin = next(
@@ -75,7 +75,7 @@ def move_submodule_to_github(path: str):
 
     origin = re.split(r'\t| ', origin)[1]
     if 'github.com/nomad-coe' in origin:
-        # print(f'Skip {path}. It already has GitHUB origin {origin}.')
+        # print(f'Skip {path}. It already has GitHub origin {origin}.')
         return
 
     print(f'Moving {path} now.')
@@ -123,7 +123,7 @@ def move_submodule_to_github(path: str):
     sh('git add -A')
     sh('git commit -a -m "Prepared license and copyright headers."')
 
-    # create a git-repo at GitHUB
+    # create a git-repo at GitHub
     result = requests.post(
         'https://api.github.com/orgs/nomad-coe/repos',
         headers={

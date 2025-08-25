@@ -75,18 +75,34 @@ const useHelpAdornmentStyles = makeStyles(theme => ({
   }
 }))
 
-export const HelpAdornment = React.memo(({title, description, withOtherAdornment}) => {
+export const HelpAdornment = React.memo(({title, description, actions, otherEndAdornment, withOtherAdornment}) => {
   const classes = useHelpAdornmentStyles()
-  return <InputAdornment
-    position="end"
-    className={withOtherAdornment ? classes.withOtherAdornment : classes.root}
-  >
-    <HelpDialog title={title} description={description}/>
-  </InputAdornment>
+  if (otherEndAdornment?.props?.children) {
+    const children = React.Children.toArray(otherEndAdornment.props.children)
+    if (description) {
+      children.push(<HelpDialog title={title} description={description}/>)
+    }
+    if (actions) {
+      actions.forEach(iconButton => {
+        children.push(iconButton)
+      })
+    }
+    return React.cloneElement(otherEndAdornment, {}, children)
+  } else {
+    return <InputAdornment
+      position="end"
+      className={withOtherAdornment ? classes.withOtherAdornment : classes.root}
+    >
+      <HelpDialog title={title} description={description}/>
+      {actions}
+    </InputAdornment>
+  }
 })
 HelpAdornment.propTypes = {
   withOtherAdornment: PropTypes.bool,
   title: PropTypes.string,
+  otherEndAdornment: PropTypes.element,
+  actions: PropTypes.arrayOf(PropTypes.element),
   description: PropTypes.string
 }
 
@@ -131,19 +147,30 @@ export function getFieldProps(quantityDef) {
 }
 
 export const TextFieldWithHelp = React.memo(React.forwardRef((props, ref) => {
-  const {withOtherAdornment, label, helpDescription, 'data-testid': TestId, ...otherProps} = props
+  const {withOtherAdornment, label, helpDescription, 'data-testid': TestId, actions, ...otherProps} = props
+  const {InputProps, ...textFieldProps} = otherProps
   const classes = useWithHelpStyles()
+
   return <TextField
     inputRef={ref}
     className={classes.root}
-    InputProps={(helpDescription && {endAdornment: (
-      <div id="help">
-        <HelpAdornment title={label} description={helpDescription} withOtherAdornment={withOtherAdornment}/>
-      </div>
-    )})}
+    InputProps={{
+      ...InputProps,
+      ...{
+        endAdornment: <div id="help">
+          <HelpAdornment
+            title={label}
+            description={helpDescription}
+            otherEndAdornment={InputProps?.endAdornment}
+            actions={actions}
+            withOtherAdornment={withOtherAdornment}
+          />
+        </div>
+      }
+    }}
     label={label}
     data-testid={TestId}
-    {...otherProps}
+    {...textFieldProps}
     value={otherProps.value || ''}
   />
 }))
@@ -152,6 +179,7 @@ TextFieldWithHelp.propTypes = {
   label: PropTypes.string,
   value: PropTypes.string,
   helpDescription: PropTypes.string,
+  actions: PropTypes.arrayOf(PropTypes.element),
   'data-testid': PropTypes.string
 }
 

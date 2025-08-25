@@ -226,3 +226,15 @@ def reset_infra(mongo_function, elastic_function):
 def proc_infra(worker, elastic_function, mongo_function, raw_files_function):
     """Combines all fixtures necessary for processing (elastic, worker, files, mongo)"""
     return dict(elastic=elastic_function)
+
+
+@pytest.fixture(scope='function')
+def temporal_proc_infra(
+    elastic_function, mongo_function, raw_files_function, monkeypatch
+):
+    """Combines all fixtures necessary for temporal processing (elastic, files, mongo)"""
+    from nomad.config import config
+
+    monkeypatch.setattr(config.temporal, 'enabled', True)
+
+    return dict(elastic=elastic_function)

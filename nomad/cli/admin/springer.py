@@ -93,7 +93,7 @@ def normalize_formula(formula_str: str) -> str:
     return ''.join(formula_sorted)
 
 
-def parse(htmltext: str) -> dict[str, str]:
+def parse_springer_entry(htmltext: str) -> dict[str, str]:
     """
     Parser the quantities in required_items from an html text.
     """
@@ -110,23 +110,19 @@ def parse(htmltext: str) -> dict[str, str]:
 
         value = item.find(attrs={'class': 'data-list__item-value'})
         value = spaces_re.sub(' ', value.get_text()).strip()
-        results[required_items[key_str]] = value
+        final_key = required_items[key_str]
 
+        if final_key == 'classification':
+            value = [x.strip() for x in value.split(',')]
+            value = [x for x in value if x != '–']
+
+        if final_key == 'compound_classes':
+            value = [x.strip() for x in value.split(',')]
+            value = [x for x in value if x != '–']
+
+        results[final_key] = value
         if len(results) >= len(required_items):
             break
-
-    if 'classification' in results:
-        results['classification'] = [
-            x.strip() for x in results['classification'].split(',')
-        ]
-        results['classification'] = [x for x in results['classification'] if x != '–']
-    if 'compound_classes' in results:
-        results['compound_classes'] = [
-            x.strip() for x in results['compound_classes'].split(',')
-        ]
-        results['compound_classes'] = [
-            x for x in results['compound_classes'] if x != '–'
-        ]
 
     normalized_formula = None
     for formula_type in ['alphabetic_formula', 'phase_labels']:
@@ -139,6 +135,12 @@ def parse(htmltext: str) -> dict[str, str]:
                 pass
 
     results['normalized_formula'] = normalized_formula
+
+    for item in soup.find_all(attrs={'class': 'about_content_comments'}):
+        version_match = re.search(r'Version (.+)\.', item.string.strip())
+        if version_match:
+            results['version'] = version_match.group(1)
+            break
 
     return results
 
@@ -215,7 +217,7 @@ def update_springer(max_n_query: int = 10, retry_time: int = 120):
             path = f'http://materials.springer.com{path}'
             req_text = _download(path, max_n_query, retry_time)
             try:
-                data = parse(req_text)
+                data = parse_springer_entry(req_text)
             except Exception:
                 continue
 

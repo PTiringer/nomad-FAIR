@@ -19,6 +19,10 @@
 from urllib.parse import urlencode
 
 import pytest
+from fastapi import HTTPException
+
+from nomad.app.v1.models.models import User
+from nomad.app.v1.routers.auth import create_user_dependency
 
 
 def perform_get_token_test(client, http_method, status_code, username, password):
@@ -84,3 +88,171 @@ def test_get_app_token_unauthorized(auth_headers, client):
     headers = auth_headers['invalid']
     response = client.get('auth/app_token', headers=headers, params={'expires_in': 60})
     assert response.status_code == 401
+
+
+# Tests for `create_user_dependency`
+
+
+@pytest.fixture
+def allowed_user():
+    return User(user_id='123', email='test@example.com', username='tester')
+
+
+@pytest.mark.parametrize('basic_auth_allowed', [True, False])
+@pytest.mark.parametrize('bearer_token_auth_allowed', [True, False])
+@pytest.mark.parametrize('upload_token_auth_allowed', [True, False])
+@pytest.mark.parametrize('signature_token_auth_allowed', [True, False])
+@pytest.mark.parametrize('_get_user_basic_auth', [True, False])
+@pytest.mark.parametrize('_get_user_bearer_token_auth', [True, False])
+@pytest.mark.parametrize('_get_user_upload_token_auth', [True, False])
+@pytest.mark.parametrize('_get_user_signature_token_auth', [True, False])
+def test_create_user_dependency_auth_methods(
+    basic_auth_allowed: bool,
+    bearer_token_auth_allowed: bool,
+    upload_token_auth_allowed: bool,
+    signature_token_auth_allowed: bool,
+    _get_user_basic_auth: bool,
+    _get_user_bearer_token_auth: bool,
+    _get_user_upload_token_auth: bool,
+    _get_user_signature_token_auth: bool,
+    allowed_user,
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth._get_user_basic_auth',
+        lambda *_: allowed_user if _get_user_basic_auth else None,
+    )
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth._get_user_bearer_token_auth',
+        lambda *_: allowed_user if _get_user_bearer_token_auth else None,
+    )
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth._get_user_upload_token_auth',
+        lambda *_: allowed_user if _get_user_upload_token_auth else None,
+    )
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth._get_user_signature_token_auth',
+        lambda *_: allowed_user if _get_user_signature_token_auth else None,
+    )
+
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.datamodel.User.get',
+        lambda *args, **kwargs: allowed_user,
+    )
+
+    dep = create_user_dependency(
+        required=True,
+        basic_auth_allowed=basic_auth_allowed,
+        bearer_token_auth_allowed=bearer_token_auth_allowed,
+        upload_token_auth_allowed=upload_token_auth_allowed,
+        signature_token_auth_allowed=signature_token_auth_allowed,
+    )
+
+    if any(
+        [
+            basic_auth_allowed and _get_user_basic_auth,
+            bearer_token_auth_allowed and _get_user_bearer_token_auth,
+            upload_token_auth_allowed and _get_user_upload_token_auth,
+            signature_token_auth_allowed and _get_user_signature_token_auth,
+        ]
+    ):
+        assert dep() == allowed_user
+    else:
+        with pytest.raises(HTTPException, match='Authorization required.') as exc:
+            dep()
+        assert exc.value.status_code == 401
+
+
+@pytest.mark.parametrize('required', [True, False])
+def test_create_user_dependency_required(required):
+    dep = create_user_dependency(required=required)
+
+    if required:
+        with pytest.raises(HTTPException, match='Authorization required.') as exc:
+            dep()
+        assert exc.value.status_code == 401
+
+    else:
+        assert dep() is None
+
+
+@pytest.mark.parametrize('tester', [None, 'tester'])
+def test_create_user_dependency_assume_auth_for_username(
+    tester, allowed_user, monkeypatch
+):
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.config.tests.assume_auth_for_username', tester
+    )
+
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.datamodel.User.get',
+        lambda *args, **kwargs: allowed_user,
+    )
+
+    dep = create_user_dependency(required=True)
+
+    if tester is None:
+        with pytest.raises(HTTPException, match='Authorization required.') as exc:
+            dep()
+        assert exc.value.status_code == 401
+    else:
+        assert dep() == allowed_user
+
+
+@pytest.mark.parametrize(
+    'user, expected_exc, exc_msg',
+    [
+        (None, True, 'Authentication is required for this Oasis'),
+        ('not_allowed', True, 'not authorized to access this Oasis'),
+        ('allowed', False, None),
+    ],
+)
+def test_create_user_dependency_oasis_allowed_users(
+    user,
+    expected_exc: bool,
+    exc_msg: str,
+    allowed_user,
+    monkeypatch,
+):
+    if user == 'allowed':
+        auth_user = allowed_user
+    elif user == 'not_allowed':
+        auth_user = User(
+            user_id='456', username='not_allowed', email='notallowed@example.com'
+        )
+    else:
+        auth_user = None
+
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.config.oasis.allowed_users', ['tester']
+    )
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth._get_user_bearer_token_auth',
+        lambda *_: auth_user,
+    )
+
+    dep = create_user_dependency(required=False)
+
+    if expected_exc:
+        with pytest.raises(HTTPException, match=exc_msg) as exc:
+            dep()
+        assert exc.value.status_code == 401
+
+    else:
+        monkeypatch.setattr(
+            'nomad.app.v1.routers.auth.datamodel.User.get',
+            lambda *args, **kwargs: allowed_user,
+        )
+        assert dep() == allowed_user
+
+
+def test_create_user_dependency_unknown_user(allowed_user, monkeypatch):
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth._get_user_bearer_token_auth',
+        lambda *_: allowed_user,
+    )
+
+    dep = create_user_dependency(required=False)
+    with pytest.raises(HTTPException, match='logged in with an unknown user') as exc:
+        dep()
+    assert exc.value.status_code == 401

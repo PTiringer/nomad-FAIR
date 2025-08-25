@@ -9,15 +9,6 @@
 #   - all jobs if any other files changed.
 
 .anchors:
-  .non-docs-changes: &non-docs-changes
-    changes:
-      - examples/**/*
-      - gui/**/*
-      - nomad/**/*
-      - ops/**/*
-      - scripts/**/*
-      - tests/**/*
-      - "*"  # all files in root
   .manual-allow_failure: &manual-allow_failure
     when: manual
     allow_failure: true
@@ -27,7 +18,7 @@ image: gitlab-registry.mpcdf.mpg.de/nomad-lab/nomad-fair/ci-runner:latest
 
 default:
   tags:
-    - cloud  # Necessary to select the right CI runner
+    - cloud # Necessary to select the right CI runner
 
 variables:
   DOCKER_TAG: ${CI_COMMIT_REF_SLUG}
@@ -83,9 +74,6 @@ build gui:
   variables:
     TARGET: dev_node
     DESTINATION: "${CI_REGISTRY_IMAGE}/dev_node:${DOCKER_TAG}"
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_TAG
-    - <<: *non-docs-changes
 
 # kaniko image doesn't contain pip, so we have to save the scm_pretend_version in an earlier job and reuse it later
 update_scm_pretend_version:
@@ -103,9 +91,6 @@ build python:
   variables:
     TARGET: dev_python
     DESTINATION: "${CI_REGISTRY_IMAGE}/dev_python:${DOCKER_TAG}"
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_TAG
-    - <<: *non-docs-changes
 
 python linting:
   stage: test
@@ -118,7 +103,7 @@ python linting:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - <<: *non-docs-changes
+    - when: on_success
   artifacts:
     name: "nomad_code_quality"
     when: always
@@ -134,7 +119,6 @@ python package clean up:
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_TAG
       <<: *manual-allow_failure
-    - <<: [*non-docs-changes, *manual-allow_failure]
 
 check python dependencies:
   stage: test
@@ -144,9 +128,6 @@ check python dependencies:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-      <<: *manual-allow_failure
-    - <<: [*non-docs-changes, *manual-allow_failure]
 
 .base_test:
   image: ${CI_REGISTRY_IMAGE}/dev_python:${DOCKER_TAG}
@@ -162,6 +143,8 @@ check python dependencies:
         - ES_JAVA_OPTS="-Xms512m -Xmx512m" docker-entrypoint.sh elasticsearch -Ediscovery.type=single-node -Expack.security.enabled=false
     - name: mongo:5
       alias: mongo
+    - name: ghcr.io/fairmat-nfdi/temporal-dev-server:v1.3.0
+      alias: temporal
   variables:
     RABBITMQ_ERLANG_COOKIE: SWQOKODSQALRPCLNMEQG
     RABBITMQ_DEFAULT_USER: rabbitmq
@@ -176,7 +159,6 @@ check python dependencies:
     - scripts/check_elastic.sh
     - uv pip install -e ".[dev]"
     - uv pip install -r requirements-plugins.txt -c requirements-dev.txt # remove this after moving to distro
-
 generate pytest timings:
   extends: .base_test
   script:
@@ -188,9 +170,7 @@ generate pytest timings:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - if: $CI_PIPELINE_SOURCE == "schedule"
       <<: *manual-allow_failure
-    - <<: [*non-docs-changes, *manual-allow_failure]
 
 python tests:
   parallel: 3
@@ -206,8 +186,7 @@ python tests:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-    - <<: *non-docs-changes
+    - when: on_success
 
 python coverage report:
   stage: test
@@ -227,8 +206,7 @@ python coverage report:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-    - <<: *non-docs-changes
+    - when: on_success
 
 gui linting:
   stage: test
@@ -242,8 +220,7 @@ gui linting:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-    - <<: *non-docs-changes
+    - when: on_success
 
 generate gui artifacts:
   stage: test
@@ -255,8 +232,7 @@ generate gui artifacts:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-    - <<: *non-docs-changes
+    - when: on_success
   artifacts:
     paths:
       - gui/tests/env.js
@@ -295,8 +271,7 @@ gui tests:
   rules:
     - if: $CI_COMMIT_TAG
       when: never
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-    - <<: *non-docs-changes
+    - when: on_success
 
 build python package:
   stage: test
@@ -319,6 +294,7 @@ build python package:
     - cp /app/tests/data/examples/example.out $CI_PROJECT_DIR/
   artifacts:
     expire_in: 1 days
+    when: on_success
     paths:
       - dist/
       - archive.json
@@ -344,14 +320,11 @@ python package install tests:
         ./.venv/bin/python -c 'from nomad.client import ArchiveQuery'
         ./.venv/bin/python -m nomad.cli parse --skip-normalizers archive.json
 
-        uv pip install git+https://github.com/nomad-coe/nomad-parser-example.git@ba6027fdd4cda0cf9e0b32546bd809c8fdda79e6
-
-        ./.venv/bin/python  -m exampleparser example.out
         echo "\n"
       done
   rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_TAG
-    - <<: *non-docs-changes
+    - if: $CI_COMMIT_TAG
+    - when: on_success
 
 release python package:
   stage: release
@@ -363,7 +336,7 @@ release python package:
     - if: $CI_COMMIT_BRANCH == "develop" && $NIGHTLY
     - if: $CI_COMMIT_TAG
       <<: *manual-allow_failure
-    - <<: [*non-docs-changes, *manual-allow_failure]
+    - <<: [*manual-allow_failure]
 
 release pypi package:
   stage: release
@@ -375,12 +348,11 @@ release pypi package:
   rules:
     - if: $CI_COMMIT_TAG
       <<: *manual-allow_failure
-    - <<: [*non-docs-changes, *manual-allow_failure]
 
 push to github:
   stage: release
   script:
     - git checkout ${CI_COMMIT_REF_NAME}
-    - git push "https://${CI_GITHUB_ACCESS_TOKEN}@github.com/nomad-coe/nomad.git" ${CI_COMMIT_REF_NAME}
+    - git push "https://${CI_GITHUB_ACCESS_TOKEN}@github.com/FAIRmat-NFDI/nomad.git" ${CI_COMMIT_REF_NAME}
   rules:
     - if: $CI_COMMIT_BRANCH == "develop" || $CI_COMMIT_TAG

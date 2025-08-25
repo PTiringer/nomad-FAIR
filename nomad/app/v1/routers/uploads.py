@@ -1360,6 +1360,13 @@ async def put_upload_raw_path(
         None,
         description=strip("""The hash code of the not modified entry."""),
     ),
+    auto_decompress: bool = FastApiQuery(
+        True,
+        description=strip(
+            """
+            Automatically decompress uploaded files upon receiving (ZIP or TAR). True by default."""
+        ),
+    ),
     user: User = Depends(
         create_user_dependency(required=True, upload_token_auth_allowed=True)
     ),
@@ -1509,7 +1516,11 @@ async def put_upload_raw_path(
         else:
             file_operations = [
                 dict(
-                    op='ADD', path=upload_path, target_dir=path, temporary=(method != 0)
+                    op='ADD',
+                    path=upload_path,
+                    target_dir=path,
+                    temporary=(method != 0),
+                    auto_decompress=auto_decompress,
                 )
                 for upload_path in upload_paths
             ]
@@ -1524,6 +1535,7 @@ async def put_upload_raw_path(
                 status.HTTP_400_BAD_REQUEST,
                 detail='The upload is currently blocked by another process.',
             )
+
         # Create response
         if request.headers.get('Accept') == 'application/json':
             response = PutRawFileResponse(
@@ -1823,6 +1835,13 @@ async def post_upload(
             If the upload should be published directly. False by default."""
         ),
     ),
+    auto_decompress: bool = FastApiQuery(
+        True,
+        description=strip(
+            """
+            Automatically decompress uploaded files upon receiving (ZIP or TAR). True by default."""
+        ),
+    ),
     user: User = Depends(
         create_user_dependency(required=True, upload_token_auth_allowed=True)
     ),
@@ -1926,6 +1945,7 @@ async def post_upload(
             path=upload_path,
             target_dir=upload_folders[i_path],
             temporary=(method != 0),
+            auto_decompress=auto_decompress,
         )
         for i_path, upload_path in enumerate(upload_paths)
     ]
@@ -2532,16 +2552,16 @@ async def post_upload_bundle(
         bundle_importer.open(bundle_path)
         upload = bundle_importer.create_upload_skeleton()
         bundle_importer.close()
-        # Run the import as a @process
+        # Import the bundle using the unified method
         upload.import_bundle(
             bundle_path=bundle_path,
             import_settings=import_settings.dict(),
             embargo_length=embargo_length,
         )
+
         return UploadProcDataResponse(
             upload_id=upload.upload_id, data=upload_to_pydantic(upload)
         )
-
     except Exception as e:
         if bundle_importer:
             bundle_importer.close()
@@ -2859,9 +2879,10 @@ def _get_upload_with_write_access(
         )
 
     is_failed_import = (
-        upload.current_process.startswith('import_bundle')
+        upload.current_process
+        and upload.current_process.startswith('import_bundle')
         and upload.process_status == ProcessStatus.FAILURE
-    )
+    ) or upload.last_status_message == 'Import bundle failed'
     if (
         published_requires_admin
         and not user.is_admin

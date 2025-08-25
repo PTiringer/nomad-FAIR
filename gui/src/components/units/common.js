@@ -19,6 +19,7 @@
 import {memoize, has, isNil} from 'lodash'
 import {Unit} from './Unit'
 import { Unit as UnitMathJS } from 'mathjs'
+import { DIMENSIONLESS_UNIT_INDEX } from './UnitContext'
 
 export const deltaPrefixes = ['delta_', 'Δ']
 
@@ -395,6 +396,12 @@ export function parseInternal(str, options) {
   if (unit.units.length === 0 && options.requireUnit) {
     throw new SyntaxError('Unit is required')
   }
+
+  // Force the dimensionless unit power to be zero. Pint allows multiple dimensionless units,
+  // which is not supported out of the box by MathJS. This is why there in an explicit
+  // 'dimensionless' base unit in the MathJS base units, and which must be reset to unitary
+  // power for anything we parse (otherwise 1^3 != 1).
+  unit.dimensions[DIMENSIONLESS_UNIT_INDEX] = 0
 
   return {value, valueString, unit}
 }

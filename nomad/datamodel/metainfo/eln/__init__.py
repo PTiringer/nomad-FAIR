@@ -518,6 +518,46 @@ class ELNExperiment(Experiment, EntryData):
     )
 
 
+class AnnotatedFile(ArchiveSection):
+    """
+    A Section for storing an annotated file
+    """
+
+    m_def = Section(
+        a_eln=dict(overview=True),
+        label_quantity='file',
+    )
+
+    file = Quantity(
+        type=str,
+        description='Single workflow files.',
+        a_browser=dict(adaptor='RawFileAdaptor'),
+        a_eln=ELNAnnotation(
+            component='FileEditQuantity',
+        ),
+    )
+    description = Quantity(
+        type=str,
+        description='A quantity for storing the annotation.',
+        a_eln=ELNAnnotation(
+            component='StringEditQuantity',
+        ),
+    )
+
+
+class ElnFileManager(ElnBaseSection, EntryData):
+    """
+    Define a section for storing files
+    """
+
+    m_def = Section(categories=[BasicElnCategory])
+
+    Files = SubSection(
+        section_def=AnnotatedFile,
+        repeats=True,
+    )
+
+
 # Legacy sections:
 class SampleID(ArchiveSection):
     """

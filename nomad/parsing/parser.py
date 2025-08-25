@@ -33,7 +33,6 @@ from pydantic import BaseModel, Extra  # noqa: F401
 from nomad import utils
 from nomad.config import config
 from nomad.datamodel import EntryArchive, EntryMetadata
-from nomad.metainfo import Package
 
 
 class Parser(metaclass=ABCMeta):
@@ -546,27 +545,11 @@ class ArchiveParser(MatchingParser):
                 logger.error('Cannot parse archive json or yaml.', exc_info=e)
             raise e
 
-        metadata_data = archive_data.get(EntryArchive.metadata.name, None)
-
-        if metadata_data is not None:
+        if metadata_data := archive_data.pop(EntryArchive.metadata.name, None):
             self.domain = metadata_data.get('domain')
             for quantity_name in ['entry_name', 'references', 'comment']:
-                quantity = EntryMetadata.m_def.all_quantities[quantity_name]
                 if value := metadata_data.get(quantity_name, None):
-                    archive.metadata.m_set(quantity, value)
-
-            del archive_data[EntryArchive.metadata.name]
-
-        # ensure that definitions are parsed first to make them available for the
-        # parsing itself.
-        if 'definitions' in archive_data:
-            archive.definitions = Package.m_from_dict(
-                archive_data['definitions'], m_context=archive.m_context
-            )
-
-            archive.definitions.archive = archive
-
-            del archive_data['definitions']
+                    archive.metadata.m_set(quantity_name, value)
 
         archive.m_update_from_dict(archive_data, treat_none_as_nan=True)
 

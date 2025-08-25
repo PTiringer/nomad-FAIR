@@ -473,7 +473,7 @@ export const DatatableTable = React.memo(function DatatableTable({children, acti
   const classes = useDatatableTableStyles()
   const {withSelectionFeature, multiSelect, getId} = useStaticDatatableContext()
   const {shownColumns, data, pagination, onPaginationChanged, selected, isLoading} = useDatatableContext()
-  const {page_size} = pagination
+  const {page_size, page} = pagination
   const emptyRows = Math.max(0, page_size - data.length)
   const columns = shownColumns
   const numberOfColumns = columns.length + (withSelectionFeature && multiSelect ? 1 : 0) + (actions ? 1 : 0)
@@ -519,7 +519,7 @@ export const DatatableTable = React.memo(function DatatableTable({children, acti
           uncollapsed={row === uncollapsedRow}
           data={row}
           onRowUncollapsed={setUncollapsedRow}
-          progressIcon={row?.current_process === 'delete_upload' && (row?.process_status === 'PENDING' || row?.process_status === 'RUNNING') && <CircularProgress/>}
+          progressIcon={(row?.current_process === 'delete_upload' || row?.current_process === '_delete_upload') && (row?.process_status === 'PENDING' || row?.process_status === 'RUNNING') && <CircularProgress/>}
         />
       ))}
       {isLoading && (
@@ -529,8 +529,8 @@ export const DatatableTable = React.memo(function DatatableTable({children, acti
           </TableCell>
         </TableRow>
       )}
-      {!isExtending && (emptyRows > 0) && (
-        <TableRow style={{ height: 53 * emptyRows }}>
+      {!isExtending && (emptyRows > 0) && (page > 1 || data.length < 5) && (
+        <TableRow style={{ height: 53 * ((data.length < 5 && page === 1) ? 5 - data.length : emptyRows) }}>
           <TableCell colSpan={numberOfColumns} />
         </TableRow>
       )}

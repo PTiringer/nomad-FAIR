@@ -63,10 +63,10 @@ const HistoryCard = memo(() => {
 const SampleHistoryUsingCard = memo(({ index }) => {
   const filtersLocked = useMemo(() => ({
     'entry_references.target_entry_id': [index.entry_id],
-    'section_defs.definition_qualified_name': ['nomad.datamodel.metainfo.basesections.Activity']
+    'section_defs.definition_qualified_name': ['nomad.datamodel.metainfo.basesections.v1.Activity']
   }), [index.entry_id])
 
-  if (!index.section_defs?.some(def => def?.definition_qualified_name === 'nomad.datamodel.metainfo.basesections.Entity')) {
+  if (!index.section_defs?.some(def => def?.definition_qualified_name === 'nomad.datamodel.metainfo.basesections.v1.Entity')) {
     return null
   }
 

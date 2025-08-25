@@ -58,11 +58,14 @@ def group_molds():
         'new_group': custom_group('New Group X23', [2, 3]),
         'new_group_ref1': custom_group('New Group X23', [1, 2, 3]),
         'new_group_ref2': custom_group('New Group X23', [2, 3]),
-        'short_name': custom_group('GG', []),
-        'long_name': custom_group('G' * 33, []),
         'double_member': custom_group('Double Member', [2, 3, 2]),
         'double_member_ref': custom_group('Double Member', [1, 2, 3]),
-        'special_char': custom_group('G!G', []),
+        'short_name': custom_group('G', [1], owner=1),
+        'long_name': custom_group('G' * 65, [1], owner=1),
+        'whitespace_name': custom_group(' \t ', [1], owner=1),
+        'special_chars_name': custom_group(
+            '!@#$%^&*()_+-=[]}\r\t\n{:; "\'|\\<,>.?/…😀', [1], owner=1
+        ),
         'owner_not_member': custom_group('Owner Not Member', [2, 3], owner=1),
         'owner_not_member_ref': custom_group('Owner Not Member', [1, 2, 3], owner=1),
     }

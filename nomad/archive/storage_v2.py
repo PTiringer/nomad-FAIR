@@ -397,7 +397,7 @@ class ArchiveReadCounter:
         self._call_counter = 0
 
 
-class ArchiveItem:
+class ArchiveItem:  # noqa: PLW1641
     def __init__(
         self, f: BytesIO, offset: int = 0, *, counter: ArchiveReadCounter = None
     ):

@@ -288,7 +288,7 @@ const DataStore = React.memo(({children}) => {
     const entryDataMissing = requireEntriesPage && !uploadStoreObj.entries
     const pag = uploadStoreObj.pagination
     const pagIs = uploadStoreObj.apiData?.response?.pagination
-    const wrongPagination = requireEntriesPage && !Object.entries(pag).every(([key, value]) => pagIs?.[key] === value)
+    const wrongPagination = requireEntriesPage && !Object.entries(pag).filter(([key, value]) => key !== 'total').every(([key, value]) => pagIs?.[key] === value)
     if (!uploadStoreObj.error && (uploadDataMissing || entryDataMissing || wrongPagination || uploadStoreObj.isProcessing)) {
       // Need to fetch data from the api
       refreshUpload(deploymentUrl, uploadId)
@@ -568,10 +568,16 @@ const DataStore = React.memo(({children}) => {
         config.headers = {
           'Content-Type': 'application/yaml'
         }
-        stringifiedArchive = YAML.stringify(newArchive)
+        stringifiedArchive = YAML.stringify(newArchive, {defaultStringType: 'QUOTE_SINGLE'})
       }
+      const queryObject = {
+        file_name: fileName,
+        wait_for_processing: true,
+        entry_hash: archive.metadata.entry_hash
+      }
+      const queryString = new URLSearchParams(queryObject).toString()
       return new Promise((resolve, reject) => {
-        api.put(`/uploads/${uploadId}/raw/${path}?file_name=${fileName}&wait_for_processing=true&entry_hash=${archive.metadata.entry_hash}`, stringifiedArchive || newArchive, config)
+        api.put(`/uploads/${uploadId}/raw/${path}?${queryString}`, stringifiedArchive || newArchive, config)
           .then(response => {
             requestRefreshEntry(deploymentUrl, entryId)
             resolve()

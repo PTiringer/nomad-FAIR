@@ -22,9 +22,9 @@ files, secondly parts of the archive are stored in mongodb documents.
 
 The file storage is done in msg-pack files. Each file contains the archive of many
 entries (all entries of an upload). These msg-pack files contain the JSON serialized
-version of the metainfo archive (see module:`nomad.metainfo`). In addition msg-pack
+version of the metainfo archive (see module:`nomad.metainfo`). In addition, msg-pack
 contains TOC information for quicker access of individual sections. See :func:`write_archive`
-and :func:`read_archvive`. In addition there query functionality to partially read
+and :func:`read_archive`. In addition, there query functionality to partially read
 specified sections from an archive: func:`query_archive`.
 
 The mongo storage uses mongodb's native bson to store JSON serialized metainfo archive
@@ -44,12 +44,4 @@ from .storage import (
 )
 from .storage_v2 import write_archive
 from .query import query_archive, filter_archive, ArchiveQueryError
-from .partial import (
-    read_partial_archive_from_mongo,
-    read_partial_archives_from_mongo,
-    write_partial_archive_to_mongo,
-    delete_partial_archives_from_mongo,
-    create_partial_archive,
-    compute_required_with_referenced,
-)
 from .required import RequiredReader, RequiredValidationError

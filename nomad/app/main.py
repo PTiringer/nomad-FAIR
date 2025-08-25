@@ -18,6 +18,8 @@
 
 import hashlib
 import json
+import re
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Response, status
 from fastapi.exception_handlers import (
@@ -26,10 +28,12 @@ from fastapi.exception_handlers import (
 from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
+from temporalio.client import Client
 
 from nomad import infrastructure
 from nomad.config import config
 from nomad.config.models.plugins import APIEntryPoint
+from nomad.orchestrator.client import get_client
 
 from .static import GuiFiles
 from .static import app as static_files_app
@@ -37,9 +41,21 @@ from .v1.main import app as v1_app
 
 
 class OasisAuthenticationMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, whitelist: set[str] | None = None) -> None:
+        """
+        Middleware to enforce authentication on protected endpoints.
+
+        Args:
+            app: The ASGI application.
+            whitelist (Iterable[str], optional): A list of regex strings
+                for URL path patterns that are exempt from authentication.
+        """
+        super().__init__(app)
+        self.whitelist_patterns = [re.compile(pat) for pat in (whitelist or [])]
+
     async def dispatch(self, request, call_next):
         path = request.url.path
-        if 'extensions' in path or 'info' in path or 'versions' in path:
+        if any(pat.search(path) for pat in self.whitelist_patterns):
             return await call_next(request)
 
         if 'Authorization' not in request.headers:
@@ -47,21 +63,68 @@ class OasisAuthenticationMiddleware(BaseHTTPMiddleware):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 content='You have to authenticate to use this Oasis endpoint.',
             )
-        else:
-            token = request.headers['Authorization'].split(' ')[1]
-            user, _ = infrastructure.keycloak.tokenauth(token)
-            if user is None or user.email not in config.oasis.allowed_users:
-                return Response(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    content='You are not authorized to access this Oasis endpoint.',
-                )
+
+        token = request.headers['Authorization'].split(' ')[1]
+        user, _ = infrastructure.keycloak.tokenauth(token)
+        if user is None or user.email not in config.oasis.allowed_users:
+            return Response(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content='You are not authorized to access this Oasis endpoint.',
+            )
 
         return await call_next(request)
 
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from nomad import infrastructure
+    from nomad.cli.dev import get_gui_artifacts_js, get_gui_config
+    from nomad.metainfo.elasticsearch_extension import entry_type
+    from nomad.parsing.parsers import import_all_parsers
+
+    import_all_parsers()
+
+    # each subprocess is supposed disconnect and
+    # connect again: https://jira.mongodb.org/browse/PYTHON-2090
+    try:
+        from mongoengine import disconnect
+
+        disconnect()
+    except Exception:
+        pass
+
+    entry_type.reload_quantities_dynamic()
+    GuiFiles.gui_artifacts_data = get_gui_artifacts_js()
+    GuiFiles.gui_env_data = get_gui_config()
+
+    data = {
+        'artifacts': GuiFiles.gui_artifacts_data,
+        'gui_config': GuiFiles.gui_env_data,
+    }
+    GuiFiles.gui_data_etag = hashlib.md5(
+        json.dumps(data).encode(), usedforsecurity=False
+    ).hexdigest()
+
+    infrastructure.setup()
+
+    if config.temporal.enabled:
+        try:
+            app.state.temporal_client = await get_client()
+            yield
+        except Exception as e:
+            print(f'Failed to connect to temporal {e}')
+            pass
+    else:
+        yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 app_base = config.services.api_base_path
+
+
+def temporal_client() -> Client:
+    return app.state.temporal_client
 
 
 @app.get(f'{app_base}/alive')
@@ -81,7 +144,10 @@ if config.services.optimade_enabled:
 
     app.mount(f'{app_base}/optimade', optimade_app)
     if config.oasis.allowed_users is not None:
-        optimade_app.add_middleware(OasisAuthenticationMiddleware)
+        optimade_app.add_middleware(
+            OasisAuthenticationMiddleware,
+            whitelist={'/extensions', '/info', '^/versions$'},
+        )
 
 if config.services.dcat_enabled:
     from .dcat.main import app as dcat_app
@@ -102,6 +168,9 @@ if config.resources.enabled:
 for entry_point in config.plugins.entry_points.filtered_values():
     if isinstance(entry_point, APIEntryPoint):
         api_app = entry_point.load()
+        assert isinstance(api_app, FastAPI), (
+            f'Error loading entry point "{entry_point.id}": The load method of an API entry point must return a FastAPI instance'
+        )
         app.mount(f'{app_base}/{entry_point.prefix}', api_app)
 
 # Make sure to mount this last, as it is a catch-all routes that are not yet mounted.
@@ -142,12 +211,11 @@ async def http_exception_handler(request, exc):
         content={
             'detail': 'Not found',
             'info': {
-                'app': config.meta.dict(),
+                'app': config.meta.model_dump(),
                 'apis': {
                     'v1': {
                         'root': f'{app_base}/api/v1',
                         'dashboard': f'{app_base}/api/v1/extensions/docs',
-                        'documentation': f'{app_base}/api/v1/extensions/redoc',
                     },
                     'optimade': {
                         'root': f'{app_base}/optimade/v1',
@@ -161,36 +229,3 @@ async def http_exception_handler(request, exc):
             },
         },
     )
-
-
-@app.on_event('startup')
-async def startup_event():
-    from nomad import infrastructure
-    from nomad.cli.dev import get_gui_artifacts_js, get_gui_config
-    from nomad.metainfo.elasticsearch_extension import entry_type
-    from nomad.parsing.parsers import import_all_parsers
-
-    import_all_parsers()
-
-    # each subprocess is supposed disconnect and
-    # connect again: https://jira.mongodb.org/browse/PYTHON-2090
-    try:
-        from mongoengine import disconnect
-
-        disconnect()
-    except Exception:
-        pass
-
-    entry_type.reload_quantities_dynamic()
-    GuiFiles.gui_artifacts_data = get_gui_artifacts_js()
-    GuiFiles.gui_env_data = get_gui_config()
-
-    data = {
-        'artifacts': GuiFiles.gui_artifacts_data,
-        'gui_config': GuiFiles.gui_env_data,
-    }
-    GuiFiles.gui_data_etag = hashlib.md5(
-        json.dumps(data).encode(), usedforsecurity=False
-    ).hexdigest()
-
-    infrastructure.setup()

@@ -17,7 +17,7 @@
  */
 import { makeStyles } from '@material-ui/core'
 import React from 'react'
-import { apiBase, appBase } from '../config'
+import { apiBase, appBase, resourcesEnabled } from '../config'
 import Markdown from './Markdown'
 import AppTokenForm from './AppTokenForm'
 
@@ -30,31 +30,27 @@ const useStyles = makeStyles(theme => ({
   }
 }))
 
+const resourcesSection = `## Resources
+The resources API provides links from NOMAD entries to related external resources.
+These include the [Aflow Encyclopedia of Crystallographic Prototypes](https://www.aflowlib.org/prototype-encyclopedia/),
+[Springer Materials Database of Inorganic Solid Phases](https://materials.springer.com)
+and [OPTIMADE providers](https://providers.optimade.org/).
+
+- [Resources API dashboard](${appBase}/resources/extensions/docs)`
+
 export default function About() {
   const classes = useStyles()
 
   return <div className={classes.root}>
     <Markdown>{`
-      # APIs
+      ## NOMAD API
 
       NOMAD's Application Programming Interface (API) allows you to access NOMAD data
-      and functions programatically. For all APIs, we offer dashboards that let you use
-      each API interactively, right in your browser.
+      and functions programatically.
 
-      ## NOMAD's API
-
-      - [API dashboard](${apiBase}/v1/extensions/docs)
-      - [API documentation](${apiBase}/v1/extensions/redoc)
-
-      We started to implement a more consise and easier to use API for access NOMAD
-      data. This will step-by-step reimplement all functions of NOMAD's old main API.
-      At some point, it will replace it entirely. For new users, we recommend to start
-      using this API. API Dashboard and documentation contain a tutorial on how to get started.
-
-      There is a [tutorial on how to use the API with plain Python](${appBase}/docs/api_tutorial.html).
-      Another [tutorial covers how to install and use NOMAD's Python client library](${appBase}/docs/archive_tutorial.html).
-      The [NOMAD Analytics Toolkit](https://nomad-lab.eu/AIToolkit) allows to use
-      this without installation and directly on NOMAD servers.
+      - [NOMAD API dashboard](${apiBase}/v1/extensions/docs)
+      - [How-to-guide for basic usage](${appBase}/docs/howto/programmatic/api.html)
+      - [How-to-guide for Python client library](${appBase}/docs/howto/programmatic/archive_query.html)
 
       ###  App token
 
@@ -66,42 +62,26 @@ export default function About() {
     <AppTokenForm />
 
     <Markdown>{`
-
-      ### Old API
-
-      You can still use NOMAD's old REST API. The data it provides might miss the most
-      recent contributions:
-
-      - [v0 API dashboard](https://nomad-lab.eu/prod/rae/api/)
-
       ## OPTIMADE
-
-      - [OPTIMADE API overview page](${appBase}/optimade/)
-      - [OPTIMADE API dashboard](${appBase}/optimade/v1/extensions/docs)
-      - [OPTIMADE API documentation](${appBase}/optimade/v1/extensions/redoc)
 
       [OPTIMADE](https://www.optimade.org/) is an
       open API standard for materials science databases. This API can be used to search
       and access NOMAD metadata in a standardized way that can also be applied to many
       [other materials science databses](https://providers.optimade.org/).
 
-      ## DCAT
+      - [OPTIMADE API dashboard](${appBase}/optimade/v1/extensions/docs)
+      - [OPTIMADE API overview page](${appBase}/optimade/)
 
-      - [DCAT API dashboard](${appBase}/dcat/)
+      ## DCAT
 
       [DCAT](https://www.w3.org/TR/vocab-dcat-2/) is a RDF vocabulary designed to facilitate
       interoperability between data catalogs published on the Web. This API allows you
       access to NOMAD via RDF documents following DCAT. You can access NOMAD entries as
       DCAT Datasets or all NOMAD entries as a DCAT Catalog.
 
-      ## Resources
-
-      - [Resources API dashboard](${appBase}/resources/extensions/docs)
-
-      The resources API provides links from NOMAD entries to related external resources.
-      These include the [Aflow Encyclopedia of Crystallographic Prototypes](https://www.aflowlib.org/prototype-encyclopedia/),
-      [Springer Materials Database of Inorganic Solid Phases](https://materials.springer.com)
-      and [OPTIMADE providers](https://providers.optimade.org/).
+      - [DCAT API dashboard](${appBase}/dcat/)
+      ${resourcesEnabled ? resourcesSection : ""
+      }
     `}</Markdown>
   </div>
 }

@@ -20,7 +20,7 @@ import { ReactComponent as AboutSvg } from '../images/about.svg'
 import PropTypes from 'prop-types'
 import Markdown from './Markdown'
 import { isNil } from 'lodash'
-import { appBase, debug, encyclopediaBase, parserMetadata, toolkitMetadata as tutorials } from '../config'
+import { appBase, debug, encyclopediaBase, parserMetadata, description, toolkitMetadata as tutorials, footerLinks } from '../config'
 import {
   Button,
   Card,
@@ -32,12 +32,54 @@ import {
   Grid,
   Link,
   makeStyles,
-  Typography
+  Typography,
+  Container
 } from '@material-ui/core'
 import { Link as RouterLink, useHistory } from 'react-router-dom'
 import InputConfig from './search/input/InputConfig'
 import { useInfo } from './api'
 import { pluralize } from '../utils'
+
+const useStylesFooter = makeStyles(theme => ({
+  root: {
+    backgroundColor: theme.palette.grey[200],
+    marginTop: theme.spacing(2),
+    flexShrink: 0
+  },
+  footerContainer: {
+    paddingTop: theme.spacing(3),
+    paddingBottom: theme.spacing(3),
+    textAlign: 'center'
+  },
+  footerLink: {
+    marginLeft: theme.spacing(1),
+    marginRight: theme.spacing(1)
+  }
+}))
+
+function Footer() {
+  const classes = useStylesFooter()
+  if (!footerLinks || footerLinks.length === 0) {
+    return null
+  }
+  return (
+    <footer className={classes.root}>
+      <Container className={classes.footerContainer}>
+        {footerLinks.map(link => (
+          <Link
+            key={link.url}
+            className={classes.footerLink}
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {link.title}
+          </Link>
+        ))}
+      </Container>
+    </footer>
+  )
+}
 
 /**
  * Displays an info dialog.
@@ -312,9 +354,17 @@ InfoCard.propTypes = {
 
 const useStyles = makeStyles(theme => ({
   root: {
+    height: "100dvh",
+    display: 'flex',
+    flexDirection: 'column'
+  },
+  mainContent: {
+    flex: '1 0 auto',
     padding: theme.spacing(3)
   },
   container: {
+    padding: theme.spacing(3),
+    boxSizing: 'content-box',
     maxWidth: 1024,
     margin: 'auto',
     width: '100%'
@@ -401,17 +451,10 @@ export default function About() {
         <Markdown>{`
         # **NOMAD** &ndash; Manage and Publish Materials Data
 
-        This is the *graphical user interface* (GUI) of NOMAD. It allows you to **search,
-        access, and download all NOMAD data** in its
-        *raw files* and *processed data* form. You can **upload and manage your own
-        raw materials science data**. You can access all published data without an account.
-        If you want to provide your own data, please login or register for an account.
+        ${description}
 
-        You can learn more about NOMAD on its
-        [homepage](https://nomad-lab.eu/repo-arch), our
-        [documentation](${appBase}/docs/index.html).
-        There is also an [FAQ](https://nomad-lab.eu/repository-archive-faqs)
-        and the more detailed [uploader documentation](${appBase}/docs/web.html).
+        You can learn more about NOMAD on its [homepage](https://nomad-lab.eu/nomad-lab/)
+        or our [documentation](${appBase}/docs/index.html).
         `}</Markdown>
       </Grid>
       <InfoCard xs={6} title="Interactive Search" top>
@@ -487,7 +530,7 @@ export default function About() {
         support@nomad-lab.eu . If you think
         that this web-page is not working as expected, or if you want to start a discussion
         about possible features, feel free to open an issue on our
-        [github project](https://github.com/nomad-coe/nomad/issues).
+        [github project](https://github.com/FAIRmat-NFDI/nomad/issues).
 
         ### Developer Documentation
         The [in-depth documentation](${appBase}/docs/index.html)
@@ -530,5 +573,6 @@ export default function About() {
         <DistributionInfo data={info} />
       </Grid>
     </Grid>
+    <Footer />
   </div>
 }

@@ -237,6 +237,15 @@ class Services(ConfigBaseModel):
         return f'{protocol}://{host_and_port}/{base_path}/{api}'
 
 
+class FooterLink(ConfigBaseModel):
+    """
+    A model for links to be displayed in the footer.
+    """
+
+    title: str = Field(description='The title of the link.')
+    url: str = Field(description='The URL of the link.')
+
+
 class Meta(ConfigBaseModel):
     """
     Metadata about the deployment and how it is presented to clients.
@@ -272,6 +281,14 @@ class Meta(ConfigBaseModel):
     name: str = Field(
         'NOMAD', description='Web-site title for the NOMAD UI.', deprecated=True
     )
+    description: str = Field(
+        """This is the central NOMAD deployment hosted by
+        [FAIRmat](https://fairmat-nfdi.eu/). This deployment hosts a wide range of
+        research data with primary focus on condensed-matter physics and the chemical
+        physics of solids. You can access all published data without an account. If you
+        want to provide your own data, please log in or register for an account.""",
+        description='Description of the NOMAD deployment. Shown at the GUI homepage.',
+    )
     homepage: str = Field(
         'https://nomad-lab.eu', description='Provider homepage.', deprecated=True
     )
@@ -290,6 +307,9 @@ class Meta(ConfigBaseModel):
         description="""
         Additional data that describes how the deployment is labeled as a beta-version in the UI.
     """,
+    )
+    footer_links: list[FooterLink] = Field(
+        [], description='A list of links to be displayed in the footer.'
     )
 
 
@@ -322,6 +342,12 @@ class Oasis(ConfigBaseModel):
         'https://nomad-lab.eu/prod/v1/api',
         description="""
         The URL of the API of the NOMAD deployment that is considered the *central* NOMAD.
+    """,
+    )
+    terms_of_service_url: str = Field(
+        '',
+        description="""
+        The URL of the terms of service.
     """,
     )
 
@@ -366,6 +392,15 @@ class FS(ConfigBaseModel):
     public_external: str = None
     north_home: str = '.volumes/fs/north/users'
     north_home_external: str = None
+    north_home_user_folder_map: dict[str, str] | None = Field(
+        {},
+        description="""
+        This can be used to mount external folders with already existing user data for every user's work folder in the North tools. For example, if you already store user's data files under their own folders on the server, you can mount them with this into the user's launched North tool e.g. Jupyter notebook.
+        The username is on the left hand side and the external folder path on disk on the right hand side. For example:
+            north_home_user_folder_map:
+                     'nomad username': '/path/on/disk/to/work/folder/specific/for/user'
+    """,
+    )
     local_tmp: str = '/tmp'
     prefix_size: int = 2
     archive_version_suffix: str | list[str] = Field(
@@ -416,6 +451,14 @@ class Elastic(ConfigBaseModel):
     entries_per_material_cap: int = 1000
     entries_index: str = 'nomad_entries_v1'
     materials_index: str = 'nomad_materials_v1'
+
+
+class Temporal(ConfigBaseModel):
+    host: str = 'localhost'
+    port: int = 7233
+    namespace: str = 'default'
+    enabled: bool = False
+    secret: str = 'secret-key'
 
 
 class Keycloak(ConfigBaseModel):
@@ -918,6 +961,7 @@ class Config(ConfigBaseModel):
     celery: Celery = Celery()
     fs: FS = FS()
     elastic: Elastic = Elastic()
+    temporal: Temporal = Temporal()
     keycloak: Keycloak = Keycloak()
     mongo: Mongo = Mongo()
     logstash: Logstash = Logstash()

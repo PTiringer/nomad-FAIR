@@ -753,6 +753,9 @@ class EntryMetadata(MSection):
             'AFLOW',
             'OQMD',
             'Kyoto Phonopy Database',
+            'CatTestHub',
+            'Catalyst Acquisition by Data Sharing (CADS)',
+            'Open Catalyst Project',
         ),
         categories=[MongoUploadMetadata, EditableUserMetadata],
         description='The repository or external database where the original data resides',
@@ -964,39 +967,33 @@ class EntryMetadata(MSection):
 
         _check_mongo_connection()
 
-        def get_section_path(section):
-            section_path = section_paths.get(section)
-            if section_path is None:
-                parent = section.m_parent
-                if parent:
-                    parent_path = get_section_path(parent)
-                    if parent_path == '':
-                        section_path = section.m_parent_sub_section.name
-                    else:
-                        section_path = (
-                            f'{parent_path}.{section.m_parent_sub_section.name}'
-                        )
+        def get_section_path(_section):
+            if (_section_path := section_paths.get(_section)) is None:
+                if parent := _section.m_parent:
+                    _section_path = (
+                        _section.m_parent_sub_section.name
+                        if (parent_path := get_section_path(parent)) == ''
+                        else f'{parent_path}.{_section.m_parent_sub_section.name}'
+                    )
                 else:
-                    section_path = ''
-                section_paths[section] = section_path
-                quantities.add(section_path)
+                    _section_path = ''
+                section_paths[_section] = _section_path
+                quantities.add(_section_path)
 
-            return section_path
+            return _section_path
 
         def create_reference_section(
             url_reference: str, current_def: Definition, quantity_path: str
-        ):
+        ) -> EntryArchiveReference | None:
             try:
-                parse_result = parse_path(url_reference, self.upload_id)
-            except Exception:  # type: ignore
-                return
-
-            if parse_result is None:
-                return
+                if (parse_result := parse_path(url_reference, self.upload_id)) is None:
+                    return None
+            except Exception:  # noqa
+                return None
 
             _, upload_id, entry_id_or_mainfile, kind, path = parse_result
             if entry_id_or_mainfile is None:
-                return
+                return None
 
             if not upload_id:
                 upload_id = archive.metadata.upload_id
@@ -1009,13 +1006,12 @@ class EntryMetadata(MSection):
 
             ref_item = EntryArchiveReference()
             ref_item.target_reference = url_reference
-            if kind == 'raw':
-                if upload_id:
-                    entry_id = utils.generate_entry_id(upload_id, entry_id_or_mainfile)
-                else:
-                    entry_id = None
-            else:
+            if kind != 'raw':
                 entry_id = entry_id_or_mainfile
+            elif upload_id:
+                entry_id = utils.generate_entry_id(upload_id, entry_id_or_mainfile)
+            else:
+                entry_id = None
 
             ref_item.target_entry_id = entry_id
             ref_item.target_upload_id = upload_id
@@ -1053,7 +1049,7 @@ class EntryMetadata(MSection):
 
                 try:
                     current_value = current_section.m_get(current_def)
-                except Exception:
+                except Exception:  # noqa
                     return
             else:
                 # for subsections
@@ -1070,10 +1066,9 @@ class EntryMetadata(MSection):
                 ref_list = [v for v in current_value if hasattr(v, 'm_proxy_value')]
 
             for ref in ref_list:
-                reference_section = create_reference_section(
+                if reference_section := create_reference_section(
                     ref.m_proxy_value, current_def, quantity_path
-                )
-                if reference_section:
+                ):
                     entry_references.append(reference_section)
 
         # Determine the schema name to use for searchable quantities
@@ -1110,23 +1105,22 @@ class EntryMetadata(MSection):
                             keyword = [keyword]
                         for val in keyword:
                             keywords_set.add(str(val)[0:500].strip())
-                searchable_quantity = create_searchable_quantity(
+                if searchable_quantity := create_searchable_quantity(
                     property_def,
                     quantity_path,
                     section,
                     '.'.join([str(x) for x in location]),
                     schema_name,
-                )
-                if searchable_quantity:
+                ):
                     search_quantities.append(searchable_quantity)
 
         # We collected entry_references, quantities, and sections before adding these
         # data to the archive itself. We manually add them here.
         if len(entry_references) > 0:
-            for archive_reference_quantity in EntryArchiveReference.m_def.quantities:  # pylint: disable=not-an-iterable
-                quantities.add(
-                    f'metadata.entry_references.{archive_reference_quantity.name}'
-                )
+            quantities.update(
+                f'metadata.entry_references.{v.name}'
+                for v in EntryArchiveReference.m_def.quantities
+            )
             quantities.add('metadata.entry_references')
             sections.add(EntryArchiveReference.m_def)
 
@@ -1136,15 +1130,15 @@ class EntryMetadata(MSection):
         if len(sections) > 0:
             quantities.add('metadata.sections')
             quantities.add('metadata.section_defs')
-            for compatible_quantity in CompatibleSectionDef.m_def.quantities:
-                quantities.add(f'metadata.section_defs.{compatible_quantity.name}')
+            quantities.update(
+                f'metadata.section_defs.{v.name}'
+                for v in CompatibleSectionDef.m_def.quantities
+            )
 
         self.entry_references.extend(entry_references)
         self.search_quantities.extend(search_quantities)
-        self.quantities = list(quantities)
-        self.quantities.sort()
-        self.sections = [section.qualified_name() for section in sections]
-        self.sections.sort()
+        self.quantities = sorted(list(quantities))
+        self.sections = sorted(section.qualified_name() for section in sections)
         self.n_quantities = n_quantities
         self.text_search_contents = list(keywords_set)
 

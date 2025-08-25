@@ -1421,8 +1421,7 @@ class PubChemPureSubstanceSection(PureSubstanceSection):
             'MonoisotopicMass': 'monoisotopic_mass',
             'InChI': 'inchi',
             'InChIKey': 'inchi_key',
-            'IsomericSMILES': 'smile',
-            'CanonicalSMILES': 'canonical_smile',
+            'SMILES': 'smile',
         }
         types = {  # Needed because PubChems API sometimes returns floats as strings
             'Title': str,
@@ -1433,8 +1432,7 @@ class PubChemPureSubstanceSection(PureSubstanceSection):
             'MonoisotopicMass': float,
             'InChI': str,
             'InChIKey': str,
-            'IsomericSMILES': str,
-            'CanonicalSMILES': str,
+            'SMILES': str,
         }
         response = pub_chem_api_get_properties(
             cid=self.pub_chem_cid, properties=properties
@@ -2078,7 +2076,12 @@ class PublicationReference(ArchiveSection):
 class HDF5Normalizer(ArchiveSection):
     def normalize(self, archive, logger):
         super().normalize(archive, logger)
-        h5_re = re.compile(r'.*\.h5$')
+        h5_re = re.compile(
+            r'.*\.('
+            r'h5|hdf5|he5|h5part|nxs|mat|nc4?'
+            r')$',
+            re.IGNORECASE,
+        )
 
         for quantity_name, quantity_def in self.m_def.all_quantities.items():
             if (quantity_def.type is str or isinstance(quantity_def.type, m_str)) and (
@@ -2103,7 +2106,17 @@ class HDF5Normalizer(ArchiveSection):
             quantity_mapper = custom_quantities[1]
             try:
                 dataset = h5_file[h5_path]
-                quantity_mapper(self, dataset[:])
+                raw = dataset[()] if dataset.shape == () else dataset[:]
+
+                if isinstance(raw, np.ndarray) and isinstance(
+                    raw.flat[0], bytes | bytearray
+                ):
+                    raw = dataset.asstr()[:]
+
+                elif isinstance(raw, bytes | bytearray):
+                    raw = dataset.asstr()[()]
+
+                quantity_mapper(self, raw)
             except Exception as e:
                 logger.warning(
                     f'Could not map the path {h5_path}.'

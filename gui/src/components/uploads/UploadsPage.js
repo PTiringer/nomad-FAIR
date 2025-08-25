@@ -246,7 +246,7 @@ export function UploadsPage() {
     api.get(url, null, {returnRequest: true})
       .then(uploads => {
         setApiData(uploads)
-        const deleteStatus = uploads.response.data.filter(upload => upload?.current_process === 'delete_upload' && (upload?.process_status === 'PENDING' || upload?.process_status === 'RUNNING'))
+        const deleteStatus = uploads.response.data.filter(upload => (upload?.current_process === '_delete_upload' || upload?.current_process === 'delete_upload') && (upload?.process_status === 'PENDING' || upload?.process_status === 'RUNNING'))
         if (deleteStatus.length === 0) {
           if (fetchTimer.current !== -1) {
             clearInterval(fetchTimer.current)

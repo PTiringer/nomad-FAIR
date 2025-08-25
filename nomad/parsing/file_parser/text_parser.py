@@ -599,7 +599,7 @@ class DataTextParser(TextParser):
 
     def parse(self, key=None):
         super().parse(key=key)
-        if key == 'data':
+        if key == 'data' or not self._results:
             try:
                 data = None
                 if self.mainfile is not None:

@@ -258,7 +258,7 @@ def test_yaml_extended_types_deserialization():
                         m_annotations: eln
     """
             ),
-            'The provided m_annotations is of a wrong type. str was provided.',
+            'The provided m_annotations is not a dict. str was provided.',
             id='wrong m_annotations',
         ),
     ],

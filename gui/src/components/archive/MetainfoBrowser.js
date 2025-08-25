@@ -20,7 +20,8 @@ import PropTypes from 'prop-types'
 import { useRecoilValue, useRecoilState, atom } from 'recoil'
 import { configState } from './ArchiveBrowser'
 import Browser, { Item, Content, Compartment, Adaptor, laneContext, Title, ItemChip } from './Browser'
-import { Typography, Box, makeStyles, FormGroup, TextField, Button, Link } from '@material-ui/core'
+import { Typography, Box, makeStyles, FormGroup, TextField, Button, Link, Tooltip, IconButton } from '@material-ui/core'
+import ClipboardIcon from '@material-ui/icons/Assignment'
 import { vicinityGraph, SubSectionMDef, SectionMDef, QuantityMDef, CategoryMDef, useGlobalMetainfo, PackageMDef, AttributeMDef, getMetainfoFromDefinition } from './metainfo'
 import * as d3 from 'd3'
 import blue from '@material-ui/core/colors/blue'
@@ -37,6 +38,7 @@ import { useApi } from '../api'
 import { useErrors } from '../errors'
 import { SourceJsonDialogButton } from '../buttons/SourceDialogButton'
 import ReactJson from 'react-json-view'
+import CopyToClipboard from 'react-copy-to-clipboard'
 import ArchiveSearchBar from './ArchiveSearchBar'
 import {getDisplayLabel} from "../../utils"
 
@@ -874,22 +876,43 @@ export function ArchiveTitle({def, property, isDefinition, data, kindLabel, useN
     label += ' extension'
   }
   const title = isDefinition || useName ? def.name : getDisplayLabel(def)
-  return <Title
-    title={title}
-    tooltip={def._qualifiedName || def.name}
-    label={`${label}${isDefinition ? ' definition' : ''}`}
-    color={color}
-    definitionName={!isDefinition && def.name}
-    subSectionName={!isDefinition && property && property.m_def === 'nomad.metainfo.metainfo.SubSection' && property.name}
-    actions={actions ||
-      <SourceJsonDialogButton
-        buttonProps={{size: 'small'}}
-        tooltip={`Show ${(kindLabel + ' ') || ' '}data as JSON`}
-        title={`Underlying ${(kindLabel + ' ') || ' '}data as JSON`}
-        data={data || def}
+  const m_def = def._qualifiedName || def.name
+
+  return (
+    <>
+      <Title
+        title={title}
+        label={`${label}${isDefinition ? ' definition' : ''}`}
+        color={color}
+        definitionName={!isDefinition && def.name}
+        subSectionName={!isDefinition && property && property.m_def === 'nomad.metainfo.metainfo.SubSection' && property.name}
+        actions={actions || (
+          <SourceJsonDialogButton
+            buttonProps={{ size: 'small' }}
+            tooltip={`Show ${(kindLabel + ' ') || ''}data as JSON`}
+            title={`Underlying ${(kindLabel + ' ') || ''}data as JSON`}
+            data={data || def}
+          />
+        )}
       />
-    }
-  />
+      <Box display='flex' width='100%' maxWidth='300px' alignItems='center'>
+        <Box flex={1} minWidth={0}>
+          <Tooltip title={m_def}>
+            <Typography style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <b>m_def:&nbsp;</b>{m_def}
+            </Typography>
+          </Tooltip>
+        </Box>
+        <CopyToClipboard text={m_def}>
+          <Tooltip title="Copy to clipboard">
+            <IconButton size='small'>
+              <ClipboardIcon />
+            </IconButton>
+          </Tooltip>
+        </CopyToClipboard>
+      </Box>
+    </>
+  )
 }
 ArchiveTitle.propTypes = ({
   def: PropTypes.object.isRequired,
