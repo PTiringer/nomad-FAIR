@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Extra, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from nomad.app.v1.models.graph.utils import (
     generate_request_model,
@@ -192,7 +192,7 @@ class GraphUploads(BaseModel):
     m_children: GraphUpload
 
 
-class GraphEntryMetadata(BaseModel, extra=Extra.allow):
+class GraphEntryMetadata(BaseModel, extra='allow'):
     entry: GraphEntry
     m_children: Any = None
 

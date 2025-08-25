@@ -54,7 +54,7 @@ def url(path):
     return f'{config.client.url}/v1/{path}'
 
 
-class Auth(requests.auth.AuthBase):
+class Auth(requests.auth.AuthBase):  # type: ignore
     """
     A request Auth class that can be used to authenticate in request callcs like this:
 
@@ -75,8 +75,8 @@ class Auth(requests.auth.AuthBase):
 
     def __init__(
         self,
-        user: str = config.client.user,
-        password: str = config.client.password,
+        user: str | None = config.client.user,
+        password: str | None = config.client.password,
         from_api: bool = False,
     ):
         self.user = user

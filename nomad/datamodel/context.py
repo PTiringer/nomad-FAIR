@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 import os.path
 import re
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
@@ -56,7 +57,7 @@ class Context(MetainfoContext):
     The nomad implementation of a metainfo context.
     """
 
-    def __init__(self, installation_url: str = None):
+    def __init__(self, installation_url: str | None = None):
         # take installation_url and ensure it has no trailing slash
         if installation_url is None:
             self.installation_url = config.api_url(api='api/v1')
@@ -198,7 +199,7 @@ class Context(MetainfoContext):
         raise NotImplementedError()
 
     def load_raw_file(
-        self, path: str, upload_id: str, installation_url: str, url: str = None
+        self, path: str, upload_id: str, installation_url: str, url: str | None = None
     ) -> MSection:
         """Loads a raw file based on the given upload and path. Interpret as metainfo data."""
         raise NotImplementedError()
@@ -210,6 +211,10 @@ class Context(MetainfoContext):
     def raw_path(self) -> str:
         """The path to the uploads raw files directory."""
         return os.path.curdir
+
+    def raw_file(self, path: str, *args, **kwargs):
+        """Open a raw file for reading or writing."""
+        raise NotImplementedError
 
     def process_updated_raw_file(self, path, allow_modify=False):
         """
@@ -275,6 +280,29 @@ class Context(MetainfoContext):
         self.archives[url] = archive
         self.urls[archive] = url
 
+    def get_reference(self, mainfile: str) -> str:
+        """
+        Get the reference for the given file name.
+        """
+        raise NotImplementedError
+
+    def get_relative_path(self, mainfile: str) -> str:
+        """
+        Get the relative path for the given file name.
+        """
+        raise NotImplementedError
+
+    @contextmanager
+    def update_entry(
+        self,
+        mainfile: str,
+        *,
+        write: bool = False,
+        process: bool = False,
+        **kwargs,
+    ) -> Iterator[dict]:
+        raise NotImplementedError
+
 
 class ServerContext(Context):
     def __init__(self, upload=None):
@@ -324,7 +352,7 @@ class ServerContext(Context):
                 )
             from nomad.processing import Entry
 
-            if entry := Entry.objects(entry_id=entry_id).first():
+            if entry := Entry.objects(entry_id=entry_id).first():  # type: ignore
                 return self.load_raw_file(entry.mainfile, upload_id, installation_url)
             raise MetainfoReferenceError(f'Could not load {entry_id}.')
 
@@ -337,7 +365,7 @@ class ServerContext(Context):
         return EntryArchive.m_from_dict(archive_dict, m_context=context)
 
     def load_raw_file(
-        self, path: str, upload_id: str, installation_url: str, url: str = None
+        self, path: str, upload_id: str, installation_url: str, url: str | None = None
     ) -> EntryArchive:
         upload_files = self._get_upload_files(upload_id, installation_url)
 
@@ -459,6 +487,15 @@ class ServerContext(Context):
         if process:
             self.upload.process_updated_raw_file(mainfile, True)
 
+    def get_reference(self, mainfile: str) -> str:
+        from nomad.utils import hash
+
+        entry_id = hash(self.upload_id, mainfile)
+        return f'../uploads/{self.upload_id}/archive/{entry_id}'
+
+    def get_relative_path(self, mainfile):
+        return mainfile.split('/raw/', 1)[1]
+
 
 class ServerLocalContext(Context):
     def __init__(self, mainfile_dir):
@@ -489,13 +526,13 @@ class ClientContext(Context):
 
     def __init__(
         self,
-        installation_url: str = None,
+        installation_url: str | None = None,
         *,
-        local_dir: str = None,
-        upload_id: str = None,
-        username: str = None,
-        password: str = None,
-        recursive_kwargs: dict = None,
+        local_dir: str | None = None,
+        upload_id: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+        recursive_kwargs: dict | None = None,
         auth=None,
     ):
         super().__init__(
@@ -553,7 +590,7 @@ class ClientContext(Context):
         )
 
     def load_raw_file(
-        self, path: str, upload_id: str, installation_url: str, url: str = None
+        self, path: str, upload_id: str, installation_url: str, url: str | None = None
     ) -> MSection:
         # TODO currently upload_id might be None
         if upload_id is None:
@@ -666,3 +703,11 @@ class ClientContext(Context):
                     file_path.absolute().as_posix(), **(self._recursive_kwargs | kwargs)
                 )
             )
+
+    def get_reference(self, mainfile: str) -> str:
+        # TODO: use self.local_dir
+        return mainfile.split('/')[-1]
+
+    def get_relative_path(self, mainfile):
+        # TODO: use self.local_dir
+        return mainfile.split('/')[-1]

@@ -78,9 +78,9 @@ def run_app(
     *,
     with_gui: bool = False,
     gunicorn: bool = False,
-    host: str = None,
-    log_config: str = None,
-    port: int = None,
+    host: str | None = None,
+    log_config: str | None = None,
+    port: int | None = None,
     **kwargs,
 ):
     config.meta.service = 'app'
@@ -234,10 +234,10 @@ def task_worker(**kwargs):
 
 def run_appworker(
     *,
-    app_host: str = None,
-    app_port: int = None,
-    fastapi_workers: int = None,
-    celery_workers: int = None,
+    app_host: str | None = None,
+    app_port: int | None = None,
+    fastapi_workers: int | None = None,
+    celery_workers: int | None = None,
     dev: bool = False,
 ):
     from concurrent import futures as concurrent_futures

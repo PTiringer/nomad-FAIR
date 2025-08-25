@@ -17,7 +17,7 @@
  */
 import { makeStyles } from '@material-ui/core'
 import React from 'react'
-import { apiBase, appBase, resourcesEnabled } from '../config'
+import { apiBase, appBase } from '../config'
 import Markdown from './Markdown'
 import AppTokenForm from './AppTokenForm'
 
@@ -29,14 +29,6 @@ const useStyles = makeStyles(theme => ({
     width: '100%'
   }
 }))
-
-const resourcesSection = `## Resources
-The resources API provides links from NOMAD entries to related external resources.
-These include the [Aflow Encyclopedia of Crystallographic Prototypes](https://www.aflowlib.org/prototype-encyclopedia/),
-[Springer Materials Database of Inorganic Solid Phases](https://materials.springer.com)
-and [OPTIMADE providers](https://providers.optimade.org/).
-
-- [Resources API dashboard](${appBase}/resources/extensions/docs)`
 
 export default function About() {
   const classes = useStyles()
@@ -80,8 +72,6 @@ export default function About() {
       DCAT Datasets or all NOMAD entries as a DCAT Catalog.
 
       - [DCAT API dashboard](${appBase}/dcat/)
-      ${resourcesEnabled ? resourcesSection : ""
-      }
     `}</Markdown>
   </div>
 }

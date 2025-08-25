@@ -102,7 +102,7 @@ class DownloadItem(BaseModel):
 
 async def create_download_stream_zipped(
     download_items: DownloadItem | Iterator[DownloadItem],
-    upload_files: UploadFiles = None,
+    upload_files: UploadFiles | None = None,
     re_pattern: Any = None,
     recursive: bool = False,
     create_manifest_file: bool = False,
@@ -138,6 +138,9 @@ async def create_download_stream_zipped(
                 if not upload_files:
                     # Open the requested upload.
                     upload_files = UploadFiles.get(download_item.upload_id)
+
+                if upload_files is None:  # Added check
+                    continue  # Skip if upload_files is None
 
                 all_filtered = True
                 files_found = False

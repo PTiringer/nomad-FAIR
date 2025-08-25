@@ -167,7 +167,7 @@ def create_mongo_user_group(
 
 
 def get_mongo_user_group(group_id: str) -> MongoUserGroup | None:
-    return MongoUserGroup.objects(group_id=group_id).first()  # pylint: disable=no-member
+    return MongoUserGroup.objects(group_id=group_id).first()  # type: ignore # pylint: disable=no-member
 
 
 def user_group_exists(group_id: str, *, include_all=True) -> bool:

@@ -312,7 +312,8 @@ function EditMetaDataDialog({...props}) {
   const [open, setOpen] = useState(false)
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false)
   const isProcessing = upload?.process_running
-  const nSelected = (selectedEntries.upload_id ? upload?.entries : selectedEntries.entry_id.length)
+  const selectedEntriesIDs = selectedEntries['entry_id:any'] || selectedEntries['entry_id']
+  const nSelected = (selectedEntries.upload_id ? upload?.entries : selectedEntriesIDs.length)
   const [userDatasets, setUserDatasets] = useState([])
   const [userDatasetsFetched, setUserDatasetsFetched] = useState(false)
   const [actions, setActions] = useState([])
@@ -337,8 +338,8 @@ function EditMetaDataDialog({...props}) {
   }, [api, user, raiseError, open, userDatasetsFetched, setUserDatasetsFetched])
 
   const selectedEntriesObjects = useMemo(() => {
-    return selectedEntries.upload_id ? entries : entries.filter(entry => selectedEntries.entry_id.includes(entry?.entry_id))
-  }, [entries, selectedEntries.entry_id, selectedEntries.upload_id])
+    return selectedEntries.upload_id ? entries : entries.filter(entry => selectedEntriesIDs.includes(entry?.entry_id))
+  }, [entries, selectedEntriesIDs, selectedEntries.upload_id])
 
   const defaultComment = useMemo(() => (
     entries?.length > 0 ? selectedEntriesObjects[0]?.entry_metadata?.comment || '' : ''
@@ -374,7 +375,7 @@ function EditMetaDataDialog({...props}) {
     return new Promise((resolve, reject) => {
       try {
         const requestBody = {metadata: metadata, verify_only: verify_only, owner: 'user'}
-        if (selectedEntries.entry_id) requestBody.query = selectedEntries
+        if (selectedEntriesIDs) requestBody.query = selectedEntries
           api.post(`uploads/${uploadId}/edit`, requestBody)
             .then(() => resolve(''))
             .catch(error => reject(error.apiMessage))
@@ -382,7 +383,7 @@ function EditMetaDataDialog({...props}) {
         reject(error.apiMessage)
       }
     })
-  }, [api, uploadId, selectedEntries])
+  }, [api, uploadId, selectedEntries, selectedEntriesIDs])
 
   const submitChanges = useCallback((metadata) => {
     edit(metadata, true)

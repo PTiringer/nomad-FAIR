@@ -107,7 +107,11 @@ class HDF5Reference(NonPrimitive):
 
     @staticmethod
     def write_dataset(
-        archive, value: Any, path: str, attributes: dict = {}, quantity_name: str = None
+        archive,
+        value: Any,
+        path: str,
+        attributes: dict = {},
+        quantity_name: str | None = None,
     ) -> None:
         """
         Write value to HDF5 file specified in path following the form

@@ -79,6 +79,10 @@ async def get_dataset(
             status_code=_bad_id_response[0], detail=_bad_id_response[1]['description']
         )
 
+    if results.data is None:
+        raise HTTPException(
+            status_code=_bad_id_response[0], detail=_bad_id_response[1]['description']
+        )
     entry = results.data[0]
 
     mapping = Mapping()

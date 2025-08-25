@@ -33,7 +33,7 @@ class XMLParser(FileParser):
         convert: specifies if quantities are converted automatically
     """
 
-    def __init__(self, mainfile: str = None, logger=None, **kwargs):
+    def __init__(self, mainfile: str | None = None, logger=None, **kwargs):
         super().__init__(mainfile, logger=logger, open=kwargs.get('open', None))
         self.convert = kwargs.get('convert', True)
         self.init_parameters()

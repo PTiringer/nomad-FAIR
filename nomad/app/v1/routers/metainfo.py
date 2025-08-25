@@ -139,8 +139,8 @@ _not_authorized_to_upload = (
 
 
 class PackageDefinitionResponse(BaseModel):
-    section_definition_id: str = Field(None)
-    data: dict[str, Any] = Field(None)
+    section_definition_id: str | None = Field(None)
+    data: dict[str, Any] | None = Field(None)
 
 
 def get_package_by_section_definition_id(section_definition_id: str) -> dict:

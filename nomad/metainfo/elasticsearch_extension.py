@@ -331,7 +331,7 @@ class DocumentType:
     def create_mapping(
         self,
         section_def: Section,
-        prefix: str = None,
+        prefix: str | None = None,
         auto_include_subsections: bool = False,
     ):
         """
@@ -361,7 +361,7 @@ class DocumentType:
     def _create_mapping_recursive(
         self,
         section_def: Section,
-        prefix: str = None,
+        prefix: str | None = None,
         auto_include_subsections: bool = False,
         repeats: bool = False,
     ):
@@ -830,23 +830,23 @@ class Elasticsearch(DefinitionAnnotation):
     def __init__(
         self,
         doc_type: DocumentType = entry_type,
-        mapping: str | dict[str, Any] = None,
-        field: str = None,
-        es_field: str = None,
-        value: Callable[[MSectionBound], Any] = None,
+        mapping: str | dict[str, Any] | None = None,
+        field: str | None = None,
+        es_field: str | None = None,
+        value: Callable[[MSectionBound], Any] | None = None,
         index: bool = True,
-        values: list[str] = None,
-        default_aggregation_size: int = None,
-        metrics: dict[str, str] = None,
+        values: list[str] | None = None,
+        default_aggregation_size: int | None = None,
+        metrics: dict[str, str] | None = None,
         many_all: bool = False,
         auto_include_subsections: bool = False,
         nested: bool = False,
-        suggestion: str | Callable[[MSectionBound], Any] = None,
+        suggestion: str | Callable[[MSectionBound], Any] | None = None,
         variants: Callable[[str], list[str]] | None = None,
-        normalizer: Callable[[Any], Any] = None,
+        normalizer: Callable[[Any], Any] | None = None,
         es_query: str = 'match',
-        _es_field: str = None,
-        definition: Definition = None,
+        _es_field: str | None = None,
+        definition: Definition | None = None,
         dynamic: bool = False,
     ):
         # TODO remove _es_field if it is not necessary anymore to enforce a specific mapping
@@ -1038,8 +1038,8 @@ class SearchQuantity:
     def __init__(
         self,
         annotation: Elasticsearch,
-        prefix: str = None,
-        qualified_name: str = None,
+        prefix: str | None = None,
+        qualified_name: str | None = None,
         repeats: bool = False,
     ):
         """
@@ -1140,7 +1140,8 @@ class SearchQuantity:
 
 
 def create_indices(
-    entry_section_def: Section = None, material_section_def: Section = None
+    entry_section_def: Section | None = None,
+    material_section_def: Section | None = None,
 ):
     """
     Creates the mapping for all document types and creates the indices in Elasticsearch.
@@ -1547,7 +1548,7 @@ def get_searchable_quantity_value_field(
 
 
 def create_dynamic_quantity_annotation(
-    quantity_def: Quantity, doc_type: DocumentType = None
+    quantity_def: Quantity, doc_type: DocumentType | None = None
 ) -> Elasticsearch | None:
     """Given a quantity definition, this function will return the corresponding
     ES annotation if one can be built.
@@ -1568,9 +1569,9 @@ def create_dynamic_quantity_annotation(
 def create_searchable_quantity(
     quantity_def: Quantity,
     quantity_path: Quantity,
-    section: MSection = None,
-    path_archive: str = None,
-    schema_name: str = None,
+    section: MSection | None = None,
+    path_archive: str | None = None,
+    schema_name: str | None = None,
 ) -> Optional['SearchableQuantity']:
     """Transforms a quantity definition into a SearchQuantity."""
     from nomad.datamodel.datamodel import SearchableQuantity

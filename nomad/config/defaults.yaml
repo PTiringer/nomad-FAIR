@@ -159,6 +159,7 @@ oasis:
   central_nomad_deployment_url: https://nomad-lab.eu/prod/v1/api
   is_oasis: false
   uses_central_user_management: false
+  require_authentication: false
 process:
   add_definition_id_to_reference: false
   auxfile_cutoff: 100
@@ -176,6 +177,7 @@ process:
   store_package_definition_in_mongo: false
   use_empty_parsers: false
   write_definition_id_to_archive: false
+  exclude_potcar: true
 rabbitmq:
   host: localhost
   password: rabbitmq
@@ -187,13 +189,6 @@ reprocess:
   rematch_published: true
   reprocess_existing_entries: true
   use_original_parser: false
-resources:
-  db_name: nomad_v1_resources
-  download_retries: 2
-  download_retry_delay: 10
-  enabled: false
-  max_connections: 10
-  max_time_in_mongo: 31536000.0
 rfc3161_timestamp:
   hash_algorithm: sha256
   server: http://zeitstempel.dfn.de

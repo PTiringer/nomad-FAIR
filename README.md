@@ -34,8 +34,15 @@ is used for the main development activities. It runs all CI/CD pipelines and off
 It is openly readable, but requires an MPCDF account for active contributions. If you
 are a member of the FAIRmat or NOMAD CoE project, contribute here.
 
-Most sub-modules, e.g. NOMAD's parsers, are hosted in individual projects on GitHub
-within the [FAIRmat-NFDI organization](https://github.com/FAIRmat-NFDI).
+Most sub-modules, e.g. NOMAD's parsers, are hosted in individual projects on GitHub within the [FAIRmat-NFDI organization](https://github.com/FAIRmat-NFDI).
+
+## Getting started
+
+For a general project overview visit the official project page [https://nomad-lab.eu](https://nomad-lab.eu). For specific use of the NOMAD software follow these links to our documentation:
+
+- [get started as a developer](https://nomad-lab.eu/prod/v1/docs/howto/develop/setup.html)
+- [install and use NOMAD as Python package (to use our APIs or parsers)](https://nomad-lab.eu/prod/v1/docs/pythonlib.html)
+- [install NOMAD Oasis](https://nomad-lab.eu/prod/v1/docs/oasis.html)
 
 ## Citing NOMAD
 

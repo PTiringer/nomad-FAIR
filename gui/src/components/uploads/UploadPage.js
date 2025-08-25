@@ -53,7 +53,6 @@ const UploadPage = React.memo((props) => {
   // upload context and do not refresh the UploadOverview data,
   // Test
   return <UploadPageContext uploadId={uploadId}>
-    <UploadProcessingStatus />
     <Tabs
       value={tab}
       onChange={handleChange}
@@ -71,6 +70,7 @@ const UploadPage = React.memo((props) => {
       <CacheRoute when="always" path={`${path}/files`} render={() => <UploadFilesView />} />
       <Redirect strict from={`${path}/overview`} to={`${path}`} />
     </CacheSwitch>
+    <UploadProcessingStatus />
   </UploadPageContext>
 })
 UploadPage.propTypes = {

@@ -405,7 +405,10 @@ class Data(BaseModel, validate_assignment=True):
         return values
 
     def get_data(
-        self, source_data: dict[str, Any], parser: 'MappingParser' = None, **kwargs
+        self,
+        source_data: dict[str, Any],
+        parser: 'MappingParser | None' = None,
+        **kwargs,
     ) -> Any:
         if self.transformer:
             value = self.transformer.get_data(source_data, parser, **kwargs)
@@ -440,7 +443,9 @@ class BaseMapper(BaseModel):
         return data
 
     @staticmethod
-    def from_dict(dct: dict[str, Any], parent: 'BaseMapper' = None) -> 'BaseMapper':
+    def from_dict(
+        dct: dict[str, Any], parent: 'BaseMapper | None' = None
+    ) -> 'BaseMapper':
         """
         Convert dictionary to a BaseMapper object. Dictionary may contain the following
             source: str or Path or tuple or Transformer to extract source data
@@ -637,9 +642,9 @@ class Transformer(BaseMapper):
                 if not self.function_kwargs
                 else func(*args, **self.function_kwargs)
             )
-        except Exception:
-            # if self.function_name == 'get_positions':
-            #     raise
+        except Exception as e:
+            if kwargs.get('debug'):
+                raise RuntimeError(f'Error evaluating {self.function_name}: {e}')
             return None
 
 
@@ -905,9 +910,10 @@ class MappingParser(ABC):
     def convert(
         self,
         target: 'MappingParser',
-        mapper: 'BaseMapper' = None,
+        mapper: 'BaseMapper | None' = None,
         update_mode: str = 'merge',
         remove: bool = False,
+        debug: bool = False,
     ):
         if mapper is None:
             mapper = target.mapper
@@ -916,7 +922,7 @@ class MappingParser(ABC):
         source_data = self.data
         if mapper.source:
             source_data = mapper.source.get_data(self.data, self)
-        result = mapper.get_data(source_data, self, remove=remove)
+        result = mapper.get_data(source_data, self, remove=remove, debug=debug)
         target.set_data(result, target.data, update_mode=update_mode)
         target.from_dict(target.data)
 
@@ -949,7 +955,9 @@ class MappingParser(ABC):
 
 class MetainfoBaseMapper(BaseMapper):
     @staticmethod
-    def from_dict(dct: dict[str, Any], parent: BaseMapper = None) -> 'BaseMapper':
+    def from_dict(
+        dct: dict[str, Any], parent: BaseMapper | None = None
+    ) -> 'BaseMapper':
         parent = BaseMapper.from_dict(dct) if parent is None else parent
 
         if isinstance(parent, Transformer):
@@ -1010,7 +1018,7 @@ class MetainfoParser(MappingParser):
 
     def __init__(self, **kwargs):
         self._annotation_key: str = kwargs.get('annotation_key', 'mapping')
-        self.max_nested_level: int = 1
+        self.max_nested_level: int = 3
         super().__init__(**kwargs)
 
     @property
@@ -1040,7 +1048,7 @@ class MetainfoParser(MappingParser):
             return self.data_object.m_to_dict()
         return {}
 
-    def from_dict(self, dct: dict[str, Any], root: MSection = None) -> None:
+    def from_dict(self, dct: dict[str, Any], root: MSection | None = None) -> None:
         # if self.data_object is not None:
         #     self.data_object = self.data_object.m_from_dict(dct)
         # return
@@ -1075,15 +1083,24 @@ class MetainfoParser(MappingParser):
                     except Exception:
                         sub_section = None
                     if sub_section is None:
-                        sub_section = section_def.section_cls(
-                            **{
-                                n: val_n.get(n)
-                                for n, q in quantities.items()
-                                if not q.derived and n in val_n
-                            }
-                        )
+                        sub_section = section_def.section_cls()
+                        # sub_section = section_def.section_cls(
+                        #     **{
+                        #         n: val_n.get(n)
+                        #         for n, q in quantities.items()
+                        #         if not q.derived and n in val_n
+                        #     }
+                        # )
+                        if root.m_context:
+                            sub_section.m_root().m_context = root.m_context
                         root.m_add_sub_section(section, sub_section)
                     self.from_dict(val_n, sub_section)
+                    if not [
+                        v
+                        for v in sub_section.values()
+                        if (isinstance(v, list | np.ndarray) and len(v)) or v
+                    ]:
+                        root.m_remove_sub_section(section, index=n)
                 continue
 
             if key == 'm_def':
@@ -1094,7 +1111,7 @@ class MetainfoParser(MappingParser):
             except Exception:
                 pass
 
-    def build_mapper(self, max_level: int = None) -> BaseMapper:
+    def build_mapper(self, max_level: int | None = None) -> BaseMapper:
         """
         Builds a mapper for source data from the another parser with path or operator
         specified in metainfo annotation with key annotation_key. The target path is

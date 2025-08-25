@@ -98,7 +98,7 @@ class LogstashHandler(logstash.TCPLogstashHandler, BaseHandler):
         super().__init__(config.logstash.host, config.logstash.tcp_port, version=1)
 
 
-class LogstashFormatter(logstash.formatter.LogstashFormatterBase):
+class LogstashFormatter(logstash.formatter.LogstashFormatterBase):  # type: ignore
     def format(self, record):
         try:
             structlog = json.loads(record.getMessage())

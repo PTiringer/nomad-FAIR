@@ -273,7 +273,7 @@ export const SearchResults = React.memo(({
     if (selected === 'all') {
       return apiQuery
     }
-    return {entry_id: [...selected]}
+    return {'entry_id:any': [...selected]}
   }, [selected, apiQuery])
 
   const actions = useCallback((data) => {

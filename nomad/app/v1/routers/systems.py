@@ -20,7 +20,6 @@ from collections import OrderedDict
 from enum import Enum
 from io import BytesIO, StringIO
 
-import ase.build
 import ase.io
 import numpy as np
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
@@ -44,7 +43,9 @@ class APITag(str, Enum):
     DEFAULT = 'systems'
 
 
-def write_pdb(atoms: NOMADAtoms, entry_id: str = None, formula: str = None) -> str:
+def write_pdb(
+    atoms: NOMADAtoms, entry_id: str | None = None, formula: str | None = None
+) -> str:
     """For writing a PDB file."""
 
     # Add custom title that contains the entry id.
@@ -74,20 +75,22 @@ def write_pdb(atoms: NOMADAtoms, entry_id: str = None, formula: str = None) -> s
         lines.append(f'REMARK 285 PBC (A, B, C): {pbc[0]}, {pbc[1]}, {pbc[2]}\n')
 
     stream = StringIO()
-    atoms = ase_atoms_from_nomad_atoms(atoms)
-    ase.io.write(stream, atoms, format='proteindatabank')
+    ase_atoms = ase_atoms_from_nomad_atoms(atoms)
+    ase.io.write(stream, ase_atoms, format='proteindatabank')
     stream.seek(0)
     content = ''.join(lines)
     content += stream.read()
     return content
 
 
-def write_cif(atoms: NOMADAtoms, entry_id: str = None, formula: str = None) -> str:
+def write_cif(
+    atoms: NOMADAtoms, entry_id: str | None = None, formula: str | None = None
+) -> str:
     """For writing a CIF file."""
     # The ASE CIF writer expects a BytesIO, unlike other formats supported by ASE.
     byte_stream = BytesIO()
-    atoms = ase_atoms_from_nomad_atoms(atoms)
-    ase.io.write(byte_stream, atoms, format='cif')
+    ase_atoms = ase_atoms_from_nomad_atoms(atoms)
+    ase.io.write(byte_stream, ase_atoms, format='cif')
     byte_stream.seek(0)
     content = ''
     if entry_id is not None:
@@ -97,11 +100,11 @@ def write_cif(atoms: NOMADAtoms, entry_id: str = None, formula: str = None) -> s
     return content
 
 
-def write_xyz(atoms: NOMADAtoms, entry_id: str, formula: str = None) -> str:
+def write_xyz(atoms: NOMADAtoms, entry_id: str, formula: str | None = None) -> str:
     """For writing an XYZ file."""
     stream = StringIO()
-    atoms = ase_atoms_from_nomad_atoms(atoms)
-    ase.io.write(stream, atoms, format='extxyz')
+    ase_atoms = ase_atoms_from_nomad_atoms(atoms)
+    ase.io.write(stream, ase_atoms, format='extxyz')
     stream.seek(0)
     content = stream.read()
     if entry_id is not None:

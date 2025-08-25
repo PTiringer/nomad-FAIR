@@ -1218,3 +1218,20 @@ def test_upload_context(
         else url
     )
     assert section_reference.reference.m_root().metadata.entry_id == 'test_id'
+
+
+@pytest.mark.timeout(config.tests.default_timeout)
+@pytest.mark.parametrize('exclude_potcar', [pytest.param(True), pytest.param(False)])
+def test_exclude_potcar(user1, proc_infra, monkeypatch, exclude_potcar):
+    monkeypatch.setattr('nomad.config.process.exclude_potcar', exclude_potcar)
+
+    upload = run_processing(('test_upload', 'tests/data/proc/vasp.potcar.zip'), user1)
+
+    assert upload.upload_files.raw_path_exists('test/vasprun.xml')
+
+    potcar_exists = upload.upload_files.raw_path_exists('test/POTCAR')
+    if exclude_potcar:
+        assert not potcar_exists
+        assert 'Removing POTCAR file from upload.' in upload.warnings
+    else:
+        assert potcar_exists

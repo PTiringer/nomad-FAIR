@@ -72,14 +72,13 @@ def assert_list(observed, expected):
 
 
 def assert_dict(observed, expected):
-    if GeneralReader.__CACHE__ in observed:
-        del observed[GeneralReader.__CACHE__]
-    if 'm_response' in observed:
-        del observed['m_response']
-    if 'm_def' in observed:
-        del observed['m_def']
-    if 'm_def' in expected:
-        del expected['m_def']
+    observed.pop(GeneralReader.__CACHE__, None)
+    observed.pop('m_response', None)
+    observed.pop('m_def', None)
+    # we do not check the definition ID in this file
+    # it has been systematically tested in the other test file
+    observed.pop('definition_id', None)
+    expected.pop('m_def', None)
     assert set(observed.keys()) == set(expected.keys())
     for k, v in observed.items():
         if isinstance(v, LazyWrapper):

@@ -17,7 +17,7 @@
 #
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from nomad import files, search
@@ -50,16 +50,16 @@ class ExampleData:
         self.entry_defaults = kwargs
         self._entry_id_counter = 1
 
-        self._time_stamp = datetime.utcnow()
+        self._time_stamp = datetime.now(timezone.utc)
 
     def save(
         self,
         with_files: bool = True,
         with_mongo: bool = True,
         with_es: bool = True,
-        additional_files_path: str = None,
-        es_nomad_version: str = None,
-        archive_nomad_version: str = None,
+        additional_files_path: str | None = None,
+        es_nomad_version: str | None = None,
+        archive_nomad_version: str | None = None,
     ):
         from nomad import processing as proc
         from tests.test_files import create_test_upload_files
@@ -129,7 +129,7 @@ class ExampleData:
 
         for upload_id in self.upload_entries:
             search.delete_upload(upload_id, refresh=True)
-            upload_proc = proc.Upload.objects(upload_id=upload_id).first()
+            upload_proc = proc.Upload.objects(upload_id=upload_id).first()  # type: ignore
             if upload_proc is not None:
                 upload_proc.delete()
             upload_files = files.UploadFiles.get(upload_id)
@@ -227,13 +227,13 @@ class ExampleData:
 
     def create_entry(
         self,
-        entry_archive: EntryArchive = None,
-        entry_id: str = None,
-        upload_id: str = None,
-        material_id: str = None,
-        mainfile: str = None,
-        results: Results | dict = None,
-        archive: dict = None,
+        entry_archive: EntryArchive | None = None,
+        entry_id: str | None = None,
+        upload_id: str | None = None,
+        material_id: str | None = None,
+        mainfile: str | None = None,
+        results: Results | dict | None = None,
+        archive: dict | None = None,
         **kwargs,
     ) -> EntryArchive:
         assert upload_id in self.uploads, 'Must create the upload first'
@@ -358,7 +358,7 @@ class ExampleData:
         extra: list[str],
         periodicity: int,
         optimade: bool = True,
-        metadata: dict = None,
+        metadata: dict | None = None,
     ):
         """Creates an entry in Elastic and Mongodb with the given properties.
 
@@ -417,7 +417,10 @@ class ExampleData:
 
 
 def create_entry_archive(
-    metadata: dict = None, results: dict = None, run: dict = None, workflow: dict = None
+    metadata: dict | None = None,
+    results: dict | None = None,
+    run: dict | None = None,
+    workflow: dict | None = None,
 ):
     """Creates an entry archive out of python objects.
 

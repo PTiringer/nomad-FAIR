@@ -79,8 +79,8 @@ _bad_id_response = (
 
 
 class MaterialMetadataResponse(BaseModel):
-    material_id: str = Field(None)
-    required: MetadataRequired = Field(None)
+    material_id: str | None = Field(None)
+    required: MetadataRequired | None = Field(None)
     data: Any = Field(
         None, description=strip("""The material metadata as dictionary.""")
     )

@@ -22,7 +22,7 @@ import tempfile
 import time
 import zipfile
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import pytest
@@ -3861,3 +3861,100 @@ def test_get_command_examples(auth_headers, client, authorized, expected_status_
         ):
             assert k in data
         assert '/api/v1/uploads' in data['upload_command']
+
+
+@pytest.mark.parametrize(
+    'has_write_access,is_published,upload_state,expected_status',
+    [
+        pytest.param(True, False, ProcessStatus.PENDING, 200, id='success-case'),
+        pytest.param(False, False, ProcessStatus.PENDING, 401, id='permission-denied'),
+        pytest.param(True, True, ProcessStatus.PENDING, 401, id='published-upload'),
+        pytest.param(
+            True, False, ProcessStatus.SUCCESS, 400, id='success-state-invalid'
+        ),
+        pytest.param(
+            True, False, ProcessStatus.FAILURE, 400, id='failure-state-invalid'
+        ),
+    ],
+)
+def test_stop_processing_action(
+    has_write_access,
+    is_published,
+    upload_state,
+    expected_status,
+    non_empty_uploaded,
+    user1,
+    user2,
+    auth_headers,
+    client,
+    temporal_worker,
+    monkeypatch,
+):
+    """Tests the endpoint for stopping the processing of an upload."""
+    upload_id, _ = non_empty_uploaded
+
+    # Create upload with appropriate owner based on access test
+    upload_owner = user1 if has_write_access else user2
+    upload = Upload.create(
+        upload_id=upload_id,
+        main_author=upload_owner,
+        publish_time=datetime.now(timezone.utc) if is_published else None,
+        workflow_ids=['example-workflow-id'],
+    )
+    upload.save()
+    upload.process_status = upload_state
+    upload.save()
+
+    # Always use user1's auth headers for the request
+    user_auth = auth_headers['user1']
+
+    # Mock the stop processing workflow method
+    async def mock_stop_processing_workflows(self):
+        pass
+
+    monkeypatch.setattr(
+        Upload, '_stop_processing_workflows', mock_stop_processing_workflows
+    )
+
+    # Perform the request
+    response = perform_post_upload_action(
+        client, user_auth, upload_id, 'stop-processing'
+    )
+
+    assert_response(response, expected_status)
+
+    if expected_status == 200:
+        upload.reload()
+        assert len(upload.workflow_ids) == 0
+        assert upload.process_status == ProcessStatus.READY
+        assert upload.last_status_message == 'Processing stopped'
+
+
+def test_stop_processing_action_temporal_disabled(
+    non_empty_uploaded,
+    user1,
+    auth_headers,
+    client,
+    proc_infra,
+):
+    """Tests the endpoint for stopping the processing of an upload."""
+    upload_id, _ = non_empty_uploaded
+
+    upload_owner = user1
+    upload = Upload.create(
+        upload_id=upload_id,
+        main_author=upload_owner,
+        workflow_ids=['example-workflow-id'],
+    )
+    upload.save()
+    upload.process_status = ProcessStatus.PENDING
+    upload.save()
+
+    user_auth = auth_headers['user1']
+
+    # Perform the request
+    response = perform_post_upload_action(
+        client, user_auth, upload_id, 'stop-processing'
+    )
+
+    assert_response(response, 400)

@@ -156,13 +156,13 @@ async def get_users(
 class PublicUserInfo(BaseModel):
     """User information that is publicly available."""
 
-    name: str = None
-    first_name: str = None
-    last_name: str = None
-    affiliation: str = None
-    affiliation_address: str = None
-    user_id: str = None
-    username: str = None
+    name: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    affiliation: str | None = None
+    affiliation_address: str | None = None
+    user_id: str | None = None
+    username: str | None = None
 
 
 @router.get(

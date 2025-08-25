@@ -54,10 +54,6 @@ def reset(remove, i_am_really_sure):
 
     infrastructure.reset(remove)
 
-    from nomad.app.resources.main import remove_mongo
-
-    remove_mongo()
-
 
 @admin.command(
     help='Reset all uploads and entries "stuck" in processing using level mongodb operations.'
@@ -150,9 +146,9 @@ def ops():
 @ops.command(help=('Dump the mongo db.'))
 @click.option('--restore', is_flag=True, help='Do not dump, but restore.')
 def dump(restore: bool):
-    from datetime import datetime
+    from datetime import datetime, timezone
 
-    date_str = datetime.utcnow().strftime('%Y_%m_%d')
+    date_str = datetime.now(timezone.utc).strftime('%Y_%m_%d')
     print(
         f'mongodump --host {config.mongo.host} --port {config.mongo.port} --db {config.mongo.db_name} -o /backup/fairdi/mongo/{date_str}'
     )
@@ -427,8 +423,11 @@ def migrate_mongo(
     config.mongo.db_name = dst_db_name
     infrastructure.setup_mongo()
 
-    db_src: Database = infrastructure.mongo_client.get_database(src_db_name)
-    db_dst: Database = infrastructure.mongo_client.get_database(dst_db_name)
+    db_src: Database
+    db_dst: Database
+    if infrastructure.mongo_client is not None:
+        db_src = infrastructure.mongo_client.get_database(src_db_name)
+        db_dst = infrastructure.mongo_client.get_database(dst_db_name)
 
     if not dry:
         migrate.create_collections_if_needed(db_dst)

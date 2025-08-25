@@ -178,6 +178,8 @@ def is_cas_rn(candidate: str) -> bool:
         match = re.fullmatch(
             r'(?P<p1>\d{2,7})-(?P<p2>\d{2})-(?P<check>\d{1})', candidate
         )
+        if match is None:
+            return False
         check = (
             sum(
                 [

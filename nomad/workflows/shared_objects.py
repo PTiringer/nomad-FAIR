@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 
+import json
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -66,6 +67,7 @@ class UploadWorkflowIdInput:
     upload_id: str
     workflow_id: str
     failure_message: str | None = None
+    error_details: str | None = None
 
 
 @dataclass
@@ -75,17 +77,50 @@ class NextLevelEntryResult:
 
 
 @dataclass
+class UpdatedFilesResult:
+    files: set[str] | None = None
+    file_path: str | None = None
+
+    def get_files(self) -> set[str] | None:
+        """Get the files, loading from file if necessary"""
+        if self.files is not None:
+            return self.files
+
+        if self.file_path is not None:
+            with open(self.file_path) as f:
+                return set(json.load(f))
+
+        return None
+
+
+@dataclass
 class UploadProcessingWorkflowInput:
     upload_id: str
     workflow_id: str
+    workflow_tmp_dir: str
     file_operations: list[dict[str, Any]] | None = None
     reprocess_settings: dict[str, Any] | None = None
     path_filter: str | None = None
     only_updated_files: bool = False
     publish_directly_after_processing: bool = False
-    updated_files: set[str] | None = None
+    updated_files: UpdatedFilesResult = field(default_factory=UpdatedFilesResult)
     min_level: int = 0
-    batch_id: int = 0
+
+
+@dataclass
+class EntryBatchFromFileInput:
+    upload_id: str
+    batch_dir_path: str
+    batch_id: int
+
+
+@dataclass
+class EntriesToBeProcessedResult:
+    upload_id: str
+    entries: list[ProcessEntryActivityInput] | None = None
+    directory: str | None = None
+    total_batches: int = 0
+    next_parser_level: int | None = None
 
 
 @dataclass
@@ -119,6 +154,7 @@ class ImportBundleWorkflowInput:
 class ProcessExampleUploadWorkflowInput:
     upload_id: str
     example_upload_id: str
+    workflow_tmp_dir: str
     file_operations: list[dict[str, Any]] | None = None
     publish_directly: bool = False
 

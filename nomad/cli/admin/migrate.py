@@ -87,9 +87,9 @@ def create_collections_if_needed(db_dst: Database):
     MongoDocument class.
     """
     if 'upload' not in db_dst.list_collection_names():
-        Upload.objects()
+        Upload.objects()  # type: ignore
     if 'entry' not in db_dst.list_collection_names():
-        Entry.objects()
+        Entry.objects()  # type: ignore
     if 'dataset' not in db_dst.list_collection_names():
         Dataset.m_def.a_mongo.objects()
 
@@ -501,8 +501,8 @@ def _convert_mongo_proc(proc_dict: dict[str, Any]):
         last_status_message = proc_dict.get('last_status_message')
         if not last_status_message:
             # Generate a nicer last_status_message
-            current_process: str = proc_dict.get('current_process')
-            errors: list[str] = proc_dict.get('errors')
+            current_process: str | None = proc_dict.get('current_process')
+            errors: list[str] | None = proc_dict.get('errors')
             if errors:
                 last_status_message = f'Process {current_process} failed: {errors[-1]}'
             elif current_process and process_status == ProcessStatus.SUCCESS:

@@ -37,7 +37,7 @@ class ConfigBaseModel(BaseModel):
         (keys not defined in this NomadSettings). If it does, an exception will be raised.
         """
 
-        rv = self.copy(deep=True)
+        rv = self.model_copy(deep=True)
 
         if custom_settings:
             if isinstance(custom_settings, BaseModel):

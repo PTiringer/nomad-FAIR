@@ -218,6 +218,42 @@ class ParserEntryPoint(EntryPoint):
         return self.model_dump(include=keys, exclude_none=True)
 
 
+class ElnParserEntryPoint(ParserEntryPoint):
+    """Parser entry point model for matching of a file to generate an associated ELN
+    archive.
+    """
+
+    eln_m_def: str = Field(
+        'nomad.datamodel.metainfo.eln.ElnParserSection',
+        description="""
+        The ELN schema that is used for the data section of the created archive.
+        """,
+    )
+    raw_file_m_def: str = Field(
+        'nomad.datamodel.metainfo.eln.ElnParserRawFile',
+        description="""
+        The schema that is set as the data section of the matched mainfile.
+        """,
+    )
+    update: bool = Field(
+        False,
+        description="""
+        If True, the parser will update the existing ELN data.
+        """,
+    )
+    data_type: str = Field(
+        'raw file',
+        description="""
+        The type of the data that is in the matched file.
+        """,
+    )
+
+    def load(self) -> 'ParserBaseClass':
+        from nomad.parsing.parser import ElnMatchingParser
+
+        return ElnMatchingParser(**self.model_dump())
+
+
 class UploadResource(BaseModel):
     """Represents a request to include a certain resource into an example
     upload. Can point to a local folder/file, or alternatively to an online
@@ -426,7 +462,7 @@ class APIEntryPoint(EntryPoint):
         json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
 
-    prefix: str = Field(
+    prefix: str | None = Field(
         None,
         description=(
             'The prefix for the API. The URL for the API will be the base URL of the NOMAD '
@@ -767,11 +803,17 @@ def add_plugin(plugin: Schema) -> None:
         sys.path.insert(0, plugin.package_path)
 
     # Add plugin to config
-    config.plugins.entry_points.options[plugin.key] = plugin
+    if (
+        config.plugins is not None
+        and config.plugins.entry_points is not None
+        and config.plugins.entry_points.options is not None
+        and plugin.key is not None
+    ):
+        config.plugins.entry_points.options[plugin.key] = plugin
 
     # Add plugin to Package registry
     package = importlib.import_module(plugin.python_package)
-    package.m_package.__init_metainfo__()
+    package.m_package.__init_metainfo__()  # type: ignore
 
     # Reload the dynamic quantities so that API is aware of the plugin
     # quantities.
@@ -791,10 +833,16 @@ def remove_plugin(plugin) -> None:
         pass
 
     # Remove package as plugin
-    del config.plugins.entry_points.options[plugin.key]
+    if (
+        config.plugins is not None
+        and config.plugins.entry_points is not None
+        and config.plugins.entry_points.options is not None
+        and plugin.key is not None
+    ):
+        del config.plugins.entry_points.options[plugin.key]
 
     # Remove plugin from Package registry
-    package = importlib.import_module(plugin.python_package).m_package
+    package = importlib.import_module(plugin.python_package).m_package  # type: ignore
     for key, i_package in Package.registry.items():
         if i_package is package:
             del Package.registry[key]

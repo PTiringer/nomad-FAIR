@@ -16,15 +16,18 @@
 # limitations under the License.
 #
 
-
+import re
 from unittest.mock import MagicMock
 
 import pytest
 from fastapi import FastAPI
+from fastapi.routing import APIRoute
 from starlette.responses import PlainTextResponse
+from starlette.routing import Mount, Route
 from starlette.testclient import TestClient
 
-from nomad.app.main import OasisAuthenticationMiddleware
+from nomad.app.main import OASIS_AUTH_WHITELIST, OasisAuthenticationMiddleware
+from nomad.infrastructure import KeycloakError
 
 # Tests for `OasisAuthenticationMiddleware`
 
@@ -76,7 +79,7 @@ from nomad.app.main import OasisAuthenticationMiddleware
     ],
 )
 def test_oasis_auth_middleware_whitelist(
-    whitelist_patterns, request_path, expected_status, expected_text
+    whitelist_patterns, request_path, expected_status, expected_text, monkeypatch
 ):
     def create_client():
         app = FastAPI()
@@ -95,6 +98,8 @@ def test_oasis_auth_middleware_whitelist(
 
         app.add_middleware(OasisAuthenticationMiddleware, whitelist=whitelist_patterns)
         return TestClient(app)
+
+    monkeypatch.setattr('nomad.config.oasis.require_authentication', True)
 
     response = create_client().get(request_path)
 
@@ -125,14 +130,19 @@ def app_middleware_client():
 
 
 def test_oasis_auth_middleware_invalid_token(app_middleware_client, monkeypatch):
-    monkeypatch.setattr(
-        'nomad.infrastructure.keycloak.tokenauth', lambda token: (None, None)
-    )
+    monkeypatch.setattr('nomad.config.oasis.require_authentication', True)
+
+    def mock_tokenauth(token):
+        raise KeycloakError('Invalid token')
+
+    monkeypatch.setattr('nomad.infrastructure.keycloak.tokenauth', mock_tokenauth)
+
     response = app_middleware_client.get(
         '/protected', headers={'Authorization': 'Bearer invalid'}
     )
+
     assert response.status_code == 401
-    assert response.text == 'You are not authorized to access this Oasis endpoint.'
+    assert response.text == 'Invalid access token.'
 
 
 @pytest.fixture
@@ -145,8 +155,9 @@ def mock_user():
 def test_oasis_auth_middleware_user_not_allowed(
     app_middleware_client, monkeypatch, mock_user
 ):
+    monkeypatch.setattr('nomad.config.oasis.require_authentication', True)
     monkeypatch.setattr(
-        'nomad.infrastructure.keycloak.tokenauth', lambda token: (mock_user, None)
+        'nomad.infrastructure.keycloak.tokenauth', lambda token: mock_user
     )
     monkeypatch.setattr('nomad.config.oasis.allowed_users', {})
     response = app_middleware_client.get(
@@ -159,8 +170,9 @@ def test_oasis_auth_middleware_user_not_allowed(
 def test_oasis_auth_middleware_valid_user(
     app_middleware_client, monkeypatch, mock_user
 ):
+    monkeypatch.setattr('nomad.config.oasis.require_authentication', True)
     monkeypatch.setattr(
-        'nomad.infrastructure.keycloak.tokenauth', lambda token: (mock_user, None)
+        'nomad.infrastructure.keycloak.tokenauth', lambda token: mock_user
     )
     monkeypatch.setattr('nomad.config.oasis.allowed_users', {mock_user.email})
     response = app_middleware_client.get(
@@ -173,9 +185,12 @@ def test_oasis_auth_middleware_valid_user(
 # Tests for `/alive`, `/-/health` and static files app (`/docs` and `/gui`)
 
 
-def test_alive(client):
-    rv = client.get('/alive')
-    assert rv.status_code == 200
+@pytest.mark.parametrize('require_auth', [True, False])
+def test_alive_health(monkeypatch, client, require_auth):
+    monkeypatch.setattr('nomad.config.oasis.require_authentication', require_auth)
+
+    assert client.get('/alive').status_code == 200
+    assert client.get('/-/health').status_code == 200
 
 
 @pytest.mark.parametrize('path', ['env.js', 'artifacts.js'])
@@ -197,3 +212,123 @@ def test_gui(client, path, monkeypatch):
 
     rv = client.get(f'/gui/{path}', headers={'if-none-match': 'different-etag'})
     assert rv.status_code == 200
+
+
+# Integration tests to verify `OasisAuthenticationMiddleware` is applied correctly
+
+
+def collect_all_routes(
+    app: FastAPI, prefix: str = ''
+) -> tuple[list[tuple[str, str, Route]], list[tuple[str, str, Route]]]:
+    """
+    Recursively collects all (method, full_path, route) tuples from a FastAPI app.
+
+    Returns:
+        (protected_routes, always_open_routes) based on whitelist matching.
+    """
+
+    def infer_app_name_from_path(path: str) -> str:
+        if path.startswith('/api/v1'):
+            return 'v1_app'
+        elif path.startswith('/optimade'):
+            return 'optimade_app'
+        elif path.startswith('/dcat'):
+            return 'dcat_app'
+        elif path.startswith('/h5grove'):
+            return 'h5grove_app'
+
+        return 'main_app'
+
+    protected_routes = []
+    whitelisted_routes = []
+
+    for route in app.router.routes:
+        full_path = prefix + getattr(route, 'path', '')
+
+        if isinstance(route, APIRoute | Route):
+            method: str = sorted(route.methods)[0]  # one method each endpoint
+            app_name: str = infer_app_name_from_path(full_path)
+
+            # `main_app` should not be affected by this auth middleware
+            if app_name == 'main_app' or any(
+                re.search(pattern, full_path)
+                for pattern in OASIS_AUTH_WHITELIST[app_name]
+            ):
+                whitelisted_routes.append((method, full_path, route))
+            else:
+                protected_routes.append((method, full_path, route))
+
+        elif isinstance(route, Mount):
+            subapp = route.app
+            if isinstance(subapp, FastAPI):
+                sub_protected, sub_whitelisted = collect_all_routes(subapp, full_path)
+                protected_routes.extend(sub_protected)
+                whitelisted_routes.extend(sub_whitelisted)
+
+        else:
+            raise ValueError(f'Unknown {type(route)=}')
+
+    return protected_routes, whitelisted_routes
+
+
+@pytest.fixture(scope='function')
+def route_collections(client, monkeypatch) -> dict[str, list[tuple[str, str, Route]]]:
+    monkeypatch.setattr('nomad.config.config.oasis.require_authentication', True)
+
+    protected_routes, always_open_routes = collect_all_routes(client.app)
+    return {'protected': protected_routes, 'whitelisted': always_open_routes}
+
+
+def test_all_protected_endpoints(client, route_collections, monkeypatch):
+    monkeypatch.setattr('nomad.config.oasis.require_authentication', True)
+
+    protected_routes = route_collections['protected']
+
+    failures: list[str] = []
+    for method, path, _ in protected_routes:
+        method_func = {
+            'GET': client.get,
+            'POST': client.post,
+            'PUT': client.put,
+            'DELETE': client.delete,
+            'HEAD': client.head,
+        }.get(method)
+
+        if method_func is None:
+            failures.append(f'Unsupported HTTP {method=} for {path=}')
+            continue
+
+        try:
+            response = method_func(path)
+            if response.status_code != 401:
+                failures.append(
+                    f'Expected 401 for {method} {path}, but got {response.status_code}.\n'
+                    f'Response: {response.text}'
+                )
+        except Exception as e:
+            failures.append(f'Error testing {method} {path}: {str(e)}')
+
+    if failures:
+        pytest.fail('\n'.join(failures))
+
+
+def test_all_whitelisted_endpoints(client, route_collections, monkeypatch):
+    monkeypatch.setattr('nomad.config.oasis.require_authentication', True)
+
+    whitelisted_routes = route_collections['whitelisted']
+
+    failures: list[str] = []
+    for method, path, _ in whitelisted_routes:
+        if method == 'GET':
+            try:
+                response = client.get(path)
+                if response.status_code not in {200, 404}:
+                    failures.append(
+                        f'Expected 200 or 404 for GET {path}, but got {response.status_code}. '
+                        f'Response: {response.text}'
+                    )
+            except Exception as e:
+                failures.append(f'Error testing GET {path}: {str(e)}')
+
+    if failures:
+        pytest.fail('\n'.join(failures))

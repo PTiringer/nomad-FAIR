@@ -68,11 +68,12 @@ def all_metainfo_packages():
     from nomad.config import config
 
     config.load_plugins()
-    for entry_point in config.plugins.entry_points.filtered_values():
-        if isinstance(entry_point, PythonPluginBase):
-            entry_point.import_python_package()
-        if isinstance(entry_point, SchemaPackageEntryPoint):
-            entry_point.load()
+    if config.plugins is not None:  # Added check
+        for entry_point in config.plugins.entry_points.filtered_values():
+            if isinstance(entry_point, PythonPluginBase):
+                entry_point.import_python_package()
+            if isinstance(entry_point, SchemaPackageEntryPoint):
+                entry_point.load()
 
     # Importing the parsers will also make sure that related schemas will be imported
     # even if they are not part of the plugin's python package as this will import
@@ -97,7 +98,7 @@ def all_metainfo_packages():
     # by the package author. Ideally this would not be necessary and we fix the
     # actual package definitions.
     for module_key in sorted(list(sys.modules)):
-        pkg: Package = getattr(sys.modules[module_key], 'm_package', None)
+        pkg: Package | None = getattr(sys.modules[module_key], 'm_package', None)
         if pkg is not None and isinstance(pkg, Package):
             if pkg.name not in Package.registry:
                 pkg.__init_metainfo__()

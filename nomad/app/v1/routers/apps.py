@@ -397,7 +397,7 @@ async def get_entry_point(app_path: str):
     search_quantities: dict[str, Any] = {}
     app = entry_point.app
 
-    def add_jmespath(name: str, location: str = None):
+    def add_jmespath(name: str, location: str | None = None):
         data = parse_jmespath(name)
         if data['error']:
             raise HTTPException(
@@ -407,7 +407,7 @@ async def get_entry_point(app_path: str):
         for q in [data['quantity']] + data['extras']:
             add_search(q, location)
 
-    def add_search(name: str, location: str = None):
+    def add_search(name: str, location: str | None = None):
         if name in search_quantities:
             return
         sq = all_search_quantities.get(name)

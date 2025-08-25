@@ -1,4 +1,7 @@
+import json
+import os
 import uuid
+from pathlib import Path
 
 from temporalio import activity
 
@@ -10,12 +13,14 @@ from nomad.search import delete_upload
 from nomad.workflows.shared_objects import (
     DeleteUploadWorkflowInput,
     EditUploadMetadataWorkflowInput,
+    EntriesToBeProcessedResult,
+    EntryBatchFromFileInput,
     ImportBundleWorkflowInput,
-    NextLevelEntryResult,
     ProcessEntryActivityInput,
     ProcessExampleUploadWorkflowInput,
     PublishExternallyWorkflowInput,
     PublishUploadWorkflowInput,
+    UpdatedFilesResult,
     UploadProcessingWorkflowInput,
     UploadWorkflowIdInput,
 )
@@ -60,15 +65,28 @@ def process_entry_activity(input: ProcessEntryActivityInput):
 @activity.defn
 def update_files_activity(
     input: UploadProcessingWorkflowInput,
-) -> set[str] | None:
+) -> UpdatedFilesResult:
     upload = Upload.get(input.upload_id)
     file_operations = input.file_operations or []
     only_updated_files = (
         input.only_updated_files if input.only_updated_files is not None else False
     )
     updated_files = upload.update_files(file_operations, only_updated_files)
+    if not updated_files:
+        return UpdatedFilesResult()
 
-    return updated_files
+    # Temporal has a 1.5MB limit on serialized activity results. For large file sets,
+    # we store the data on disk and pass the file path instead of the full dataset.
+    if len(updated_files) < 1000:
+        return UpdatedFilesResult(files=updated_files)
+
+    # If 1000+ files, save to JSON file and return the path
+    updated_files_path = os.path.join(input.workflow_tmp_dir, 'updated_files.json')
+
+    with open(updated_files_path, 'w') as f:
+        json.dump(list(updated_files), f)
+
+    return UpdatedFilesResult(file_path=str(updated_files_path))
 
 
 @activity.defn
@@ -81,19 +99,19 @@ def match_all_activity(input: UploadProcessingWorkflowInput):
     upload.match_all(
         reprocess_settings=reprocess_obj,
         path_filter=input.path_filter,
-        updated_files=input.updated_files,
+        updated_files=input.updated_files.get_files(),
     )
 
 
 @activity.defn
 def next_level_entries(
     input: UploadProcessingWorkflowInput,
-) -> NextLevelEntryResult | None:
+) -> EntriesToBeProcessedResult | None:
     upload = Upload.get(input.upload_id)
     next_entries = upload.next_level_entries(
         min_level=input.min_level,
         path_filter=input.path_filter,
-        updated_files=input.updated_files,
+        updated_files=input.updated_files.get_files(),
     )
 
     # If no entries exist at this parser level, return None
@@ -105,36 +123,72 @@ def next_level_entries(
     # Temporal imposes a limit of 1.5MB for the serialized result, this helps us stay within those limits.
     entry_batches = generate_batches(next_entries)
 
-    # Check if the requested batch_id exists
-    if len(entry_batches) <= input.batch_id:
-        # No more batches for this parser level - return empty entries
-        # This signals the workflow to move to the next parser level
-        next_entries = []
-    else:
-        # Get the specific batch requested
-        next_entries = entry_batches[input.batch_id]
-
-    # Return the result with the batch (or empty list if no more batches)
-    return NextLevelEntryResult(
-        next_parser_level=upload.parser_level,
-        entries_to_be_processed=[
+    # When dealing with multiple large batches, storing all entries in workflow state
+    # would exceed Temporal's serialization limits. Instead, we persist batches to disk
+    # and process them sequentially via file references.
+    if len(entry_batches) <= 1:
+        entries_list = [
             ProcessEntryActivityInput(
                 upload_id=input.upload_id,
                 entry_id=str(entry.entry_id),
                 workflow_id=f'process-entry-workflow-child-id-{str(entry.entry_id)}-{str(upload.upload_id)}-{uuid.uuid4()}',
             )
-            for entry in next_entries  # This will be empty if no more batches
-        ],
+            for entry in next_entries
+        ]
+        return EntriesToBeProcessedResult(
+            entries=entries_list,
+            next_parser_level=upload.parser_level,
+            upload_id=input.upload_id,
+        )
+
+    # If many batches, save all entries to json files
+    batch_dir = os.path.join(input.workflow_tmp_dir, f'level_{input.min_level}')
+    os.makedirs(batch_dir, exist_ok=True)
+
+    for batch_idx, batch in enumerate(entry_batches):
+        batch_file = os.path.join(batch_dir, f'entry_batch_{batch_idx}.json')
+        with open(batch_file, 'w') as f:
+            json.dump([str(entry.entry_id) for entry in batch], f)
+
+    return EntriesToBeProcessedResult(
+        directory=str(batch_dir),
+        total_batches=len(entry_batches),
+        next_parser_level=upload.parser_level,
+        upload_id=input.upload_id,
     )
 
 
 @activity.defn
-def add_workflow_id_activity(input: UploadWorkflowIdInput):
+def get_entry_batch_from_file(
+    input: EntryBatchFromFileInput,
+) -> list[ProcessEntryActivityInput]:
+    """Load entries from a specific batch"""
+    batch_file = Path(input.batch_dir_path) / f'entry_batch_{input.batch_id}.json'
+
+    if not batch_file.exists():
+        return []
+
+    with open(batch_file) as f:
+        batch_entry_ids = json.load(f)
+
+    return [
+        ProcessEntryActivityInput(
+            upload_id=input.upload_id,
+            entry_id=entry_id,
+            workflow_id=f'process-entry-workflow-child-id-{entry_id}-{input.upload_id}-{uuid.uuid4()}',
+        )
+        for entry_id in batch_entry_ids
+    ]
+
+
+@activity.defn
+def setup_upload_for_workflow_process(input: UploadWorkflowIdInput):
     upload = Upload.get(input.upload_id)
     assert len(upload.workflow_ids) == 0, (  # type: ignore
         'Upload is currently being processed by another workflow'
     )
     upload.workflow_ids.append(input.workflow_id)  # type: ignore
+    upload.errors = []
     upload.save()
 
 
@@ -181,6 +235,8 @@ def process_upload_failure_activity(input: UploadWorkflowIdInput):
     upload.last_status_message = (
         input.failure_message if input.failure_message else 'Process upload failed'
     )
+    if input.error_details:
+        upload.errors.append(input.error_details)  # type: ignore
     upload.workflow_ids = []  # Clear workflow IDs on failure
     upload.save()
 
@@ -209,6 +265,15 @@ def import_bundle_activity(input: ImportBundleWorkflowInput):
 def publish_upload_activity(input: PublishUploadWorkflowInput):
     upload = Upload.get(input.upload_id)
     upload._publish_upload_local(input.embargo_length)
+
+
+@activity.defn
+def cleanup_workflow_tmp_dir_activity(dir_path: str):
+    """Delete the temporary directory."""
+    if os.path.exists(dir_path):
+        import shutil
+
+        shutil.rmtree(dir_path, ignore_errors=True)
 
 
 @activity.defn
