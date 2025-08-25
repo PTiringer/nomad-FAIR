@@ -1,6 +1,6 @@
-## 1.3.17 (2025-08-22)
+## 1.3.17 (2025-08-25)
 
-### Added (10 changes)
+### Added (11 changes)
 
 - [Add option to use temporal for data processing. Disabled by default via feature flag.](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/d3f8b4d55eec4f0ce0c3ef61d4e06a1a7b65bc43) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2511))
 - [Added app API endpoints](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/d222354f4a56d2b65d78419d21bff67a87ce6cdb) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2516))
@@ -14,14 +14,14 @@
 - [Added support for using JMESPath map function with expression reference](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/d67188fd2eecf3c3a1c3baadfe384e399895957d) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2463))
 - [Extended reference format in the GUI](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/d60d88bf00ce29fb5b315149a6fa1157366f3923) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2462))
 
-### Changed (5 changes)
+### Changed (4 changes)
 
 - [Updated Pint dependency to >=0.23](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/06754b3f98ff71c748fb1ec3f1a98d2482418686) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2539))
 - [Moved documentation to a separate repository](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/afa423beb97cead96daf18431099fd7324d258e2) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2444))
 - [Changed SampleHistoryCard query to use v1 base sections](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/e835c7fbbbf7264825e69cb1f90fc343b5315c42) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2477))
 - [Results normalizers assigns entry_type only when it has not been defined](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/4d219bc561c5cdead72d7437c6983bd16158d61f) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2497))
 
-### Fixed (8 changes)
+### Fixed (6 changes)
 
 - [Fix PubChem API calls failing due to change to their API](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/4315953e275cadf7811e3cf294a6a8e390ff53d2) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2515))
 - [Fixed issue with parsers meant for testing purposes triggering on certain files](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/a00ad96bb5a2a679de1f9025d5ec196496326d54) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2498))
