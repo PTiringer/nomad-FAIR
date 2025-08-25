@@ -43,6 +43,7 @@ from pydantic import BaseModel, Field
 
 from nomad import utils
 from nomad.atomutils import Formula
+from nomad.cli.admin.springer import normalize_formula, parse_springer_entry
 from nomad.config import config
 from nomad.processing.base import app
 
@@ -118,15 +119,6 @@ springer_materials_db = 'Springer Materials'
 aflow_home_url = 'http://aflowlib.org/prototype-encyclopedia'
 
 springer_materials_home_url = 'http://materials.springer.com'
-
-springer_required_items = {
-    'Alphabetic Formula:': 'alphabetic_formula',
-    'Classification by Properties:': 'classification',
-    'Compound Class(es):': 'compound_classes',
-    'Dataset ID': 'id',
-    'Space Group:': 'space_group_number',
-    'Phase Label(s):': 'phase_labels',
-}
 
 comments = {
     aflow_prototypes_db: """
@@ -307,76 +299,6 @@ def _components(formula_str: str, multiplier: float = 1.0) -> dict[str, float]:
             )
 
     return symbol_amount
-
-
-def _normalize_formula(formula_str: str) -> str:
-    symbol_amount = _components(formula_str)
-
-    total = sum(symbol_amount.values())
-    symbol_normamount = {e: round(a / total * 100.0) for e, a in symbol_amount.items()}
-
-    formula_sorted = [
-        f'{s}{symbol_normamount[s]}' for s in sorted(list(symbol_normamount.keys()))
-    ]
-
-    return ''.join(formula_sorted)
-
-
-def parse_springer_entry(htmltext: str) -> dict[str, str]:
-    """
-    Parse the springer entry quantities in required_items from an html text.
-    """
-    soup = bs4.BeautifulSoup(htmltext, 'html.parser')
-    results = {}
-    for item in soup.find_all(attrs={'class': 'data-list__item'}):
-        key = item.find(attrs={'class': 'data-list__item-key'})
-        if not key:
-            continue
-
-        key_str = key.string.strip()
-        if key_str not in springer_required_items:
-            continue
-
-        value = item.find(attrs={'class': 'data-list__item-value'})
-        value = spaces_re.sub(' ', value.get_text()).strip()
-        results[springer_required_items[key_str]] = value
-
-        if len(results) >= len(springer_required_items):
-            break
-
-    if 'classification' in results:
-        results['classification'] = [
-            x.strip() for x in results['classification'].split(',')
-        ]
-        results['classification'] = [x for x in results['classification'] if x != '–']
-    if 'compound_classes' in results:
-        results['compound_classes'] = [
-            x.strip() for x in results['compound_classes'].split(',')
-        ]
-        results['compound_classes'] = [
-            x for x in results['compound_classes'] if x != '–'
-        ]
-
-    normalized_formula = None
-    for formula_type in ['alphabetic_formula', 'phase_labels']:
-        formula = results.get(formula_type, None)
-        if formula:
-            try:
-                normalized_formula = _normalize_formula(formula)
-                break
-            except Exception:
-                pass
-
-    results['normalized_formula'] = normalized_formula
-
-    # get database version
-    for item in soup.find_all(attrs={'class': 'about_content_comments'}):
-        version_match = re.search(r'Version (.+)\.', item.string.strip())
-        if version_match:
-            results['version'] = version_match.group(1)
-            break
-
-    return results
 
 
 def parse_aflow_prototype(text: str) -> dict[str, Any]:
@@ -582,7 +504,7 @@ async def _get_resources_optimade(
         chemical_formula = attributes.get('chemical_formula_hill')
         if chemical_formula is None:
             chemical_formula = attributes.get('chemical_formula_reduced', '')
-        resource.chemical_formula = _normalize_formula(chemical_formula)
+        resource.chemical_formula = normalize_formula(chemical_formula)
         resource.download_time = datetime.now()
         resource.database_version = meta.get('api_version')
         # flatten entry data
@@ -690,7 +612,7 @@ async def get_resources(
     if chemical_formula_reduced is not None:
         formula = Formula(chemical_formula_reduced)
         chemical_formula_hill = formula.format('hill')
-        chemical_formula = _normalize_formula(chemical_formula_hill)
+        chemical_formula = normalize_formula(chemical_formula_hill)
     else:
         chemical_formula_hill = None
         chemical_formula = None

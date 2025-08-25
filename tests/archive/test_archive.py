@@ -29,14 +29,9 @@ from nomad import utils
 from nomad.archive import (
     ArchiveQueryError,
     RequiredReader,
-    compute_required_with_referenced,
-    create_partial_archive,
     query_archive,
     read_archive,
-    read_partial_archive_from_mongo,
-    read_partial_archives_from_mongo,
     write_archive,
-    write_partial_archive_to_mongo,
 )
 from nomad.archive.converter import convert_archive
 from nomad.archive.storage import _decode, _entries_per_block, to_json
@@ -1209,104 +1204,3 @@ def assert_required_results(
             assert_required_results(
                 results, value, archive, prop_value, current_archive_serialized[prop]
             )
-
-
-def assert_partial_archive(archive: EntryArchive) -> EntryArchive:
-    # test contents
-    assert archive.workflow2.results.calculation_result_ref is not None
-    # test refs
-    assert archive.workflow2.results.calculation_result_ref.energy.total is not None
-    assert len(archive.workflow2.results.calculation_result_ref.eigenvalues) == 0
-    # test refs of refs
-    system = archive.workflow2.results.calculation_result_ref.system_ref
-    assert system.atoms.labels == ['H']
-    assert system.symmetry[0].space_group_number == 221
-
-    return archive
-
-
-def test_partial_archive(archive):
-    partial_archive_dict = create_partial_archive(archive)
-    partial_archive = EntryArchive.m_from_dict(partial_archive_dict)
-    assert_partial_archive(partial_archive)
-
-
-def test_partial_archive_read_write(archive, mongo_function):
-    write_partial_archive_to_mongo(archive)
-    assert_partial_archive(read_partial_archive_from_mongo('test_id'))
-
-
-def test_partial_archive_re_write(archive, mongo_function):
-    write_partial_archive_to_mongo(archive)
-    archive.metadata.comment = 'changed'
-    write_partial_archive_to_mongo(archive)
-    archive = assert_partial_archive(read_partial_archive_from_mongo('test_id'))
-    assert archive.metadata.comment == 'changed'
-
-
-def test_read_partial_archives(archive, mongo_function):
-    write_partial_archive_to_mongo(archive)
-    assert_partial_archive(read_partial_archives_from_mongo(['test_id'])['test_id'])
-
-
-@pytest.mark.skip()
-def test_compute_required_with_referenced(archive):
-    required = compute_required_with_referenced(
-        {
-            'workflow2': {
-                'm_def': 'simulationworkflowschema',
-                'results': {
-                    'calculation_result_ref': {
-                        'energy': {'total': '*'},
-                        'system_ref': '*',
-                    }
-                },
-            }
-        }
-    )
-
-    assert required == {
-        'workflow2': {'results': {'calculation_result_ref': '*'}},
-        'run': {
-            'calculation': {'energy': {'total': '*'}, 'system_ref': '*'},
-            'system': '*',
-        },
-    }
-
-
-@pytest.mark.skip()
-def test_compute_required_incomplete(archive):
-    required = compute_required_with_referenced(
-        {
-            'workflow2': {
-                'm_def': 'simulationworkflowschema.SimulationWorkflow',
-                'results': {
-                    'calculation_result_ref': {
-                        'energy': {'total': '*'},
-                        'dos_electronic': '*',
-                    }
-                },
-            }
-        }
-    )
-
-    assert required is None
-
-    required = compute_required_with_referenced(
-        {
-            'workflow2': {
-                'results': {
-                    'calculation_result_ref': {
-                        'energy': {'total': '*'},
-                        'system_ref': {'symmetry': '*'},
-                    }
-                }
-            }
-        }
-    )
-
-    assert required is not None
-
-
-def test_compute_required_full():
-    assert compute_required_with_referenced('*') is None

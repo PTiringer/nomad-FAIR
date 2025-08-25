@@ -1,4 +1,6 @@
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 from pydantic_core import PydanticCustomError
 
 from .pagination import Direction, Pagination, PaginationResponse
@@ -8,12 +10,11 @@ GROUP_MEMBERS_DESCRIPTION = 'User ids of the group members (includes owner).'
 
 
 class UserGroupEdit(BaseModel):
-    group_name: str | None = Field(
+    group_name: (
+        Annotated[str, StringConstraints(min_length=1, strip_whitespace=True)] | None
+    ) = Field(
         default=None,
         description=GROUP_NAME_DESCRIPTION,
-        min_length=3,
-        max_length=32,
-        pattern=r'^[a-zA-Z0-9][a-zA-Z0-9 ._\-]+[a-zA-Z0-9]$',
     )
     members: set[str] | None = Field(
         default=None, description=GROUP_MEMBERS_DESCRIPTION

@@ -175,10 +175,10 @@ from .metainfo import (
     Definition,
     MSection,
     MSectionBound,
-    Package,
     Quantity,
     QuantityReference,
     Reference,
+    SchemaPackage,
     Section,
 )
 
@@ -286,13 +286,10 @@ class DocumentType:
 
             return value
 
-        def exclude(property_, section):
-            if property_ not in self.indexed_properties:
-                return True
+        def exclude(_p, _s):
+            return _p not in self.indexed_properties
 
-            return False
-
-        kwargs: dict[str, Any] = dict(
+        result = root.m_to_dict(
             with_meta=False,
             include_defaults=True,
             include_derived=True,
@@ -300,8 +297,6 @@ class DocumentType:
             exclude=exclude,
             transform=transform,
         )
-
-        result = root.m_to_dict(**kwargs)
 
         # Add the collected suggestion values
         for path, value in suggestions.items():
@@ -487,17 +482,21 @@ class DocumentType:
         # package name is encountered.
         package_names = set()
         packages_from_plugins = {}
-        for plugin in config.plugins.entry_points.filtered_values():
-            if isinstance(plugin, Schema | Parser):
-                package_name = plugin.python_package
+        for entry_point in config.plugins.entry_points.filtered_values():
+            if isinstance(entry_point, Schema | Parser):
+                package_name = entry_point.python_package
                 if package_name in package_names:
                     raise ValueError(
-                        f'Your plugin configuration contains two packages with the same name: {plugin.python_package}.'
+                        f'Your plugin configuration contains two packages with the same name: {entry_point.python_package}.'
                     )
                 package_names.add(package_name)
-            elif isinstance(plugin, SchemaPackageEntryPoint):
-                packages_from_plugins[plugin.id] = plugin.load()
-        for name, package in Package.registry.items():
+            elif isinstance(entry_point, SchemaPackageEntryPoint):
+                instance = entry_point.load()
+                assert isinstance(instance, SchemaPackage), (
+                    f'Error loading entry point "{entry_point.id}": The load method of a schema package entry point must return a SchemaPackage instance'
+                )
+                packages_from_plugins[entry_point.id] = instance
+        for name, package in SchemaPackage.registry.items():
             # If package has no name, it is empty and can be skipped.
             if not name:
                 continue

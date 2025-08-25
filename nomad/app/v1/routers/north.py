@@ -213,10 +213,14 @@ async def start_tool(
             # TODO
             logger.error('could not create north user', user_id=user.user_id)
 
-    # Make sure that the home folder of the user exists
-    user_home = os.path.join(config.fs.north_home, user.user_id)
-    if not os.path.exists(user_home):
-        os.makedirs(user_home)
+    if user.username in config.fs.north_home_user_folder_map.keys():
+        user_home_folder = config.fs.north_home_user_folder_map[user.username]
+    else:
+        user_home_folder = user.user_id
+        # Make sure that the home folder of the user exists
+        user_home = os.path.join(config.fs.north_home, user_home_folder)
+        if not os.path.exists(user_home):
+            os.makedirs(user_home)
 
     def truncate(path_name):
         # On Linux: The maximum length for a file name is 255 bytes
@@ -298,6 +302,8 @@ async def start_tool(
             'image': tool.image,
             'cmd': tool.cmd,
             'privileged': tool.privileged,
+            'seccomp_unconfined': tool.seccomp_unconfined,
+            'use_gpu': tool.use_gpu,
             'default_url': tool.default_url,
         },
         'environment': {
@@ -311,7 +317,7 @@ async def start_tool(
             ),
         },
         'user_home': {
-            'host_path': os.path.join(config.fs.north_home_external, user.user_id),
+            'host_path': os.path.join(config.fs.north_home_external, user_home_folder),
             'mount_path': os.path.join(tool.mount_path, 'work'),
         },
         'uploads': uploads,

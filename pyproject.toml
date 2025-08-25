@@ -9,7 +9,7 @@ readme = "README.md"
 authors = [
     { name = "NOMAD Laboratory", email = 'markus.scheidgen@physik.hu-berlin.de' },
 ]
-version = "1.3.16"
+version = '1.3.17'
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
 
@@ -24,14 +24,16 @@ dependencies = [
     'httpx>=0.23.3,<0.28',
     'jmespath>=0.10.0',
     'jsonpath-ng',
+    'kaleido<=0.2.1', # v1.0.0 not compatible with plotly < 6.0.0
     'lxml>=5.2',
     'matid>=2.1.3',
     'msgpack>=1',
     'msgspec',
     'numpy>=1.22.4,<2',
+    'openpyxl',
     'orjson>=1.0',
     'pandas>=2',
-    'pint==0.17',
+    'pint>=0.23',
     'plotly<6', # version 6.0.0 not fully compatible with our GUI
     'py-spy', # for on-server profiling
     'pydantic>=2',
@@ -74,6 +76,7 @@ infrastructure = [
     'rdflib==5', # breaking changes in DCT.dataset in later versions
     'structlog',
     'tabulate',
+    'temporalio>=1.12.0',
     'uvicorn[standard]',
     'validators',
     'zipstream-ng',
@@ -82,14 +85,6 @@ dev = [
     'aiosmtpd>=1',
     'devtools',
     'essential_generators',
-    'mkdocs-click',
-    'mkdocs-git-revision-date-localized-plugin',
-    'mkdocs-glightbox',
-    'mkdocs-macros-plugin',
-    'mkdocs-material-extensions',
-    'mkdocs-material',
-    'mkdocs-redirects',
-    'mkdocs',
     'mypy>=1.15',
     'pytest-asyncio',
     'pytest-cov',
@@ -124,19 +119,22 @@ select = [
     "W", # pycodestyle
 ]
 ignore = [
+    "E402", # Module level import not at top of file
     "E501", # Line too long ({width} > {limit} characters)
     "E701", # Multiple statements on one line (colon)
     "E731", # Do not assign a lambda expression, use a def
-    "E402", # Module level import not at top of file
+    "PLR0904", # too-many-public-methods
     "PLR0911", # Too many return statements
     "PLR0912", # Too many branches
     "PLR0913", # Too many arguments in function definition
     "PLR0915", # Too many statements
+    "PLR0917", # too-many-positional-arguments
+    "PLR1714", # consider-using-in
     "PLR2004", # Magic value used instead of constant
+    "PLR5501", # else-if-used
     "PLW0603", # Using the global statement
     "PLW2901", # redefined-loop-name
-    "PLR1714", # consider-using-in
-    "PLR5501", # else-if-used
+    "PLC0415", # import-outside-top-level
 ]
 fixable = ["ALL"]
 isort.split-on-trailing-comma = false
@@ -183,6 +181,7 @@ override-dependencies = [
     'elasticsearch-dsl>=7,<8',
     'python-magic',
     'unidecode',
+    'pint>=0.23',
 ]
 
 [tool.pytest.ini_options]

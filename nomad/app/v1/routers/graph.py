@@ -21,7 +21,6 @@ from enum import Enum
 from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.responses import ORJSONResponse
 
-from nomad.app.v1.models.graph import GraphRequest, GraphResponse
 from nomad.graph.graph_reader import (
     ConfigError,
     GeneralReader,
@@ -76,9 +75,10 @@ def relocate_children(request):
 @router.post(
     '/raw_query',
     tags=[APITag.DEFAULT],
-    summary='Query the database with a graph style without verification.',
-    description='Query the database with a graph style without verification.',
+    summary='INTERNAL USE ONLY. Query the database with a graph style without verification.',
+    description='INTERNAL USE ONLY. Query the database with a graph style without verification.',
     response_class=GraphJSONResponse,
+    include_in_schema=False,
 )
 async def raw_query(query=Body(...), user: User = Depends(create_user_dependency())):
     relocate_children(query)
@@ -89,20 +89,26 @@ async def raw_query(query=Body(...), user: User = Depends(create_user_dependency
 @router.post(
     '/query',
     tags=[APITag.DEFAULT],
-    summary='Query the database with a graph style.',
-    description='Query the database with a graph style.',
-    response_model=GraphResponse,
+    summary='Query the database with a graph style API.',
+    description="""Use a GraphQL style query to query the database and fetch the desired data.
+    The query is a JSON object that describes the data to be fetched, similar to a GraphQL query.
+    This allows for flexible queries, including nested data structures, and avoids over-/under-fetching.
+    One can compose complex queries (navigating from one node to another in the graph) and retrieve data in a single request.
+    Please refer to the documentation for more details on how to structure the query.""",
+    # response_model=GraphResponse,
+    response_class=GraphJSONResponse,
     response_model_exclude_unset=True,
     response_model_exclude_none=True,
 )
 async def basic_query(
-    query: GraphRequest = Body(...),
+    # todo: may need to re-enable validation
+    #   as of June 2025, it is not working
+    # query: GraphRequest = Body(...),
+    query=Body(...),
     user: User = Depends(create_user_dependency()),
 ):
     try:
-        query_dict = query.dict(
-            exclude_none=True, exclude_unset=True, exclude_defaults=True
-        )
+        query_dict = query
         relocate_children(query_dict)
         with MongoReader(query_dict, user=user) as reader:
             response: dict = await reader.read()
@@ -117,8 +123,9 @@ async def basic_query(
 @router.post(
     '/archive/query',
     tags=[APITag.DEFAULT],
-    summary='Search entries and access their archives',
+    summary='Search entries and access their archives.',
     response_class=GraphJSONResponse,
+    include_in_schema=False,
 )
 async def archive_query(
     data: EntriesArchive, user: User = Depends(create_user_dependency())

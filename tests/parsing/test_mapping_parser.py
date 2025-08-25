@@ -131,7 +131,7 @@ class ExampleParser(MappingParser):
     def load_file(self) -> Any:
         return super().load_file()
 
-    def to_dict(self, **kwargs) -> dict[str, Any]:
+    def to_dict(self, **kwargs) -> dict[str | int, Any]:
         return super().to_dict(**kwargs)
 
     def slice(self, value):

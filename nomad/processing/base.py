@@ -296,7 +296,9 @@ class Proc(Document):
     def current_process_flags(self) -> ProcessFlags:
         if not self.current_process:
             return None
-        return process_flags[self.__class__.__name__][self.current_process]
+        flags = process_flags[self.__class__.__name__]
+        curr_process = str(self.current_process)
+        return flags.get(curr_process, None) or flags.get(f'_{curr_process}', None)
 
     @property
     def queue_blocked(self) -> bool:
@@ -481,7 +483,8 @@ class Proc(Document):
 
     def warning(self, *warnings, log_level=logging.WARNING, **kwargs):
         """Allows to save warnings. Takes strings or exceptions as args."""
-        assert self.process_running
+        if not config.temporal.enabled:
+            assert self.process_running
 
         logger = self.get_logger(**kwargs)
 
@@ -492,7 +495,8 @@ class Proc(Document):
 
     def set_last_status_message(self, last_status_message: str):
         """Sets the `last_status_message` and saves."""
-        assert self.process_running
+        if not config.temporal.enabled:
+            assert self.process_running
         self.last_status_message = last_status_message
         self.save()
 
@@ -789,9 +793,9 @@ class Proc(Document):
         self.process_status = ProcessStatus.RUNNING
         self.save()
         self.process_status = process_status
-        clear_queue_on_failure = (
-            force_clear_queue_on_failure
-            or self.current_process_flags.clear_queue_on_failure
+        clear_queue_on_failure = force_clear_queue_on_failure or (
+            self.current_process_flags
+            and self.current_process_flags.clear_queue_on_failure
         )
         try_counter = 0
         while True:

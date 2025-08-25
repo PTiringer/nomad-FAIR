@@ -77,14 +77,12 @@ def assert_at_least(source, target):
     the same information in target. Additional information in target is ignored.
     """
     for key, value in source.items():
-        assert key in target, (
-            f'{key} with value {source[key]} in {source} is not in {target}'
-        )
+        assert key in target, f'{key} with value {value} in {source} is not in {target}'
         if isinstance(value, dict):
             assert_at_least(value, target[key])
         else:
             assert value == target[key], (
-                f'{key} with value {source[key]} in {source} is not equal the target value {target[key]} in {target}'
+                f'{key} with value {value} in {source} is not equal the target value {target[key]} in {target}'
             )
 
 

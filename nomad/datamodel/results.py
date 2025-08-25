@@ -249,13 +249,13 @@ else:
             **_band_gap_quantities,
             **(
                 dict(
-                    index=runschema.calculation.BandGapDeprecated.index.m_copy(
+                    index=runschema.calculation.BandGapDeprecated.index.m_copy().m_update(
                         a_elasticsearch=[Elasticsearch(material_entry_type)]
                     ),
-                    value=runschema.calculation.BandGapDeprecated.value.m_copy(
+                    value=runschema.calculation.BandGapDeprecated.value.m_copy().m_update(
                         a_elasticsearch=[Elasticsearch(material_entry_type)]
                     ),
-                    type=runschema.calculation.BandGapDeprecated.type.m_copy(
+                    type=runschema.calculation.BandGapDeprecated.type.m_copy().m_update(
                         a_elasticsearch=[Elasticsearch(material_entry_type)]
                     ),
                 )
@@ -279,13 +279,13 @@ else:
             **_band_gap_quantities,
             **(
                 dict(
-                    index=runschema.calculation.BandGap.index.m_copy(
+                    index=runschema.calculation.BandGap.index.m_copy().m_update(
                         a_elasticsearch=[Elasticsearch(material_entry_type)]
                     ),
-                    value=runschema.calculation.BandGap.value.m_copy(
+                    value=runschema.calculation.BandGap.value.m_copy().m_update(
                         a_elasticsearch=[Elasticsearch(material_entry_type)]
                     ),
-                    type=runschema.calculation.BandGap.type.m_copy(
+                    type=runschema.calculation.BandGap.type.m_copy().m_update(
                         a_elasticsearch=[Elasticsearch(material_entry_type)]
                     ),
                 )
@@ -1839,6 +1839,7 @@ class DFT(MSection):
         description='Amount of exact exchange mixed in with the XC functional (value range = [0,1]).',
         a_elasticsearch=Elasticsearch(material_entry_type),
     )
+
     hubbard_kanamori_model = SubSection(
         sub_section=HubbardKanamoriModel.m_def,
         repeats=True,
@@ -1883,7 +1884,7 @@ class ExcitedStateMethodology(MSection):
         """
     )
     if runschema:
-        type = runschema.method.ExcitedStateMethodology.type.m_copy(
+        type = runschema.method.ExcitedStateMethodology.type.m_copy().m_update(
             a_elasticsearch=[
                 Elasticsearch(material_entry_type),
                 Elasticsearch(suggestion='default'),
@@ -1922,7 +1923,7 @@ class GW(ExcitedStateMethodology):
         """
     )
     if runschema:
-        type = runschema.method.GW.type.m_copy(
+        type = runschema.method.GW.type.m_copy().m_update(
             a_elasticsearch=[
                 Elasticsearch(material_entry_type),
                 Elasticsearch(suggestion='default'),
@@ -1937,13 +1938,13 @@ class BSE(ExcitedStateMethodology):
         """
     )
     if runschema:
-        type = runschema.method.BSE.type.m_copy(
+        type = runschema.method.BSE.type.m_copy().m_update(
             a_elasticsearch=[
                 Elasticsearch(material_entry_type),
                 Elasticsearch(suggestion='default'),
             ],
         )
-        solver = runschema.method.BSE.solver.m_copy(
+        solver = runschema.method.BSE.solver.m_copy().m_update(
             a_elasticsearch=[
                 Elasticsearch(material_entry_type),
                 Elasticsearch(suggestion='default'),
@@ -1968,14 +1969,16 @@ class DMFT(MSection):
         """
     )
     if runschema:
-        impurity_solver_type = runschema.method.DMFT.impurity_solver.m_copy(
+        impurity_solver_type = runschema.method.DMFT.impurity_solver.m_copy().m_update(
             a_elasticsearch=[
                 Elasticsearch(material_entry_type),
                 Elasticsearch(suggestion='default'),
             ],
         )
-        inverse_temperature = runschema.method.DMFT.inverse_temperature.m_copy(
-            a_elasticsearch=[Elasticsearch(material_entry_type)],
+        inverse_temperature = (
+            runschema.method.DMFT.inverse_temperature.m_copy().m_update(
+                a_elasticsearch=[Elasticsearch(material_entry_type)],
+            )
         )
         magnetic_state = runschema.method.DMFT.magnetic_state.m_copy()
         magnetic_state.description = (
@@ -1985,10 +1988,10 @@ class DMFT(MSection):
             Elasticsearch(material_entry_type),
             Elasticsearch(suggestion='default'),
         ]
-        u = runschema.method.HubbardKanamoriModel.u.m_copy(
+        u = runschema.method.HubbardKanamoriModel.u.m_copy().m_update(
             a_elasticsearch=[Elasticsearch(material_entry_type)]
         )
-        jh = runschema.method.HubbardKanamoriModel.jh.m_copy(
+        jh = runschema.method.HubbardKanamoriModel.jh.m_copy().m_update(
             a_elasticsearch=[Elasticsearch(material_entry_type)]
         )
     analytical_continuation = Quantity(
@@ -2048,21 +2051,21 @@ class Precision(MSection):
         a_elasticsearch=[Elasticsearch(material_entry_type)],
     )
     if runschema:
-        native_tier = runschema.method.BasisSetContainer.native_tier.m_copy(
+        native_tier = runschema.method.BasisSetContainer.native_tier.m_copy().m_update(
             a_elasticsearch=[Elasticsearch(material_entry_type)]
         )
-        basis_set = runschema.method.BasisSetContainer.type.m_copy(
+        basis_set = runschema.method.BasisSetContainer.type.m_copy().m_update(
             a_elasticsearch=[
                 Elasticsearch(material_entry_type),
                 Elasticsearch(suggestion='default'),
             ],
         )
-        planewave_cutoff = runschema.method.BasisSet.cutoff.m_copy(
+        planewave_cutoff = runschema.method.BasisSet.cutoff.m_copy().m_update(
             a_elasticsearch=[  # TODO: set better names?
                 Elasticsearch(material_entry_type)
             ],
         )
-        apw_cutoff = runschema.method.BasisSet.cutoff_fractional.m_copy(
+        apw_cutoff = runschema.method.BasisSet.cutoff_fractional.m_copy().m_update(
             a_elasticsearch=[  # TODO: set better names?
                 Elasticsearch(material_entry_type)
             ],
@@ -3428,9 +3431,13 @@ class Reactant(Reagent):
         type=np.float64,
         shape=['*'],
         description="""
-        Conversion of the reactant, in %.
+        A dimensionless quantity describing the consumption of a reactant in a chemical
+        reaction, in %.
         """,
-        links=['https://w3id.org/nfdi4cat/voc4cat_0005002'],
+        links=[
+            'https://w3id.org/nfdi4cat/voc4cat_0005002',
+            'https://w3id.org/nfdi4cat/voc4cat_0005004',
+        ],
         a_elasticsearch=Elasticsearch(material_entry_type),
     )
 
@@ -3442,6 +3449,7 @@ class Product(Reagent):
         a selectivity, or a fraction_out but no/zero fraction_in.
         """,
         label_quantity='name',
+        # links=['https://w3id.org/nfdi4cat/voc4cat_0007818'], #currently in MR
     )
     name = Quantity(
         type=str,
@@ -3471,6 +3479,18 @@ class Product(Reagent):
         Space-time-yield of the product, in mass product per mass catalyst per time.
         """,
         links=['https://w3id.org/nfdi4cat/voc4cat_0005006'],
+        a_elasticsearch=Elasticsearch(material_entry_type),
+    )
+
+    faradaic_efficiency = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description="""
+        In an electrochemical reaction, the faradaic efficiency is the ratio of the
+        collected product to the theoretical amount of product that could be
+        produced from the charge passed through the cell, in %.
+        """,
+        links=['https://w3id.org/nfdi4cat/voc4cat_0007229'],
         a_elasticsearch=Elasticsearch(material_entry_type),
     )
 
@@ -3554,7 +3574,7 @@ class ReactionConditions(MSection):
         description="""
         Conditions under which a catalytic test reaction was performed.
         """,
-        # links=['https://w3id.org/nfdi4cat/voc4cat_0007037'],
+        links=['https://w3id.org/nfdi4cat/voc4cat_0007039'],
     )
 
     temperature = Quantity(
@@ -3607,7 +3627,7 @@ class ReactionConditions(MSection):
         description="""
         The volumetric gas flow in volume per time.
         """,
-        links=['https://w3id.org/nfdi4cat/voc4cat_0000162'],
+        links=['https://w3id.org/nfdi4cat/voc4cat_0000104'],
         a_elasticsearch=Elasticsearch(material_entry_type),
     )
 
@@ -3616,8 +3636,31 @@ class ReactionConditions(MSection):
         shape=['*'],
         unit='s',
         description="""
-        The time on stream of the catalyst in the catalytic reaction.
+        The time since starting the catalytic reaction, can be time on stream of the catalyst in
+        a flow reactor or the reaction time of a batch reaction.
         """,
+        a_elasticsearch=Elasticsearch(material_entry_type),
+    )
+
+    current_density = Quantity(
+        type=np.float64,
+        shape=['*'],
+        unit='A/m^2',
+        description="""
+        The current density in an electrochemical reaction.
+        """,
+        links=['https://w3id.org/nfdi4cat/voc4cat_0007221'],
+        a_elasticsearch=Elasticsearch(material_entry_type),
+    )
+
+    electrical_potential = Quantity(
+        type=np.float64,
+        shape=['*'],
+        unit='V',
+        description="""
+        The voltage applied or measured in an electrochemical reaction.
+        """,
+        links=['https://w3id.org/nfdi4cat/voc4cat_0007219'],
         a_elasticsearch=Elasticsearch(material_entry_type),
     )
 
@@ -3627,7 +3670,6 @@ class ReactionStep(MSection):
         description="""
         Properties of single steps of a catalytic reaction mechanism.
         """,
-        # links=['https://w3id.org/nfdi4cat/voc4cat_0007038'],
     )
 
     initial_states = Quantity(
@@ -3698,12 +3740,16 @@ class Reaction(MSection):
 
     type = Quantity(
         type=str,
-        shape=[],
+        shape=['*'],
         description="""
-        Classification of the catalytic test reaction such as Oxidation, Hydrogenation,
-        Isomerization, Coupling...
+        Classification of the catalytic process as thermal, electrochemical, photo- or
+        photoelectrochemical catalysis. Furthermore added classification grouping reactions according to
+        common conditions or reactants such as oxidation, hydrogenation, isomerization, coupling.
         """,
-        links=['https://w3id.org/nfdi4cat/voc4cat_0007010'],
+        links=[
+            'https://w3id.org/nfdi4cat/voc4cat_0007010',
+            'https://w3id.org/nfdi4cat/voc4cat_0000185',
+        ],
         a_elasticsearch=[
             Elasticsearch(material_entry_type),
             Elasticsearch(suggestion='default'),
@@ -3744,20 +3790,21 @@ class Reaction(MSection):
 class Catalyst(MSection):
     m_def = Section(
         description="""
-        Properties of a heterogeneous catalyst.
-        """
+        Section of adding properties of a heterogeneous catalyst.
+        """,
     )
 
     catalyst_name = Quantity(
         type=str,
         shape=[],
         description="""
-        Custom name of catalyst.
+        Custom name of the studied catalyst.
         """,
         a_elasticsearch=[
             Elasticsearch(material_entry_type),
             Elasticsearch(suggestion='default'),
         ],
+        links=['https://w3id.org/nfdi4cat/voc4cat_0000194'],
     )
 
     preparation_method = Quantity(
@@ -3777,7 +3824,7 @@ class Catalyst(MSection):
         type=str,
         shape=['*'],
         description="""
-        The type of catalyst, wether metal or oxide, model, bulk, supported, ect.
+        The type of catalyst, whether metal or oxide, model, bulk, supported, ect.
         Multiple values can apply.
         """,
         links=['https://w3id.org/nfdi4cat/voc4cat_0007014'],
@@ -3793,7 +3840,7 @@ class Catalyst(MSection):
         description="""
         The support material of the catalyst (if any).
         """,
-        links=['https://w3id.org/nfdi4cat/voc4cat_0007034'],
+        # links=['https://w3id.org/nfdi4cat/voc4cat_0007825'], #currently in MR
         a_elasticsearch=[
             Elasticsearch(material_entry_type),
             Elasticsearch(suggestion='default'),
@@ -3913,19 +3960,19 @@ class EELSMethodology(MSection):
         Base class for the EELS methodology.
         """,
     )
-    detector_type = EELSInstrument.detector_type.m_copy(
+    detector_type = EELSInstrument.detector_type.m_copy().m_update(
         a_elasticsearch=[
             Elasticsearch(material_entry_type),
             Elasticsearch(suggestion='default'),
         ]
     )
-    resolution = EELSInstrument.resolution.m_copy(
+    resolution = EELSInstrument.resolution.m_copy().m_update(
         a_elasticsearch=[Elasticsearch(material_entry_type)]
     )
-    max_energy = EELSInstrument.max_energy.m_copy(
+    max_energy = EELSInstrument.max_energy.m_copy().m_update(
         a_elasticsearch=[Elasticsearch(material_entry_type)]
     )
-    min_energy = EELSInstrument.min_energy.m_copy(
+    min_energy = EELSInstrument.min_energy.m_copy().m_update(
         a_elasticsearch=[Elasticsearch(material_entry_type)]
     )
 

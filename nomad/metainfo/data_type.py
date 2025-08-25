@@ -966,13 +966,28 @@ class Unit(NonPrimitive):
 
 
 class Callable(NonPrimitive):
-    __slots__ = ()
+    __slots__ = ('_nargs',)
+
+    def __init__(self, nargs: int = 0):
+        """
+        Provide the number of arguments to enable validation.
+
+        Arguments:
+            nargs: number of arguments to the callable.
+        """
+        super().__init__()
+        self._nargs = nargs
 
     def _normalize_impl(self, value, **kwargs):
-        if callable(value):
-            return value
+        if not callable(value):
+            raise TypeError(f'{value} is not a valid callable object.')
 
-        raise TypeError(f'{value} is not a valid callable object.')
+        if self._nargs > 0 and (
+            getattr(getattr(value, '__code__', None), 'co_argcount', 0) != self._nargs
+        ):
+            raise TypeError(f'Callable {value} should have {self._nargs} arguments.')
+
+        return value
 
     def _serialize_impl(self, value, **kwargs):
         raise NotImplementedError()
@@ -1227,7 +1242,7 @@ def normalize_type(value):
     raise ValueError(f'Unsupported data type {value}.')
 
 
-def to_optimade_type(in_type: Datatype):
+def to_optimade_type(in_type: Datatype) -> str:
     standard_type = in_type.standard_type()
 
     if standard_type.startswith('int'):
@@ -1294,7 +1309,7 @@ def to_pydantic_type(in_type: Datatype):
     raise NotImplementedError(f'Unsupported pydantic data type {in_type}.')
 
 
-def to_elastic_type(in_type: Datatype, dynamic: bool):
+def to_elastic_type(in_type: Datatype, dynamic: bool) -> str:
     standard_type = in_type.standard_type()
 
     if dynamic:
@@ -1331,6 +1346,28 @@ def to_elastic_type(in_type: Datatype, dynamic: bool):
     raise NotImplementedError(f'Unsupported elastic data type {in_type}.')
 
 
+def to_json_schema_type(in_type: Datatype) -> dict[str, str]:
+    """
+    Convert a metainfo Datatype to a JSON Schema type.
+    """
+    std_type = in_type.standard_type()
+
+    if std_type.startswith('int'):
+        return {'type': 'integer'}
+    if std_type.startswith('float'):
+        return {'type': 'number'}
+    if std_type == 'bool':
+        return {'type': 'boolean'}
+    if std_type in ('str', 'enum'):
+        return {'type': 'string'}
+    if std_type == 'dict':
+        return {'type': 'object'}
+    if std_type == 'datetime':
+        return {'type': 'string', 'format': 'date-time'}
+
+    raise NotImplementedError(f'Unsupported JSON Schema type: {std_type}')
+
+
 _extra_precision = set()
 
 
@@ -1357,7 +1394,7 @@ if not _extra_precision:
     _add_extra_precision()
 
 
-def _normalize_complex(value, complex_type, to_unit: str | ureg.Unit | None):
+def _normalize_complex(value, complex_type, to_unit: str | pint.Unit | None):
     """
     Try to convert a given value to a complex number.
     """

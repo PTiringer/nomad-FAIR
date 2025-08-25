@@ -26,7 +26,6 @@ from typing import (
     Any,
     ForwardRef,
     Literal,
-    Optional,
     Union,
     cast,
     get_args,
@@ -279,26 +278,26 @@ def _generate_model(
             # TODO we always add Literal['*'] at the end. Maybe it should be configurable
             # which models want to support '*' values for their children?
             value_type = Union[value_types + (Literal['*'],)]  # type: ignore
-            fields['m_children'] = (Optional[dict[str, cast(type, value_type)]], None)  # type: ignore
+            fields['m_children'] = (dict[str, cast(type, value_type)] | None, None)  # type: ignore
             continue
 
         if field_name == 'm_request':
             if suffix == request_suffix:
-                fields[field_name] = (Optional[type_hint], None)
+                fields[field_name] = (type_hint | None, None)
             continue
 
         if field_name == 'm_response':
             if suffix == response_suffix:
-                fields[field_name] = (Optional[type_hint], None)
+                fields[field_name] = (type_hint | None, None)
             continue
 
         if field_name == 'm_is':
-            fields[field_name] = (Optional[type_hint], None)
+            fields[field_name] = (type_hint | None, None)
             continue
 
         if field_name == 'm_errors':
             if suffix == response_suffix:
-                fields[field_name] = (Optional[type_hint], None)  # type: ignore
+                fields[field_name] = (type_hint | None, None)  # type: ignore
             continue
 
         if field_name.startswith('m_') and field_name not in ['m_def', 'm_def_id']:
@@ -306,7 +305,7 @@ def _generate_model(
                 f'The internal field {field_name} is not implemented.'
             )
 
-        fields[field_name] = (Optional[generate_type(type_hint, ns)], None)
+        fields[field_name] = (generate_type(type_hint, ns) | None, None)
 
     config = source_model.model_config
     if config.get('extra', 'ignore') == 'ignore' and 'm_children' not in fields:

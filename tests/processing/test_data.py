@@ -27,11 +27,10 @@ import pytest
 import yaml
 
 from nomad import infrastructure, utils
-from nomad.archive import read_partial_archive_from_mongo, to_json
+from nomad.archive import to_json
 from nomad.config import config
 from nomad.config.models.config import BundleImportSettings
 from nomad.datamodel import ServerContext
-from nomad.datamodel.data import EntryData
 from nomad.datamodel.datamodel import ArchiveSection, EntryArchive, EntryData
 from nomad.files import PublicUploadFiles, StagingUploadFiles, UploadFiles
 from nomad.metainfo import Package, Quantity, Reference, SubSection
@@ -167,7 +166,7 @@ def run_processing(uploaded: tuple[str, str], main_author, **kwargs) -> Upload:
 
 
 def assert_processing(
-    upload: Upload, published: bool = False, process='process_upload'
+    upload: Upload, published: bool = False, process='_process_upload'
 ):
     assert not upload.process_running
     assert upload.current_process == process
@@ -202,13 +201,6 @@ def assert_processing(
 
             assert has_test_event
         assert len(entry.errors) == 0
-
-        archive = read_partial_archive_from_mongo(entry.entry_id)
-        assert archive.metadata is not None
-        assert (
-            archive.workflow2.results.calculation_result_ref.system_ref.atoms.labels
-            is not None
-        )
 
         with upload_files.raw_file(entry.mainfile) as f:
             f.read()
@@ -304,7 +296,7 @@ def test_publish(
         assert_search_upload(entries, additional_keys, published=True)
 
     assert_processing(
-        Upload.get(processed.upload_id), published=True, process='publish_upload'
+        Upload.get(processed.upload_id), published=True, process='_publish_upload'
     )
 
 
@@ -406,11 +398,11 @@ def test_publish_to_central_nomad(
 
     old_upload.publish_externally(embargo_length=embargo_length)
     old_upload.block_until_complete()
-    assert_processing(old_upload, old_upload.published, 'publish_externally')
+    assert_processing(old_upload, old_upload.published, '_publish_externally')
     old_upload = Upload.get(upload_id)
     new_upload = Upload.get(upload_id + suffix)
     new_upload.block_until_complete()
-    assert_processing(new_upload, old_upload.published, 'import_bundle')
+    assert_processing(new_upload, old_upload.published, '_import_bundle')
     assert len(old_upload.successful_entries) == len(new_upload.successful_entries) == 1
     if embargo_length is None:
         embargo_length = old_upload.embargo_length

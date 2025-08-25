@@ -16,14 +16,16 @@
 # limitations under the License.
 #
 
-# Contains more general test cases that are replaced continiously by more specialized
+# Contains more general test cases that are replaced continuously by more specialized
 # in-depth tests in test_* files of the same module.
 
-from math import isnan
+import json
+import math
 
+import jsonschema
 import numpy as np
 import pandas as pd
-import pint.quantity
+import pint
 import pytest
 
 from nomad.metainfo import (
@@ -32,12 +34,13 @@ from nomad.metainfo import (
     DefinitionAnnotation,
     SectionAnnotation,
 )
+from nomad.metainfo.data_type import JSON, Datetime
 from nomad.metainfo.example import SCC, Parsing, Run, System, SystemHash, VaspRun
 from nomad.metainfo.example import m_package as example_package
 from nomad.metainfo.metainfo import (
     Definition,
     DeriveError,
-    MCategory,
+    MEnum,
     MetainfoError,
     MSection,
     Package,
@@ -123,12 +126,6 @@ class TestPureReflection:
         # FIXME assert obj.m_get('test_quantity') is None
         setattr(obj, 'test_quantity', 'test_value')
         assert getattr(obj, 'test_quantity') == 'test_value'
-
-
-class MaterialDefining(MCategory):
-    """Quantities that add to what constitutes a different material."""
-
-    pass
 
 
 class TestM2:
@@ -653,12 +650,12 @@ class TestM1:
     def test_np_array(self):
         system = System()
         system.atom_positions = [[1, 2, 3]]
-        assert isinstance(system.atom_positions, pint.quantity._Quantity)
+        assert isinstance(system.atom_positions, pint.Quantity)
 
     def test_pd_dataframe(self):
         system = System()
         system.atom_positions = pd.DataFrame([[1, 2], [3, 4]])
-        assert isinstance(system.atom_positions, pint.quantity._Quantity)
+        assert isinstance(system.atom_positions, pint.Quantity)
         assert np.all(system.atom_positions.m == [[1, 2], [3, 4]])
 
     def test_np_scalar(self):
@@ -679,7 +676,7 @@ class TestM1:
         class TestSection(MSection):
             test_quantity = Quantity(type=float)
 
-        assert isnan(
+        assert math.isnan(
             TestSection.m_from_dict(
                 {'test_quantity': None}, treat_none_as_nan=True
             ).test_quantity
@@ -740,8 +737,8 @@ class TestM1:
     def test_synonym(self):
         system = System()
         system.lattice_vectors = [[1.2e-10, 0, 0], [0, 1.2e-10, 0], [0, 0, 1.2e-10]]
-        assert isinstance(system.lattice_vectors, pint.quantity._Quantity)
-        assert isinstance(system.unit_cell, pint.quantity._Quantity)
+        assert isinstance(system.lattice_vectors, pint.Quantity)
+        assert isinstance(system.unit_cell, pint.Quantity)
         assert np.array_equal(
             system.unit_cell.magnitude, system.lattice_vectors.magnitude
         )  # pylint: disable=no-member
@@ -768,7 +765,7 @@ class TestM1:
         assert system.m_def == System.m_def
         assert system.n_atoms == 3
         assert system.atom_labels == ['H', 'H', 'O']
-        assert isinstance(system.atom_positions, pint.quantity._Quantity)
+        assert isinstance(system.atom_positions, pint.Quantity)
 
     def test_derived(self):
         system = System()
@@ -916,6 +913,15 @@ class TestM1:
         assert (
             copy.systems[0].m_parent_sub_section is run.systems[0].m_parent_sub_section
         )
+        for k, v in copy.__dict__.items():
+            if k not in (
+                'm_def',
+                'm_parent',
+                'm_parent_index',
+                'm_parent_sub_section',
+                'm_context',
+            ):
+                assert v is not run.__dict__[k]
 
     def test_copy_keeps_m_sub_section_list(self):
         run = Run()
@@ -1103,3 +1109,312 @@ def test_serialise_as_dict(as_dict, add_key, str_type, dup_key):
         else:
             assert isinstance(json_dict['s'], dict)
         assert json_dict == TestContainer.m_from_dict(json_dict).m_to_dict(**kwarg)
+
+
+class Simulation(MSection):
+    m_def = Section(description='Definition for test.')
+    program_name = Quantity(type=str, default='test', description='Quantity for test.')
+
+
+quantity = Quantity(type=str, default='test', description='Quantity for test.')
+subsection_repeat = SubSection(sub_section=Simulation.m_def, repeats=True)
+subsection_norepeat = SubSection(sub_section=Simulation.m_def, repeats=False)
+
+
+class QuantityOnly(MSection):
+    m_def = Section(description='Test Quantity only MSection.')
+    quantity = quantity
+
+
+class SubSectionOnly(MSection):
+    m_def = Section(description='Test SubSection only MSection.')
+    subsection_repeat = subsection_repeat
+    subsection_norepeat = subsection_norepeat
+
+
+class SectionWithBoth(MSection):
+    m_def = Section(description='Test MSection with both Quantity and SubSection.')
+    quantity = quantity
+    subsection_repeat = subsection_repeat
+    subsection_norepeat = subsection_norepeat
+
+
+class TestToJsonSchema:
+    """Test `m_to_json_schema` methods for Quantity and Definition."""
+
+    def test_quantity_basics(self):
+        quantity = Quantity(
+            type=float, description='Test', unit='m', title='test quantity'
+        )
+
+        schema = quantity.m_to_json_schema()
+        jsonschema.Draft201909Validator.check_schema(schema)
+
+        json.dumps(schema)
+
+        assert 'json-schema.org/' in schema['$schema']
+        assert schema['title'] == quantity.title
+        assert schema['description'] == quantity.description
+        assert schema['unit'] == quantity.unit
+
+    @pytest.mark.parametrize(
+        'shape, expected_subschema',
+        [
+            pytest.param([], {'type': 'number'}, id='0D'),
+            pytest.param(
+                [1],
+                {
+                    'type': 'array',
+                    'minItems': 1,
+                    'maxItems': 1,
+                    'items': {'type': 'number'},
+                },
+                id='single-item-array',
+            ),
+            pytest.param(
+                [3],
+                {
+                    'type': 'array',
+                    'minItems': 3,
+                    'maxItems': 3,
+                    'items': {'type': 'number'},
+                },
+                id='1D-fixed',
+            ),
+            pytest.param(
+                ['*'],
+                {
+                    'type': 'array',
+                    'items': {'type': 'number'},
+                },
+                id='1D-flexible',
+            ),
+            pytest.param(
+                [3, 3],
+                {
+                    'type': 'array',
+                    'minItems': 3,
+                    'maxItems': 3,
+                    'items': {
+                        'type': 'array',
+                        'minItems': 3,
+                        'maxItems': 3,
+                        'items': {'type': 'number'},
+                    },
+                },
+                id='2D-fixed',
+            ),
+            pytest.param(
+                ['*', '*'],
+                {
+                    'type': 'array',
+                    'items': {'type': 'array', 'items': {'type': 'number'}},
+                },
+                id='2D-flexible',
+            ),
+            pytest.param(
+                [3, 3, 3],
+                {
+                    'type': 'array',
+                    'minItems': 3,
+                    'maxItems': 3,
+                    'items': {
+                        'type': 'array',
+                        'minItems': 3,
+                        'maxItems': 3,
+                        'items': {
+                            'type': 'array',
+                            'minItems': 3,
+                            'maxItems': 3,
+                            'items': {'type': 'number'},
+                        },
+                    },
+                },
+                id='3D-fixed',
+            ),
+            pytest.param(
+                ['*', '*', '*'],
+                {
+                    'type': 'array',
+                    'items': {
+                        'type': 'array',
+                        'items': {'type': 'array', 'items': {'type': 'number'}},
+                    },
+                },
+                id='3D-flexible',
+            ),
+            pytest.param(
+                [3, '*', 3],
+                {
+                    'type': 'array',
+                    'minItems': 3,
+                    'maxItems': 3,
+                    'items': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'array',
+                            'minItems': 3,
+                            'maxItems': 3,
+                            'items': {'type': 'number'},
+                        },
+                    },
+                },
+                id='mixed',
+            ),
+            pytest.param(
+                ['n_sites', 3],
+                {
+                    'items': {
+                        'items': {'type': 'number'},
+                        'maxItems': 3,
+                        'minItems': 3,
+                        'type': 'array',
+                    },
+                    'type': 'array',
+                },
+                id='ref-another-quantity',
+            ),
+        ],
+    )
+    def test_quantity_shape(self, shape, expected_subschema):
+        quantity = Quantity(type=float, shape=shape)
+        schema = quantity.m_to_json_schema()
+        jsonschema.Draft201909Validator.check_schema(schema)
+
+        json.dumps(schema)
+
+        # Inline recursive sub-dict comparison
+        def assert_subdict(actual, expected):
+            assert isinstance(actual, dict), f'Expected dict, got {type(actual)}'
+            for key, expected_value in expected.items():
+                assert key in actual, f'Missing key: {key}'
+                actual_value = actual[key]
+                if isinstance(expected_value, dict):
+                    assert_subdict(actual_value, expected_value)
+                else:
+                    assert actual_value == expected_value, (
+                        f"For key '{key}', expected {expected_value}, got {actual_value}"
+                    )
+
+        assert_subdict(schema, expected_subschema)
+
+    @pytest.mark.parametrize(
+        'm_types, expected_type',
+        [
+            pytest.param(MTypes.int, 'integer', id='integer'),
+            pytest.param(MTypes.float, 'number', id='number'),
+            pytest.param(MTypes.str | {MEnum('test')}, 'string', id='string'),
+            pytest.param(MTypes.bool, 'boolean', id='boolean'),
+            pytest.param({Datetime}, 'date-time', id='datetime'),
+            pytest.param({JSON}, 'object', id='json'),
+        ],
+    )
+    def test_quantity_type(self, m_types, expected_type):
+        for type_ in m_types:
+            quantity = Quantity(type=type_)
+            schema = quantity.m_to_json_schema()
+            jsonschema.Draft201909Validator.check_schema(schema)
+
+            json.dumps(schema)
+
+            if expected_type == 'date-time':
+                assert schema['type'] == 'string'
+                assert schema.get('format') == 'date-time'
+            else:
+                assert schema['type'] == expected_type
+
+    @pytest.mark.parametrize(
+        'section, expected',
+        [
+            pytest.param(
+                QuantityOnly,
+                {
+                    '$schema': 'https://json-schema.org/draft/2020-12/schema',
+                    'title': 'QuantityOnly',
+                    'type': 'object',
+                    'properties': {
+                        'quantity': {
+                            'type': 'string',
+                            'description': 'Quantity for test.',
+                        }
+                    },
+                },
+                id='quantity-only',
+            ),
+            pytest.param(
+                SubSectionOnly,
+                {
+                    '$schema': 'https://json-schema.org/draft/2020-12/schema',
+                    'title': 'SubSectionOnly',
+                    'type': 'object',
+                    'properties': {
+                        'subsection_repeat': {
+                            'type': 'array',
+                            'items': {'$ref': '#/$defs/Simulation'},
+                            'description': 'Definition for test.',
+                        },
+                        'subsection_norepeat': {
+                            '$ref': '#/$defs/Simulation',
+                            'description': 'Definition for test.',
+                        },
+                    },
+                    '$defs': {
+                        'Simulation': {
+                            'title': 'Simulation',
+                            'type': 'object',
+                            'properties': {
+                                'program_name': {
+                                    'type': 'string',
+                                    'description': 'Quantity for test.',
+                                }
+                            },
+                        }
+                    },
+                },
+                id='subsection-only',
+            ),
+            pytest.param(
+                SectionWithBoth,
+                {
+                    '$schema': 'https://json-schema.org/draft/2020-12/schema',
+                    'title': 'SectionWithBoth',
+                    'type': 'object',
+                    'properties': {
+                        'quantity': {
+                            'type': 'string',
+                            'description': 'Quantity for test.',
+                        },
+                        'subsection_repeat': {
+                            'type': 'array',
+                            'items': {'$ref': '#/$defs/Simulation'},
+                            'description': 'Definition for test.',
+                        },
+                        'subsection_norepeat': {
+                            '$ref': '#/$defs/Simulation',
+                            'description': 'Definition for test.',
+                        },
+                    },
+                    '$defs': {
+                        'Simulation': {
+                            'title': 'Simulation',
+                            'type': 'object',
+                            'properties': {
+                                'program_name': {
+                                    'type': 'string',
+                                    'description': 'Quantity for test.',
+                                }
+                            },
+                        }
+                    },
+                },
+                id='section-with-both',
+            ),
+        ],
+    )
+    def test_definition(self, section, expected):
+        schema = section.m_def.m_to_json_schema()
+        jsonschema.Draft201909Validator.check_schema(schema)
+
+        json.dumps(schema)
+
+        assert schema == expected

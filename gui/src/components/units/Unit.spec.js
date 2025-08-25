@@ -45,6 +45,7 @@ test('each unit can be created using its full name, alias or short form (+ all a
 
 test.each([
   ['dimensionless', 'dimensionless', ''],
+  ['dimensionless alias', 'count', 'count'],
   ['non-abbreviated', 'celsius', '°C'],
   ['abbreviated', '°C', '°C'],
   ['prefix long', 'millikelvin', 'mK'],

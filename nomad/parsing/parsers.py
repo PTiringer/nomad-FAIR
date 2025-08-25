@@ -27,7 +27,7 @@ from nomad.config.models.plugins import ParserEntryPoint
 from nomad.datamodel import EntryArchive, EntryMetadata, results
 from nomad.datamodel.context import ClientContext, ServerLocalContext
 
-from .artificial import ChaosParser, EmptyParser, GenerateRandomParser, TemplateParser
+from .artificial import EmptyParser
 from .parser import (
     ArchiveParser,
     BrokenParser,
@@ -225,7 +225,7 @@ def run_parser(
     return entry_archives
 
 
-parsers = [GenerateRandomParser(), TemplateParser(), ChaosParser()]
+parsers = []
 config.load_plugins()
 enabled_entry_points = config.plugins.entry_points.filtered_values()
 
@@ -244,6 +244,9 @@ for entry_point in enabled_entry_points:
     if isinstance(entry_point, ParserEntryPoint):
         entry_point_name = entry_point.id
         instance = entry_point.load()
+        assert isinstance(instance, Parser), (
+            f'Error loading entry point "{entry_point.id}": The load method of a parser entry point must return a Parser instance'
+        )
         instance.name = entry_point_name
         instance.aliases = entry_point.aliases
         parsers.append(instance)

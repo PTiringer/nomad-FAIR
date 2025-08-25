@@ -125,6 +125,8 @@ for normalizer in config.normalize.normalizers.filtered_values():
 # Load normalizers using new plugin mechanism
 for entry_point in enabled_entry_points:
     if isinstance(entry_point, NormalizerEntryPoint):
-        normalizers.append(
-            NormalizerInterfaceNew(entry_point.load(), entry_point.level)
+        instance = entry_point.load()
+        assert isinstance(instance, Normalizer), (
+            f'Error loading entry point "{entry_point.id}": The load method of a normalizer entry point must return a Normalizer instance'
         )
+        normalizers.append(NormalizerInterfaceNew(instance, entry_point.level))

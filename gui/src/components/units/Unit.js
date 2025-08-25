@@ -84,7 +84,8 @@ export class Unit {
     }
 
     function getName(unit) {
-      if (unit.base.key === DIMENSIONLESS) return ''
+      // For now, we forcibly abbreviate the base dimensionless unit
+      if (unit.name === DIMENSIONLESS) return ''
       return abbreviate
         ? unitToAbbreviationMap?.[unit.name] || unit.name
         : unit.name

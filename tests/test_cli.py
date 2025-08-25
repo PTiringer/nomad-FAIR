@@ -50,7 +50,7 @@ class TestCli:
         assert time.time() - start < 1
 
 
-@pytest.mark.usefixtures('reset_config', 'nomad_logging')
+@pytest.mark.usefixtures('reset_config', 'nomad_logging', 'nomad_parsers')
 class TestParse:
     def test_parser(self, example_mainfile):
         _, mainfile_path = example_mainfile

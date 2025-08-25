@@ -1,7 +1,11 @@
+import bz2
+import gzip
 import json
+import lzma
 import os
 import re
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from io import BytesIO
 from typing import Any, Optional
 
@@ -22,6 +26,12 @@ from nomad.units import ureg
 from nomad.utils import get_logger
 
 MAPPING_ANNOTATION_KEY = 'mapping'
+
+COMPRESSIONS = {
+    b'\x1f\x8b\x08': ('gz', gzip.open),
+    b'\x42\x5a\x68': ('bz2', bz2.open),
+    b'\xfd\x37\x7a': ('xz', lzma.open),
+}
 
 
 class JmespathOptions(jmespath.visitor.Options):
@@ -279,9 +289,7 @@ class Path(BaseModel, validate_assignment=True):
     def get_relative_path(cls, values: dict[str, Any]) -> dict[str, Any]:
         relative_path = values.get('path', '')
         parent = values.get('parent')
-        match = re.match(r'^\.(.+)|(.+\()\.(.+)', relative_path)
-        if match:
-            relative_path = ''.join([g for g in match.groups() if g])
+        relative_path = re.sub(r'(?:^|(?<=\s))\.', '', relative_path)
         values['relative_path'] = relative_path
 
         absolute_path = relative_path
@@ -800,13 +808,14 @@ class MappingParser(ABC):
         self._data: dict[str, Any] = kwargs.get('data', {})
         self._data_object: Any = kwargs.get('data_object')
         self._required_paths: list[str] = kwargs.get('required_paths', [])
+        self._open: Callable = kwargs.get('open')
 
     @abstractmethod
     def load_file(self) -> Any:
         return {}
 
     @abstractmethod
-    def to_dict(self, **kwargs) -> dict[str, Any]:
+    def to_dict(self, **kwargs) -> dict[str | int, Any]:
         return {}
 
     @abstractmethod
@@ -817,6 +826,19 @@ class MappingParser(ABC):
         return Mapper()
 
     @property
+    def open(self):
+        """
+        Opens the file with the provided open function or based on the file type.
+        """
+        if self._open is not None:
+            return self._open
+
+        with open(self.filepath, 'rb') as f:
+            open_compressed = COMPRESSIONS.get(f.read(3))
+
+        return open_compressed[1] if open_compressed is not None else open
+
+    @property
     def filepath(self) -> str:
         return self._filepath
 
@@ -825,11 +847,15 @@ class MappingParser(ABC):
         self._filepath = value
         self._data_object = None
         self._data = None
+        self._open = None
 
     @property
     def data(self):
         if not self._data:
-            self._data = self.to_dict()
+            try:
+                self._data = self.to_dict()
+            except Exception:
+                pass
         return self._data
 
     @property
@@ -1009,7 +1035,7 @@ class MetainfoParser(MappingParser):
                 self.logger.errror('Error loading archive file.')
         return None
 
-    def to_dict(self, **kwargs) -> dict[str, Any]:
+    def to_dict(self, **kwargs) -> dict[str | int, Any]:
         if self.data_object is not None:
             return self.data_object.m_to_dict()
         return {}
@@ -1053,17 +1079,14 @@ class MetainfoParser(MappingParser):
                             **{
                                 n: val_n.get(n)
                                 for n, q in quantities.items()
-                                if not q.derived and n in val_n and n != 'value'
+                                if not q.derived and n in val_n
                             }
                         )
                         root.m_add_sub_section(section, sub_section)
                     self.from_dict(val_n, sub_section)
-                    value = val_n.get('value')
-                    if value is not None:
-                        sub_section.value = value
                 continue
 
-            if key == 'm_def' or key == 'value':
+            if key == 'm_def':
                 continue
 
             try:
@@ -1206,18 +1229,18 @@ class HDF5Parser(MappingParser):
         except Exception:
             self.logger.error('Cannot read HDF5 file.')
 
-    def to_dict(self, **kwargs) -> dict[str, Any]:
+    def to_dict(self, **kwargs) -> dict[str | int, Any]:
         if self.data_object is None:
             return {}
 
-        def set_attributes(val: h5py.Dataset | h5py.Group, dct: dict[str, Any]):
+        def set_attributes(val: h5py.Dataset | h5py.Group, dct: dict[str | int, Any]):
             for name, attr in val.attrs.items():
                 dct[f'{self.attribute_prefix}{name}'] = (
                     attr.tolist() if hasattr(attr, 'tolist') else attr
                 )
 
         def group_to_dict(
-            group: h5py.Group, root: dict[str, Any] | list[dict[str, Any]]
+            group: h5py.Group, root: dict[str | int, Any] | list[dict[str | int, Any]]
         ):
             for key, val in group.items():
                 key = int(key) if key.isdecimal() else key
@@ -1257,7 +1280,7 @@ class HDF5Parser(MappingParser):
                         root[key] = v  # type: ignore
             return root
 
-        dct: dict[str, Any] = {}
+        dct: dict[str | int, Any] = {}
         group_to_dict(self.data_object, dct)
         return dct
 
@@ -1356,7 +1379,7 @@ class XMLParser(MappingParser):
 
         self._data_object = data_to_element('root', dct).getchildren()[0]
 
-    def to_dict(self, **kwargs) -> dict[str, Any]:
+    def to_dict(self, **kwargs) -> dict[str | int, Any]:
         def convert(text: str) -> Any:
             val = text.strip()
             try:
@@ -1368,14 +1391,14 @@ class XMLParser(MappingParser):
             except Exception:
                 return val
 
-        stack: list[dict[str, Any]] = []
-        results: dict[str, Any] = {}
+        stack: list[dict[str | int, Any]] = []
+        results: dict[str | int, Any] = {}
         if self.filepath is None:
             return results
 
         current_path = ''
         # TODO determine if iterparse is better than iterwalk
-        with open(self.filepath, 'rb') as f:
+        with self.open(self.filepath, 'rb') as f:
             for event, element in etree.iterparse(f, events=('start', 'end')):
                 tag = element.tag
                 if event == 'start':
@@ -1444,7 +1467,7 @@ class TextParser(MappingParser):
 
     text_parser: TextFileParser = None
 
-    def to_dict(self, **kwargs) -> dict[str, Any]:
+    def to_dict(self, **kwargs) -> dict[str | int, Any]:
         if self.data_object:
             self.data_object.parse()
             return self.data_object._results

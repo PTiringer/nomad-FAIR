@@ -64,6 +64,13 @@ class NORTHTool(BaseModel):
     privileged: bool = Field(
         False, description='Whether the tool needs to run in privileged mode.'
     )
+    seccomp_unconfined: bool = Field(
+        False, description='Whether the tool runs with seccomp=unconfined.'
+    )
+    use_gpu: bool = Field(
+        False,
+        description='Whether the tool is provided access to available GPU resources.',
+    )
     default_url: str | None = Field(
         None,
         description=(

@@ -104,10 +104,10 @@ class TaskReference(Task):
             self.name = self.task.name
 
         # add task inputs/outputs to inputs/outputs
-        self.inputs.extend([inp for inp in self.task.inputs if inp not in self.inputs])
-        self.outputs.extend(
-            [out for out in self.task.outputs if out not in self.outputs]
-        )
+        if not self.inputs:
+            self.inputs = self.task.inputs
+        if not self.outputs:
+            self.outputs = self.task.outputs
 
 
 class Workflow(Task, EntryData):

@@ -246,12 +246,7 @@ class GraphNode:
         Go to a local reference.
         Since it is a local reference, only need to walk to the proper position.
         """
-        reference_copy: str = reference
-        # this is a local reference, go to the target location first
-        while reference_copy.startswith(('/', '#')):
-            reference_copy = reference_copy[1:]
-
-        path_stack: list = [v for v in reference_copy.split('/') if v]
+        path_stack: list = [v for v in reference.lstrip('/#').split('/') if v]
 
         if (reference_url := self.generate_reference(path_stack)) in self.visited_path:
             raise ArchiveError(f'Circular reference detected: {reference_url}.')
@@ -744,10 +739,10 @@ def _normalise_index(index: tuple | None, length: int) -> range:
 
     def _bound(v):
         if v < -length:
-            return -length
+            return 0
         if v >= length:
             return length - 1
-        return v
+        return length + v if v < 0 else v
 
     # one item
     if len(index) == 1:
@@ -1477,6 +1472,9 @@ class MongoReader(GeneralReader):
                 total=mongo_result.count() if mongo_result else 0,
                 **config.pagination.model_dump(),
             )
+        elif callable(getattr(mongo_result, 'count', None)):
+            # looks like a QuerySet
+            pagination_response = PaginationResponse(total=mongo_result.count())
 
         if transformer is None:
             return mongo_result, pagination_response
@@ -1484,33 +1482,37 @@ class MongoReader(GeneralReader):
         if mongo_result is None:
             return {}, pagination_response
 
-        # apply pagination when config.pagination is present
-        # if it is a PaginationResponse, it means the pagination has been applied in the search
-        if config.pagination is not None and not isinstance(
-            config.pagination, PaginationResponse
-        ):
-            assert isinstance(config.pagination, Pagination)
+        def _pick_id(_item):
+            if transformer == upload_to_pydantic:
+                return _item.upload_id
+            if transformer == dataset_to_pydantic:
+                return _item.dataset_id
+            if transformer == entry_to_pydantic:
+                return _item.entry_id
+            if transformer == group_to_pydantic:
+                return _item.group_id
 
-            mongo_result = config.pagination.order_result(mongo_result)
+            raise ValueError(f'Should not reach here.')
 
-            def _pick_id(_item):
-                if transformer == upload_to_pydantic:
-                    return _item.upload_id
-                if transformer == dataset_to_pydantic:
-                    return _item.dataset_id
-                if transformer == entry_to_pydantic:
-                    return _item.entry_id
-                if transformer == group_to_pydantic:
-                    return _item.group_id
-
-                raise ValueError(f'Should not reach here.')
-
-            mongo_result = config.pagination.paginate_result(mongo_result, _pick_id)
-
+        def _populate_next_page_after_value():
             if mongo_result:
                 pagination_response.next_page_after_value = _pick_id(
                     mongo_result[len(mongo_result) - 1]
                 )
+
+        if config.pagination is None:
+            # still apply a default pagination to avoid unnecessarily large results
+            mongo_result = mongo_result[: pagination_response.page_size]
+            _populate_next_page_after_value()
+        elif not isinstance(config.pagination, PaginationResponse):
+            # apply pagination when config.pagination is present
+            # if it is a PaginationResponse, it means the pagination has been applied in the search
+            assert isinstance(config.pagination, Pagination)
+
+            mongo_result = config.pagination.order_result(mongo_result)
+
+            mongo_result = config.pagination.paginate_result(mongo_result, _pick_id)
+            _populate_next_page_after_value()
 
         if transformer == upload_to_pydantic:
             mongo_dict = {
@@ -1652,7 +1654,7 @@ class MongoReader(GeneralReader):
                 await offload_read(ElasticSearchReader, node.entry_id)
                 continue
 
-            if key == Token.UPLOAD and self.__class__ is EntryReader:
+            if key in (Token.UPLOAD, Token.UPLOADS) and self.__class__ is EntryReader:
                 # hitting the bottom of the current scope
                 await offload_read(UploadReader, node.upload_id)
                 continue
@@ -1669,7 +1671,10 @@ class MongoReader(GeneralReader):
                 await offload_read(ArchiveReader, node.upload_id, node.entry_id)
                 continue
 
-            if key == Token.ENTRIES and self.__class__ is ElasticSearchReader:
+            if (
+                key in (Token.ENTRY, Token.ENTRIES)
+                and self.__class__ is ElasticSearchReader
+            ):
                 # hitting the bottom of the current scope
                 await offload_read(EntryReader, node.archive['entry_id'])
                 continue
@@ -1709,7 +1714,7 @@ class MongoReader(GeneralReader):
             else:
                 child_config = current_config.new({'query': None, 'pagination': None})
 
-            async def __offload_walk(query_set, transformer):
+            async def offload_walk(query_set, transformer):
                 response_path: list = node.current_path + [key, Token.RESPONSE]
 
                 if isinstance(value, dict) and GeneralReader.__CONFIG__ in value:
@@ -1730,9 +1735,12 @@ class MongoReader(GeneralReader):
                 if filtered is None:
                     return
 
-                result, pagination = await self._normalise(
-                    filtered, child_config, transformer
-                )
+                if isinstance(value, dict) and GeneralReader.__WILDCARD__ not in value:
+                    result, pagination = {}, None
+                else:
+                    result, pagination = await self._normalise(
+                        filtered, child_config, transformer
+                    )
                 if pagination is not None:
                     pagination_dict = pagination.model_dump()
                     if pagination_dict.get('order_by', None) == 'mainfile':
@@ -1753,7 +1761,45 @@ class MongoReader(GeneralReader):
                     current_config,
                 )
 
-            if await self._offload_walk(__offload_walk, child_config, key, value):
+            if key == Token.SEARCH:
+                await offload_walk(await self._query_es(child_config), None)
+                continue
+            if key == Token.ENTRY or key == Token.ENTRIES:
+                await offload_walk(
+                    await self._query_entries(child_config), entry_to_pydantic
+                )
+                continue
+            if key == Token.UPLOAD or key == Token.UPLOADS:
+                await offload_walk(
+                    await self._query_uploads(child_config), upload_to_pydantic
+                )
+                continue
+            if key == Token.DATASET or key == Token.DATASETS:
+                await offload_walk(
+                    await self._query_datasets(child_config), dataset_to_pydantic
+                )
+                continue
+            if key == Token.GROUP or key == Token.GROUPS:
+                await offload_walk(
+                    await self._query_groups(child_config), group_to_pydantic
+                )
+                continue
+            if key == Token.USER or key == Token.USERS:
+                await offload_walk(
+                    (
+                        None,
+                        {
+                            k: v
+                            for k, v in value.items()
+                            if k
+                            not in (
+                                GeneralReader.__CONFIG__,
+                                GeneralReader.__WILDCARD__,
+                            )
+                        },
+                    ),
+                    None,
+                )
                 continue
 
             if len(node.current_path) > 0 and node.current_path[-1] in __M_SEARCHABLE__:
@@ -1795,41 +1841,6 @@ class MongoReader(GeneralReader):
             else:
                 # should never reach here
                 raise ConfigError(f'Invalid required config: {value}.')
-
-    async def _offload_walk(
-        self, offload_func: Callable, config: RequestConfig, key: str, value
-    ) -> bool:
-        if key == Token.SEARCH:
-            await offload_func(await self._query_es(config), None)
-            return True
-        if key == Token.ENTRY or key == Token.ENTRIES:
-            await offload_func(await self._query_entries(config), entry_to_pydantic)
-            return True
-        if key == Token.UPLOAD or key == Token.UPLOADS:
-            await offload_func(await self._query_uploads(config), upload_to_pydantic)
-            return True
-        if key == Token.DATASET or key == Token.DATASETS:
-            await offload_func(await self._query_datasets(config), dataset_to_pydantic)
-            return True
-        if key == Token.GROUP or key == Token.GROUPS:
-            await offload_func(await self._query_groups(config), group_to_pydantic)
-            return True
-        if key == Token.USER or key == Token.USERS:
-            await offload_func(
-                (
-                    None,
-                    {
-                        k: v
-                        for k, v in value.items()
-                        if k
-                        not in (GeneralReader.__CONFIG__, GeneralReader.__WILDCARD__)
-                    },
-                ),
-                None,
-            )
-            return True
-
-        return False
 
     async def _resolve(
         self,
@@ -2689,7 +2700,10 @@ class ArchiveReader(ArchiveLikeReader):
                 )
                 continue
 
-            child_definition = node.definition.all_properties.get(name, None)
+            # could just be a quantity
+            child_definition = getattr(node.definition, 'all_properties', {}).get(
+                name, None
+            )
             if child_definition is None:
                 self._log(
                     f'Definition {name} is not found.', error_type=QueryError.NOTFOUND
@@ -2725,6 +2739,8 @@ class ArchiveReader(ArchiveLikeReader):
                     )
 
                 if is_list:
+                    if GeneralReader.__CONFIG__ in value:
+                        index = value[GeneralReader.__CONFIG__].index or index
                     # field[start:end]: dict
                     for i in _normalise_index(index, len(child_archive)):
                         await __walk(child_path + [str(i)], child_archive[i])
@@ -2827,8 +2843,16 @@ class ArchiveReader(ArchiveLikeReader):
                 and config.always_rewrite_references
             ):
                 try:
+                    if node.archive.startswith(('/', '#')):
+                        # normalize a local reference
+                        target_reference = node.generate_reference(
+                            [v for v in node.archive.lstrip('/#').split('/') if v]
+                        )
+                    else:
+                        target_reference = node.archive
+
                     result_to_write = _convert_ref_to_path_string(
-                        node.archive, node.upload_id
+                        target_reference, node.upload_id
                     )
                 except Exception:  # noqa
                     result_to_write = await self._apply_resolver(node, config)

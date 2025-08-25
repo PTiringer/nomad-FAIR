@@ -20,7 +20,6 @@ import importlib
 import os
 import shutil
 import sys
-from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Literal, Union, cast
 
 from pydantic import BaseModel, Field, model_validator
@@ -46,10 +45,11 @@ class EntryPoint(BaseModel):
     id: str | None = Field(
         None,
         description='Unique identifier corresponding to the entry point name. Automatically set to the plugin entry point name in pyproject.toml.',
-        hidden=True,
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
     entry_point_type: str = Field(
-        description='Determines the entry point type.', hidden=True
+        description='Determines the entry point type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
     name: str | None = Field(None, description='Name of the plugin entry point.')
     description: str | None = Field(
@@ -58,7 +58,7 @@ class EntryPoint(BaseModel):
     plugin_package: str | None = Field(
         None,
         description='The plugin package from which this entry points comes from.',
-        hidden=True,
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
 
     def dict_safe(self):
@@ -74,7 +74,9 @@ class AppEntryPoint(EntryPoint):
     """Base model for app plugin entry points."""
 
     entry_point_type: Literal['app'] = Field(
-        'app', description='Determines the entry point type.', hidden=True
+        'app',
+        description='Determines the entry point type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
     app: App = Field(description='The app configuration.')
 
@@ -84,14 +86,15 @@ class AppEntryPoint(EntryPoint):
         )
 
 
-class SchemaPackageEntryPoint(EntryPoint, metaclass=ABCMeta):
+class SchemaPackageEntryPoint(EntryPoint):
     """Base model for schema package plugin entry points."""
 
     entry_point_type: Literal['schema_package'] = Field(
-        'schema_package', description='Specifies the entry point type.', hidden=True
+        'schema_package',
+        description='Specifies the entry point type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
 
-    @abstractmethod
     def load(self) -> 'SchemaPackage':
         """Used to lazy-load a schema package instance. You should override this
         method in your subclass. Note that any Python module imports required
@@ -99,11 +102,13 @@ class SchemaPackageEntryPoint(EntryPoint, metaclass=ABCMeta):
         pass
 
 
-class NormalizerEntryPoint(EntryPoint, metaclass=ABCMeta):
+class NormalizerEntryPoint(EntryPoint):
     """Base model for normalizer plugin entry points."""
 
     entry_point_type: Literal['normalizer'] = Field(
-        'normalizer', description='Determines the entry point type.', hidden=True
+        'normalizer',
+        description='Determines the entry point type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
     level: int = Field(
         0,
@@ -114,7 +119,6 @@ class NormalizerEntryPoint(EntryPoint, metaclass=ABCMeta):
         """,
     )
 
-    @abstractmethod
     def load(self) -> 'NormalizerBaseClass':
         """Used to lazy-load a normalizer instance. You should override this
         method in your subclass. Note that any Python module imports required
@@ -122,11 +126,13 @@ class NormalizerEntryPoint(EntryPoint, metaclass=ABCMeta):
         pass
 
 
-class ParserEntryPoint(EntryPoint, metaclass=ABCMeta):
+class ParserEntryPoint(EntryPoint):
     """Base model for parser plugin entry points."""
 
     entry_point_type: Literal['parser'] = Field(
-        'parser', description='Determines the entry point type.', hidden=True
+        'parser',
+        description='Determines the entry point type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
     level: int = Field(
         0,
@@ -196,7 +202,6 @@ class ParserEntryPoint(EntryPoint, metaclass=ABCMeta):
     """,
     )
 
-    @abstractmethod
     def load(self) -> 'ParserBaseClass':
         """Used to lazy-load a parser instance. You should override this method
         in your subclass. Note that any Python module imports required for the
@@ -234,7 +239,9 @@ class ExampleUploadEntryPoint(EntryPoint):
     """Base model for example upload plugin entry points."""
 
     entry_point_type: Literal['example_upload'] = Field(
-        'example_upload', description='Determines the entry point type.', hidden=True
+        'example_upload',
+        description='Determines the entry point type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
     category: str | None = Field(description='Category for the example upload.')
     title: str | None = Field(description='Title of the example upload.')
@@ -258,7 +265,7 @@ class ExampleUploadEntryPoint(EntryPoint):
     from_examples_directory: bool = Field(
         False,
         description='Whether this example upload should be read from the "examples" directory.',
-        hidden=True,
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
 
     def get_package_path(self):
@@ -410,11 +417,13 @@ class ExampleUploadEntryPoint(EntryPoint):
         return values
 
 
-class APIEntryPoint(EntryPoint, metaclass=ABCMeta):
+class APIEntryPoint(EntryPoint):
     """Base model for API plugin entry points."""
 
     entry_point_type: Literal['api'] = Field(
-        'api', description='Specifies the entry point type.', hidden=True
+        'api',
+        description='Specifies the entry point type.',
+        json_schema_extra={'hidden': True},
     )  # type: ignore[call-overload]
 
     prefix: str = Field(
@@ -441,7 +450,6 @@ class APIEntryPoint(EntryPoint, metaclass=ABCMeta):
         v['prefix'] = v['prefix'].strip('/')
         return v
 
-    @abstractmethod
     def load(self) -> 'FastAPI':
         """Used to lazy-load the API instance. You should override this
         method in your subclass. Note that any Python module imports required

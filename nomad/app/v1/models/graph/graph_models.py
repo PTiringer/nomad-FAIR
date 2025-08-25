@@ -128,11 +128,13 @@ class GraphEntries(BaseModel):
 class GraphUser(
     UserModel.m_def.m_get_annotation(PydanticModel).model,  # type: ignore
 ):
+    m_request: RecursionOptions
     # This is more complicated as the user can have different roles in different uploads.
     # This would only refer to uploads with the user as main_author.
     # For many clients and use-cases uploads.m_request.query will be the
     # more generic or only option
     uploads: GraphUploads | None
+    entries: GraphEntries | None
     datasets: GraphDatasets | None
     model_config = ConfigDict(
         extra='forbid',
