@@ -4,10 +4,11 @@ import uuid
 from pathlib import Path
 
 from temporalio import activity
+from temporalio.exceptions import ApplicationError
 
 from nomad.files import PublicUploadFiles, StagingUploadFiles
 from nomad.parsing.parsers import parsers
-from nomad.processing.base import ProcessStatus
+from nomad.processing.base import ProcessFailure, ProcessStatus
 from nomad.processing.data import Entry, Upload
 from nomad.search import delete_upload
 from nomad.workflows.shared_objects import (
@@ -59,7 +60,12 @@ def delete_upload_record_activity(input: DeleteUploadWorkflowInput):
 @activity.defn
 def process_entry_activity(input: ProcessEntryActivityInput):
     entry = Entry.get(input.entry_id)
-    entry._process_entry_local()
+    try:
+        entry._process_entry_local()
+    except ProcessFailure as e:
+        # ProcessFailure represents permanent failures (data validation, business logic errors)
+        # that cannot be resolved through retries.
+        raise ApplicationError(str(e), non_retryable=True) from e
 
 
 @activity.defn
