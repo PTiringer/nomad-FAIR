@@ -6,7 +6,7 @@ import pytest
 from temporalio.client import WorkflowFailureError
 
 from nomad.orchestrator.shared.constant import TaskQueue
-from nomad.processing.base import ProcessStatus
+from nomad.processing.base import ProcessFailure, ProcessStatus
 from nomad.workflows.shared_objects import (
     DeleteUploadWorkflowInput,
     EditUploadMetadataWorkflowInput,
@@ -250,6 +250,40 @@ class TestProcessEntryWorkflow:
                 == ProcessStatus.SUCCESS
             )
             mock_data_layer['entry_instance'].save.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_entry_processing_failure(
+        self,
+        mock_data_layer,
+        temporal_worker,
+    ):
+        """Test entry processing failure."""
+
+        entry_instance = mock_data_layer['entry_instance']
+        entry_instance._process_entry_local.side_effect = ProcessFailure(
+            'Simulated failure'
+        )
+        async with temporal_worker() as env:
+            input_data = TestFixtures.process_entry_input()
+            with pytest.raises(WorkflowFailureError, match='Workflow execution failed'):
+                await env.client.execute_workflow(
+                    'ProcessEntryWorkflow',
+                    input_data,
+                    id='test-process-entry-workflow',
+                    task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
+                )
+
+            # Verify entry processing calls
+            mock_data_layer['entry_class'].get.assert_called_with(TEST_ENTRY_ID)
+
+            # It should be called once since ProcessFailures Exceptions don't get retried.
+            entry_instance._process_entry_local.assert_called_once()
+
+            # Verify entry process status is set to Failure
+            assert (
+                mock_data_layer['entry_instance'].process_status
+                == ProcessStatus.FAILURE
+            )
 
 
 class TestBatchProcessEntriesWorkflow:
