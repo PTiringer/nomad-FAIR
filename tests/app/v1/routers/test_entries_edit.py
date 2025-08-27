@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 
@@ -528,7 +528,7 @@ def test_post_entries_edit(
         verify_only=verify_only,
     )
     url = 'entries/edit'
-    edit_start = datetime.utcnow().isoformat()[0:22]
+    edit_start = datetime.now(timezone.utc).isoformat()[0:22]
     response = client.post(url, headers=user_auth, json=edit_request_json)
     if expected_error_loc:
         assert_response(response, 422)

@@ -79,7 +79,7 @@ class PackageDefinition(MSection):
         if 'upload_id' in kwargs:
             self.upload_id = kwargs.pop('upload_id')
         self.qualified_name = package.qualified_name()
-        self.date_created = datetime.datetime.utcnow()
+        self.date_created = datetime.datetime.now(datetime.timezone.utc)
         self.package_definition = package.m_to_dict(
             with_def_id=config.process.write_definition_id_to_archive, **kwargs
         )

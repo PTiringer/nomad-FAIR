@@ -2924,7 +2924,7 @@ def test_post_upload_edit(
         verify_only=verify_only,
     )
     url = f'uploads/{upload_id}/edit'
-    edit_start = datetime.utcnow().isoformat()[0:22]
+    edit_start = datetime.now(timezone.utc).isoformat()[0:22]
     response = client.post(url, headers=user_auth, json=edit_request_json)
     if expected_error_loc:
         assert_response(response, 422)
