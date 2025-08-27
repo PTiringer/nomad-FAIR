@@ -465,6 +465,7 @@ class TestProcessUploadWorkflow:
         mock_data_layer['upload_instance'].update_files.assert_called_once()
         mock_data_layer['upload_instance'].match_all.assert_called_once()
         mock_data_layer['upload_instance'].cleanup.assert_called_once()
+        assert mock_data_layer['upload_instance'].current_process == '_process_upload'
 
     @pytest.mark.asyncio
     async def test_processing_loop_multiple_levels(
@@ -570,6 +571,10 @@ class TestEditUploadMetadataWorkflow:
         mock_data_layer['upload_instance'].set_last_status_message.assert_called_with(
             'Process completed successfully'
         )
+        assert (
+            mock_data_layer['upload_instance'].current_process
+            == '_edit_upload_metadata'
+        )
 
 
 class TestImportBundleWorkflow:
@@ -604,6 +609,7 @@ class TestImportBundleWorkflow:
         mock_data_layer['upload_instance'].set_last_status_message.assert_called_with(
             'Process completed successfully'
         )
+        assert mock_data_layer['upload_instance'].current_process == '_import_bundle'
 
 
 class TestPublishUploadWorkflow:
@@ -638,6 +644,7 @@ class TestPublishUploadWorkflow:
         mock_data_layer['upload_instance'].set_last_status_message.assert_called_with(
             'Process completed successfully'
         )
+        assert mock_data_layer['upload_instance'].current_process == '_publish_upload'
 
 
 class TestPublishExternallyWorkflow:
@@ -671,6 +678,9 @@ class TestPublishExternallyWorkflow:
         )
         mock_data_layer['upload_instance'].set_last_status_message.assert_called_with(
             'Process completed successfully'
+        )
+        assert (
+            mock_data_layer['upload_instance'].current_process == '_publish_externally'
         )
 
 

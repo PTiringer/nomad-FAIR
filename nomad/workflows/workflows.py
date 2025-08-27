@@ -216,7 +216,9 @@ class ProcessUploadWorkflow:
         )
         workflow_info = workflow.info()
         upload_workflow_input = UploadWorkflowIdInput(
-            upload_id=input.upload_id, workflow_id=workflow_info.workflow_id
+            upload_id=input.upload_id,
+            workflow_id=workflow_info.workflow_id,
+            process_name='_process_upload',
         )
         try:
             # Step 0: Add workflow id to upload
@@ -370,7 +372,9 @@ class EditUploadMetadataWorkflow:
         )
         workflow_info = workflow.info()
         upload_workflow_input = UploadWorkflowIdInput(
-            upload_id=input.upload_id, workflow_id=workflow_info.workflow_id
+            upload_id=input.upload_id,
+            workflow_id=workflow_info.workflow_id,
+            process_name='_edit_upload_metadata',
         )
 
         try:
@@ -432,7 +436,9 @@ class ImportBundleWorkflow:
         )
         workflow_info = workflow.info()
         upload_workflow_input = UploadWorkflowIdInput(
-            upload_id=input.upload_id, workflow_id=workflow_info.workflow_id
+            upload_id=input.upload_id,
+            workflow_id=workflow_info.workflow_id,
+            process_name='_import_bundle',
         )
 
         try:
@@ -494,7 +500,9 @@ class PublishUploadWorkflow:
         )
         workflow_info = workflow.info()
         upload_workflow_input = UploadWorkflowIdInput(
-            upload_id=input.upload_id, workflow_id=workflow_info.workflow_id
+            upload_id=input.upload_id,
+            workflow_id=workflow_info.workflow_id,
+            process_name='_publish_upload',
         )
 
         try:
@@ -557,7 +565,9 @@ class PublishExternallyWorkflow:
         )
         workflow_info = workflow.info()
         upload_workflow_input = UploadWorkflowIdInput(
-            upload_id=input.upload_id, workflow_id=workflow_info.workflow_id
+            upload_id=input.upload_id,
+            workflow_id=workflow_info.workflow_id,
+            process_name='_publish_externally',
         )
 
         try:

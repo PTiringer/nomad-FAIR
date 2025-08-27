@@ -195,6 +195,7 @@ def setup_upload_for_workflow_process(input: UploadWorkflowIdInput):
     )
     upload.workflow_ids.append(input.workflow_id)  # type: ignore
     upload.errors = []
+    upload.current_process = input.process_name
     upload.save()
 
 
