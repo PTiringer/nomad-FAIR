@@ -331,7 +331,7 @@ class MatchingParser(Parser):
                 tmp = value.pop('__has_comment', None)
                 for key, val in value.items():
                     if key == '__has_key':
-                        matches.append(val in reference_keys)
+                        matches.append(any([re.match(val, k) for k in reference_keys]))
                     elif key == '__has_all_keys':
                         assert isinstance(val, list) and isinstance(
                             reference_keys, list
@@ -387,6 +387,15 @@ class MatchingParser(Parser):
                     is_match = match(self._mainfile_contents_dict, data)
                 except Exception:
                     pass
+            elif mime == 'application/octet-stream' and re.match(r'.+\.nc$', filename):
+                from scipy.io import netcdf_file
+
+                try:
+                    with netcdf_file(filename) as f:
+                        is_match = match(self._mainfile_contents_dict, f.__dict__)
+                except Exception:
+                    pass
+
             if not is_match:
                 return False
 
