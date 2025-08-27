@@ -58,6 +58,7 @@ import { useUploadPageContext } from './UploadPageContext'
 import UploadProgressDialog from './UploadProgressDialog'
 import UploadSearchMenu from './UploadSearchMenu'
 import UploadStatusIcon from './UploadStatusIcon'
+import Ellipsis from '../visualization/Ellipsis'
 
 const useDropButtonStyles = makeStyles(theme => ({
   dropzone: {
@@ -319,11 +320,29 @@ function ProcessingStatus({data}) {
       mainMessage = 'Waiting for processing ...'
     }
   }
-  return <Box marginTop={1} marginBottom={2}>
-    <Typography>
-      {mainMessage}, {processing_successful}/{pagination?.total} entries processed{(processing_failed > 0) && `, ${processing_failed} failed`}
-    </Typography>
-  </Box>
+
+  return (
+    <Box marginTop={1} marginBottom={2}>
+      <Typography
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem'
+        }}
+      >
+        {/* left: ellipsized main message */}
+        <Ellipsis tooltip={mainMessage} style={{ flex: 1, minWidth: 0 }}>
+          {mainMessage}
+        </Ellipsis>
+
+        {/* right: always visible status */}
+        <span style={{ flexShrink: 0 }}>
+          {`${processing_successful}/${pagination?.total} entries processed`}
+          {processing_failed > 0 && `, ${processing_failed} failed`}
+        </span>
+      </Typography>
+    </Box>
+  )
 }
 ProcessingStatus.propTypes = {
   data: PropTypes.object

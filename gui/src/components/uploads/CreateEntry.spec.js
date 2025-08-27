@@ -58,7 +58,10 @@ test.each([
   await startAPI(state, snapshot, username, password)
   render(<UploadPage uploadId={uploadId}/>)
 
-  await waitFor(() => expect(screen.getByText('Processing completed, 3/3 entries processed')).toBeInTheDocument())
+  await waitFor(() => {
+    expect(screen.getByText("Processing completed")).toBeInTheDocument()
+    expect(screen.getByText("3/3 entries processed")).toBeInTheDocument()
+  })
 
   const createEntryButton = screen.getByButtonText('Create from schema')
   await act(async () => { await userEvent.click(createEntryButton) })
