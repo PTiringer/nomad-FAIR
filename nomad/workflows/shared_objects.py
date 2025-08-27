@@ -66,6 +66,7 @@ class ArchiveEntryData:
 class UploadWorkflowIdInput:
     upload_id: str
     workflow_id: str
+    process_name: str
     failure_message: str | None = None
     error_details: str | None = None
 
