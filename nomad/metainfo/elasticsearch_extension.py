@@ -533,7 +533,7 @@ class DocumentType:
                     full_name,
                     new_branch,
                     repeats,
-                    max_level - 1,
+                    max_level - 1 if max_level is not None else None,
                 )
 
         quantities_dynamic = {}
@@ -1261,7 +1261,8 @@ def index_entries(entries: list, refresh: bool = False) -> dict[str, str]:
         # Extract only the errors from the indexing_result
         if indexing_result['errors']:
             for item in indexing_result['items']:
-                if item['index']['status'] >= 400:
+                status = item['index'].get('status')
+                if status is not None and status >= 400:
                     rv[item['index']['_id']] = str(item['index']['error'])
         return rv
 
