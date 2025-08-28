@@ -21,7 +21,7 @@ import logging
 import os
 import time
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, NamedTuple
 
 import billiard
@@ -463,7 +463,7 @@ class Proc(Document):
             errors_str = '; '.join([str(error) for error in errors])
             Proc.log(logger, log_level, 'process failed', errors=errors_str)
 
-        self.complete_time = datetime.utcnow()
+        self.complete_time = datetime.now(timezone.utc)
 
         try:
             self.on_fail()
@@ -999,7 +999,7 @@ def proc_task(task, cls_name, self_id, func_name, args, kwargs):
                 # All looks good
                 proc.on_success()
                 proc.process_status = ProcessStatus.SUCCESS
-                proc.complete_time = datetime.utcnow()
+                proc.complete_time = datetime.now(timezone.utc)
                 if proc.warnings:
                     proc.last_status_message = (
                         f'Process {func_name} completed with warnings'
@@ -1064,7 +1064,7 @@ def proc_task(task, cls_name, self_id, func_name, args, kwargs):
                     # Succeeded and process is done
                     proc.on_success()
                     proc.process_status = ProcessStatus.SUCCESS
-                    proc.complete_time = datetime.utcnow()
+                    proc.complete_time = datetime.now(timezone.utc)
                     if proc.warnings:
                         proc.last_status_message = (
                             f'Process {proc.current_process} completed with warnings'
@@ -1200,7 +1200,7 @@ def process_local(func):
                 # All looks good
                 self.on_success()
                 self.process_status = ProcessStatus.SUCCESS
-                self.complete_time = datetime.utcnow()
+                self.complete_time = datetime.now(timezone.utc)
                 if self.warnings:
                     self.last_status_message = (
                         f'Process {func_name} completed with warnings'

@@ -11,7 +11,7 @@
 import json
 import os
 from collections.abc import Iterable
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, cast
 
 from fastapi import HTTPException, status
@@ -300,7 +300,7 @@ class BundleImporter:
         """
         self.upload = upload
         logger = self.upload.get_logger(bundle_path=self.bundle_path)
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         new_datasets: list[datamodel.Dataset] = []
         dataset_id_mapping: dict[str, str] = {}
         entry_data_to_index: list[datamodel.EntryArchive] = []  # Data to index in ES
@@ -466,9 +466,10 @@ class BundleImporter:
             self.upload.complete_time,
             self.upload.publish_time,
         ):
-            assert timestamp is None or timestamp < current_time_plus_tolerance, (
-                'Timestamp is in the future'
-            )
+            assert (
+                timestamp is None
+                or timestamp.replace(tzinfo=timezone.utc) < current_time_plus_tolerance
+            ), 'Timestamp is in the future'
         # Manage source info
         if self.import_settings.set_from_oasis:
             self.upload.from_oasis = True

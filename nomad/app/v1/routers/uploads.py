@@ -20,7 +20,7 @@ import os
 import shutil
 import tarfile
 import zipfile
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, cast
 from urllib.parse import unquote
@@ -1714,7 +1714,7 @@ async def post_upload_raw_create_dir_path(
         upload.staging_upload_files.raw_create_directory(path)
         # No real processing is needed when just adding a folder, but we should signal that
         # the upload has changed.
-        upload.complete_time = datetime.utcnow()
+        upload.complete_time = datetime.now(timezone.utc)
         upload.save()
     except Exception as e:
         raise HTTPException(
@@ -1930,7 +1930,7 @@ async def post_upload(
         upload_id=upload_id,
         main_author=user,
         upload_name=upload_name,
-        upload_create_time=datetime.utcnow(),
+        upload_create_time=datetime.now(timezone.utc),
         embargo_length=embargo_length,
         publish_directly=publish_directly,
     )

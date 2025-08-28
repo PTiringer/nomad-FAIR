@@ -21,7 +21,7 @@ import io
 import json
 import os.path
 from collections.abc import AsyncIterator, Iterator
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, cast
 
@@ -2003,7 +2003,7 @@ async def post_entry_metadata_edit(
                                 dataset_id=utils.create_uuid(),
                                 user_id=user.user_id,
                                 dataset_name=action_value,
-                                dataset_create_time=datetime.utcnow(),
+                                dataset_create_time=datetime.now(timezone.utc),
                             )
                             dataset.a_mongo.create()
                             mongo_value = dataset.dataset_id
@@ -2060,7 +2060,7 @@ async def post_entry_metadata_edit(
         return data
 
     # perform the change
-    mongo_update['last_edit_time'] = datetime.utcnow()
+    mongo_update['last_edit_time'] = datetime.now(timezone.utc)
     edit(data.query, user, mongo_update, True)
 
     # remove potentially empty old datasets

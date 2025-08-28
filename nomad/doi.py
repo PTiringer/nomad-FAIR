@@ -124,7 +124,7 @@ class DOI(Document):
         # to create new DOIs based on a counter per day until we find a non existing DOI.
         # This might be bad if many DOIs per day are to be expected.
         counter = 1
-        create_time = datetime.datetime.utcnow()
+        create_time = datetime.datetime.now(datetime.timezone.utc)
 
         while True:
             doi_str = f'{config.datacite.prefix}/NOMAD/{create_time.strftime("%Y.%m.%d")}-{counter}'

@@ -17,7 +17,7 @@
 #
 
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import cast
 
@@ -362,7 +362,7 @@ async def post_datasets(
     Create a new dataset.
     """
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     dataset_type = (
         create.dataset_type if create.dataset_type is not None else DatasetType.owned
     )

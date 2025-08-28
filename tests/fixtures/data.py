@@ -606,7 +606,7 @@ def example_datasets(mongo_function, user1, user2):
     )
     datasets = []
     for dataset_name, user, doi in dataset_specs:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         dataset = datamodel.Dataset(
             dataset_id=utils.create_uuid(),
             dataset_name=dataset_name,

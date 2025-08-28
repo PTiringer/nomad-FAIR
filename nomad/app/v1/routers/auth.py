@@ -470,7 +470,9 @@ def generate_simple_token(user_id, expires_in: int):
     Generates and returns JWT encoding just user_id and expiration time, signed with the
     API secret.
     """
-    expires_at = datetime.datetime.utcnow() + datetime.timedelta(seconds=expires_in)
+    expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
+        seconds=expires_in
+    )
     payload = dict(user=user_id, exp=expires_at)
     return jwt.encode(payload, config.services.api_secret, 'HS256')
 

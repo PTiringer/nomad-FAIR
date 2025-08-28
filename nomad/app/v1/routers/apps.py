@@ -370,7 +370,7 @@ async def get_entry_points():
     _ensure_initialized()
     apps = []
     for id, ep in app_entry_points_cache.items():
-        app = ep.app.dict()
+        app = ep.app.model_dump()
         app['id'] = id
         apps.append(app)
     return {'data': apps}
@@ -416,7 +416,7 @@ async def get_entry_point(app_path: str):
                 status_code=422,
                 detail=f'Could not load the search quantity "{name}" defined in {location}.',
             )
-        search_quantities[name] = sq.dict()
+        search_quantities[name] = sq.model_dump()
 
     # columns
     for column in app.columns or []:
@@ -477,7 +477,10 @@ async def get_entry_point(app_path: str):
     for key in (app.filters_locked or {}).keys():
         add_search(key, 'filters_locked')
 
-    response = {'app': entry_point.app.dict(), 'search_quantities': search_quantities}
+    response = {
+        'app': entry_point.app.model_dump(),
+        'search_quantities': search_quantities,
+    }
     app_cache[app_path] = response
     return response
 
