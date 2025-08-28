@@ -2412,7 +2412,7 @@ class FileSystemReader(GeneralReader):
         else:
             start = 0
             pagination = dict(page=1, page_size=10, order='asc')
-        end: int = start + pagination['page_size']
+        end: int = int(start) + int(pagination.get('page_size', 10))
 
         folders: list = []
         files: list = []

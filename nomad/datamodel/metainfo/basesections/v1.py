@@ -1739,7 +1739,7 @@ class CASPureSubstanceSection(PureSubstanceSection):
 
         elif response.status_code == 404:
             logger.warn(f'No CAS entry found with CAS number: {self.cas_number}')
-        elif response.status_code >= 500:
+        elif response.status_code is not None and response.status_code >= 500:
             logger.warn('Remote server error on CAS API call.')
         else:
             logger.warn(

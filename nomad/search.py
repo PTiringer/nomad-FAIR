@@ -429,6 +429,7 @@ def _es_to_api_pagination(
     next_page_after_value = None
     if (
         0 < len(es_response.hits) < es_response.hits.total.value
+        and pagination.page_size is not None
         and len(es_response.hits) >= pagination.page_size
     ):
         last = es_response.hits[-1]
@@ -1230,7 +1231,11 @@ def _api_to_es_aggregation(
             )
             es_agg = es_aggs.bucket(agg_name, terms)
 
-        if agg.entries is not None and agg.entries.size > 0:
+        if (
+            agg.entries is not None
+            and agg.entries.size is not None
+            and agg.entries.size > 0
+        ):
             kwargs: dict[str, Any] = {}
             if agg.entries.required is not None:
                 if agg.entries.required.include is not None:
@@ -1750,7 +1755,10 @@ def search(
     if pagination.page_offset:
         search = search.extra(**{'from': pagination.page_offset})
     elif pagination.page:
-        search = search.extra(**{'from': (pagination.page - 1) * pagination.page_size})
+        if pagination.page is not None and pagination.page_size is not None:
+            search = search.extra(
+                **{'from': (pagination.page - 1) * pagination.page_size}
+            )
     elif page_after_value:
         search = search.extra(search_after=page_after_value.rsplit(':', 1))
 

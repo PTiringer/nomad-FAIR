@@ -876,6 +876,7 @@ async def get_upload_entries(
     upload = get_upload_with_read_access(upload_id, user, include_others=True)
 
     order_by = pagination.order_by
+    assert order_by is not None
     order_by_with_sign = (
         order_by if pagination.order == Direction.asc else '-' + order_by
     )
@@ -1230,7 +1231,7 @@ async def get_upload_raw_path(
                     compress=True,
                 )
             else:
-                if offset < 0:
+                if offset is not None and offset < 0:
                     raise HTTPException(
                         status.HTTP_400_BAD_REQUEST,
                         detail=strip(
@@ -1238,7 +1239,7 @@ async def get_upload_raw_path(
                         Invalid offset provided."""
                         ),
                     )
-                if length <= 0 and length != -1:
+                if length is not None and length <= 0 and length != -1:
                     raise HTTPException(
                         status.HTTP_400_BAD_REQUEST,
                         detail=strip(

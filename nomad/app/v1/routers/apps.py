@@ -509,5 +509,6 @@ async def get_entry_point_search_quantities(data: SearchQuantityRequest):
     else:
         sqs = list(all_search_quantities.values())
     matched = match_search_quantities(sqs, data.query)
-    page, size = data.pagination.page, data.pagination.page_size
+    page = data.pagination.page or 1
+    size = data.pagination.page_size or 10
     return matched[(page - 1) * size : page * size]
