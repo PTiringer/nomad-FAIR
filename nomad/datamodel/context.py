@@ -411,11 +411,18 @@ class ServerContext(Context):
         if '://' not in definition_reference:
             # not a valid url, may be just a plain python name or reference name
             # use information on the current server
-            from nomad.app.v1.routers.metainfo import (
-                get_package_by_section_definition_id,
-            )
+            from nomad.app.v1.routers.metainfo import PackageDefinition
 
-            return get_package_by_section_definition_id(definition_id)
+            mong_package = PackageDefinition.get_by(definition_id)
+
+            return {
+                'entry_id': mong_package['entry_id'],
+                'upload_id': mong_package['upload_id'],
+                'snapshot_package_id': mong_package['snapshot_package_id'],
+                'snapshot_section_id': definition_id,
+                'snapshot_section_ids': mong_package['snapshot_section_ids'],
+                'data': mong_package['package_definition'],
+            }
 
         try:
             url_parts = urlsplit(definition_reference)
@@ -448,7 +455,7 @@ class ServerContext(Context):
                 f'cannot retrieve section {definition_id} from {definition_reference}'
             )
 
-        return response.json()['data']
+        return response.json()
 
     def hdf5_path(self, section: MSection):
         _, entry_id = self._get_ids(section.m_root(), required=True)
@@ -662,7 +669,7 @@ class ClientContext(Context):
                 f'cannot retrieve section {definition_id} from {definition_reference}'
             )
 
-        return response.json()['data']
+        return response.json()
 
     @contextmanager
     def update_entry(

@@ -81,12 +81,12 @@ from nomad.graph.model import (
 from nomad.groups import MongoUserGroup, get_mongo_user_group
 from nomad.metainfo import (
     Definition,
+    MSectionReference,
     Package,
     Quantity,
     QuantityReference,
     Reference,
     Section,
-    SectionReference,
     SubSection,
 )
 from nomad.metainfo.data_type import JSON, Datatype
@@ -1295,7 +1295,7 @@ class ArchiveLikeReader(GeneralReader):
 
         # this is not likely to be reached
         # it does not work anyway
-        proxy = SectionReference().normalize(m_def)
+        proxy = MSectionReference().normalize(m_def)
         proxy.m_proxy_context = ServerContext(
             get_upload_with_read_access(node.upload_id, self.user, include_others=True)
         )
@@ -3242,7 +3242,7 @@ class DefinitionReader(ArchiveLikeReader):
             elif (
                 isinstance(s, Section)
                 and isinstance(v, str)
-                and isinstance(q.type, SectionReference)
+                and isinstance(q.type, MSectionReference)
             ):
                 v = __convert(s.m_resolve(p))
 

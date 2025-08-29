@@ -28,12 +28,12 @@ from fastapi import HTTPException
 from nomad import utils
 from nomad.metainfo import (
     Definition,
+    MSectionReference,
     Package,
     Quantity,
     QuantityReference,
     Reference,
     Section,
-    SectionReference,
     SubSection,
 )
 
@@ -534,7 +534,7 @@ class RequiredReader:
                     entry_id,
                 )
 
-        proxy = SectionReference().normalize(definition)
+        proxy = MSectionReference().normalize(definition)
         proxy.m_proxy_context = context
         return self._unwrap_reference(proxy.section_cls.m_def)
 

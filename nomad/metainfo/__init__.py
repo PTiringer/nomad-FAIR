@@ -50,7 +50,7 @@ from .metainfo import (
     DeriveError,
     MetainfoReferenceError,
     Reference,
-    SectionReference,
+    MSectionReference,
     QuantityReference,
     File,
     URL,

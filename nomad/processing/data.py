@@ -70,7 +70,7 @@ from nomad.app.v1.models import (
     TermsAggregation,
     restrict_query_to_upload,
 )
-from nomad.app.v1.routers.metainfo import store_package_definition
+from nomad.app.v1.routers.metainfo import PackageDefinition
 from nomad.archive import to_json
 from nomad.common import is_safe_relative_path
 from nomad.config import config
@@ -1667,21 +1667,13 @@ class Entry(Proc):
 
         if config.process.store_package_definition_in_mongo:
             if archive.definitions is not None:
-                store_package_definition(
-                    archive.definitions,
-                    upload_id=archive.metadata.upload_id,
-                    entry_id=archive.metadata.entry_id,
-                )
+                PackageDefinition.create_new(archive.definitions)
             if archive.data is not None:
                 pkg_definitions = getattr(
                     archive.data.m_def.m_root(), 'definitions', None
                 )
                 if pkg_definitions is not None:
-                    store_package_definition(
-                        pkg_definitions,
-                        upload_id=archive.metadata.upload_id,
-                        entry_id=archive.metadata.entry_id,
-                    )
+                    PackageDefinition.create_new(pkg_definitions)
 
         # save the archive msg-pack
         try:
