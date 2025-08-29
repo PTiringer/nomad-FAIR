@@ -13,11 +13,10 @@ from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
 
 from nomad import infrastructure
+from nomad.actions import TaskQueue, client
+from nomad.actions.activities.util import get_nomad_internal_activities
+from nomad.actions.workflows.util import get_nomad_internal_workflows
 from nomad.config import config
-from nomad.orchestrator import client
-from nomad.orchestrator.activities.util import get_nomad_internal_activities
-from nomad.orchestrator.shared.constant import TaskQueue
-from nomad.orchestrator.workflows.util import get_nomad_internal_workflows
 from nomad.workflows import workflows
 
 elastic_test_entries_index = 'nomad_entries_v1_test'

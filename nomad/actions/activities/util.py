@@ -1,6 +1,7 @@
 from collections.abc import Callable
 
-from nomad.orchestrator.shared.constant import TaskQueue
+from nomad.actions import TaskQueue
+from nomad.actions.action import get_actions
 from nomad.workflows.activities import (
     cleanup_activity,
     cleanup_workflow_tmp_dir_activity,
@@ -56,7 +57,9 @@ def get_nomad_internal_activities() -> list[Callable]:
 
 def get_all_activities(task_queue: TaskQueue) -> list[Callable]:
     activities = []
-
+    for action in get_actions().values():
+        if action.task_queue == task_queue:
+            activities.extend(action.activities)
     if task_queue == TaskQueue.NOMAD_INTERNAL_WORKFLOWS:
         activities.extend(get_nomad_internal_activities())
     return activities

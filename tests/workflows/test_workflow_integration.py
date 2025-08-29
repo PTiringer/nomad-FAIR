@@ -3,7 +3,7 @@ import uuid
 
 import pytest
 
-from nomad.orchestrator.shared.constant import TaskQueue
+from nomad.actions import TaskQueue
 from nomad.processing.base import ProcessStatus
 from nomad.processing.data import Entry, Upload
 from nomad.workflows.shared_objects import (

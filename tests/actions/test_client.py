@@ -1,6 +1,6 @@
 import pytest
 
-from nomad.orchestrator.client import get_client
+from nomad.actions.client import get_client
 
 
 @pytest.mark.skip(reason='CI cannot connect for some reason.')

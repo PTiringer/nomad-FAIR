@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Literal, Union, cast
 
 from pydantic import BaseModel, Field, model_validator
 
+from nomad.actions.shared.constant import TaskQueue
 from nomad.common import download_file, get_package_path, is_safe_relative_path, is_url
 
 from .common import Options
@@ -34,6 +35,7 @@ example_prefix = '__examples__'
 if TYPE_CHECKING:
     from fastapi import FastAPI
 
+    from nomad.actions import Action
     from nomad.metainfo import SchemaPackage
     from nomad.normalizing import Normalizer as NormalizerBaseClass
     from nomad.parsing import Parser as ParserBaseClass
@@ -493,6 +495,30 @@ class APIEntryPoint(EntryPoint):
         pass
 
 
+class ActionEntryPoint(EntryPoint):
+    """Base model for action plugin entry points."""
+
+    entry_point_type: Literal['action'] = Field(
+        'action',
+        description='Determines the entry point type.',
+        json_schema_extra={'hidden': True},
+    )  # type: ignore[call-overload]
+    task_queue: str = Field(
+        default=TaskQueue.CPU, description='Determines the task queue for this action'
+    )
+
+    @model_validator(mode='before')
+    @classmethod
+    def _validate(cls, values):
+        if isinstance(values, BaseModel):
+            values = values.model_dump(exclude_none=True)
+        return values
+
+    def load(self) -> 'Action':
+        """Used to load an action instance. You should override this method in your subclass."""
+        pass
+
+
 class PluginBase(BaseModel):
     """
     Base model for a NOMAD plugin.
@@ -746,6 +772,7 @@ EntryPointType = Union[  # noqa
     AppEntryPoint,
     ExampleUploadEntryPoint,
     APIEntryPoint,
+    ActionEntryPoint,
 ]
 
 

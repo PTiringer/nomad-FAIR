@@ -3,9 +3,10 @@ import concurrent.futures
 from temporalio.client import Client
 from temporalio.worker import Interceptor, Worker
 
-from nomad.orchestrator.activities.util import get_all_activities
-from nomad.orchestrator.shared.constant import TaskQueue
-from nomad.orchestrator.workflows.util import get_all_workflows
+from nomad.actions import TaskQueue
+from nomad.actions.activities.util import get_all_activities
+from nomad.actions.workflows.util import get_all_workflows
+from nomad.infrastructure import setup
 
 
 def get_worker(
@@ -22,5 +23,6 @@ def get_worker(
         interceptors=interceptors or [],
         activity_executor=activity_executor,
     )
+    setup()
 
     return worker
