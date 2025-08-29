@@ -32,9 +32,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from temporalio.client import Client
 
 from nomad import infrastructure
+from nomad.actions.client import get_client
 from nomad.config import config
 from nomad.config.models.plugins import APIEntryPoint
-from nomad.orchestrator.client import get_client
 
 from .static import GuiFiles
 from .static import app as static_files_app

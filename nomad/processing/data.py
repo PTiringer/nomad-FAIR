@@ -60,6 +60,8 @@ from structlog.processors import StackInfoRenderer, TimeStamper, format_exc_info
 from temporalio.service import RPCError
 
 from nomad import client, datamodel, infrastructure, metainfo, parsing, search, utils
+from nomad.actions import TaskQueue
+from nomad.actions.client import get_client
 from nomad.app.v1.models import (
     Aggregation,
     MetadataEditRequest,
@@ -96,8 +98,6 @@ from nomad.files import (
 from nomad.groups import MongoUserGroup, user_group_exists
 from nomad.metainfo.data_type import Datatype, Datetime
 from nomad.normalizing import normalizers
-from nomad.orchestrator.client import get_client
-from nomad.orchestrator.shared.constant import TaskQueue
 from nomad.parsing import Parser
 from nomad.parsing.parsers import match_parser, parser_dict, parsers
 from nomad.processing.base import (
