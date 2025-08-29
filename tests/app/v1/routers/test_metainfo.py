@@ -21,7 +21,7 @@ from zipfile import ZipFile
 
 import pytest
 
-from nomad.app.v1.routers.metainfo import store_package_definition
+from nomad.app.v1.routers.metainfo import PackageDefinition
 from nomad.config import config
 from nomad.datamodel import ClientContext, EntryArchive
 from nomad.metainfo import MetainfoReferenceError, MSection
@@ -51,16 +51,18 @@ def test_metainfo_section_id_endpoint(metainfo_data, mongo_module, client):
     )
 
     package = MSection.from_dict(metainfo_data)
+    package.entry_id = 'test_entry_id'
+    package.upload_id = 'test_upload_id'
 
-    store_package_definition(package, with_root_def=True, with_out_meta=True)
+    PackageDefinition.create_new(
+        package, with_root_def=True, with_out_meta=True, with_def_id=False
+    )
 
     section_id = package.section_definitions[0].definition_id
 
     response = client.get(f'metainfo/{section_id}')
     assert response.status_code == 200
-    pkg_definition = response.json()['data']
-    del pkg_definition['entry_id_based_name']
-    assert pkg_definition == metainfo_data
+    assert response.json()['data'] == metainfo_data
 
     response = client.get(f'metainfo/{section_id[::-1]}')
     assert response.status_code == 404

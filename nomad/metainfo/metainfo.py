@@ -34,6 +34,7 @@ from urllib.parse import urlsplit, urlunsplit
 import docstring_parser
 import jmespath
 import pint
+from cachetools import LRUCache
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from nomad.config import config
@@ -200,7 +201,7 @@ class MProxy:
             self.__dict__.update(**self.m_proxy_resolved.__dict__)
 
     def _resolve_fragment(self, context_section, fragment_with_id):
-        if not isinstance(self.m_proxy_type, SectionReference):
+        if not isinstance(self.m_proxy_type, MSectionReference):
             return context_section.m_resolve(fragment_with_id)
 
         # First, we try to resolve based on definition names
@@ -290,7 +291,7 @@ class MProxy:
 
 class SectionProxy(MProxy):
     def __init__(self, m_proxy_value, **kwargs):
-        kwargs.setdefault('m_proxy_type', SectionReference())
+        kwargs.setdefault('m_proxy_type', MSectionReference())
         super().__init__(m_proxy_value=m_proxy_value, **kwargs)
 
     def m_proxy_resolve(self):
@@ -467,8 +468,14 @@ class Reference:
         return self
 
     @property
+    def target_definition_id(self):
+        return self.target_section_def.definition_id
+
+    @property
     def _proxy_type(self):
-        return SectionReference() if self._definition is None else self._definition.type
+        return (
+            MSectionReference() if self._definition is None else self._definition.type
+        )
 
     def _check_shape(self, value):
         dimension: int = 0
@@ -579,7 +586,11 @@ class Reference:
         return _convert(value)
 
 
-class SectionReference(Reference):
+class MSectionReference(Reference):
+    """
+    !!! FOR INTERNAL USE ONLY !!!
+    """
+
     python_definition = re.compile(r'^\w*(\.\w*)*(@\w{40})?$')
 
     def __init__(self):
@@ -615,6 +626,10 @@ class QuantityReference(Reference):
     def __init__(self, quantity_def):
         super().__init__(quantity_def.m_parent)
         self.target_quantity_def = quantity_def
+
+    @property
+    def target_definition_id(self):
+        return self.target_quantity_def.definition_id
 
     def serialize_self(self, section):
         return {
@@ -688,6 +703,12 @@ def constraint(warning):
     return decorator if f is None else decorator(f)
 
 
+def _track_changes(section: MSection | None):
+    while section is not None:
+        section.m_mod_count += 1
+        section = section.m_parent
+
+
 def metainfo_modifier(method):
     """
     Decorate a method as a modifier that modifies the section.
@@ -696,7 +717,7 @@ def metainfo_modifier(method):
     assert method.__name__ != '__set__'
 
     def wrapper(self, *args, **kwargs):
-        self.m_mod_count += 1
+        _track_changes(self)
         return method(self, *args, **kwargs)
 
     return wrapper
@@ -716,10 +737,14 @@ def metainfo_setter(method):
         if obj is None:
             raise KeyError('Cannot overwrite definition. Only data can be set.')
 
-        obj.m_mod_count += 1
+        _track_changes(obj)
         return method(self, obj, value, **kwargs)
 
     return wrapper
+
+
+# use to cache packages that are retrieved from MongoDB
+_mongo_package_cache = LRUCache(1024)
 
 
 class Context:
@@ -800,25 +825,33 @@ class Context:
     def resolve_section_definition(
         self, definition_reference: str, definition_id: str
     ) -> type[MSectionBound] | None:
-        pkg_definition = self.retrieve_package_by_section_definition_id(
+        mongo_package = self.retrieve_package_by_section_definition_id(
             definition_reference, definition_id
         )
 
-        entry_id_based_name = pkg_definition.pop('entry_id_based_name')
-        upload_id = pkg_definition.pop('upload_id', None)
-        entry_id = pkg_definition.pop('entry_id', None)
-        pkg: Package = Package.m_from_dict(pkg_definition)
-        if entry_id_based_name != '*':
-            pkg.entry_id_based_name = entry_id_based_name
-        pkg.upload_id = upload_id
-        pkg.entry_id = entry_id
+        snapshot_package_id = mongo_package['snapshot_package_id']
 
-        pkg.m_context = self
-        pkg.init_metainfo()
+        pkg: Package
+        if snapshot_package_id in _mongo_package_cache:
+            pkg = _mongo_package_cache[snapshot_package_id]
+        else:
+            pkg = Package.m_from_dict(mongo_package['data'], m_context=self)
+            pkg.upload_id = mongo_package.get('upload_id', None)
+            pkg.entry_id = mongo_package.get('entry_id', None)
+
+            pkg.init_metainfo()
+            pkg.snapshot_id = snapshot_package_id
+            for snapshot, section in zip(
+                mongo_package['snapshot_section_ids'], pkg.section_definitions
+            ):
+                section.snapshot_id = snapshot
+
+            _mongo_package_cache[snapshot_package_id] = pkg
 
         for section in pkg.section_definitions:
-            if section.definition_id == definition_id:
+            if section.snapshot_id == definition_id:
                 return section.section_cls
+
         return None
 
     def hdf5_path(self, section: MSection):
@@ -1005,7 +1038,7 @@ class MSection(metaclass=MObjectMeta):
         # transfer names, descriptions, constraints, event_handlers
         constraints: set[str] = set()
         event_handlers: set[TypingCallable] = set(m_def.event_handlers)
-        for name, attr in cls.__dict__.items():
+        for name, attr in sorted(cls.__dict__.items()):
             # transfer names and descriptions for properties, init properties
             if isinstance(attr, Attribute | Property):
                 attr.name = name
@@ -2168,7 +2201,7 @@ class MSection(metaclass=MObjectMeta):
         # need to deserialize the definitions first as they are needed for the rest
         # need to deserialize the metadata first as they are needed for the rest
         processed = []
-        for item in ('definitions', 'metadata'):
+        for item in ('metadata', 'definitions'):
             if item in data:
                 try:
                     self.m_set(item, data[item], context=m_context)
@@ -2177,7 +2210,17 @@ class MSection(metaclass=MObjectMeta):
                     pass
 
         if 'definitions' in processed:
-            self.definitions.archive = self
+            self.definitions.custom_package = True
+            if self.metadata:
+                self.definitions.entry_id = self.metadata.entry_id
+                self.definitions.upload_id = self.metadata.upload_id
+            else:
+                self.definitions.entry_id = data.get('metadata', {}).get(
+                    'entry_id', None
+                )
+                self.definitions.upload_id = data.get('metadata', {}).get(
+                    'upload_id', None
+                )
 
         for name, value in data.items():
             if name in processed or name.startswith(('m_', 'a_')):
@@ -2257,7 +2300,7 @@ class MSection(metaclass=MObjectMeta):
                     definitions := getattr(archive_root, 'definitions', None), Package
                 ):
                     def_section = definitions
-            m_def_proxy = SectionReference().normalize(m_def, section=def_section)  # noqa
+            m_def_proxy = MSectionReference().normalize(m_def, section=def_section)  # noqa
             m_def_proxy.m_proxy_context = m_context
             cls = m_def_proxy.section_cls
 
@@ -2833,6 +2876,14 @@ class Definition(MSection):
         self._cached_count: int | None = None
         self._cached_hash: _HASH_OBJ | None = None
 
+        # a definition could potentially be loaded from mongodb with an outdated hashing algorithm
+        # thus the then definition ID shall be treated as a snapshot (revision) ID that may not comply
+        # with the current hashing algorithm
+        # when it is loaded from mongodb, the snapshot ID will be set
+        # when it is set, we always return the snapshot ID as definition ID
+        # regardless of the hashing algorithm
+        self.snapshot_id = None
+
         if is_bootstrapping:
             super().__init__(*args, **kwargs)
             return
@@ -2976,22 +3027,18 @@ class Definition(MSection):
 
         return seed
 
-    def hash(self, regenerate=False) -> _HASH_OBJ:
+    def hash(self) -> _HASH_OBJ:
         """
         Generates a hash object based on the unique representation of the definition.
         """
-        if (
-            self._cached_hash is None
-            or regenerate
-            or self._cached_count != self.m_mod_count
-        ):
+        if self._cached_hash is None or self._cached_count != self.m_mod_count:
             self._cached_count = self.m_mod_count
             self._cached_hash = default_hash()
             self._cached_hash.update(self._hash_seed().encode('utf-8'))
 
             for item in self.attributes:
                 if self is not item:
-                    self._cached_hash.update(item.hash(regenerate).digest())
+                    self._cached_hash.update(item.hash().digest())
 
         return self._cached_hash
 
@@ -3002,7 +3049,7 @@ class Definition(MSection):
 
         Returns the hash digest.
         """
-        return self.hash().hexdigest()
+        return self.snapshot_id or self.hash().hexdigest()
 
     def definition_reference(self, source, **kwargs):
         """
@@ -3017,10 +3064,6 @@ class Definition(MSection):
 
         if definition_reference.startswith('entry_id:'):
             # This is not from a python module, use archive reference instead
-            # two cases:
-            # 1. loaded from file so archive.definitions.archive is set by parser
-            # 2. loaded from versioned mongo so entry_id_based_name is set by mongo
-            # second one has no metadata, so do not create reference
             if context := self.m_root().m_context:
                 relative_name = context.create_reference(source, None, self, **kwargs)
                 if relative_name:
@@ -3476,7 +3519,7 @@ class Quantity(Property):
             str: The generated unique representation.
         """
         if isinstance(self.type, Reference):
-            reference_seed = f'Ref->{self.type.target_section_def.qualified_name()}'
+            reference_seed = self.type.target_definition_id
         else:
             reference_seed = json.dumps(_adapter.serialize(self.type, section=self))
 
@@ -3653,26 +3696,11 @@ class SubSection(Property):
         except MetainfoReferenceError as e:
             assert False, f'Cannot resolve "sub_section": {str(e)}'
 
-    def hash(self, regenerate=False) -> _HASH_OBJ:
-        if (
-            self._cached_hash is not None
-            and not regenerate
-            and self._cached_count == self.m_mod_count
-        ):
-            return self._cached_hash
-
-        self._cached_hash = super().hash(regenerate)
-
-        self._cached_hash.update(('T' if self.repeats else 'F').encode('utf-8'))
-
-        for item in itertools.chain(
-            self.sub_section.quantities,
-            self.sub_section.sub_sections,
-            self.sub_section.base_sections,
-            self.sub_section.inner_section_definitions,
-        ):
-            if self is not item:
-                self._cached_hash.update(item.hash(regenerate).digest())
+    def hash(self) -> _HASH_OBJ:
+        if self._cached_hash is None or self._cached_count != self.m_mod_count:
+            self._cached_hash = super().hash()
+            self._cached_hash.update(('T' if self.repeats else 'F').encode('utf-8'))
+            self._cached_hash.update(self.sub_section.hash().digest())
 
         return self._cached_hash
 
@@ -4060,15 +4088,11 @@ class Section(Definition):
 
         return super().m_from_dict(data, **kwargs)
 
-    def hash(self, regenerate=False) -> _HASH_OBJ:
-        if (
-            self._cached_hash is not None
-            and not regenerate
-            and self._cached_count == self.m_mod_count
-        ):
+    def hash(self) -> _HASH_OBJ:
+        if self._cached_hash is not None and self._cached_count == self.m_mod_count:
             return self._cached_hash
 
-        self._cached_hash = super().hash(regenerate)
+        self._cached_hash = super().hash()
         self._cached_hash.update(
             ('T' if self.extends_base_section else 'F').encode('utf-8')
         )
@@ -4080,7 +4104,7 @@ class Section(Definition):
             self.inner_section_definitions,
         ):
             if self is not item:
-                self._cached_hash.update(item.hash(regenerate).digest())
+                self._cached_hash.update(item.hash().digest())
 
         return self._cached_hash
 
@@ -4129,10 +4153,9 @@ class Package(Definition):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.errors, self.warnings = [], []
-        self.archive = None
-        self.entry_id_based_name = None
         self.upload_id = None
         self.entry_id = None
+        self.custom_package: bool = False
 
     def __init_metainfo__(self):
         super().__init_metainfo__()
@@ -4203,22 +4226,10 @@ class Package(Definition):
         return super().m_from_dict(data, **kwargs)
 
     def qualified_name(self):
-        # packages loaded from files have a hot qualified name based on entry id
-        # this name is not serialized which causes '*' name when reloaded from cold
-        # we store this name in a `str` and it will be reloaded from cold
-        # see Context.resolve_section_definition()
-        if self.entry_id_based_name:
-            return self.entry_id_based_name
-
-        if self.archive:
-            # If the package was defined within a regular uploaded archive file, we
-            # use its id, which is a globally unique identifier for the package.
-            if self.archive.metadata and self.archive.metadata.entry_id:
-                self.entry_id_based_name = f'entry_id:{self.archive.metadata.entry_id}'
-            else:
-                self.entry_id_based_name = f'entry_id:*'
-
-            return self.entry_id_based_name
+        if self.custom_package:
+            # if entry_id is set, it is coming from custom definition stored in archive or mongo
+            # check m_parent as well as the above condition may not be met in tests
+            return f'entry_id:{self.entry_id or "*"}'
 
         return super().qualified_name()
 
@@ -4246,19 +4257,13 @@ class Package(Definition):
             if archive.metadata.entry_name is None and self.name and self.name != '*':
                 archive.metadata.entry_name = self.name
 
-    def hash(self, regenerate=False) -> _HASH_OBJ:
-        if (
-            self._cached_hash is not None
-            and not regenerate
-            and self._cached_count == self.m_mod_count
-        ):
-            return self._cached_hash
+    def hash(self) -> _HASH_OBJ:
+        if self._cached_hash is None or self._cached_count != self.m_mod_count:
+            self._cached_hash = super().hash()
 
-        self._cached_hash = super().hash(regenerate)
-
-        for item in self.section_definitions:  # pylint: disable=not-an-iterable
-            if self is not item:
-                self._cached_hash.update(item.hash(regenerate).digest())
+            for item in self.section_definitions:  # pylint: disable=not-an-iterable
+                if self is not item:
+                    self._cached_hash.update(item.hash().digest())
 
         return self._cached_hash
 
@@ -4384,16 +4389,16 @@ Section.inner_section_definitions = SubSection(
 )
 
 Section.base_sections = Quantity(
-    type=SectionReference(), shape=['0..*'], default=[], name='base_sections'
+    type=MSectionReference(), shape=['0..*'], default=[], name='base_sections'
 )
 Section.extending_sections = Quantity(
-    type=SectionReference(), shape=['0..*'], default=[], name='extending_sections'
+    type=MSectionReference(), shape=['0..*'], default=[], name='extending_sections'
 )
 Section.extends_base_section = Quantity(
     type=bool, default=False, name='extends_base_section'
 )
 Section.inheriting_sections = Quantity(
-    type=SectionReference(),
+    type=MSectionReference(),
     shape=['0..*'],
     default=[],
     name='inheriting_sections',
@@ -4420,12 +4425,12 @@ def all_base_sections(self) -> list[Section]:
     for base_section in self.base_sections:
         if isinstance(base_section, SectionProxy):
             # In some reference resolution contexts, it is important to reevaluate later
-            self.m_mod_count += 1
+            _track_changes(self)
             continue
         for base_base_section in base_section.all_base_sections:
             if isinstance(base_base_section, SectionProxy):
                 # In some reference resolution contexts, it is important to reevaluate later
-                self.m_mod_count += 1
+                _track_changes(self)
                 continue
             result.append(base_base_section)
         result.append(base_section)
@@ -4438,12 +4443,12 @@ def all_inheriting_sections(self) -> list[Section]:
     for inheriting_section in self.inheriting_sections:
         if isinstance(inheriting_section, SectionProxy):
             # In some reference resolution contexts, it is important to reevaluate later
-            self.m_mod_count += 1
+            _track_changes(self)
             continue
         for inheriting_inheriting_section in inheriting_section.all_inheriting_sections:
             if isinstance(inheriting_inheriting_section, SectionProxy):
                 # In some reference resolution contexts, it is important to reevaluate later
-                self.m_mod_count += 1
+                _track_changes(self)
                 continue
             result.add(inheriting_inheriting_section)
         result.add(inheriting_section)
@@ -4543,7 +4548,7 @@ SubSection.repeats = Quantity(type=bool, name='repeats', default=False)
 SubSection.key_quantity = Quantity(type=str, name='key_quantity', default=None)
 
 SubSection.sub_section = Quantity(
-    type=SectionReference(),
+    type=MSectionReference(),
     name='sub_section',
     aliases=['section_definition', 'section_def', 'section'],
 )

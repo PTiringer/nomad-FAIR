@@ -20,10 +20,7 @@ import numpy as np
 import pytest
 import yaml
 
-from nomad.app.v1.routers.metainfo import (
-    get_package_by_section_definition_id,
-    store_package_definition,
-)
+from nomad.app.v1.routers.metainfo import PackageDefinition
 from nomad.metainfo import MCategory, MSection, Quantity, SubSection
 from nomad.metainfo.metainfo import Definition, MEnum, Package, Reference
 
@@ -116,16 +113,18 @@ def test_from_dict(metainfo_data, monkeypatch, mongo_module):
     metainfo_data['m_def'] += f'@{Package.m_def.definition_id}'
 
     package = MSection.from_dict(metainfo_data)
+    package.entry_id = 'placeholder'
+    package.upload_id = 'placeholder'
 
     assert package.m_to_dict(with_root_def=True, with_out_meta=True) == metainfo_data
 
-    store_package_definition(package, with_root_def=True, with_out_meta=True)
+    PackageDefinition.create_new(
+        package, with_root_def=True, with_out_meta=True, with_def_id=False
+    )
 
     section_id = package.section_definitions[0].definition_id
 
-    pkg_definition = get_package_by_section_definition_id(section_id)
-    del pkg_definition['entry_id_based_name']
-    assert pkg_definition == metainfo_data
+    assert PackageDefinition.get_by(section_id)['package_definition'] == metainfo_data
 
 
 def test_with_meta(example):

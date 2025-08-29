@@ -118,34 +118,34 @@ def assert_dict(d1, d2):
                             None,
                             {
                                 'name': 'Holder',
-                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'base',
+                                        'shape': [],
                                         'type': {
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/1',
                                         },
-                                        'shape': [],
-                                        'definition_id': '',
+                                        'definition_id': '2e90eaff57224868b2d8a7b5a1ef4f51f661aefb',
                                     },
                                     {
                                         'name': 'derived',
+                                        'shape': [],
                                         'type': {
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/2',
                                         },
-                                        'shape': [],
-                                        'definition_id': '',
+                                        'definition_id': 'bce3fd28f47edfedf21980b553bbd68163b84212',
                                     },
                                 ],
                                 'sub_sections': [
                                     {
                                         'name': 'derived_section',
                                         'sub_section': f'{prefix}/2',
-                                        'definition_id': '',
+                                        'definition_id': 'ad5b9321c87668f404d99bdc95976f21cab69562',
                                     }
                                 ],
+                                'definition_id': 'b7675bcdc8a25f171961a8e3b85ece9e59c6e999',
                             },
                         ]
                     }
@@ -173,7 +173,6 @@ def assert_dict(d1, d2):
                         'section_definitions': [
                             {
                                 'name': 'Inner',
-                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'n_impurities',
@@ -181,13 +180,13 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
-                                        'definition_id': '',
+                                        'definition_id': '77711c525a6b448c7b38cbce02762eff0fa36666',
                                     }
                                 ],
+                                'definition_id': '47c417480d4b9de8aa246adda72b851d7be8bc53',
                             },
                             {
                                 'name': 'Base',
-                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'dimensionality',
@@ -195,7 +194,7 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
-                                        'definition_id': '',
+                                        'definition_id': '5c3ae225c80c8ef5f36dfd337501d2e5c23508a0',
                                     },
                                     {
                                         'name': 'n_points',
@@ -203,58 +202,59 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
-                                        'definition_id': '',
+                                        'definition_id': 'b08da41772eab4e57065765121cfc141d2a49126',
                                     },
                                 ],
+                                'definition_id': '5948767827ba6a72947d0ef6fddc813604aaf326',
                             },
                             {
                                 'name': 'Derived',
-                                'definition_id': '',
                                 'base_sections': [f'{prefix}/1'],
                                 'quantities': [
-                                    {
-                                        'name': 'weights',
-                                        'type': {
-                                            'type_kind': 'numpy',
-                                            'type_data': 'float64',
-                                        },
-                                        'shape': ['*'],
-                                        'definition_id': '',
-                                    },
                                     {
                                         'name': 'inner',
                                         'type': {
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/0',
                                         },
-                                        'definition_id': '',
+                                        'definition_id': '79576fa3daa3dc828511d41feb4a19e750b2b805',
+                                    },
+                                    {
+                                        'name': 'weights',
+                                        'shape': ['*'],
+                                        'type': {
+                                            'type_kind': 'numpy',
+                                            'type_data': 'float64',
+                                        },
+                                        'definition_id': 'bab4bd7bdcf8d0b60efb07b96a5b5ba0d04ec988',
                                     },
                                 ],
+                                'definition_id': '3d31b34a5bea2a7a100989df5292bcf3f8e98194',
                             },
                             {
                                 'name': 'Holder',
-                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'base',
+                                        'shape': [],
                                         'type': {
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/1',
                                         },
-                                        'shape': [],
-                                        'definition_id': '',
+                                        'definition_id': '2e90eaff57224868b2d8a7b5a1ef4f51f661aefb',
                                     },
                                     {
                                         'name': 'derived',
+                                        'shape': [],
                                         'type': {
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/2',
                                         },
-                                        'shape': [],
-                                        'definition_id': '',
+                                        'definition_id': 'bce3fd28f47edfedf21980b553bbd68163b84212',
                                     },
                                 ],
                                 'sub_sections': [f'{prefix}/2'],
+                                'definition_id': 'b7675bcdc8a25f171961a8e3b85ece9e59c6e999',
                             },
                         ]
                     }
@@ -274,7 +274,6 @@ def assert_dict(d1, d2):
                             None,
                             {
                                 'name': 'Base',
-                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'dimensionality',
@@ -282,7 +281,7 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
-                                        'definition_id': '',
+                                        'definition_id': '5c3ae225c80c8ef5f36dfd337501d2e5c23508a0',
                                     },
                                     {
                                         'name': 'n_points',
@@ -290,58 +289,59 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
-                                        'definition_id': '',
+                                        'definition_id': 'b08da41772eab4e57065765121cfc141d2a49126',
                                     },
                                 ],
+                                'definition_id': '5948767827ba6a72947d0ef6fddc813604aaf326',
                             },
                             {
                                 'name': 'Derived',
-                                'definition_id': '',
                                 'base_sections': [f'{prefix}/1'],
                                 'quantities': [
-                                    {
-                                        'name': 'weights',
-                                        'type': {
-                                            'type_kind': 'numpy',
-                                            'type_data': 'float64',
-                                        },
-                                        'shape': ['*'],
-                                        'definition_id': '',
-                                    },
                                     {
                                         'name': 'inner',
                                         'type': {
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/0',
                                         },
-                                        'definition_id': '',
+                                        'definition_id': '79576fa3daa3dc828511d41feb4a19e750b2b805',
+                                    },
+                                    {
+                                        'name': 'weights',
+                                        'shape': ['*'],
+                                        'type': {
+                                            'type_kind': 'numpy',
+                                            'type_data': 'float64',
+                                        },
+                                        'definition_id': 'bab4bd7bdcf8d0b60efb07b96a5b5ba0d04ec988',
                                     },
                                 ],
+                                'definition_id': '3d31b34a5bea2a7a100989df5292bcf3f8e98194',
                             },
                             {
                                 'name': 'Holder',
-                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'base',
+                                        'shape': [],
                                         'type': {
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/1',
                                         },
-                                        'shape': [],
-                                        'definition_id': '',
+                                        'definition_id': '2e90eaff57224868b2d8a7b5a1ef4f51f661aefb',
                                     },
                                     {
                                         'name': 'derived',
+                                        'shape': [],
                                         'type': {
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/2',
                                         },
-                                        'shape': [],
-                                        'definition_id': '',
+                                        'definition_id': 'bce3fd28f47edfedf21980b553bbd68163b84212',
                                     },
                                 ],
                                 'sub_sections': [f'{prefix}/2'],
+                                'definition_id': 'b7675bcdc8a25f171961a8e3b85ece9e59c6e999',
                             },
                         ]
                     }
@@ -368,9 +368,7 @@ def assert_dict(d1, d2):
                                     'base': f'{prefix}/3/quantities/0',
                                     'derived': f'{prefix}/3/quantities/1',
                                 },
-                                'inherited_sections': [
-                                    'metainfo/tests.graph.test_definition_reader/section_definitions/3'
-                                ],
+                                'inherited_sections': [f'{prefix}/3'],
                                 'all_base_sections': [],
                             },
                         ]
@@ -389,7 +387,6 @@ def assert_dict(d1, d2):
                         'section_definitions': [
                             {
                                 'name': 'Inner',
-                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'n_impurities',
@@ -397,13 +394,13 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
-                                        'definition_id': '',
+                                        'definition_id': '77711c525a6b448c7b38cbce02762eff0fa36666',
                                     }
                                 ],
+                                'definition_id': '47c417480d4b9de8aa246adda72b851d7be8bc53',
                             },
                             {
                                 'name': 'Base',
-                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'dimensionality',
@@ -411,7 +408,7 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
-                                        'definition_id': '',
+                                        'definition_id': '5c3ae225c80c8ef5f36dfd337501d2e5c23508a0',
                                     },
                                     {
                                         'name': 'n_points',
@@ -419,33 +416,34 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
-                                        'definition_id': '',
+                                        'definition_id': 'b08da41772eab4e57065765121cfc141d2a49126',
                                     },
                                 ],
+                                'definition_id': '5948767827ba6a72947d0ef6fddc813604aaf326',
                             },
                             {
                                 'name': 'Derived',
-                                'definition_id': '',
                                 'base_sections': [f'{prefix}/1'],
                                 'quantities': [
-                                    {
-                                        'name': 'weights',
-                                        'type': {
-                                            'type_kind': 'numpy',
-                                            'type_data': 'float64',
-                                        },
-                                        'shape': ['*'],
-                                        'definition_id': '',
-                                    },
                                     {
                                         'name': 'inner',
                                         'type': {
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/0',
                                         },
-                                        'definition_id': '',
+                                        'definition_id': '79576fa3daa3dc828511d41feb4a19e750b2b805',
+                                    },
+                                    {
+                                        'name': 'weights',
+                                        'shape': ['*'],
+                                        'type': {
+                                            'type_kind': 'numpy',
+                                            'type_data': 'float64',
+                                        },
+                                        'definition_id': 'bab4bd7bdcf8d0b60efb07b96a5b5ba0d04ec988',
                                     },
                                 ],
+                                'definition_id': '3d31b34a5bea2a7a100989df5292bcf3f8e98194',
                             },
                             {
                                 'all_quantities': {
@@ -455,21 +453,21 @@ def assert_dict(d1, d2):
                                 'quantities': [
                                     {
                                         'name': 'base',
+                                        'shape': [],
                                         'type': {
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/1',
                                         },
-                                        'shape': [],
-                                        'definition_id': '',
+                                        'definition_id': '2e90eaff57224868b2d8a7b5a1ef4f51f661aefb',
                                     },
                                     {
                                         'name': 'derived',
+                                        'shape': [],
                                         'type': {
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/2',
                                         },
-                                        'shape': [],
-                                        'definition_id': '',
+                                        'definition_id': 'bce3fd28f47edfedf21980b553bbd68163b84212',
                                     },
                                 ],
                             },
@@ -489,7 +487,6 @@ def assert_dict(d1, d2):
                             None,
                             {
                                 'name': 'Base',
-                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'dimensionality',
@@ -497,7 +494,7 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
-                                        'definition_id': '',
+                                        'definition_id': '5c3ae225c80c8ef5f36dfd337501d2e5c23508a0',
                                     },
                                     {
                                         'name': 'n_points',
@@ -505,33 +502,34 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
-                                        'definition_id': '',
+                                        'definition_id': 'b08da41772eab4e57065765121cfc141d2a49126',
                                     },
                                 ],
+                                'definition_id': '5948767827ba6a72947d0ef6fddc813604aaf326',
                             },
                             {
                                 'name': 'Derived',
-                                'definition_id': '',
                                 'base_sections': [f'{prefix}/1'],
                                 'quantities': [
-                                    {
-                                        'name': 'weights',
-                                        'type': {
-                                            'type_kind': 'numpy',
-                                            'type_data': 'float64',
-                                        },
-                                        'shape': ['*'],
-                                        'definition_id': '',
-                                    },
                                     {
                                         'name': 'inner',
                                         'type': {
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/0',
                                         },
-                                        'definition_id': '',
+                                        'definition_id': '79576fa3daa3dc828511d41feb4a19e750b2b805',
+                                    },
+                                    {
+                                        'name': 'weights',
+                                        'shape': ['*'],
+                                        'type': {
+                                            'type_kind': 'numpy',
+                                            'type_data': 'float64',
+                                        },
+                                        'definition_id': 'bab4bd7bdcf8d0b60efb07b96a5b5ba0d04ec988',
                                     },
                                 ],
+                                'definition_id': '3d31b34a5bea2a7a100989df5292bcf3f8e98194',
                             },
                             {
                                 'all_quantities': {
@@ -541,21 +539,21 @@ def assert_dict(d1, d2):
                                 'quantities': [
                                     {
                                         'name': 'base',
+                                        'shape': [],
                                         'type': {
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/1',
                                         },
-                                        'shape': [],
-                                        'definition_id': '',
+                                        'definition_id': '2e90eaff57224868b2d8a7b5a1ef4f51f661aefb',
                                     },
                                     {
                                         'name': 'derived',
+                                        'shape': [],
                                         'type': {
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/2',
                                         },
-                                        'shape': [],
-                                        'definition_id': '',
+                                        'definition_id': 'bce3fd28f47edfedf21980b553bbd68163b84212',
                                     },
                                 ],
                             },
@@ -575,13 +573,12 @@ def assert_dict(d1, d2):
                 },
             },
             {
-                'm_def': 'metainfo/tests.graph.test_definition_reader/section_definitions/3',
+                'm_def': f'{prefix}/3',
                 'metainfo': {
                     'tests.graph.test_definition_reader': {
                         'section_definitions': [
                             {
                                 'name': 'Inner',
-                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'n_impurities',
@@ -589,13 +586,13 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
-                                        'definition_id': '',
+                                        'definition_id': '77711c525a6b448c7b38cbce02762eff0fa36666',
                                     }
                                 ],
+                                'definition_id': '47c417480d4b9de8aa246adda72b851d7be8bc53',
                             },
                             {
                                 'name': 'Base',
-                                'definition_id': '',
                                 'quantities': [
                                     {
                                         'name': 'dimensionality',
@@ -603,7 +600,7 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
-                                        'definition_id': '',
+                                        'definition_id': '5c3ae225c80c8ef5f36dfd337501d2e5c23508a0',
                                     },
                                     {
                                         'name': 'n_points',
@@ -611,41 +608,36 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
-                                        'definition_id': '',
+                                        'definition_id': 'b08da41772eab4e57065765121cfc141d2a49126',
                                     },
                                 ],
+                                'definition_id': '5948767827ba6a72947d0ef6fddc813604aaf326',
                             },
                             {
                                 'name': 'Derived',
-                                'definition_id': '',
-                                'base_sections': [
-                                    'metainfo/tests.graph.test_definition_reader/section_definitions/1'
-                                ],
+                                'base_sections': [f'{prefix}/1'],
                                 'quantities': [
-                                    {
-                                        'name': 'weights',
-                                        'type': {
-                                            'type_kind': 'numpy',
-                                            'type_data': 'float64',
-                                        },
-                                        'shape': ['*'],
-                                        'definition_id': '',
-                                    },
                                     {
                                         'name': 'inner',
                                         'type': {
                                             'type_kind': 'reference',
-                                            'type_data': 'metainfo/tests.graph.test_definition_reader/section_definitions/0',
+                                            'type_data': f'{prefix}/0',
                                         },
-                                        'definition_id': '',
+                                        'definition_id': '79576fa3daa3dc828511d41feb4a19e750b2b805',
+                                    },
+                                    {
+                                        'name': 'weights',
+                                        'shape': ['*'],
+                                        'type': {
+                                            'type_kind': 'numpy',
+                                            'type_data': 'float64',
+                                        },
+                                        'definition_id': 'bab4bd7bdcf8d0b60efb07b96a5b5ba0d04ec988',
                                     },
                                 ],
+                                'definition_id': '3d31b34a5bea2a7a100989df5292bcf3f8e98194',
                             },
-                            {
-                                'all_sub_sections': {
-                                    'derived_section': 'metainfo/tests.graph.test_definition_reader/section_definitions/2'
-                                }
-                            },
+                            {'all_sub_sections': {'derived_section': f'{prefix}/2'}},
                         ]
                     }
                 },

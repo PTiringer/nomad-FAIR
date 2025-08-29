@@ -32,12 +32,12 @@ def test_quantity():
 
     # order of aliases does not matter
     q2.aliases = ['alias2', 'alias1']
-    q2.hash(regenerate=True)
+    q2.hash()
     assert ref_hash == q2.definition_id
 
     # description does not matter
     q2.description = 'Some other text'
-    q2.hash(regenerate=True)
+    q2.hash()
     assert ref_hash == q2.definition_id
 
     # different aliases matter
@@ -71,13 +71,13 @@ def test_quantity():
 
     q2 = simple_quantity()
     q2.type = MEnum('aad', 'wwa', 'qe')
-    q2.hash(regenerate=True)
+    q2.hash()
     assert ref_hash != q2.definition_id
 
     # order of enum values do not matter
     ref_hash = q2.definition_id
     q2.type = MEnum('wwa', 'qe', 'aad')
-    q2.hash(regenerate=True)
+    q2.hash()
     assert ref_hash == q2.definition_id
 
 
@@ -91,15 +91,13 @@ def test_section():
     del Sample
 
     class Sample(MSection):  # pylint: disable=function-redefined
-        q1 = simple_quantity()
         q2 = simple_quantity()
+        q1 = simple_quantity()
 
     # assert equality
     assert ref_hash == Sample.m_def.definition_id
 
-    class Sample(MSection):  # pylint: disable=function-redefined
-        q2 = simple_quantity()
-        q1 = simple_quantity()
+    # if the containing definition changes the parent section shall have a different ID
+    Sample.q1.type = int
 
-    # order of quantities matters
     assert ref_hash != Sample.m_def.definition_id
