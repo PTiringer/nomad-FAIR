@@ -647,7 +647,7 @@ class TestPublishExternallyWorkflow:
         """Test behavior when publish externally fails"""
         error_message = 'test error message'
 
-        def raise_generic_error():
+        def raise_generic_error(*args, **kwargs):
             raise Exception(error_message)
 
         mock_upload_instance = mock_data_layer['upload_instance']
