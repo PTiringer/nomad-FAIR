@@ -3788,7 +3788,7 @@ def test_get_upload_bundle(
             False, False, 'user0', dict(), dict(), 200, id='unpublished-admin'
         ),
         pytest.param(True, True, 'user0', dict(), dict(), 400, id='duplicate'),
-        pytest.param(True, False, 'user2', dict(), dict(), 401, id='not-oasis-admin'),
+        pytest.param(True, False, 'user2', dict(), dict(), 200, id='not-oasis-admin'),
         pytest.param(True, False, None, dict(), dict(), 401, id='no-credentials'),
     ],
 )

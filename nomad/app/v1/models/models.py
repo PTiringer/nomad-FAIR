@@ -29,6 +29,7 @@ from pydantic import (  # noqa: F401
     BaseModel,
     ConfigDict,
     Field,
+    HttpUrl,
     StrictBool,
     StrictFloat,
     StrictInt,
@@ -41,6 +42,7 @@ from pydantic_core import PydanticCustomError
 
 from nomad import datamodel, metainfo  # noqa: F401
 from nomad.app.v1.utils import parameter_dependency_from_model
+from nomad.config import config
 from nomad.metainfo.elasticsearch_extension import (
     DocumentType,
     material_entry_type,
@@ -1453,4 +1455,29 @@ class MetadataResponse(Metadata):
         description=strip(
             """The elasticsearch query that was used to retrieve the results."""
         ),
+    )
+
+
+def _get_target_deployment_url():
+    return config.oasis.central_nomad_deployment_url
+
+
+class TransferBundleRequest(BaseModel):
+    target_deployment_url: str = Field(
+        default_factory=_get_target_deployment_url,  # Factory has better behavior for testing
+        description='If not provided, the transfer will target the central nomad deployment. The url must end with /api',
+        examples=['https://nomad-lab.eu/prod/v1/api'],
+    )
+    auth_token: str = Field(
+        ...,
+        description='Token used to authenticate the upload transfer in the target deployment. You can use the /auth/token API endpoint in the target depoyment to retrieve the token. Provide the plain token, do not include the "Bearer"',
+        examples=['eyJhbGciOiJSUzI1NiIsInR5cCI...'],
+    )
+    embargo_length: int | None = Field(
+        None,
+        description="""
+                If provided, updates the embargo length of the upload. The value should
+                be between 0 and 36 months. 0 means no embargo.""",
+        ge=0,
+        le=36,
     )

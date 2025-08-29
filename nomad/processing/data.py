@@ -1993,17 +1993,35 @@ class Upload(Proc):
                     self.last_update = datetime.now(timezone.utc)
                     self.save()
 
-    def publish_externally(self, embargo_length: int | None = None):
+    def publish_externally(
+        self,
+        embargo_length: int | None = None,
+        target_deployment_url: str | None = None,
+        auth_token: str | None = None,
+    ):
         from nomad.config import config
 
         if config.temporal.enabled:
             self.process_status = ProcessStatus.PENDING
-            return run_async(self._start_publish_externally_workflow(embargo_length))
+            return run_async(
+                self._start_publish_externally_workflow(
+                    embargo_length=embargo_length,
+                    target_deployment_url=target_deployment_url,
+                    auth_token=auth_token,
+                )
+            )
         else:
-            return self._publish_externally(embargo_length)
+            return self._publish_externally(
+                embargo_length=embargo_length,
+                target_deployment_url=target_deployment_url,
+                auth_token=auth_token,
+            )
 
     async def _start_publish_externally_workflow(
-        self, embargo_length: int | None = None
+        self,
+        embargo_length: int | None = None,
+        target_deployment_url: str | None = None,
+        auth_token: str | None = None,
     ):
         client = await get_client()
         workflow_id = f'publish-externally-{self.upload_id}-{uuid.uuid4()}'
@@ -2013,6 +2031,8 @@ class Upload(Proc):
                 PublishExternallyWorkflowInput(
                     upload_id=self.upload_id,
                     embargo_length=embargo_length,
+                    target_deployment_url=target_deployment_url,
+                    auth_token=auth_token,
                 ),
                 id=workflow_id,
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS.value,
@@ -2021,16 +2041,30 @@ class Upload(Proc):
             raise ProcessFailure(f'Failed to start temporal workflow: {e}')
 
     @process(is_blocking=True)
-    def _publish_externally(self, embargo_length: int | None = None):
-        self._publish_externally_local(embargo_length)
+    def _publish_externally(
+        self,
+        embargo_length: int | None = None,
+        target_deployment_url: str | None = None,
+        auth_token: str | None = None,
+    ):
+        self._publish_externally_local(
+            embargo_length=embargo_length,
+            target_deployment_url=target_deployment_url,
+            auth_token=auth_token,
+        )
 
-    def _publish_externally_local(self, embargo_length: int | None = None):
+    def _publish_externally_local(
+        self,
+        embargo_length: int | None = None,
+        target_deployment_url: str | None = None,
+        auth_token: str | None = None,
+    ):
         assert self.published, (
             'Only published uploads can be published to the central NOMAD.'
         )
-        assert config.oasis.central_nomad_deployment_url not in self.published_to, (
-            'Upload is already published to the central NOMAD.'
-        )
+
+        if target_deployment_url is None:
+            target_deployment_url = config.oasis.central_nomad_deployment_url
 
         tmp_dir = create_tmp_dir('export_' + self.upload_id)
         bundle_path = os.path.join(tmp_dir, self.upload_id + '.zip')
@@ -2048,33 +2082,40 @@ class Upload(Proc):
             ).export_bundle()
 
             # upload to central NOMAD
-            self.set_last_status_message('Uploading bundle to central NOMAD.')
-            upload_auth = client.Auth(
-                user=config.keycloak.username, password=config.keycloak.password
-            )
+            self.set_last_status_message('Uploading bundle externally')
             upload_parameters: dict[str, Any] = {}
             if embargo_length is not None:
                 upload_parameters.update(embargo_length=embargo_length)
-            upload_url = (
-                f'{config.oasis.central_nomad_deployment_url}/v1/uploads/bundle'
-            )
+
+            upload_url = f'{target_deployment_url}/v1/uploads/bundle'
 
             with open(bundle_path, 'rb') as f:
-                response = requests.post(
-                    upload_url, params=upload_parameters, data=f, auth=upload_auth
-                )
+                if auth_token is not None:
+                    response = requests.post(
+                        upload_url,
+                        params=upload_parameters,
+                        data=f,
+                        headers={'Authorization': f'Bearer {auth_token}'},
+                    )
+                else:
+                    upload_auth = client.Auth(
+                        user=config.keycloak.username, password=config.keycloak.password
+                    )
+                    response = requests.post(
+                        upload_url, params=upload_parameters, data=f, auth=upload_auth
+                    )
 
             if response.status_code != 200:
                 self.get_logger().error(
-                    'Could not upload to central NOMAD',
+                    'Could not upload to external deployment',
                     status_code=response.status_code,
                     body=response.text,
                 )
                 raise ProcessFailure(
-                    f'Error message from central NOMAD: {response.text}'
+                    f'Error message from external deployment: {response.text}'
                 )
 
-            self.published_to.append(config.oasis.central_nomad_deployment_url)
+            self.published_to.append(target_deployment_url)
         finally:
             PathObject(tmp_dir).delete()
 

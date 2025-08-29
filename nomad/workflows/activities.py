@@ -286,4 +286,8 @@ def cleanup_workflow_tmp_dir_activity(dir_path: str):
 @activity.defn
 def publish_externally_activity(input: PublishExternallyWorkflowInput):
     upload = Upload.get(input.upload_id)
-    upload._publish_externally_local()
+    upload._publish_externally_local(
+        target_deployment_url=input.target_deployment_url,
+        auth_token=input.auth_token,
+        embargo_length=input.embargo_length,
+    )
