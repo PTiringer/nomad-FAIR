@@ -224,17 +224,6 @@ class BundleImporter:
             return  # No permission checks
 
         is_admin = self.user.is_admin
-        is_oasis = (
-            not is_admin
-            and self.user.is_oasis_admin
-            and config.bundle_import.allow_bundles_from_oasis
-        )
-
-        if not is_admin and not is_oasis:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail='User not authorized to import bundles',
-            )
 
         if not is_admin:
             for k, v in self.import_settings.model_dump().items():

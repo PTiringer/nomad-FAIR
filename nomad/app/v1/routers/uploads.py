@@ -23,8 +23,9 @@ import zipfile
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, cast
-from urllib.parse import unquote
+from urllib.parse import unquote, urlparse
 
+import requests
 from fastapi import (
     APIRouter,
     Body,
@@ -44,6 +45,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from pydantic_core import PydanticCustomError
 
 from nomad import files, utils
+from nomad.app.v1.models.models import TransferBundleRequest
 from nomad.bundles import BundleExporter, BundleImporter
 from nomad.common import get_compression_format, is_safe_basename, is_safe_relative_path
 from nomad.config import config
@@ -2098,10 +2100,11 @@ async def post_upload_action_publish(
         False,
         description=strip(
             """
-                Will send the upload to the central NOMAD repository and publish it. This
-                option is only available on an OASIS. The upload must already be published
-                on the OASIS."""
+            DEPRECATED
+            To publish to an external oasis or to the central nomad you can use the new entpoint /uploads/{upload_id}/action/transfer.
+                """
         ),
+        deprecated=True,
     ),
     user: User = Depends(create_user_dependency(required=True)),
 ):
@@ -2579,6 +2582,76 @@ async def post_upload_bundle(
         )
 
 
+@router.post(
+    '/{upload_id}/action/transfer',
+    tags=[APITag.ACTION],
+    summary='Transfer upload to another NOMAD deployment.',
+    response_model=UploadProcDataResponse,
+    responses=create_responses(
+        _upload_not_found, _not_authorized_to_upload, _bad_request
+    ),
+    response_model_exclude_unset=True,
+    response_model_exclude_none=True,
+)
+async def transfer_upload_bundle(
+    transfer_options: TransferBundleRequest,
+    upload_id: str = Path(
+        ...,
+        description=strip(
+            """
+                The unique id of the upload to transfer."""
+        ),
+    ),
+    user: User = Depends(create_user_dependency(required=True)),
+):
+    """
+    Start a transfer of an upload to another NOMAD deployment.
+    By default the transfer will target the central nomad deployment if no `target_deployment_url` is provided.
+    `auth_token` is required to authenticate the transfer process in the target deploment (custom OASIS or central NOMAD).
+    """
+    upload = get_upload_with_read_access(
+        upload_id=upload_id, user=user, include_others=True
+    )
+    if not upload.published:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='The upload should be published first.',
+        )
+
+    target_deployment_url = transfer_options.target_deployment_url
+
+    _validate_target_deployment_url(target_deployment_url)
+    _check_upload_not_processing(upload)
+    _check_external_deployment_status(target_deployment_url)
+
+    upload.publish_externally(
+        target_deployment_url=target_deployment_url,
+        auth_token=transfer_options.auth_token,
+        embargo_length=transfer_options.embargo_length,
+    )
+    return UploadProcDataResponse(upload_id=upload_id, data=upload_to_pydantic(upload))
+
+
+def _validate_target_deployment_url(url: str):
+    # urlparse never raises, but may return empty parts
+    parsed = urlparse(url)
+    # Check scheme
+    if parsed.scheme not in ('http', 'https'):
+        raise HTTPException(
+            status_code=422, detail='URL must start with http:// or https://'
+        )
+
+    # Check host
+    if not parsed.netloc:
+        raise HTTPException(
+            status_code=422, detail='URL must contain a valid host (e.g., example.com)'
+        )
+
+    # Check that path ends with /api
+    if not parsed.path.endswith('/api'):
+        raise HTTPException(status_code=422, detail="URL path must end with '/api'")
+
+
 async def _get_files_if_provided(
     tmp_dir_prefix: str,
     request: Request,
@@ -2945,6 +3018,39 @@ def _check_upload_not_processing(upload: Upload):
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
             detail='The upload is currently being processed, operation not allowed.',
+        )
+
+
+def _perform_status_check(url: str):
+    response = requests.get(url, timeout=15)
+    return response
+
+
+def _check_external_deployment_status(deployment_url: str):
+    parsed_url = urlparse(deployment_url)
+
+    base_url = f'{parsed_url.scheme}://{parsed_url.netloc}'
+    try:
+        response = _perform_status_check(f'{base_url}/-/health')
+        if response.status_code != status.HTTP_200_OK:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail='The target deployment is not available or the URL is incorrectly formatted. The target deployment URL should end with /api.',
+            )
+    except requests.exceptions.ConnectionError:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail='The target deployment is not available. Connection refused.',
+        )
+    except requests.exceptions.Timeout:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail='The target deployment is not available. Timeout.',
+        )
+    except Exception as e:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=f'Failed to check external deployment health. Error: {str(e)}',
         )
 
 

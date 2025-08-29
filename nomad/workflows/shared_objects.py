@@ -164,3 +164,5 @@ class ProcessExampleUploadWorkflowInput:
 class PublishExternallyWorkflowInput:
     upload_id: str
     embargo_length: int | None = None
+    target_deployment_url: str | None = None
+    auth_token: str | None = None
