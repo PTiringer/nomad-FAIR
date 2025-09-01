@@ -20,9 +20,10 @@
 API endpoint that deliver backend configuration details.
 """
 
-from datetime import datetime
+import re
+from datetime import timedelta
 from enum import Enum
-from typing import Any
+from typing import Final
 
 from fastapi.routing import APIRouter
 from pydantic.fields import Field
@@ -31,10 +32,14 @@ from pydantic.main import BaseModel
 from nomad import normalizing
 from nomad.app.v1.models import Aggregation, StatisticsAggregation
 from nomad.config import config
+from nomad.mongo.cache import cache
 from nomad.parsing import parsers
 from nomad.parsing.parsers import code_metadata
 from nomad.search import search
 from nomad.utils import strip
+
+INFO_CACHE_KEY: Final[str] = 'info'
+INFO_CACHE_TTL: Final[timedelta] = timedelta(days=1)
 
 router = APIRouter()
 
@@ -75,7 +80,6 @@ class StatisticsModel(BaseModel):
         description='Accumulated number of calculations, e.g. total energy calculations in the Archive',
     )
     n_materials: int | None = Field(None, description='Number of materials in NOMAD')
-    # TODO raw_file_size, archive_file_size
 
 
 class CodeInfoModel(BaseModel):
@@ -118,41 +122,24 @@ class InfoModel(BaseModel):
     )
 
 
-_statistics: dict[str, Any] | None = None
-
-
-def statistics():
-    global _statistics
-    if (
-        _statistics is None
-        or datetime.now().timestamp() - _statistics.get('timestamp', 0) > 3600 * 24
-    ):
-        _statistics = dict(timestamp=datetime.now().timestamp())
-        search_response = search(
-            aggregations=dict(
-                statistics=Aggregation(
-                    statistics=StatisticsAggregation(
-                        metrics=[
-                            'n_entries',
-                            'n_materials',
-                            'n_uploads',
-                            'n_quantities',
-                            'n_calculations',
-                        ]
-                    )
+def get_statistics():
+    search_response = search(
+        aggregations=dict(
+            statistics=Aggregation(
+                statistics=StatisticsAggregation(
+                    metrics=[
+                        'n_entries',
+                        'n_materials',
+                        'n_uploads',
+                        'n_quantities',
+                        'n_calculations',
+                    ]
                 )
             )
         )
-        if (
-            search_response.aggregations['statistics'] is not None
-            and search_response.aggregations['statistics'].statistics is not None
-            and search_response.aggregations['statistics'].statistics.data is not None
-        ):
-            _statistics.update(
-                **search_response.aggregations['statistics'].statistics.data
-            )  # pylint: disable=no-member
-
-    return _statistics
+    )
+    statistics = search_response.aggregations['statistics'].statistics.data
+    return statistics
 
 
 @router.get(
@@ -163,9 +150,9 @@ def statistics():
     response_model_exclude_none=True,
     response_model=InfoModel,
 )
+@cache(key=INFO_CACHE_KEY, ttl=INFO_CACHE_TTL)
 async def get_info():
     """Return information about the nomad backend and its configuration."""
-    import re  # Import the 're' module for regular expressions
 
     parser_names = sorted(
         [re.sub(r'^(parsers?|missing)/', '', key) for key in parsers.parser_dict.keys()]
@@ -173,45 +160,41 @@ async def get_info():
 
     config.load_plugins()
 
-    return InfoModel(
-        **{
-            'parsers': parser_names,
-            'metainfo_packages': [
-                'general',
-                'general.experimental',
-                'common',
-                'public',
-            ]
-            + parser_names,
-            'codes': [
-                {
-                    'code_name': x.get('codeLabel', 'unknown code'),
-                    'code_homepage': x.get('codeUrl'),
-                }
-                for x in sorted(
-                    code_metadata.values(),
-                    key=lambda info: info.get('codeLabel', 'unknown code').lower(),
-                )
-            ],
-            'normalizers': [
-                normalizer.__name__ for normalizer in normalizing.normalizers
-            ],
-            'plugin_entry_points': [
-                entry_point.dict_safe()
-                for entry_point in config.plugins.entry_points.filtered_values()
-            ]
-            if config.plugins and config.plugins.entry_points
-            else [],
-            'plugin_packages': [
-                plugin_package.model_dump()
-                for plugin_package in config.plugins.plugin_packages.values()
-            ]
-            if config.plugins and config.plugins.plugin_packages
-            else [],
-            'statistics': statistics(),
-            'version': config.meta.version,
-            'deployment': config.meta.deployment,
-            'oasis': config.oasis.is_oasis,
-            'git': {},
-        }
-    )
+    return {
+        'parsers': parser_names,
+        'metainfo_packages': [
+            'general',
+            'general.experimental',
+            'common',
+            'public',
+        ]
+        + parser_names,
+        'codes': [
+            {
+                'code_name': x.get('codeLabel', 'unknown code'),
+                'code_homepage': x.get('codeUrl'),
+            }
+            for x in sorted(
+                code_metadata.values(),
+                key=lambda info: info.get('codeLabel', 'unknown code').lower(),
+            )
+        ],
+        'normalizers': [normalizer.__name__ for normalizer in normalizing.normalizers],
+        'plugin_entry_points': [
+            entry_point.dict_safe()
+            for entry_point in config.plugins.entry_points.filtered_values()
+        ]
+        if config.plugins and config.plugins.entry_points
+        else [],
+        'plugin_packages': [
+            plugin_package.model_dump()
+            for plugin_package in config.plugins.plugin_packages.values()
+        ]
+        if config.plugins and config.plugins.plugin_packages
+        else [],
+        'statistics': get_statistics(),
+        'version': config.meta.version,
+        'deployment': config.meta.deployment,
+        'oasis': config.oasis.is_oasis,
+        'git': {},
+    }
