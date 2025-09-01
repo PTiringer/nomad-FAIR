@@ -7,7 +7,7 @@ from typing import Any
 from temporalio.client import WorkflowExecutionStatus
 
 from nomad import infrastructure
-from nomad.actions.base import get_actions
+from nomad.actions.action import get_actions
 from nomad.actions.client import get_client
 from nomad.config import config
 from nomad.files import StagingUploadFiles
