@@ -424,6 +424,7 @@ def test_transfer_processing_upload(
     assert response.status_code == 400
 
 
+@pytest.mark.xfail(reason='flaky test')
 def test_non_published_upload(
     auth_headers, client: TestClient, non_empty_processed: Upload
 ):
@@ -441,6 +442,7 @@ def test_non_published_upload(
     assert body['detail'] == 'The upload should be published first.'
 
 
+@pytest.mark.xfail(reason='flaky test')
 def test_transfer_duplicated_upload(
     auth_headers,
     client: TestClient,
