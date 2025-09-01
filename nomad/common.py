@@ -26,6 +26,7 @@ import pkgutil
 import shutil
 import tarfile
 import zipfile
+from datetime import datetime, timezone
 from tempfile import TemporaryDirectory
 from typing import Literal
 
@@ -251,3 +252,8 @@ def is_safe_relative_path(path: str) -> bool:
             return False
 
     return True
+
+
+# Return current UTC time (can be mocked for tests)
+def now():
+    return datetime.now(timezone.utc)

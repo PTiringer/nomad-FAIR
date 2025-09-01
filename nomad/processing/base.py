@@ -49,7 +49,7 @@ from mongoengine.connection import ConnectionFailure
 
 import nomad.patch  # noqa: F401
 from nomad import infrastructure, utils
-from nomad.app.v1.routers.info import statistics
+from nomad.app.v1.routers.info import get_statistics
 from nomad.config import config
 from nomad.config.models.config import CELERY_WORKER_ROUTING
 
@@ -113,7 +113,7 @@ app.conf.worker_redirect_stdouts_level = 'INFO'
 def transfer_logs():
     from nomad.logtransfer import transfer_logs
 
-    utils.get_logger('nomad.oasis').info('oasis statistics', **statistics())
+    utils.get_logger('nomad.oasis').info('oasis statistics', **get_statistics())
     transfer_logs()
 
 

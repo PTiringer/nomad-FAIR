@@ -102,6 +102,11 @@ def setup_mongo(client=False):
         mongo_client = connect(**kwargs)
 
     logger.info('setup mongo connection')
+
+    # drop cache at startup
+    db = mongo_client.get_database(config.mongo.db_name)
+    db.get_collection('cache').drop()
+
     return mongo_client
 
 
@@ -109,6 +114,7 @@ def check_mongo():
     db = mongo_client.get_database(config.mongo.db_name)
     names = set(db.list_collection_names())
 
+    # 'cache' is also known but should have been removed by setup
     expected_names = {'upload', 'user_group', 'entry', 'dataset', 'archive'}
     if not expected_names.issuperset(names):
         logger.warning(
