@@ -110,6 +110,7 @@ from nomad.processing.base import (
 )
 from nomad.search import update_metadata as es_update_metadata
 from nomad.utils.pydantic import CustomErrorWrapper
+from nomad.utils.structlogging import ISO8601_UTC_FORMAT
 from nomad.workflows.shared_objects import (
     DeleteUploadWorkflowInput,
     EditUploadMetadataWorkflowInput,
@@ -207,7 +208,7 @@ _log_processors = [
     StackInfoRenderer(),
     _pack_log_event,
     format_exc_info,
-    TimeStamper(fmt='%Y-%m-%d %H:%M.%S', utc=False),
+    TimeStamper(fmt=ISO8601_UTC_FORMAT, utc=True),
 ]
 
 

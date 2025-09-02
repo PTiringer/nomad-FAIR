@@ -27,8 +27,9 @@ be used similar to the standard `logging.getLogger`.
 
 import json
 import logging
-import os.path
+import os
 import re
+from datetime import datetime
 from logging.handlers import WatchedFileHandler
 from typing import Any, cast
 
@@ -44,6 +45,10 @@ from structlog.stdlib import LoggerFactory
 
 from nomad import utils
 from nomad.config import config
+
+#: Datetime format string for ISO 8601 with UTC "Z" suffix,
+#: Example: "2025-09-01T12:34:56Z" (no fractional part)
+ISO8601_UTC_FORMAT: str = '%Y-%m-%dT%H:%M:%SZ'
 
 
 def sanitize_logevent(event: str) -> str:
@@ -211,7 +216,10 @@ class ConsoleFormatter(LogstashFormatter):
         event = message_dict.pop('event', None)
         level = message_dict.pop('level', 'UNKNOWN')
         exception = message_dict.pop('exception', None)
-        time = message_dict.pop('@timestamp', '1970-01-01 12:00:00')
+        time = datetime.strptime(
+            message_dict.pop('@timestamp', '1970-01-01T12:00:00.000Z'),
+            '%Y-%m-%dT%H:%M:%S.%fZ',
+        ).strftime(ISO8601_UTC_FORMAT)
 
         for key in [
             'type',
@@ -228,9 +236,7 @@ class ConsoleFormatter(LogstashFormatter):
         keys.sort()
 
         out = StringIO()
-        out.write(
-            f'{level.ljust(8)} {logger.ljust(20)[:20]} {time.ljust(19)[:19]} {event}'
-        )
+        out.write(f'{level.ljust(8)} {logger.ljust(20)[:20]} {time} {event}')
         if exception is not None:
             out.write(
                 '\n  - exception: {}'.format(str(exception).replace('\n', '\n    '))
@@ -314,7 +320,7 @@ def get_logger(name, **kwargs):
 log_processors = [
     StackInfoRenderer(),
     format_exc_info,
-    TimeStamper(fmt='%Y-%m-%d %H:%M.%S', utc=False),
+    TimeStamper(fmt=ISO8601_UTC_FORMAT, utc=True),
     JSONRenderer(sort_keys=True),
 ]
 

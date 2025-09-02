@@ -80,8 +80,8 @@ def dump_json(data):
     )
 
 
-default_hash_len = 28
-""" Length of hashes and hash-based ids (e.g. entry_id) in nomad. """
+# Length of hashes and hash-based ids (e.g. entry_id) in nomad.
+default_hash_len: int = 28
 
 try:
     from . import structlogging
