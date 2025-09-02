@@ -44,21 +44,31 @@ from nomad.config.models.config import Config
 logger = logging.getLogger(__name__)
 
 
-def _load_config_yaml() -> dict[str, Any]:
+def _load_config_yaml(files: list[str] | None = None) -> dict[str, Any]:
     """
-    Loads the configuration from a YAML file.
+    Loads the configuration from one or more YAML files. Files are merged in order,
+    with later files overwriting values from earlier ones.
     """
-    config_file = os.environ.get('NOMAD_CONFIG', 'nomad.yaml')
-    config_data: dict[str, Any] = {}
+    if not files:
+        config_file = os.environ.get('NOMAD_CONFIG', 'nomad.yaml')
+        if os.path.exists(config_file):
+            files_to_load = [config_file]
+        else:
+            files_to_load = []
+    else:
+        files_to_load = files
 
-    if os.path.exists(config_file):
+    final_config_data: dict[str, Any] = {}
+    for config_file in files_to_load:
         with open(config_file) as stream:
             try:
                 config_data = yaml.load(stream, Loader=yaml.SafeLoader)
+                if config_data:
+                    final_config_data = _merge(final_config_data, config_data)
             except yaml.YAMLError as e:
-                logger.error(f'cannot read nomad config: {e}')
+                logger.error(f'Cannot read nomad config file {config_file}: {e}')
 
-    return config_data
+    return final_config_data
 
 
 def _load_config_env() -> dict[str, Any]:
@@ -134,13 +144,13 @@ def _merge(*args) -> dict[str, Any]:
 _plugins = None
 
 
-def load_config() -> Config:
+def load_config(files: list[str] | None = None) -> Config:
     """Custom config loader. Used instead of Pydantic BaseSettings because of
     custom merging logic and custom loading of environment variables.
     """
     with open(os.path.join(os.path.dirname(__file__), 'defaults.yaml')) as stream:
         config_default = yaml.load(stream, Loader=yaml.SafeLoader)
-    config_yaml = _load_config_yaml()
+    config_yaml = _load_config_yaml(files)
     config_env = _load_config_env()
     config_final = _merge(config_default, config_yaml, config_env)
 
@@ -150,6 +160,25 @@ def load_config() -> Config:
     del config_final['plugins']
 
     return Config.model_validate(config_final)
+
+
+def load_and_set_config(files: list[str] | None = None) -> Config:
+    """
+    Loads the configuration from the specified files and updates the global 'config'
+    object and module-level attributes.
+
+    This function is necessary for runtime configuration changes, e.g., via CLI flags,
+    as it ensures all parts of the application see the updated configuration.
+    """
+    new_config = load_config(files=files)
+    globals()['config'] = new_config
+
+    _module = sys.modules[__name__]
+    _fields = Config.model_fields
+    for field_name in _fields.keys():
+        setattr(_module, field_name, getattr(new_config, field_name))
+
+    return new_config
 
 
 config = load_config()

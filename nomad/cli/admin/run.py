@@ -25,8 +25,18 @@ from .admin import admin
 
 
 @admin.group(help='Run a nomad service locally (outside docker).')
-def run():
-    pass
+@click.option(
+    '-f',
+    '--config-file',
+    type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+    multiple=True,
+    help='Specify one or more NOMAD config yaml files. Can be repeated. Later files overwrite earlier ones.',
+)
+def run(config_file: tuple[str, ...]):
+    if config_file:
+        from nomad.config import load_and_set_config
+
+        load_and_set_config(files=list(config_file))
 
 
 @run.command(help='Run the jupyter hub.')
