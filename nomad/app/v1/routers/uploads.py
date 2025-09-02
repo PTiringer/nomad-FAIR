@@ -52,7 +52,7 @@ from nomad.config import config
 from nomad.config.models.config import Reprocess
 from nomad.config.models.plugins import ExampleUploadEntryPoint
 from nomad.files import PublicUploadFiles, StagingUploadFiles
-from nomad.groups import MongoUserGroup
+from nomad.mongo.groups import MongoUserGroup
 from nomad.processing import (
     Entry,
     MetadataEditRequestHandler,

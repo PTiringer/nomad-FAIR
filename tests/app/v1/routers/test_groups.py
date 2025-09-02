@@ -1,7 +1,7 @@
 import pytest
 
 from nomad.app.v1.models.groups import UserGroup, UserGroupResponse
-from nomad.groups import MongoUserGroup, get_mongo_user_group, user_group_exists
+from nomad.mongo.groups import MongoUserGroup, get_mongo_user_group, user_group_exists
 from tests.utils import check_with_retry
 
 from .common import assert_response, perform_get, perform_post

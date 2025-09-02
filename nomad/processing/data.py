@@ -95,8 +95,8 @@ from nomad.files import (
     UploadFiles,
     create_tmp_dir,
 )
-from nomad.groups import MongoUserGroup, user_group_exists
 from nomad.metainfo.data_type import Datatype, Datetime
+from nomad.mongo.groups import MongoUserGroup, user_group_exists
 from nomad.normalizing import normalizers
 from nomad.parsing import Parser
 from nomad.parsing.parsers import match_parser, parser_dict, parsers

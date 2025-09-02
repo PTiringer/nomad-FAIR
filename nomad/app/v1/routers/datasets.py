@@ -28,8 +28,8 @@ from pydantic import BaseModel, Field, field_validator
 from nomad import datamodel, processing, utils
 from nomad.config import config
 from nomad.datamodel import Dataset as DatasetDefinitionCls
-from nomad.doi import DOI, DOIException
 from nomad.metainfo.elasticsearch_extension import entry_type
+from nomad.mongo.doi import DOI, DOIException
 from nomad.search import search, update_by_query
 from nomad.utils import create_uuid, strip
 

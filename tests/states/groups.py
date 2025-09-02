@@ -1,5 +1,5 @@
 from nomad import infrastructure
-from nomad.groups import create_mongo_user_group, get_mongo_user_group
+from nomad.mongo.groups import create_mongo_user_group, get_mongo_user_group
 
 
 def _create(group_id, group_name, owner, members=None):

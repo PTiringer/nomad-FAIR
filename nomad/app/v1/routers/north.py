@@ -27,7 +27,7 @@ from pydantic import BaseModel
 from nomad.app.v1.routers.auth import generate_simple_token
 from nomad.config import config
 from nomad.config.models.north import NORTHTool
-from nomad.groups import MongoUserGroup
+from nomad.mongo.groups import MongoUserGroup
 from nomad.processing import Upload
 from nomad.utils import get_logger, slugify, strip
 
