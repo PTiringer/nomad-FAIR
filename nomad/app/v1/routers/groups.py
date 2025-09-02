@@ -30,7 +30,11 @@ from nomad.app.v1.models.groups import (
 from nomad.app.v1.models.pagination import PaginationResponse
 from nomad.app.v1.utils import parameter_dependency_from_model
 from nomad.datamodel import User as UserDataModel
-from nomad.groups import MongoUserGroup, create_mongo_user_group, get_mongo_user_group
+from nomad.mongo.groups import (
+    MongoUserGroup,
+    create_mongo_user_group,
+    get_mongo_user_group,
+)
 from nomad.utils import strip
 
 from ..models import User

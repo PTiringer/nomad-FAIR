@@ -77,7 +77,6 @@ from nomad.app.v1.models.models import (
 )
 from nomad.config import config
 from nomad.datamodel import AuthorReference, EntryArchive, EntryMetadata, UserReference
-from nomad.groups import MongoUserGroup
 from nomad.metainfo import Datetime, Package, Quantity
 from nomad.metainfo.elasticsearch_extension import (
     DocumentType,
@@ -96,6 +95,7 @@ from nomad.metainfo.elasticsearch_extension import (
     update_materials,
     yaml_prefix,
 )
+from nomad.mongo.groups import MongoUserGroup
 from nomad.utils.pydantic import CustomErrorWrapper
 
 _metainfo_initialized = False

@@ -20,7 +20,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from nomad.config import config
-from nomad.doi import DOI, DOIException
+from nomad.mongo.doi import DOI, DOIException
 
 
 def test_create(mongo_function, user1, no_warn):

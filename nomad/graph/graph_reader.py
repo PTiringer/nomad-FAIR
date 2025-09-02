@@ -78,7 +78,6 @@ from nomad.graph.model import (
     RequestConfig,
     ResolveType,
 )
-from nomad.groups import MongoUserGroup, get_mongo_user_group
 from nomad.metainfo import (
     Definition,
     MSectionReference,
@@ -92,6 +91,7 @@ from nomad.metainfo import (
 from nomad.metainfo.data_type import JSON, Datatype
 from nomad.metainfo.data_type import Any as AnyType
 from nomad.metainfo.util import MSubSectionList, split_python_definition
+from nomad.mongo.groups import MongoUserGroup, get_mongo_user_group
 from nomad.processing import Entry, ProcessStatus, Upload
 
 logger = utils.get_logger(__name__)

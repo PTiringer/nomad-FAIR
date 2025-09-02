@@ -52,8 +52,8 @@ from nomad.config.models.config import Reprocess
 from nomad.datamodel import EditableUserMetadata
 from nomad.datamodel.context import ServerContext
 from nomad.files import StreamedFile, create_zipstream_async
-from nomad.groups import MongoUserGroup
 from nomad.metainfo.elasticsearch_extension import entry_type
+from nomad.mongo.groups import MongoUserGroup
 from nomad.processing.data import Upload
 from nomad.search import (
     AuthenticationRequiredError,

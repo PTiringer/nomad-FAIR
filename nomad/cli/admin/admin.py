@@ -496,7 +496,7 @@ def rewrite_doi_urls(dois, dry, save_existing_records):
 
     import requests
 
-    from nomad.doi import _create_dataset_url, edit_doi_url
+    from nomad.mongo.doi import _create_dataset_url, edit_doi_url
 
     existing_records = []
 
