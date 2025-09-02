@@ -2958,15 +2958,23 @@ class Upload(Proc):
 
             if entry:
                 if config.temporal.enabled:
-                    # temporal child workflows can't be spawned within an activitiy
-                    # so we just process this from the current activity
-                    if self.parser_level >= parser.level:
-                        try:
-                            entry._process_entry_local()
-                            entry.process_status = ProcessStatus.SUCCESS
-                        except Exception:
-                            entry.process_status = ProcessStatus.FAILURE
-                        entry.save()
+                    if (
+                        self.current_process_flags is not None
+                        and self.current_process_flags.is_local
+                    ):
+                        # Run also this entry processing locally. If it fails, an
+                        # exception will be raised.
+                        entry.process_entry_local()
+                    else:
+                        # temporal child workflows can't be spawned within an activitiy
+                        # so we just process this from the current activity
+                        if self.parser_level >= parser.level:
+                            try:
+                                entry._process_entry_local()
+                                entry.process_status = ProcessStatus.SUCCESS
+                            except Exception:
+                                entry.process_status = ProcessStatus.FAILURE
+                            entry.save()
                 else:
                     if (
                         self.current_process_flags is not None
