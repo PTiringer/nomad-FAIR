@@ -28,6 +28,7 @@ from starlette.testclient import TestClient
 
 from nomad.app.main import OASIS_AUTH_WHITELIST, OasisAuthenticationMiddleware
 from nomad.infrastructure import KeycloakError
+from tests import ORIGINAL_API_BASE_PATH
 
 # Tests for `OasisAuthenticationMiddleware`
 
@@ -214,14 +215,14 @@ def test_gui(client, path, monkeypatch):
     assert rv.status_code == 200
 
 
-# Integration tests to verify `OasisAuthenticationMiddleware` is applied correctly
+# Verify `OasisAuthenticationMiddleware` is applied correctly in NOMAD
 
 
 def collect_all_routes(
     app: FastAPI, prefix: str = ''
 ) -> tuple[list[tuple[str, str, Route]], list[tuple[str, str, Route]]]:
     """
-    Recursively collects all (method, full_path, route) tuples from a FastAPI app.
+    Recursively collects (method, full_path, route) as tuples from a FastAPI app.
 
     Returns:
         (protected_routes, always_open_routes) based on whitelist matching.
@@ -239,11 +240,11 @@ def collect_all_routes(
 
         return 'main_app'
 
-    protected_routes = []
-    whitelisted_routes = []
+    protected_routes: list[tuple[str, str, Route]] = []
+    whitelisted_routes: list[tuple[str, str, Route]] = []
 
     for route in app.router.routes:
-        full_path = prefix + getattr(route, 'path', '')
+        full_path = ORIGINAL_API_BASE_PATH + prefix + getattr(route, 'path', '')
 
         if isinstance(route, APIRoute | Route):
             method: str = sorted(route.methods)[0]  # one method each endpoint

@@ -60,8 +60,11 @@ class OasisAuthenticationMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request, call_next):
         # Skip if global auth is off or route is whitelisted
+        router_path = request.url.path.removeprefix(
+            f'{config.services.api_base_path}/api/v1'
+        )
         if not config.oasis.require_authentication or any(
-            pat.search(request.url.path) for pat in self.whitelist_patterns
+            pat.search(router_path) for pat in self.whitelist_patterns
         ):
             return await call_next(request)
 

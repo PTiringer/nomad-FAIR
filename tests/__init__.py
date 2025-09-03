@@ -34,4 +34,5 @@ from nomad.config import config
 # changing them afterwards does not change anything anymore.
 
 # For convenience we test the api without path prefix.
+ORIGINAL_API_BASE_PATH = config.services.api_base_path
 config.services.api_base_path = ''
