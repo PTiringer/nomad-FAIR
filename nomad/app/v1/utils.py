@@ -27,7 +27,7 @@ from collections.abc import Iterator
 from types import FunctionType
 from typing import Any
 
-from fastapi import HTTPException, Query, Request, status  # noqa: F401
+from fastapi import HTTPException, Query, status  # noqa: F401
 from pydantic import BaseModel, ValidationError  # noqa: F401
 
 from nomad.files import StreamedFile, UploadFiles, create_zipstream
@@ -71,7 +71,7 @@ def parameter_dependency_from_model(
             errors = e.errors()
             for error in errors:
                 error['loc'] = ['query'] + list(error['loc'])
-            raise HTTPException(422, detail=errors)
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=errors)
 
     """.format(
             name,

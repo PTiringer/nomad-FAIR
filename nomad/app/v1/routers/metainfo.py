@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 import datetime
+from enum import Enum
 
 from fastapi import APIRouter, HTTPException, Path, status
 from mongoengine import DateTimeField, DictField, Document, ListField, StringField
@@ -85,7 +86,10 @@ class PackageDefinition(Document):
 
 router = APIRouter()
 
-metainfo_tag = 'metainfo'
+
+class APITag(str, Enum):
+    DEFAULT = 'metainfo'
+
 
 _bad_definition_response = (
     status.HTTP_404_NOT_FOUND,
@@ -129,7 +133,7 @@ class PackageDefinitionResponse(BaseModel):
 
 @router.get(
     '/{section_definition_id}',
-    tags=[metainfo_tag],
+    tags=[APITag.DEFAULT],
     summary='Get the definition of package that contains the target ID based section definition.',
     response_model=PackageDefinitionResponse,
     responses=create_responses(_bad_definition_response),

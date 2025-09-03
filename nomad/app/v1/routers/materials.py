@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 
+from enum import Enum
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
@@ -49,6 +50,11 @@ from ..utils import create_responses
 from .auth import create_user_dependency
 
 router = APIRouter()
+
+
+class APITag(str, Enum):
+    DEFAULT = 'materials'
+
 
 logger = utils.get_logger(__name__)
 
@@ -105,7 +111,7 @@ def perform_search(*args, **kwargs) -> MetadataResponse:
 
 @router.post(
     '/query',
-    tags=['materials'],
+    tags=[APITag.DEFAULT],
     summary='Search materials and retrieve their metadata',
     response_model=MetadataResponse,
     responses=create_responses(_bad_owner_response),
@@ -144,7 +150,7 @@ async def post_entries_metadata_query(
 
 @router.get(
     '',
-    tags=['materials'],
+    tags=[APITag.DEFAULT],
     summary='Search materials and retrieve their metadata',
     response_model=MetadataResponse,
     responses=create_responses(_bad_owner_response),
@@ -183,7 +189,7 @@ async def get_entries_metadata(
 
 @router.get(
     '/{material_id}',
-    tags=['materials'],
+    tags=[APITag.DEFAULT],
     summary='Get the metadata of a material by its id',
     response_model=MaterialMetadataResponse,
     responses=create_responses(_bad_id_response),

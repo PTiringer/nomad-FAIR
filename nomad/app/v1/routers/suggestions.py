@@ -17,6 +17,7 @@
 #
 
 from collections import defaultdict
+from enum import Enum
 
 from elasticsearch.exceptions import RequestError
 from elasticsearch_dsl import Search
@@ -30,6 +31,11 @@ from ..models import User
 from .auth import create_user_dependency
 
 router = APIRouter()
+
+
+class APITag(str, Enum):
+    DEFAULT = 'suggestions'
+
 
 # This is a dynamically create enum class for enumerating all allowed
 # quantities. FastAPI uses python enums to validate and document options.
@@ -65,7 +71,7 @@ class SuggestionsRequest(BaseModel):
 
 @router.post(
     '',
-    tags=['suggestions'],
+    tags=[APITag.DEFAULT],
     summary='Get a list of suggestions for the given quantity names and input.',
     response_model=dict[str, list[Suggestion]],
     response_model_exclude_unset=True,
