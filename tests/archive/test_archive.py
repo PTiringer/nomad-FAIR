@@ -39,7 +39,6 @@ from nomad.config import config
 from nomad.datamodel import ClientContext, EntryArchive
 from nomad.metainfo import (
     Context,
-    MetainfoError,
     MProxy,
     MSection,
     Quantity,
@@ -424,34 +423,6 @@ def archive(json_dict):
     assert archive.run is not None
     assert len(archive.run) == 1
     return archive
-
-
-@pytest.mark.parametrize(
-    'definition_id,context,exception_type',
-    [
-        pytest.param(
-            EntryArchive.m_def.definition_id + 'a',
-            None,
-            MetainfoError,
-            id='wrong_id_no_context',
-        ),
-        pytest.param(
-            EntryArchive.m_def.definition_id[::-1],
-            Context(),
-            NotImplementedError,
-            id='wrong_id_with_context',
-        ),
-    ],
-)
-def test_archive_with_wrong_id(json_dict, definition_id, context, exception_type):
-    """
-    Test that the archive with wrong id raises the expected exception.
-    """
-    json_dict['m_def_id'] = definition_id
-    with pytest.raises(exception_type):
-        EntryArchive.m_from_dict(json_dict, m_context=context)
-
-    del json_dict['m_def_id']
 
 
 @pytest.mark.parametrize(

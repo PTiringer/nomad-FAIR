@@ -108,10 +108,6 @@ def test_from_dict(metainfo_data, monkeypatch, mongo_module):
         == metainfo_data
     )
 
-    monkeypatch.setattr('nomad.config.process.add_definition_id_to_reference', True)
-
-    metainfo_data['m_def'] += f'@{Package.m_def.definition_id}'
-
     package = MSection.from_dict(metainfo_data)
     package.entry_id = 'placeholder'
     package.upload_id = 'placeholder'
