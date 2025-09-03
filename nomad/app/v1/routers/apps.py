@@ -392,7 +392,8 @@ async def get_entry_point(app_path: str):
     entry_point = app_entry_points_cache.get(app_path)
     if entry_point is None:
         raise HTTPException(
-            status_code=404, detail=f'Could not find an app with the path "{app_path}".'
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f'Could not find an app with the path "{app_path}".',
         )
     search_quantities: dict[str, Any] = {}
     app = entry_point.app
@@ -401,7 +402,7 @@ async def get_entry_point(app_path: str):
         data = parse_jmespath(name)
         if data['error']:
             raise HTTPException(
-                status_code=422,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f'Could not parse the search quantity "{name}" defined in {location}.',
             )
         for q in [data['quantity']] + data['extras']:
@@ -413,7 +414,7 @@ async def get_entry_point(app_path: str):
         sq = all_search_quantities.get(name)
         if sq is None:
             raise HTTPException(
-                status_code=422,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f'Could not load the search quantity "{name}" defined in {location}.',
             )
         search_quantities[name] = sq.model_dump()
@@ -499,7 +500,7 @@ async def get_entry_point_search_quantities(data: SearchQuantityRequest):
     if data.app_path:
         if data.app_path not in app_entry_points_cache:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail=f'Could not find an app with the path "{data.app_path}".',
             )
         sqs = app_search_quantity_cache.get(data.app_path)

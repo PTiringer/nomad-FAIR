@@ -2,7 +2,7 @@
   "15e71e5e091f91afabb37eabd4d0c799": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test",
         "method": "GET",
         "body": "",
         "headers": {
@@ -59,7 +59,7 @@
     },
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test",
         "method": "GET",
         "body": "",
         "headers": {
@@ -117,7 +117,7 @@
     },
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test",
         "method": "GET",
         "body": "",
         "headers": {
@@ -177,7 +177,7 @@
   "d49301da42c69791e13b662feb59b8a6": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test/rawdir/?include_entry_info=true&page_size=40&page=1",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test/rawdir/?include_entry_info=true&page_size=40&page=1",
         "method": "GET",
         "body": "",
         "headers": {
@@ -217,8 +217,8 @@
             "order": "asc",
             "page": 1,
             "total": 3,
-            "page_url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test/rawdir/?include_entry_info=true&page_size=40&page=1",
-            "first_page_url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test/rawdir/?include_entry_info=true&page_size=40"
+            "page_url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test/rawdir/?include_entry_info=true&page_size=40&page=1",
+            "first_page_url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test/rawdir/?include_entry_info=true&page_size=40"
           }
         },
         "headers": {
@@ -231,7 +231,7 @@
     },
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test/rawdir/?include_entry_info=true&page_size=40&page=1",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test/rawdir/?include_entry_info=true&page_size=40&page=1",
         "method": "GET",
         "body": "",
         "headers": {
@@ -271,8 +271,8 @@
             "order": "asc",
             "page": 1,
             "total": 3,
-            "page_url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test/rawdir/?include_entry_info=true&page_size=40&page=1",
-            "first_page_url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test/rawdir/?include_entry_info=true&page_size=40"
+            "page_url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test/rawdir/?include_entry_info=true&page_size=40&page=1",
+            "first_page_url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test/rawdir/?include_entry_info=true&page_size=40"
           }
         },
         "headers": {
@@ -285,7 +285,7 @@
     },
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test/rawdir/?include_entry_info=true&page_size=40&page=1",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test/rawdir/?include_entry_info=true&page_size=40&page=1",
         "method": "GET",
         "body": "",
         "headers": {
@@ -325,8 +325,8 @@
             "order": "asc",
             "page": 1,
             "total": 3,
-            "page_url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test/rawdir/?include_entry_info=true&page_size=40&page=1",
-            "first_page_url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test/rawdir/?include_entry_info=true&page_size=40"
+            "page_url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test/rawdir/?include_entry_info=true&page_size=40&page=1",
+            "first_page_url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test/rawdir/?include_entry_info=true&page_size=40"
           }
         },
         "headers": {
@@ -341,7 +341,7 @@
   "b4eba4b1a0b0953dfdff219d4ebd2b68": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test/rawdir/test_entry?include_entry_info=true&page_size=40&page=1",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test/rawdir/test_entry?include_entry_info=true&page_size=40&page=1",
         "method": "GET",
         "body": "",
         "headers": {
@@ -393,8 +393,8 @@
             "order": "asc",
             "page": 1,
             "total": 5,
-            "page_url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test/rawdir/test_entry?include_entry_info=true&page_size=40&page=1",
-            "first_page_url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test/rawdir/test_entry?include_entry_info=true&page_size=40"
+            "page_url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test/rawdir/test_entry?include_entry_info=true&page_size=40&page=1",
+            "first_page_url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test/rawdir/test_entry?include_entry_info=true&page_size=40"
           }
         },
         "headers": {
@@ -407,7 +407,7 @@
     },
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test/rawdir/test_entry?include_entry_info=true&page_size=40&page=1",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test/rawdir/test_entry?include_entry_info=true&page_size=40&page=1",
         "method": "GET",
         "body": "",
         "headers": {
@@ -452,8 +452,8 @@
             "order": "asc",
             "page": 1,
             "total": 4,
-            "page_url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test/rawdir/test_entry?include_entry_info=true&page_size=40&page=1",
-            "first_page_url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test/rawdir/test_entry?include_entry_info=true&page_size=40"
+            "page_url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test/rawdir/test_entry?include_entry_info=true&page_size=40&page=1",
+            "first_page_url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test/rawdir/test_entry?include_entry_info=true&page_size=40"
           }
         },
         "headers": {
@@ -466,7 +466,7 @@
     },
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test/rawdir/test_entry?include_entry_info=true&page_size=40&page=1",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test/rawdir/test_entry?include_entry_info=true&page_size=40&page=1",
         "method": "GET",
         "body": "",
         "headers": {
@@ -506,8 +506,8 @@
             "order": "asc",
             "page": 1,
             "total": 3,
-            "page_url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test/rawdir/test_entry?include_entry_info=true&page_size=40&page=1",
-            "first_page_url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test/rawdir/test_entry?include_entry_info=true&page_size=40"
+            "page_url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test/rawdir/test_entry?include_entry_info=true&page_size=40&page=1",
+            "first_page_url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test/rawdir/test_entry?include_entry_info=true&page_size=40"
           }
         },
         "headers": {
@@ -522,7 +522,7 @@
   "af35bdeb96954dd4d73de54d4b455026": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test/raw/test_entry/vasp.xml",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test/raw/test_entry/vasp.xml",
         "method": "DELETE",
         "body": "",
         "headers": {
@@ -582,7 +582,7 @@
   "5282ad91a0f6f3d8f0da310ae06b854b": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/browser_test/raw/test_entry/1.aux",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/uploads/browser_test/raw/test_entry/1.aux",
         "method": "DELETE",
         "body": "",
         "headers": {

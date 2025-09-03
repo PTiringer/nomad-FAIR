@@ -137,7 +137,7 @@
       "last 1 safari version"
     ]
   },
-  "homepage": "http://example.com/fairdi/nomad/latest/gui",
+  "homepage": "http://example.com/nomad-oasis/gui",
   "jest": {
     "coverageReporters": [
       "html",

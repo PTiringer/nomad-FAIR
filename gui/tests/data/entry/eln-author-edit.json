@@ -2,7 +2,7 @@
   "ec4e278877c819d5c74b6e128d73a6c4": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/entries/bC7byHvWJp62Sn9uiuJUB38MT5j-",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/entries/bC7byHvWJp62Sn9uiuJUB38MT5j-",
         "method": "GET",
         "body": "",
         "headers": {
@@ -365,7 +365,7 @@
     },
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/entries/bC7byHvWJp62Sn9uiuJUB38MT5j-",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/entries/bC7byHvWJp62Sn9uiuJUB38MT5j-",
         "method": "GET",
         "body": "",
         "headers": {
@@ -728,7 +728,7 @@
     },
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/entries/bC7byHvWJp62Sn9uiuJUB38MT5j-",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/entries/bC7byHvWJp62Sn9uiuJUB38MT5j-",
         "method": "GET",
         "body": "",
         "headers": {
@@ -1093,7 +1093,7 @@
   "3956e4695d0efe4d6ca6a8a049794ab5": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/entries/bC7byHvWJp62Sn9uiuJUB38MT5j-/archive/query",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/entries/bC7byHvWJp62Sn9uiuJUB38MT5j-/archive/query",
         "method": "POST",
         "body": {
           "required": {
@@ -1638,7 +1638,7 @@
     },
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/entries/bC7byHvWJp62Sn9uiuJUB38MT5j-/archive/query",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/entries/bC7byHvWJp62Sn9uiuJUB38MT5j-/archive/query",
         "method": "POST",
         "body": {
           "required": "*"
@@ -2251,7 +2251,7 @@
   "afa783d98e040c74b68e5cfd3d82f3f0": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/entries/query",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/entries/query",
         "method": "POST",
         "body": {
           "required": {
@@ -2306,7 +2306,7 @@
   "10cf17b8184337f8438ff5af96db21a0": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/eln_upload_id/raw/sample.archive.json?decompress=true&ignore_mime_type=true",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/uploads/eln_upload_id/raw/sample.archive.json?decompress=true&ignore_mime_type=true",
         "method": "GET",
         "body": "",
         "headers": {
@@ -2329,7 +2329,7 @@
     },
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/eln_upload_id/raw/sample.archive.json?decompress=true&ignore_mime_type=true",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/uploads/eln_upload_id/raw/sample.archive.json?decompress=true&ignore_mime_type=true",
         "method": "GET",
         "body": "",
         "headers": {
@@ -2354,7 +2354,7 @@
   "e623af5f65daba3b3be485647832f50b": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/entries/83DS7AzwqTKFVwlrdVeaL3kMSLU_/archive/query",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/entries/83DS7AzwqTKFVwlrdVeaL3kMSLU_/archive/query",
         "method": "POST",
         "body": {
           "required": {
@@ -3084,7 +3084,7 @@
   "3b5543f0893b09d8de514df16d0bac43": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/eln_upload_id/raw/schema.archive.yaml?decompress=true&ignore_mime_type=true",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/uploads/eln_upload_id/raw/schema.archive.yaml?decompress=true&ignore_mime_type=true",
         "method": "GET",
         "body": "",
         "headers": {
@@ -3109,7 +3109,7 @@
   "530dc8c51dcfe47c0d23f6bd8ef076db": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/eln_upload_id/raw/?entry_hash=xM16QFk7ZT7PzMaOI2B0iCqa6yI1&file_name=sample.archive.json&wait_for_processing=true",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/uploads/eln_upload_id/raw/?entry_hash=xM16QFk7ZT7PzMaOI2B0iCqa6yI1&file_name=sample.archive.json&wait_for_processing=true",
         "method": "PUT",
         "body": {
           "data": {

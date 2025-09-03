@@ -152,7 +152,7 @@ def run_app(
                 with open(source_file) as f:
                     file_data = f.read()
                 file_data = file_data.replace(
-                    '/fairdi/nomad/latest', config.services.api_base_path
+                    '/nomad-oasis', config.services.api_base_path
                 )
                 with open(source_file, 'w') as f:
                     f.write(file_data)

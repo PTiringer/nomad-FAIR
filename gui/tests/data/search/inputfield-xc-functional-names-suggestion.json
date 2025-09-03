@@ -2,7 +2,7 @@
   "afa783d98e040c74b68e5cfd3d82f3f0": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/entries/query",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/entries/query",
         "method": "POST",
         "body": {
           "exclude": [
@@ -104,7 +104,7 @@
   "64e34867e86fc21d5a868ccf50d49841": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/suggestions",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/suggestions",
         "method": "POST",
         "body": {
           "input": "SOL",
