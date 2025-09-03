@@ -2,9 +2,11 @@ import os
 import shutil
 import tempfile
 import time
+from collections.abc import AsyncGenerator, Callable
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import asynccontextmanager
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from datetime import timedelta
+from typing import TypeAlias
 
 import elasticsearch
 import elasticsearch.exceptions
@@ -13,7 +15,7 @@ from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
 
 from nomad import infrastructure
-from nomad.actions import TaskQueue, client
+from nomad.actions import TaskQueue
 from nomad.actions.activities.util import get_nomad_internal_activities
 from nomad.actions.workflows.util import get_nomad_internal_workflows
 from nomad.config import config
@@ -237,13 +239,18 @@ def proc_infra(worker, elastic_function, mongo_function, raw_files_function):
     return dict(elastic=elastic_function)
 
 
+TemporalWorkerContext: TypeAlias = Callable[
+    [], AbstractAsyncContextManager[WorkflowEnvironment]
+]
+
+
 @pytest.fixture(scope='function')
 def temporal_worker(
     elastic_function,
     mongo_function,
     raw_files_function,
     monkeypatch,
-):
+) -> TemporalWorkerContext:
     """Combines all fixtures necessary for temporal processing (elastic, files, mongo)"""
     from nomad.config import config
 
@@ -255,14 +262,14 @@ def temporal_worker(
     monkeypatch.setattr(workflows, 'WORKFLOW_TIMEOUT', timedelta(seconds=120))
 
     @asynccontextmanager
-    async def worker_context():
+    async def worker_context() -> AsyncGenerator[WorkflowEnvironment, None]:
         async with await WorkflowEnvironment.start_local() as env:
 
             async def mock_get_client():
                 return env.client
 
             # mock the get_client function to use the client from the local test server
-            monkeypatch.setattr(client, 'get_client', mock_get_client)
+            monkeypatch.setattr('nomad.processing.data.get_client', mock_get_client)
 
             with ThreadPoolExecutor(max_workers=1) as executor:
                 async with Worker(
