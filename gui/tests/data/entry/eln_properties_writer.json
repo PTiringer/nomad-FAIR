@@ -2,7 +2,7 @@
   "dd6849bb140872b0b43e674330018f78": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/entries/nwW7UiYFBvR9VQsKdehH9wd3Efws",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/entries/nwW7UiYFBvR9VQsKdehH9wd3Efws",
         "method": "GET",
         "body": "",
         "headers": {
@@ -260,7 +260,7 @@
   "c63c980f359635617d1bbe5e28187225": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/entries/nwW7UiYFBvR9VQsKdehH9wd3Efws/archive/query",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/entries/nwW7UiYFBvR9VQsKdehH9wd3Efws/archive/query",
         "method": "POST",
         "body": {
           "required": "*"
@@ -633,7 +633,7 @@
   "e17ffcc27913591109fafc4c3f8b2d7a": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/entries/xZCSz0HkAolfXjD0IxMrYFYqCf_z/archive/query",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/entries/xZCSz0HkAolfXjD0IxMrYFYqCf_z/archive/query",
         "method": "POST",
         "body": {
           "required": {

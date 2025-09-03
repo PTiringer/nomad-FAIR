@@ -75,7 +75,7 @@ class Services(ConfigBaseModel):
     """,
     )
     api_base_path: str = Field(
-        '/fairdi/nomad/latest',
+        '/nomad-oasis',
         description="""
         The base path prefix for the NOMAD app and api.
     """,
