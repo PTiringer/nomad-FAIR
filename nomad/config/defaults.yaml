@@ -123,7 +123,7 @@ mail:
   user: ''
   with_login: false
 meta:
-  beta: {}
+  beta: { }
   commit: ''
   deployment: oasis
   homepage: https://nomad-lab.eu
@@ -145,9 +145,9 @@ normalize:
   max_2d_single_cell_size: 7
   normalizers:
     include:
-    - OptimadeNormalizer
-    - ResultsNormalizer
-    - MetainfoNormalizer
+      - OptimadeNormalizer
+      - ResultsNormalizer
+      - MetainfoNormalizer
     options:
       MetainfoNormalizer: nomad.normalizing.metainfo.MetainfoNormalizer
       OptimadeNormalizer: nomad.normalizing.optimade.OptimadeNormalizer
@@ -161,22 +161,19 @@ oasis:
   uses_central_user_management: false
   require_authentication: false
 process:
-  add_definition_id_to_reference: false
   auxfile_cutoff: 100
   index_materials: true
   max_upload_size: 34359738368
   metadata_file_extensions:
-  - json
-  - yaml
-  - yml
+    - json
+    - yaml
+    - yml
   metadata_file_name: nomad
   parser_matching_size: 12000
   redirect_stdouts: false
   reuse_parser: true
   rfc3161_skip_published: false
-  store_package_definition_in_mongo: false
   use_empty_parsers: false
-  write_definition_id_to_archive: false
   exclude_potcar: true
 rabbitmq:
   host: localhost
@@ -232,16 +229,16 @@ north:
           The Jupyter Notebook is the original web application for creating and sharing
           computational documents. It offers a simple, streamlined, document-centric
           experience.'
-        external_mounts: []
+        external_mounts: [ ]
         file_extensions:
-        - ipynb
+          - ipynb
         icon: logo/jupyter.svg
         image: gitlab-registry.mpcdf.mpg.de/nomad-lab/nomad-distro/jupyter:develop
         image_pull_policy: Always
         default_url: /lab
         maintainer:
-        - email: markus.scheidgen@physik.hu-berlin.de
-          name: Markus Scheidgen
+          - email: markus.scheidgen@physik.hu-berlin.de
+            name: Markus Scheidgen
         mount_path: /home/jovyan
         path_prefix: lab/tree
         privileged: false
@@ -253,16 +250,16 @@ north:
 
           From rapid prototyping to high performance computing in materials science.
           [Homepage](https://pyiron.org/).'
-        external_mounts: []
+        external_mounts: [ ]
         file_extensions:
-        - ipynb
+          - ipynb
         icon: logo/pyiron.png
         image: pyiron/pyiron:latest
         image_pull_policy: Always
         default_url: /lab
         maintainer:
-        - email: markus.scheidgen@physik.hu-berlin.de
-          name: Markus Scheidgen
+          - email: markus.scheidgen@physik.hu-berlin.de
+            name: Markus Scheidgen
         mount_path: /home/jovyan
         path_prefix: lab/tree
         privileged: false
@@ -275,21 +272,21 @@ north:
           analysis and visualization. It is designed to be easy to use and to provide
           a high degree of interactivity. [Homepage](https://nionswift.readthedocs.io/en/stable/).'
         icon: logo/nionswift.png
-        external_mounts: []
+        external_mounts: [ ]
         file_extensions:
-        - tiff
-        - tif
-        - dm3
-        - dm4
-        - hdf5
-        - h5
-        - nion
+          - tiff
+          - tif
+          - dm3
+          - dm4
+          - hdf5
+          - h5
+          - nion
         image: gitlab-registry.mpcdf.mpg.de/nomad-lab/north/nionswift:refactor
         image_pull_policy: Always
         default_url: /desktop
         maintainer:
-        - email: sherjeel.shabih@hu-berlin.de
-          name: Sherjeel Shabih
+          - email: sherjeel.shabih@hu-berlin.de
+            name: Sherjeel Shabih
         mount_path: /home/jovyan
         privileged: false
         short_description: Run Nion Swift to analyze data as well as prepare focus
@@ -299,23 +296,23 @@ north:
         description: '### **NeXus**:
 
           Includes multiple NeXus tools for visualization and analysis.'
-        external_mounts: []
+        external_mounts: [ ]
         file_extensions:
-        - nxs
-        - nx
-        - nexus
-        - hdf5
-        - hd5
-        - h5
-        - hdf
-        - ipynb
+          - nxs
+          - nx
+          - nexus
+          - hdf5
+          - hd5
+          - h5
+          - hdf
+          - ipynb
         icon: logo/nexus.png
         image: gitlab-registry.mpcdf.mpg.de/nomad-lab/north/nexus:weptop-replacement
         image_pull_policy: Always
         default_url: /lab
         maintainer:
-        - email: sandor.brockhauser@physik.hu-berlin.de
-          name: Sandor Brockhauser
+          - email: sandor.brockhauser@physik.hu-berlin.de
+            name: Sandor Brockhauser
         mount_path: /home/jovyan
         privileged: false
         short_description: Analyse your NeXus files in NOMAD with several NeXus-compatible tools.
@@ -325,22 +322,22 @@ north:
 
           It can be used for tasks such as image editing, image analysis,
           and image processing. [Homepage](https://fiji.sc/).'
-        external_mounts: []
+        external_mounts: [ ]
         file_extensions:
-        - tif
-        - tiff
-        - jpeg
-        - png
-        - gif
-        - bmp
-        - avi
+          - tif
+          - tiff
+          - jpeg
+          - png
+          - gif
+          - bmp
+          - avi
         icon: logo/fiji.png
         image: gitlab-registry.mpcdf.mpg.de/nomad-lab/north/fiji:weptop-replacement
         image_pull_policy: Always
         default_url: /desktop
         maintainer:
-        - email: markus.kuehbach@physik.hu-berlin.de
-          name: "Markus K\xFChbach"
+          - email: markus.kuehbach@physik.hu-berlin.de
+            name: "Markus K\xFChbach"
         mount_path: /home/jovyan
         privileged: false
         short_description: Use FIJI to analyze and visualize your images in your NOMAD files.
@@ -351,7 +348,7 @@ north:
           VESTA is a software program used for visualizing and analyzing crystal structures,
           electron density maps, and other three-dimensional data related to materials
           science and crystallography. [Homepage](http://jp-minerals.org/vesta/en/).'
-        external_mounts: []
+        external_mounts: [ ]
         file_extensions:
           - vesta
           - cif
@@ -373,8 +370,8 @@ north:
         image_pull_policy: Always
         default_url: /desktop
         maintainer:
-        - email: markus.kuehbach@physik.hu-berlin.de
-          name: "Markus K\xFChbach"
+          - email: markus.kuehbach@physik.hu-berlin.de
+            name: "Markus K\xFChbach"
         mount_path: /home/jovyan
         privileged: false
         short_description: Run VESTA to analyse and visualize your crystal structures in
@@ -385,16 +382,16 @@ north:
 
           VESTA, GPAW, and abTEM configured in one container for simulating
           images and diffraction patterns in transmission electron microscopy.'
-        external_mounts: []
+        external_mounts: [ ]
         file_extensions:
-        - ipynb
+          - ipynb
         icon: logo/abtem.png
         image: gitlab-registry.mpcdf.mpg.de/nomad-lab/north/abtem:refactor
         image_pull_policy: Always
         default_url: /lab
         maintainer:
-        - email: markus.kuehbach@physik.hu-berlin.de
-          name: "Markus K\xFChbach"
+          - email: markus.kuehbach@physik.hu-berlin.de
+            name: "Markus K\xFChbach"
         mount_path: /home/jovyan
         privileged: false
         short_description: Electronic structure supported image simulation for transmission
@@ -408,17 +405,17 @@ north:
           NeXus file according to the [NXellipsometry](https://manual.nexusformat.org/classes/contributed_definitions/NXellipsometry.html#nxellipsometry)
           application definition and a successive analysis of a SiO2 on Si Psi/Delta
           measurement.'
-        external_mounts: []
+        external_mounts: [ ]
         file_extensions:
-        - ipynb
-        - nxs
+          - ipynb
+          - nxs
         icon: logo/jupyter.svg
         image: gitlab-registry.mpcdf.mpg.de/nomad-lab/north/ellips:refactor
         image_pull_policy: Always
         default_url: /lab
         maintainer:
-        - email: sandor.brockhauser@physik.hu-berlin.de
-          name: Sandor Brockhauser
+          - email: sandor.brockhauser@physik.hu-berlin.de
+            name: Sandor Brockhauser
         mount_path: /home/jovyan
         path_prefix: lab/tree
         privileged: false
@@ -429,19 +426,19 @@ north:
 
           Includes tools for analyzing X-ray Photoelectron Spectroscopy
           (XPS) spectra and converting SPECS SLE files into NeXus.'
-        external_mounts: []
+        external_mounts: [ ]
         file_extensions:
-        - ipynb
-        - nxs
-        - h5
-        - hdf5
+          - ipynb
+          - nxs
+          - h5
+          - hdf5
         icon: logo/jupyter.svg
         image: gitlab-registry.mpcdf.mpg.de/nomad-lab/north/xps:master
         default_url: /lab
         image_pull_policy: Always
         maintainer:
-        - email: lukas.pielsticker@physik.hu-berlin.de
-          name: Lukas Pielsticker
+          - email: lukas.pielsticker@physik.hu-berlin.de
+            name: Lukas Pielsticker
         mount_path: /home/jovyan
         path_prefix: lab/tree
         privileged: false
@@ -456,19 +453,19 @@ north:
           nanonis software into the NeXus application definition NXsts. The example
           contains data files from the two specific nanonis software versions generic
           5e and generic 4.5.'
-        external_mounts: []
+        external_mounts: [ ]
         file_extensions:
-        - ipynb
-        - nxs
-        - h5
-        - hdf5
+          - ipynb
+          - nxs
+          - h5
+          - hdf5
         icon: logo/jupyter.svg
         image: gitlab-registry.mpcdf.mpg.de/nomad-lab/north/sts:refactor
         image_pull_policy: Always
         default_url: /lab
         maintainer:
-        - email: rubel.mozumder@physik.hu-berlin.de
-          name: Rubel Mozumder
+          - email: rubel.mozumder@physik.hu-berlin.de
+            name: Rubel Mozumder
         mount_path: /home/jovyan
         path_prefix: lab/tree
         privileged: false
@@ -480,16 +477,16 @@ north:
           Miscellaneous tools from the atom probe community:
 
           Currently APTyzer, paraprobe-toolbox, and APAV'
-        external_mounts: []
+        external_mounts: [ ]
         file_extensions:
-        - ipynb
+          - ipynb
         icon: logo/jupyter.svg
         image: gitlab-registry.mpcdf.mpg.de/nomad-lab/north/apmtools:refactor
         image_pull_policy: Always
         default_url: /lab
         maintainer:
-        - email: markus.kuehbach@physik.hu-berlin.de
-          name: "Markus K\xFChbach"
+          - email: markus.kuehbach@physik.hu-berlin.de
+            name: "Markus K\xFChbach"
         mount_path: /home/jovyan
         privileged: false
         short_description: An example for analyzing atom probe data.
@@ -499,7 +496,7 @@ ui:
   entry:
     cards:
       exclude:
-      - relatedResources
+        - relatedResources
       options:
         sections:
           error: Could not render section card.
@@ -807,51 +804,51 @@ plugins:
             more details.'
           filters:
             exclude:
-            - mainfile
-            - entry_name
-            - combine
+              - mainfile
+              - entry_name
+              - combine
           search_syntaxes:
             exclude:
-            - free_text
+              - free_text
           columns:
-           - search_quantity: entry_name
-             title: Name
-             selected: true
-           - search_quantity: results.material.chemical_formula_hill
-             title: Formula
-             selected: true
-           - search_quantity: entry_type
-             selected: true
-           - search_quantity: upload_create_time
-             title: Upload time
-             selected: true
-           - search_quantity: authors
-             selected: true
-           - search_quantity: upload_name
-           - search_quantity: upload_id
-           - search_quantity: results.method.method_name
-           - search_quantity: results.method.simulation.program_name
-           - search_quantity: results.method.simulation.dft.xc_functional_type
-           - search_quantity: results.method.simulation.precision.apw_cutoff
-           - search_quantity: results.method.simulation.precision.basis_set
-           - search_quantity: results.method.simulation.precision.k_line_density
-           - search_quantity: results.method.simulation.precision.native_tier
-           - search_quantity: results.method.simulation.precision.planewave_cutoff
-           - search_quantity: results.material.structural_type
-           - search_quantity: results.material.symmetry.crystal_system
-           - search_quantity: results.material.symmetry.space_group_symbol
-           - search_quantity: results.material.symmetry.space_group_number
-           - search_quantity: results.eln.lab_ids
-           - search_quantity: results.eln.sections
-           - search_quantity: results.eln.methods
-           - search_quantity: results.eln.tags
-           - search_quantity: results.eln.instruments
-           - search_quantity: mainfile
-           - search_quantity: comment
-           - search_quantity: references
-           - search_quantity: datasets
-           - search_quantity: published
-             title: Access
+            - search_quantity: entry_name
+              title: Name
+              selected: true
+            - search_quantity: results.material.chemical_formula_hill
+              title: Formula
+              selected: true
+            - search_quantity: entry_type
+              selected: true
+            - search_quantity: upload_create_time
+              title: Upload time
+              selected: true
+            - search_quantity: authors
+              selected: true
+            - search_quantity: upload_name
+            - search_quantity: upload_id
+            - search_quantity: results.method.method_name
+            - search_quantity: results.method.simulation.program_name
+            - search_quantity: results.method.simulation.dft.xc_functional_type
+            - search_quantity: results.method.simulation.precision.apw_cutoff
+            - search_quantity: results.method.simulation.precision.basis_set
+            - search_quantity: results.method.simulation.precision.k_line_density
+            - search_quantity: results.method.simulation.precision.native_tier
+            - search_quantity: results.method.simulation.precision.planewave_cutoff
+            - search_quantity: results.material.structural_type
+            - search_quantity: results.material.symmetry.crystal_system
+            - search_quantity: results.material.symmetry.space_group_symbol
+            - search_quantity: results.material.symmetry.space_group_number
+            - search_quantity: results.eln.lab_ids
+            - search_quantity: results.eln.sections
+            - search_quantity: results.eln.methods
+            - search_quantity: results.eln.tags
+            - search_quantity: results.eln.instruments
+            - search_quantity: mainfile
+            - search_quantity: comment
+            - search_quantity: references
+            - search_quantity: datasets
+            - search_quantity: published
+              title: Access
           filter_menus:
             options:
               material:
@@ -934,46 +931,46 @@ plugins:
             investigate and report different physical properties.'
           filters:
             exclude:
-            - mainfile
-            - entry_name
-            - combine
+              - mainfile
+              - entry_name
+              - combine
           filters_locked:
             quantities: results.method.simulation.program_name
           search_syntaxes:
             exclude:
-            - free_text
+              - free_text
           columns:
-           - search_quantity: results.material.chemical_formula_hill
-             title: Formula
-             selected: true
-           - search_quantity: results.method.simulation.program_name
-             selected: true
-           - search_quantity: results.method.method_name
-             selected: true
-           - search_quantity: results.method.simulation.dft.xc_functional_type
-             selected: true
-           - search_quantity: upload_create_time
-             title: Upload time
-             selected: true
-           - search_quantity: authors
-             selected: true
-           - search_quantity: results.method.simulation.precision.apw_cutoff
-           - search_quantity: results.method.simulation.precision.basis_set
-           - search_quantity: results.method.simulation.precision.k_line_density
-           - search_quantity: results.method.simulation.precision.native_tier
-           - search_quantity: results.method.simulation.precision.planewave_cutoff
-           - search_quantity: results.material.structural_type
-           - search_quantity: results.material.symmetry.crystal_system
-           - search_quantity: results.material.symmetry.space_group_symbol
-           - search_quantity: results.material.symmetry.space_group_number
-           - search_quantity: entry_name
-             title: Name
-           - search_quantity: mainfile
-           - search_quantity: comment
-           - search_quantity: references
-           - search_quantity: datasets
-           - search_quantity: published
-             title: Access
+            - search_quantity: results.material.chemical_formula_hill
+              title: Formula
+              selected: true
+            - search_quantity: results.method.simulation.program_name
+              selected: true
+            - search_quantity: results.method.method_name
+              selected: true
+            - search_quantity: results.method.simulation.dft.xc_functional_type
+              selected: true
+            - search_quantity: upload_create_time
+              title: Upload time
+              selected: true
+            - search_quantity: authors
+              selected: true
+            - search_quantity: results.method.simulation.precision.apw_cutoff
+            - search_quantity: results.method.simulation.precision.basis_set
+            - search_quantity: results.method.simulation.precision.k_line_density
+            - search_quantity: results.method.simulation.precision.native_tier
+            - search_quantity: results.method.simulation.precision.planewave_cutoff
+            - search_quantity: results.material.structural_type
+            - search_quantity: results.material.symmetry.crystal_system
+            - search_quantity: results.material.symmetry.space_group_symbol
+            - search_quantity: results.material.symmetry.space_group_number
+            - search_quantity: entry_name
+              title: Name
+            - search_quantity: mainfile
+            - search_quantity: comment
+            - search_quantity: references
+            - search_quantity: datasets
+            - search_quantity: published
+              title: Access
           filter_menus:
             options:
               material:
@@ -1034,55 +1031,55 @@ plugins:
                 size: m
           dashboard:
             widgets:
-            - layout:
-                lg: {h: 11, minH: 3, minW: 3, w: 14, x: 0, y: 0}
-                md: {h: 8, minH: 3, minW: 3, w: 12, x: 0, y: 0}
-                sm: {h: 8, minH: 3, minW: 3, w: 12, x: 0, y: 0}
-                xl: {h: 11, minH: 3, minW: 3, w: 14, x: 0, y: 0}
-                xxl: {h: 9, minH: 3, minW: 3, w: 13, x: 0, y: 0}
-              quantity: results.material.elements
-              scale: linear
-              type: periodictable
-            - layout:
-                lg: {h: 5, minH: 3, minW: 3, w: 5, x: 19, y: 6}
-                md: {h: 6, minH: 3, minW: 3, w: 6, x: 12, y: 8}
-                sm: {h: 5, minH: 3, minW: 3, w: 6, x: 6, y: 13}
-                xl: {h: 6, minH: 3, minW: 3, w: 6, x: 24, y: 5}
-                xxl: {h: 9, minH: 3, minW: 3, w: 6, x: 30, y: 0}
-              quantity: results.material.symmetry.space_group_symbol
-              scale: linear
-              show_input: true
-              type: terms
-            - layout:
-                lg: {h: 6, minH: 3, minW: 3, w: 5, x: 19, y: 0}
-                md: {h: 6, minH: 3, minW: 3, w: 6, x: 0, y: 8}
-                sm: {h: 5, minH: 3, minW: 3, w: 6, x: 6, y: 8}
-                xl: {h: 11, minH: 3, minW: 3, w: 5, x: 19, y: 0}
-                xxl: {h: 9, minH: 3, minW: 3, w: 6, x: 19, y: 0}
-              quantity: results.material.structural_type
-              scale: log
-              show_input: false
-              type: terms
-            - layout:
-                lg: {h: 6, minH: 3, minW: 3, w: 5, x: 14, y: 0}
-                md: {h: 8, minH: 3, minW: 3, w: 6, x: 12, y: 0}
-                sm: {h: 5, minH: 3, minW: 3, w: 6, x: 0, y: 8}
-                xl: {h: 11, minH: 3, minW: 3, w: 5, x: 14, y: 0}
-                xxl: {h: 9, minH: 3, minW: 3, w: 6, x: 13, y: 0}
-              quantity: results.method.simulation.program_name
-              scale: log
-              show_input: true
-              type: terms
-            - layout:
-                lg: {h: 5, minH: 3, minW: 3, w: 5, x: 14, y: 6}
-                md: {h: 6, minH: 3, minW: 3, w: 6, x: 6, y: 8}
-                sm: {h: 5, minH: 3, minW: 3, w: 6, x: 0, y: 13}
-                xl: {h: 5, minH: 3, minW: 3, w: 6, x: 24, y: 0}
-                xxl: {h: 9, minH: 3, minW: 3, w: 5, x: 25, y: 0}
-              quantity: results.material.symmetry.crystal_system
-              scale: linear
-              show_input: false
-              type: terms
+              - layout:
+                  lg: { h: 11, minH: 3, minW: 3, w: 14, x: 0, y: 0 }
+                  md: { h: 8, minH: 3, minW: 3, w: 12, x: 0, y: 0 }
+                  sm: { h: 8, minH: 3, minW: 3, w: 12, x: 0, y: 0 }
+                  xl: { h: 11, minH: 3, minW: 3, w: 14, x: 0, y: 0 }
+                  xxl: { h: 9, minH: 3, minW: 3, w: 13, x: 0, y: 0 }
+                quantity: results.material.elements
+                scale: linear
+                type: periodictable
+              - layout:
+                  lg: { h: 5, minH: 3, minW: 3, w: 5, x: 19, y: 6 }
+                  md: { h: 6, minH: 3, minW: 3, w: 6, x: 12, y: 8 }
+                  sm: { h: 5, minH: 3, minW: 3, w: 6, x: 6, y: 13 }
+                  xl: { h: 6, minH: 3, minW: 3, w: 6, x: 24, y: 5 }
+                  xxl: { h: 9, minH: 3, minW: 3, w: 6, x: 30, y: 0 }
+                quantity: results.material.symmetry.space_group_symbol
+                scale: linear
+                show_input: true
+                type: terms
+              - layout:
+                  lg: { h: 6, minH: 3, minW: 3, w: 5, x: 19, y: 0 }
+                  md: { h: 6, minH: 3, minW: 3, w: 6, x: 0, y: 8 }
+                  sm: { h: 5, minH: 3, minW: 3, w: 6, x: 6, y: 8 }
+                  xl: { h: 11, minH: 3, minW: 3, w: 5, x: 19, y: 0 }
+                  xxl: { h: 9, minH: 3, minW: 3, w: 6, x: 19, y: 0 }
+                quantity: results.material.structural_type
+                scale: log
+                show_input: false
+                type: terms
+              - layout:
+                  lg: { h: 6, minH: 3, minW: 3, w: 5, x: 14, y: 0 }
+                  md: { h: 8, minH: 3, minW: 3, w: 6, x: 12, y: 0 }
+                  sm: { h: 5, minH: 3, minW: 3, w: 6, x: 0, y: 8 }
+                  xl: { h: 11, minH: 3, minW: 3, w: 5, x: 14, y: 0 }
+                  xxl: { h: 9, minH: 3, minW: 3, w: 6, x: 13, y: 0 }
+                quantity: results.method.simulation.program_name
+                scale: log
+                show_input: true
+                type: terms
+              - layout:
+                  lg: { h: 5, minH: 3, minW: 3, w: 5, x: 14, y: 6 }
+                  md: { h: 6, minH: 3, minW: 3, w: 6, x: 6, y: 8 }
+                  sm: { h: 5, minH: 3, minW: 3, w: 6, x: 0, y: 13 }
+                  xl: { h: 5, minH: 3, minW: 3, w: 6, x: 24, y: 0 }
+                  xxl: { h: 9, minH: 3, minW: 3, w: 5, x: 25, y: 0 }
+                quantity: results.material.symmetry.crystal_system
+                scale: linear
+                show_input: false
+                type: terms
       apps/2_theory/2_materials:
         entry_point_type: app
         app:
@@ -1115,30 +1112,30 @@ plugins:
             order_by: chemical_formula_hill
           search_syntaxes:
             exclude:
-            - free_text
+              - free_text
           filters:
             exclude:
-            - mainfile
-            - entry_name
+              - mainfile
+              - entry_name
           rows:
             details:
               enabled: false
             selection:
               enabled: false
           columns:
-           - search_quantity: chemical_formula_hill
-             title: Formula
-             selected: true
-           - search_quantity: structural_type
-             selected: true
-           - search_quantity: symmetry.structure_name
-             selected: true
-           - search_quantity: symmetry.space_group_number
-             selected: true
-           - search_quantity: symmetry.crystal_system
-             selected: true
-           - search_quantity: symmetry.space_group_symbol
-           - search_quantity: material_id
+            - search_quantity: chemical_formula_hill
+              title: Formula
+              selected: true
+            - search_quantity: structural_type
+              selected: true
+            - search_quantity: symmetry.structure_name
+              selected: true
+            - search_quantity: symmetry.space_group_number
+              selected: true
+            - search_quantity: symmetry.crystal_system
+              selected: true
+            - search_quantity: symmetry.space_group_symbol
+            - search_quantity: material_id
           filter_menus:
             options:
               material:
@@ -1214,36 +1211,36 @@ plugins:
             specialized arrangement of default columns.'
           filters:
             exclude:
-            - mainfile
-            - entry_name
-            - combine
+              - mainfile
+              - entry_name
+              - combine
           filters_locked:
             quantities: data
           columns:
-           - search_quantity: entry_name
-             title: Name
-             selected: true
-           - search_quantity: entry_type
-             selected: true
-           - search_quantity: upload_create_time
-             title: Upload time
-             selected: true
-           - search_quantity: authors
-             selected: true
-           - search_quantity: results.material.chemical_formula_hill
-             title: Formula
-           - search_quantity: results.method.method_name
-           - search_quantity: results.eln.lab_ids
-           - search_quantity: results.eln.sections
-           - search_quantity: results.eln.methods
-           - search_quantity: results.eln.tags
-           - search_quantity: results.eln.instruments
-           - search_quantity: mainfile
-           - search_quantity: comment
-           - search_quantity: references
-           - search_quantity: datasets
-           - search_quantity: published
-             title: Access
+            - search_quantity: entry_name
+              title: Name
+              selected: true
+            - search_quantity: entry_type
+              selected: true
+            - search_quantity: upload_create_time
+              title: Upload time
+              selected: true
+            - search_quantity: authors
+              selected: true
+            - search_quantity: results.material.chemical_formula_hill
+              title: Formula
+            - search_quantity: results.method.method_name
+            - search_quantity: results.eln.lab_ids
+            - search_quantity: results.eln.sections
+            - search_quantity: results.eln.methods
+            - search_quantity: results.eln.tags
+            - search_quantity: results.eln.instruments
+            - search_quantity: mainfile
+            - search_quantity: comment
+            - search_quantity: references
+            - search_quantity: datasets
+            - search_quantity: published
+              title: Access
           filter_menus:
             options:
               material:
@@ -1279,38 +1276,38 @@ plugins:
             default columns.'
           filters:
             exclude:
-            - mainfile
-            - entry_name
-            - combine
+              - mainfile
+              - entry_name
+              - combine
           filters_locked:
             results.method.method_name: EELS
           search_syntaxes:
             exclude:
-            - free_text
+              - free_text
           columns:
-           - search_quantity: results.material.chemical_formula_hill
-             title: Formula
-             selected: true
-           - search_quantity: results.properties.spectroscopic.spectra.provenance.eels.detector_type
-             selected: true
-           - search_quantity: results.properties.spectroscopic.spectra.provenance.eels.resolution
-             selected: true
-           - search_quantity: upload_create_time
-             title: Upload time
-             selected: true
-           - search_quantity: authors
-             selected: true
-           - search_quantity: results.properties.spectroscopic.spectra.provenance.eels.min_energy
-           - search_quantity: results.properties.spectroscopic.spectra.provenance.eels.max_energy
-           - search_quantity: entry_name
-             title: Name
-           - search_quantity: entry_type
-           - search_quantity: mainfile
-           - search_quantity: comment
-           - search_quantity: references
-           - search_quantity: datasets
-           - search_quantity: published
-             title: Access
+            - search_quantity: results.material.chemical_formula_hill
+              title: Formula
+              selected: true
+            - search_quantity: results.properties.spectroscopic.spectra.provenance.eels.detector_type
+              selected: true
+            - search_quantity: results.properties.spectroscopic.spectra.provenance.eels.resolution
+              selected: true
+            - search_quantity: upload_create_time
+              title: Upload time
+              selected: true
+            - search_quantity: authors
+              selected: true
+            - search_quantity: results.properties.spectroscopic.spectra.provenance.eels.min_energy
+            - search_quantity: results.properties.spectroscopic.spectra.provenance.eels.max_energy
+            - search_quantity: entry_name
+              title: Name
+            - search_quantity: entry_type
+            - search_quantity: mainfile
+            - search_quantity: comment
+            - search_quantity: references
+            - search_quantity: datasets
+            - search_quantity: published
+              title: Access
           filter_menus:
             options:
               material:
