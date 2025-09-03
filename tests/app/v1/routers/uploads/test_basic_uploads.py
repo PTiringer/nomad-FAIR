@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 
+import asyncio
 import io
 import os
 import tempfile
@@ -45,6 +46,7 @@ from tests.config.models.test_plugins import (
     mock_example_upload_entry_point,
     mock_plugin_package,
 )
+from tests.fixtures.infrastructure import TemporalWorkerContext
 from tests.processing.test_edit_metadata import (
     all_admin_metadata,
     all_coauthor_metadata,
@@ -2278,12 +2280,13 @@ def test_get_upload_entry_archive(
         ),
     ],
 )
-def test_put_upload_raw_path(
+@pytest.mark.asyncio
+async def test_put_upload_raw_path(
     auth_headers,
     upload_tokens,
     client,
-    proc_infra,
-    non_empty_processed,
+    temporal_worker,
+    non_empty_processed_with_temporal,
     example_data_writeable,
     mode,
     user,
@@ -2306,26 +2309,29 @@ def test_put_upload_raw_path(
         ProcessStatus.SUCCESS if 'wait_for_processing' in query_args else None
     )
 
-    response, _ = assert_file_upload_and_processing(
-        auth_headers,
-        upload_tokens,
-        client,
-        action,
-        url,
-        mode,
-        user,
-        upload_id,
-        source_paths,
-        target_path,
-        query_args,
-        accept_json,
-        use_upload_token,
-        expected_status_code,
-        expected_process_status,
-        expected_mainfiles,
-        published,
-        all_entries_should_succeed,
-    )
+    async with temporal_worker():
+        response, _ = await asyncio.to_thread(
+            lambda: assert_file_upload_and_processing(
+                auth_headers,
+                upload_tokens,
+                client,
+                action,
+                url,
+                mode,
+                user,
+                upload_id,
+                source_paths,
+                target_path,
+                query_args,
+                accept_json,
+                use_upload_token,
+                expected_status_code,
+                expected_process_status,
+                expected_mainfiles,
+                published,
+                all_entries_should_succeed,
+            )
+        )
 
     if response.status_code == 200 and accept_json:
         response_json = response.json()
@@ -2367,9 +2373,9 @@ def test_editing_raw_file(
     auth_headers,
     upload_tokens,
     client,
-    proc_infra,
     non_empty_processed,
     example_data_writeable,
+    proc_infra,
     mode,
     user,
     expected_status_code,
@@ -2566,10 +2572,11 @@ def test_editing_raw_file(
         ),
     ],
 )
-def test_post_upload_raw_create_dir_path(
+@pytest.mark.asyncio
+async def test_post_upload_raw_create_dir_path(
     auth_headers,
     client,
-    proc_infra,
+    temporal_worker,
     example_data_writeable,
     user,
     upload_id,
@@ -2577,7 +2584,10 @@ def test_post_upload_raw_create_dir_path(
     expected_status_code,
 ):
     url = f'uploads/{upload_id}/raw-create-dir/{requests.utils.quote(path)}'
-    response = client.post(url, headers=auth_headers[user])
+    async with temporal_worker():
+        response = await asyncio.to_thread(
+            lambda: client.post(url, headers=auth_headers[user])
+        )
     assert_response(response, expected_status_code)
     if expected_status_code == 200:
         upload = Upload.get(upload_id)
@@ -2692,11 +2702,12 @@ def test_post_upload_raw_create_dir_path(
         ),
     ],
 )
-def test_delete_upload_raw_path(
+@pytest.mark.asyncio
+async def test_delete_upload_raw_path(
     auth_headers,
     client,
-    proc_infra,
-    non_empty_processed,
+    temporal_worker,
+    non_empty_processed_with_temporal,
     example_data_writeable,
     upload_tokens,
     user,
@@ -2721,23 +2732,29 @@ def test_delete_upload_raw_path(
             'tests/data/proc/examples_template/1.aux', 'examples_template'
         )
     query_args = dict(token=token)
-    response = client.delete(
-        build_url(f'uploads/{upload_id}/raw/{path}', query_args),
-        headers=user_auth_action,
-    )
-    assert_response(response, expected_status_code)
-    if expected_status_code == 200:
-        assert_processing(client, upload_id, user_auth)
-        # Check that path to remove has disappeared
-        upload_files = StagingUploadFiles(upload_id)
-        if path == '':
-            # Deleting the root folder = the folder itself should be emptied, but not deleted.
-            assert not list(upload_files.raw_directory_list(''))
-        else:
-            # Deleting a file or folder within the raw folder - it should disappear.
-            assert not upload_files.raw_path_exists(path)
 
-        assert_expected_mainfiles(upload_id, expected_mainfiles)
+    async with temporal_worker():
+        response = await asyncio.to_thread(
+            lambda: client.delete(
+                build_url(f'uploads/{upload_id}/raw/{path}', query_args),
+                headers=user_auth_action,
+            )
+        )
+        assert_response(response, expected_status_code)
+        if expected_status_code == 200:
+            await asyncio.to_thread(
+                lambda: assert_processing(client, upload_id, user_auth)
+            )
+            # Check that path to remove has disappeared
+            upload_files = StagingUploadFiles(upload_id)
+            if path == '':
+                # Deleting the root folder = the folder itself should be emptied, but not deleted.
+                assert not list(upload_files.raw_directory_list(''))
+            else:
+                # Deleting a file or folder within the raw folder - it should disappear.
+                assert not upload_files.raw_path_exists(path)
+
+            assert_expected_mainfiles(upload_id, expected_mainfiles)
 
 
 @pytest.mark.parametrize(
@@ -2877,10 +2894,11 @@ def test_delete_upload_raw_path(
         ),
     ],
 )
-def test_post_upload_edit(
+@pytest.mark.asyncio
+async def test_post_upload_edit(
     auth_headers,
     client,
-    proc_infra,
+    temporal_worker,
     example_data_writeable,
     example_datasets,
     users_dict,
@@ -2907,25 +2925,29 @@ def test_post_upload_edit(
     expected_metadata = kwargs.get('expected_metadata', metadata)
 
     add_coauthor = kwargs.get('add_coauthor', False)
-    if add_coauthor:
-        upload = Upload.get(upload_id)
-        upload.edit_upload_metadata(
-            edit_request_json={'metadata': {'coauthors': user.user_id}},
-            user_id=upload.main_author,
-        )
-        upload.block_until_complete()
+    async with temporal_worker() as env:
+        if add_coauthor:
+            upload = Upload.get(upload_id)
+            await asyncio.to_thread(
+                lambda: upload.edit_upload_metadata(
+                    edit_request_json={'metadata': {'coauthors': user.user_id}},
+                    user_id=upload.main_author,
+                )
+            )
 
-    edit_request_json = dict(
-        query=query,
-        owner=owner,
-        metadata=metadata,
-        entries=entries,
-        entries_key=entries_key,
-        verify_only=verify_only,
-    )
-    url = f'uploads/{upload_id}/edit'
-    edit_start = datetime.now(timezone.utc).isoformat()[0:22]
-    response = client.post(url, headers=user_auth, json=edit_request_json)
+        edit_request_json = dict(
+            query=query,
+            owner=owner,
+            metadata=metadata,
+            entries=entries,
+            entries_key=entries_key,
+            verify_only=verify_only,
+        )
+        url = f'uploads/{upload_id}/edit'
+        edit_start = datetime.now(timezone.utc).isoformat()[0:22]
+        response = await asyncio.to_thread(
+            lambda: client.post(url, headers=user_auth, json=edit_request_json)
+        )
     if expected_error_loc:
         assert_response(response, 422)
         error_locs = [tuple(d['loc']) for d in response.json()['detail']]
@@ -3217,12 +3239,12 @@ def test_post_upload_edit(
         ),
     ],
 )
-def test_post_upload(
+@pytest.mark.asyncio
+async def test_post_upload(
     auth_headers,
     upload_tokens,
     client,
-    mongo_function,
-    proc_infra,
+    temporal_worker,
     monkeypatch,
     empty_upload,
     non_empty_example_upload,
@@ -3272,26 +3294,29 @@ def test_post_upload(
     upload_id = None  # Not determined yet
     expected_process_status = None
 
-    _, processed_response_data = assert_file_upload_and_processing(
-        auth_headers,
-        upload_tokens,
-        client,
-        action,
-        url,
-        mode,
-        user,
-        upload_id,
-        source_paths,
-        target_path,
-        query_args,
-        accept_json,
-        use_upload_token,
-        expected_status_code,
-        expected_process_status,
-        expected_mainfiles,
-        published,
-        all_entries_should_succeed,
-    )
+    async with temporal_worker():
+        _, processed_response_data = await asyncio.to_thread(
+            lambda: assert_file_upload_and_processing(
+                auth_headers,
+                upload_tokens,
+                client,
+                action,
+                url,
+                mode,
+                user,
+                upload_id,
+                source_paths,
+                target_path,
+                query_args,
+                accept_json,
+                use_upload_token,
+                expected_status_code,
+                expected_process_status,
+                expected_mainfiles,
+                published,
+                all_entries_should_succeed,
+            )
+        )
 
     if is_example_upload:
         temp_dir.cleanup()
@@ -3356,8 +3381,9 @@ def test_post_upload(
         pytest.param(dict(user='user2', expected_status_code=401), id='no-access'),
     ],
 )
-def test_post_upload_action_publish(
-    auth_headers, client, proc_infra, example_data_writeable, kwargs
+@pytest.mark.asyncio
+async def test_post_upload_action_publish(
+    auth_headers, client, temporal_worker, example_data_writeable, kwargs
 ):
     """Tests the publish action with various arguments."""
     upload_id = kwargs.get('upload_id', 'id_unpublished_w')
@@ -3366,14 +3392,16 @@ def test_post_upload_action_publish(
     user = kwargs.get('user', 'user1')
     user_auth = auth_headers[user]
 
-    response = perform_post_upload_action(
-        client, user_auth, upload_id, 'publish', **query_args
-    )
+    async with temporal_worker():
+        response = await asyncio.to_thread(
+            lambda: perform_post_upload_action(
+                client, user_auth, upload_id, 'publish', **query_args
+            )
+        )
 
     assert_response(response, expected_status_code)
     if expected_status_code == 200:
         upload = assert_upload(response.json())
-        assert upload['current_process'] == '_publish_upload'
         assert upload['process_running']
 
         assert_gets_published(
@@ -3493,38 +3521,47 @@ def test_post_upload_action_publish_to_central_nomad(
         pytest.param('silly_value', False, 'user1', 404, id='invalid-upload_id'),
     ],
 )
-def test_post_upload_action_process(
+@pytest.mark.asyncio
+async def test_post_upload_action_process(
     auth_headers,
     client,
-    mongo_function,
-    proc_infra,
+    temporal_worker,
     monkeypatch,
     example_data_writeable,
-    non_empty_processed,
+    non_empty_processed_with_temporal,
     internal_example_user_metadata,
     upload_id,
     publish,
     user,
     expected_status_code,
 ):
-    if publish:
-        set_upload_entry_metadata(non_empty_processed, internal_example_user_metadata)
-        non_empty_processed.publish_upload()
-        try:
-            non_empty_processed.block_until_complete(interval=0.01)
-        except Exception:
-            pass
+    async with temporal_worker():
+        if publish:
+            set_upload_entry_metadata(
+                non_empty_processed_with_temporal, internal_example_user_metadata
+            )
+            await asyncio.to_thread(
+                lambda: non_empty_processed_with_temporal.publish_upload()
+            )
 
-    monkeypatch.setattr('nomad.config.meta.version', 're_process_test_version')
-    monkeypatch.setattr('nomad.config.meta.commit', 're_process_test_commit')
-    user_auth = auth_headers[user]
+        monkeypatch.setattr('nomad.config.meta.version', 're_process_test_version')
+        monkeypatch.setattr('nomad.config.meta.commit', 're_process_test_commit')
+        user_auth = auth_headers[user]
 
-    response = perform_post_upload_action(client, user_auth, upload_id, 'process')
-    assert_response(response, expected_status_code)
-    if expected_status_code == 200:
-        assert_processing(
-            client, upload_id, auth_headers['user1'], check_files=False, published=True
+        response = await asyncio.to_thread(
+            lambda: perform_post_upload_action(client, user_auth, upload_id, 'process')
         )
+        assert_response(response, expected_status_code)
+        if expected_status_code == 200:
+            await asyncio.to_thread(
+                lambda: assert_processing(
+                    client,
+                    upload_id,
+                    auth_headers['user1'],
+                    check_files=False,
+                    published=True,
+                )
+            )
 
 
 @pytest.mark.parametrize(
@@ -3598,11 +3635,11 @@ def test_post_upload_action_process(
         ),
     ],
 )
-def test_post_upload_action_delete_entry_files(
+@pytest.mark.asyncio
+async def test_post_upload_action_delete_entry_files(
     auth_headers,
     client,
-    mongo_function,
-    proc_infra,
+    temporal_worker: TemporalWorkerContext,
     example_data_writeable,
     upload_id,
     user,
@@ -3613,7 +3650,7 @@ def test_post_upload_action_delete_entry_files(
     expect_exists,
     expect_not_exists,
 ):
-    json = {}
+    json: dict = {}
     if include_parent_folders is not None:
         json.update(include_parent_folders=include_parent_folders)
     if owner is not None:
@@ -3621,21 +3658,34 @@ def test_post_upload_action_delete_entry_files(
     if query is not None:
         json.update(query=query)
 
-    response = perform_post_upload_action(
-        client, auth_headers[user], upload_id, 'delete-entry-files', json=json
-    )
-    assert_response(response, expected_status_code)
-    if expected_status_code == 200:
-        upload = Upload.get(upload_id)
-        upload.block_until_complete()
-        for path in expect_exists or []:
-            assert upload.upload_files.raw_path_exists(path), (
-                f'Missing expected path: {path}'
+    async with temporal_worker() as env:
+        response = await asyncio.to_thread(
+            lambda: perform_post_upload_action(
+                client, auth_headers[user], upload_id, 'delete-entry-files', json=json
             )
-        for path in expect_not_exists or []:
-            assert not upload.upload_files.raw_path_exists(path), (
-                f'Expected path not to exist: {path}'
-            )
+        )
+        assert_response(response, expected_status_code)
+        if expected_status_code == 200:
+            upload = Upload.get(upload_id)
+            upload.reload()
+            # allow enough time to start processing the workflow
+            while True:
+                if upload.process_status == ProcessStatus.PENDING:
+                    await asyncio.to_thread(lambda: time.sleep(1))
+                    upload.reload()
+                else:
+                    break
+            if workflow_ids := upload.workflow_ids:
+                handle = env.client.get_workflow_handle(workflow_ids[0])
+                await handle.result()
+            for path in expect_exists or []:
+                assert upload.upload_files.raw_path_exists(path), (
+                    f'Missing expected path: {path}'
+                )
+            for path in expect_not_exists or []:
+                assert not upload.upload_files.raw_path_exists(path), (
+                    f'Expected path not to exist: {path}'
+                )
 
 
 @pytest.mark.parametrize(
@@ -3650,7 +3700,8 @@ def test_post_upload_action_delete_entry_files(
         pytest.param('id_published_w', 'user1', 'lift', 400, id='already-lifted'),
     ],
 )
-def test_post_upload_action_lift_embargo(
+@pytest.mark.asyncio
+async def test_post_upload_action_lift_embargo(
     auth_headers,
     client,
     proc_infra,
@@ -3660,22 +3711,27 @@ def test_post_upload_action_lift_embargo(
     user,
     preprocess,
     expected_status_code,
+    temporal_worker: TemporalWorkerContext,
 ):
     user_auth = auth_headers[user]
     user = users_dict.get(user)
 
-    if preprocess:
-        if preprocess == 'lift':
-            metadata = {'embargo_length': 0}
-        elif preprocess == 'make-coauthor':
-            metadata = {'coauthors': user.user_id}
-        upload = Upload.get(upload_id)
-        upload.edit_upload_metadata(
-            dict(metadata=metadata), config.services.admin_user_id
-        )
-        upload.block_until_complete()
+    async with temporal_worker():
+        if preprocess:
+            if preprocess == 'lift':
+                metadata = {'embargo_length': 0}
+            elif preprocess == 'make-coauthor':
+                metadata = {'coauthors': user.user_id}
+            upload = Upload.get(upload_id)
+            await upload._start_edit_upload_metadata_workflow(
+                dict(metadata=metadata), config.services.admin_user_id
+            )
 
-    response = perform_post_upload_action(client, user_auth, upload_id, 'lift-embargo')
+        response = await asyncio.to_thread(
+            lambda: perform_post_upload_action(
+                client, user_auth, upload_id, 'lift-embargo'
+            )
+        )
     assert_response(response, expected_status_code)
     if expected_status_code == 200:
         assert_metadata_edited(user, {'embargo_length': 0}, [upload_id])
@@ -3696,17 +3752,22 @@ def test_post_upload_action_lift_embargo(
         pytest.param('id_unpublished_w', 'invalid', 401, id='invalid-credentials'),
     ],
 )
-def test_delete_upload(
+@pytest.mark.asyncio
+async def test_delete_upload(
     auth_headers,
     client,
-    proc_infra,
+    temporal_worker,
     example_data_writeable,
     upload_id,
     user,
     expected_status_code,
 ):
     """Uploads a file, and then tries to delete it, with different parameters and users."""
-    response = client.delete(f'uploads/{upload_id}', headers=auth_headers[user])
+    async with temporal_worker():
+        # Run blocking call in thread pool
+        response = await asyncio.to_thread(
+            lambda: client.delete(f'uploads/{upload_id}', headers=auth_headers[user])
+        )
     assert_response(response, expected_status_code)
     if expected_status_code == 200:
         assert_upload_does_not_exist(client, upload_id, auth_headers['user1'])

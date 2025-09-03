@@ -230,6 +230,7 @@ def process_upload_success(input: UploadWorkflowIdInput):
 @activity.defn
 def process_entry_failure_activity(input: ProcessEntryActivityInput):
     entry = Entry.get(input.entry_id)
+    entry.on_fail()
     entry.process_status = ProcessStatus.FAILURE
     entry.last_status_message = 'Process process_entry failed'
     entry.save()

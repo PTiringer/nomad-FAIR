@@ -1568,11 +1568,16 @@ class Entry(Proc):
 
             except Exception as e:
                 raise ProcessFailure(
-                    'parser failed with exception', exc_info=e, error=str(e), **context
+                    'parser failed with exception',
+                    exc_info=e,
+                    error=str(e),
+                    **context,
                 )
             except SystemExit:
                 raise ProcessFailure(
-                    'parser raised system exit', error='system exit', **context
+                    'parser raised system exit',
+                    error='system exit',
+                    **context,
                 )
 
     def normalizing(self):
@@ -1584,6 +1589,7 @@ class Entry(Proc):
                 datamodel.EntryArchive.metadata, self._entry_metadata
             )
 
+        context = {}
         for normalizer in normalizers:
             if (
                 normalizer.domain is not None
@@ -1610,6 +1616,7 @@ class Entry(Proc):
                     )
 
         parser = parser_dict[self.parser_name]
+        logger = self.get_logger()
         try:
             parser.after_normalization(self._parser_results, logger=logger)
         except Exception as e:
@@ -1938,7 +1945,7 @@ class Upload(Proc):
         client = await get_client()
         workflow_id = f'publish-upload-{self.upload_id}-{uuid.uuid4()}'
         try:
-            await client.execute_workflow(
+            return await client.execute_workflow(
                 'PublishUploadWorkflow',
                 PublishUploadWorkflowInput(
                     upload_id=self.upload_id,
@@ -2228,6 +2235,9 @@ class Upload(Proc):
         only_updated_files: bool = False,
     ):
         if config.temporal.enabled:
+            if self.process_status == ProcessStatus.RUNNING:
+                raise ProcessAlreadyRunning
+
             self.process_status = ProcessStatus.PENDING
             # Start temporal workflow
             return run_async(
@@ -2267,7 +2277,7 @@ class Upload(Proc):
             workflow_tmp_dir=create_tmp_dir(f'{self.upload_id}_{workflow_id}'),
         )
         try:
-            await client.start_workflow(
+            handle = await client.start_workflow(
                 'ProcessUploadWorkflow',
                 data,
                 id=workflow_id,
@@ -2275,6 +2285,7 @@ class Upload(Proc):
             )
             self.process_status = ProcessStatus.PENDING
             self.save()
+            return handle
         except Exception as e:
             raise ProcessFailure(f'Failed to start temporal workflow: {e}')
 

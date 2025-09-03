@@ -3,6 +3,7 @@ import os
 from datetime import datetime, timezone
 
 import pytest
+import pytest_asyncio
 
 from nomad import bundles, datamodel, processing, utils
 from nomad.archive import read_archive, to_json, write_archive
@@ -11,7 +12,9 @@ from nomad.datamodel import EntryArchive, OptimadeEntry, User
 from nomad.datamodel.datamodel import SearchableQuantity
 from nomad.metainfo.elasticsearch_extension import schema_separator
 from nomad.processing import ProcessStatus
+from nomad.processing.data import Upload
 from nomad.utils.exampledata import ExampleData
+from tests.fixtures.infrastructure import TemporalWorkerContext
 from tests.normalizing.conftest import run_normalize
 from tests.parsing import test_parsing
 from tests.processing import test_data as test_processing
@@ -240,6 +243,37 @@ def non_empty_processed(
     Provides a processed upload. Upload was uploaded with user1.
     """
     return test_processing.run_processing(non_empty_uploaded, user1)
+
+
+@pytest_asyncio.fixture(scope='function')
+async def non_empty_processed_with_temporal(
+    non_empty_uploaded: tuple[str, str],
+    user1: User,
+    temporal_worker: TemporalWorkerContext,
+) -> processing.Upload:
+    """
+    Provides a processed upload. Upload was uploaded with user1.
+    """
+    uploaded_id, uploaded_path = non_empty_uploaded
+    upload = Upload.create(upload_id=uploaded_id, main_author=user1)
+    upload.save()
+    assert upload.process_status == ProcessStatus.READY
+    assert upload.last_status_message is None
+    async with temporal_worker() as _:
+        handle = await upload._start_process_upload_workflow(
+            file_operations=[
+                dict(
+                    op='ADD',
+                    path=uploaded_path,
+                    target_dir='',
+                    temporary=False,
+                )
+            ]
+        )
+        await handle.result()
+
+    upload.reload()
+    return upload
 
 
 @pytest.mark.timeout(config.tests.default_timeout)
