@@ -155,7 +155,8 @@ const OverviewView = React.memo(() => {
 
   const classes = useStyles()
   const {raiseError} = useErrors()
-  const m_def = archive?.data?.m_def_id ? `${archive.data.m_def}@${archive.data.m_def_id}` : archive?.data?.m_def
+  // const m_def = archive?.data?.m_def_id ? `${archive.data.m_def}@${archive.data.m_def_id}` : archive?.data?.m_def
+  const m_def = archive?.data?.m_def
   const dataMetainfoDefUrl = url && resolveNomadUrlNoThrow(m_def, url)
   const dataMetainfoDef = useMetainfoDef(dataMetainfoDefUrl)
 

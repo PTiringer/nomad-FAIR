@@ -1673,23 +1673,17 @@ class Entry(Proc):
 
         archive.processing_logs = self._filtered_processing_logs()
 
-        if config.process.store_package_definition_in_mongo:
-            if archive.definitions is not None:
-                PackageDefinition.create_new(archive.definitions)
-            if archive.data is not None:
-                pkg_definitions = getattr(
-                    archive.data.m_def.m_root(), 'definitions', None
-                )
-                if pkg_definitions is not None:
-                    PackageDefinition.create_new(pkg_definitions)
+        if archive.definitions is not None:
+            PackageDefinition.create_new(archive.definitions)
+        if archive.data is not None:
+            pkg_definitions = getattr(archive.data.m_def.m_root(), 'definitions', None)
+            if pkg_definitions is not None:
+                PackageDefinition.create_new(pkg_definitions)
 
         # save the archive msg-pack
         try:
             return self.upload_files.write_archive(
-                self.entry_id,
-                archive.m_to_dict(
-                    with_def_id=config.process.write_definition_id_to_archive
-                ),
+                self.entry_id, archive.m_to_dict(with_def_id=True)
             )
         except Exception:
             # most likely failed due to domain data, try to write metadata and processing logs

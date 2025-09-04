@@ -468,7 +468,8 @@ class ArchiveAdaptor extends Adaptor {
       if (obj.m_def) {
         // Override the def given by the schema with the potentially more specific
         // def given by the data
-        const ref = obj.m_def_id ? `${obj.m_def}@${obj.m_def_id}` : obj.m_def
+        // const ref = obj.m_def_id ? `${obj.m_def}@${obj.m_def_id}` : obj.m_def
+        const ref = obj.m_def
         const newDefUrl = resolveNomadUrl(ref, objUrl)
         def = await this.dataStore.getMetainfoDefAsync(newDefUrl)
       }

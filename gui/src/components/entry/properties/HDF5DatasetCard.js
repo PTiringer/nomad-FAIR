@@ -28,7 +28,8 @@ import H5WebSectionView from '../../archive/H5WebSectionView'
 const HDF5DatasetCard = React.memo(function HDF5DatasetCard({archive}) {
   const {url, uploadId} = useEntryStore()
   const root = archive?.data || archive?.workflow2
-  const m_def = root?.m_def_id ? `${root.m_def}@${root.m_def_id}` : root?.m_def
+  // const m_def = root?.m_def_id ? `${root.m_def}@${root.m_def_id}` : root?.m_def
+  const m_def = root?.m_def
   const mDefUrl = url && resolveNomadUrlNoThrow(m_def, url)
   const mDef = useMetainfoDef(mDefUrl)
 
