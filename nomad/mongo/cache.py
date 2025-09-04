@@ -7,7 +7,6 @@ from mongoengine import DateTimeField, Document, DynamicField, StringField
 
 from nomad.common import now
 
-MAX_MONGO_CACHE_SIZE: Final[int] = 10 * 1024 * 1024  # 10 MiB
 MONGO_CACHE_DEFAULT_TTL: Final[timedelta] = timedelta(hours=1)
 
 
@@ -30,7 +29,6 @@ class MongoCache(Document):
                 'expireAfterSeconds': 0,
             },
         ],
-        'max_size': MAX_MONGO_CACHE_SIZE,
     }
 
 
