@@ -170,42 +170,27 @@ class Context(MetainfoContext):
         url_parts = urlsplit(url)
         fragment = self._normalize_fragment(url_parts.fragment)
         path = url_parts.path
+        match = re.search(r'/archive/mainfile/(.*)$', path)
+        if not match:
+            return urlunsplit(url_parts[0:4] + (fragment,))
 
-        if (upload_id := self.upload_id) is None:
-            upload_id = getattr(
-                getattr(source.m_root(), 'metadata', {}), 'upload_id', None
+        mainfile = match.group(1)
+        upload_id = self.upload_id
+        if upload_id is None:
+            root_section: MSection = source.m_root()
+            upload_id = root_section.metadata.upload_id
+        assert upload_id is not None, 'Only archives with upload_id can be referenced'
+        entry_id = utils.generate_entry_id(upload_id, mainfile)
+        path = path.replace(f'/archive/mainfile/{mainfile}', f'/archive/{entry_id}')
+        return urlunsplit(
+            (
+                url_parts.scheme,
+                url_parts.netloc,
+                path,
+                url_parts.query,
+                fragment,
             )
-
-        if match := re.search(r'/archive/mainfile/(.*)$', path):
-            assert upload_id, 'Only archives with upload_id can be referenced'
-            mainfile = match.group(1)
-            return urlunsplit(
-                (
-                    url_parts.scheme,
-                    url_parts.netloc,
-                    path.replace(
-                        f'/archive/mainfile/{mainfile}',
-                        f'/archive/{utils.generate_entry_id(upload_id, mainfile)}',
-                    ),
-                    url_parts.query,
-                    fragment,
-                )
-            )
-
-        if '/upload/raw' in path:
-            return urlunsplit(
-                (
-                    url_parts.scheme,
-                    url_parts.netloc,
-                    path.replace('/upload/raw', f'/upload/{upload_id}/raw')
-                    if upload_id
-                    else path,
-                    url_parts.query,
-                    fragment,
-                )
-            )
-
-        return urlunsplit(url_parts[:4] + (fragment,))
+        )
 
     def load_archive(
         self, entry_id: str, upload_id: str, installation_url: str
@@ -443,7 +428,7 @@ class ServerContext(Context):
             url_parts = urlsplit(definition_reference)
         except ValueError:
             raise MetainfoReferenceError(
-                f'Cannot retrieve section {definition_id} from {definition_reference}.'
+                f'cannot retrieve section {definition_id} from {definition_reference}'
             )
 
         # appears to be a valid url
@@ -467,7 +452,7 @@ class ServerContext(Context):
 
         if response.status_code >= 400:
             raise MetainfoReferenceError(
-                f'Cannot retrieve section {definition_id} from {definition_reference}.'
+                f'cannot retrieve section {definition_id} from {definition_reference}'
             )
 
         return response.json()
@@ -681,7 +666,7 @@ class ClientContext(Context):
 
         if response.status_code >= 400:
             raise MetainfoReferenceError(
-                f'Cannot retrieve section {definition_id} from {definition_reference}.'
+                f'cannot retrieve section {definition_id} from {definition_reference}'
             )
 
         return response.json()
