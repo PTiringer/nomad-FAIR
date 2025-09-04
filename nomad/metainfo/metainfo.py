@@ -37,7 +37,6 @@ import pint
 from cachetools import LRUCache
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from nomad.config import config
 from nomad.metainfo.data_type import JSON as JSONType
 from nomad.metainfo.data_type import URL as URLType
 from nomad.metainfo.data_type import Any as AnyType
@@ -87,21 +86,6 @@ T = TypeVar('T')
 
 _UNSET_ = '__UNSET__'
 _HASH_OBJ = type['hashlib._Hash']  # type: ignore
-
-
-def _check_definition_id(
-    target_id, target_section: MSectionBound | list
-) -> MSectionBound | list:
-    """
-    Ensure section definition id matches the target id.
-    """
-    if isinstance(target_section, list):
-        return target_section
-
-    if target_id is None or target_section.definition_id == target_id:
-        return target_section
-
-    raise MetainfoReferenceError(f'Could not resolve {target_id}, id mismatch.')
 
 
 # Metainfo errors
@@ -187,6 +171,15 @@ class MProxy:
         self.m_proxy_type = m_proxy_type
         self.m_proxy_context = m_proxy_context
 
+        valid_context: Context
+        if valid_context := self.m_proxy_context or getattr(
+            self.m_proxy_section, 'm_context', None
+        ):
+            self.m_proxy_value = valid_context.normalize_reference(
+                self.m_proxy_section,
+                self.m_proxy_value,  # type: ignore
+            )
+
     def m_serialize_proxy_value(self):
         if isinstance(self.m_proxy_type, QuantityReference):
             return f'{self.m_proxy_value}/{self.m_proxy_type.target_quantity_def.name}'
@@ -231,10 +224,10 @@ class MProxy:
                     if remaining_fragment:
                         resolved = self._resolve_fragment(content, remaining_fragment)
                     else:
-                        return _check_definition_id(definition_id, content)
+                        return content
 
             if resolved:
-                return _check_definition_id(definition_id, resolved)
+                return resolved
 
         # Resolve regularly as a fallback
         return context_section.m_resolve(fragment_with_id)
@@ -443,12 +436,6 @@ class QuantityType(Datatype):
 _adapter = QuantityType()
 
 
-def _append_id(path, value) -> str:
-    if config.process.store_package_definition_in_mongo:
-        return f'{path}@{value.definition_id}'
-    return path
-
-
 class Reference:
     def __init__(self, target_definition):
         self.target_section_def = (
@@ -508,10 +495,7 @@ class Reference:
         else:
             type_data = self.target_section_def.m_path()
 
-        return {
-            'type_kind': 'reference',
-            'type_data': _append_id(type_data, self.target_section_def),
-        }
+        return {'type_kind': 'reference', 'type_data': type_data}
 
     def _normalize_impl(self, section, value):
         if isinstance(value, str | int | dict):
@@ -562,11 +546,10 @@ class Reference:
         return self._check_shape(_convert(value))
 
     def _serialize_impl(self, section, value):
-        return _append_id(
+        return (
             value.m_path()
             if (context := section.m_root().m_context) is None
-            else context.create_reference(section, self._definition, value),
-            value,
+            else context.create_reference(section, self._definition, value)
         )
 
     def serialize(self, value, *, section, transform=None):
@@ -634,9 +617,7 @@ class QuantityReference(Reference):
     def serialize_self(self, section):
         return {
             'type_kind': 'quantity_reference',
-            'type_data': _append_id(
-                self.target_quantity_def.m_path(), self.target_quantity_def
-            ),
+            'type_data': self.target_quantity_def.m_path(),
         }
 
     def _normalize_impl(self, section, value):
@@ -655,11 +636,7 @@ class QuantityReference(Reference):
     def _serialize_impl(self, section, value):
         parent_path: str = super()._serialize_impl(section, value)
 
-        return _append_id(
-            (parent_path.split('@')[0] if '@' in parent_path else parent_path)
-            + f'/{self.target_quantity_def.name}',
-            self.target_quantity_def,
-        )
+        return parent_path.split('@')[0] + f'/{self.target_quantity_def.name}'
 
 
 MEnum = Enum
@@ -825,9 +802,12 @@ class Context:
     def resolve_section_definition(
         self, definition_reference: str, definition_id: str
     ) -> type[MSectionBound] | None:
-        mongo_package = self.retrieve_package_by_section_definition_id(
-            definition_reference, definition_id
-        )
+        try:
+            mongo_package = self.retrieve_package_by_section_definition_id(
+                definition_reference, definition_id
+            )
+        except Exception:  # noqa
+            return None
 
         snapshot_package_id = mongo_package['snapshot_package_id']
 
@@ -2292,8 +2272,21 @@ class MSection(metaclass=MObjectMeta):
                     entry_url, MSection.from_dict(archive_json, m_context=m_context)
                 )
 
-        # check if `m_def` exists in the data
-        if m_def := dct.get('m_def', None):
+        m_def = dct.get('m_def', None)
+        m_def_id = dct.get('m_def_id', None)
+
+        # if `m_def_id` exists, check if id matches
+        # in case of mismatch, retrieve the Package and use the corresponding section definition
+        tried_id = False
+        if (
+            m_def_id
+            and isinstance(m_context, Context)
+            and (m_def_id != getattr(getattr(cls, 'm_def', {}), 'definition_id', None))
+        ):
+            tried_id = True
+            cls = m_context.resolve_section_definition(m_def, m_def_id)  # noqa
+
+        if (tried_id and cls is None) or (not tried_id and m_def):
             def_section = m_parent
             if archive_root := def_section.m_root() if def_section else None:
                 if isinstance(
@@ -2303,17 +2296,6 @@ class MSection(metaclass=MObjectMeta):
             m_def_proxy = MSectionReference().normalize(m_def, section=def_section)  # noqa
             m_def_proxy.m_proxy_context = m_context
             cls = m_def_proxy.section_cls
-
-        # if `m_def_id` exists, check if id matches
-        # in case of mismatch, retrieve the Package and use the corresponding section definition
-        if (m_def_id := dct.get('m_def_id', None)) and (
-            cls is None or cls.m_def is None or m_def_id != cls.m_def.definition_id
-        ):
-            if not isinstance(m_context, Context):
-                raise MetainfoError(
-                    f'A context object is needed to resolve definition {m_def_id}'
-                )
-            cls = m_context.resolve_section_definition(dct.get('m_def', None), m_def_id)  # noqa
 
         assert cls is not None, 'Section definition or class needs to be known.'
 
@@ -2485,16 +2467,12 @@ class MSection(metaclass=MObjectMeta):
         """
         section: MSection = self
 
-        if '@' in path_with_id:
-            path, target_id = path_with_id.split('@')
-        else:
-            target_id = None
-            path = path_with_id
+        path = path_with_id.split('@')[0]
 
         if path.startswith('/'):
             section = section.m_root(cls)
 
-        path_stack = [x for x in path.strip('/').split('/') if x]
+        path_stack = [x for x in path.split('/') if x]
         path_stack.reverse()
         while len(path_stack) > 0:
             prop_name = path_stack.pop()
@@ -2508,9 +2486,7 @@ class MSection(metaclass=MObjectMeta):
             if isinstance(prop_def, SubSection):
                 if prop_def.repeats:
                     if len(path_stack) == 0:
-                        return _check_definition_id(
-                            target_id, section.m_get_sub_sections(prop_def)
-                        )
+                        return section.m_get_sub_sections(prop_def)
 
                     token: str = path_stack.pop()
                     index = int(token) if token.lstrip('-').isnumeric() else token
@@ -2543,9 +2519,9 @@ class MSection(metaclass=MObjectMeta):
                         )
                     quantity = quantity[int(path_stack.pop())]
 
-                return _check_definition_id(target_id, quantity)
+                return quantity
 
-        return _check_definition_id(target_id, cast(MSectionBound, section))
+        return cast(MSectionBound, section)
 
     def m_get_annotation(self, key: str | type[T], default: T | None = None) -> T:
         return self.m_get_annotations(key, default)
@@ -3068,12 +3044,6 @@ class Definition(MSection):
                 relative_name = context.create_reference(source, None, self, **kwargs)
                 if relative_name:
                     definition_reference = relative_name
-
-        if (
-            config.process.add_definition_id_to_reference
-            and '@' not in definition_reference
-        ):
-            definition_reference += '@' + self.definition_id
 
         return definition_reference
 
