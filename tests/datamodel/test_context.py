@@ -361,9 +361,7 @@ def test_server_custom_schema(upload_contents, raw_files_function):
         upload_files.write_archive(entry_id, archive.m_to_dict())
         results = archive.m_to_dict(with_out_meta=True)
         del results['metadata']
-        assert results == json.loads(
-            json.dumps(content).replace('/upload/raw', '/upload/test_upload/raw')
-        )
+        assert results == content
 
 
 @pytest.mark.parametrize(

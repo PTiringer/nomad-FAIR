@@ -711,6 +711,9 @@ class GitLab(ConfigBaseModel):
 
 
 class Process(ConfigBaseModel):
+    store_package_definition_in_mongo: bool = False
+    add_definition_id_to_reference: bool = False
+    write_definition_id_to_archive: bool = False
     index_materials: bool = True
     reuse_parser: bool = True
     metadata_file_name: str = 'nomad'

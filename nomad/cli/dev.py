@@ -174,7 +174,9 @@ def gui_artifacts():
 
 
 def _generate_metainfo(all_metainfo_packages):
-    return all_metainfo_packages.m_to_dict(with_meta=True, with_def_id=True)
+    return all_metainfo_packages.m_to_dict(
+        with_meta=True, with_def_id=config.process.write_definition_id_to_archive
+    )
 
 
 @dev.command(help='Generates a JSON with all metainfo.')

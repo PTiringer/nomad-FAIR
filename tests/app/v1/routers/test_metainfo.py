@@ -24,7 +24,7 @@ import pytest
 from nomad.app.v1.routers.metainfo import PackageDefinition
 from nomad.config import config
 from nomad.datamodel import ClientContext, EntryArchive
-from nomad.metainfo import MSection
+from nomad.metainfo import MetainfoReferenceError, MSection
 from nomad.utils import create_uuid, generate_entry_id
 from tests.processing.test_data import run_processing
 
@@ -68,7 +68,13 @@ def test_metainfo_section_id_endpoint(metainfo_data, mongo_module, client):
     assert response.status_code == 404
 
 
-def test_upload_and_download(client, user1, proc_infra, mongo_module, no_warn, tmp):
+def test_upload_and_download(
+    client, user1, proc_infra, mongo_module, no_warn, monkeypatch, tmp
+):
+    monkeypatch.setattr('nomad.config.process.store_package_definition_in_mongo', True)
+    monkeypatch.setattr('nomad.config.process.add_definition_id_to_reference', True)
+    monkeypatch.setattr('nomad.config.process.write_definition_id_to_archive', True)
+
     m_def = '../upload/raw/schema.archive.json#/definitions/section_definitions/1'
 
     def client_context():
@@ -184,10 +190,10 @@ def test_upload_and_download(client, user1, proc_infra, mongo_module, no_warn, t
     assert entry.test_quantity == 'new_value'
 
     # 6. test if client side can detect wrong package version
-    # definition_reference, definition_id = entry_data['m_def'].split('@')
-    # entry_data['m_def'] = f'{definition_reference}@{definition_id[::-1]}'
-    # with pytest.raises(MetainfoReferenceError):
-    #     EntryArchive.m_from_dict(entry_data, m_context=client_context())
+    definition_reference, definition_id = entry_data['m_def'].split('@')
+    entry_data['m_def'] = f'{definition_reference}@{definition_id[::-1]}'
+    with pytest.raises(MetainfoReferenceError):
+        EntryArchive.m_from_dict(entry_data, m_context=client_context())
 
     # 7. now test if client side can read the package using non-versioned package
     entry_data['m_def'] = (
@@ -272,7 +278,13 @@ def example_upload_two_schemas():
     }
 
 
-def test_two_schemas(example_upload_two_schemas, client, user1, proc_infra, no_warn):
+def test_two_schemas(
+    example_upload_two_schemas, client, user1, proc_infra, no_warn, monkeypatch
+):
+    monkeypatch.setattr('nomad.config.process.store_package_definition_in_mongo', True)
+    monkeypatch.setattr('nomad.config.process.add_definition_id_to_reference', True)
+    monkeypatch.setattr('nomad.config.process.write_definition_id_to_archive', True)
+
     def tmp(fn: str) -> str:
         return os.path.join(config.fs.tmp, fn)
 
