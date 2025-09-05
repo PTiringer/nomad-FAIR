@@ -27,6 +27,7 @@ from fastapi.exception_handlers import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi_cache import FastAPICache
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from temporalio.client import Client
@@ -35,6 +36,7 @@ from nomad import infrastructure
 from nomad.actions.client import get_client
 from nomad.config import config
 from nomad.config.models.plugins import APIEntryPoint
+from nomad.mongo.cache import MongoBackend
 
 from .static import GuiFiles
 from .static import app as static_files_app
@@ -136,6 +138,8 @@ async def lifespan(app: FastAPI):
     ).hexdigest()
 
     infrastructure.setup()
+
+    FastAPICache.init(backend=MongoBackend())
 
     if config.temporal.enabled:
         try:

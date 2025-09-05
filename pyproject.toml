@@ -65,6 +65,7 @@ infrastructure = [
     'celery>=5',
     'dockerspawner',
     'fastapi',
+    'fastapi-cache2',
     'gunicorn',
     'h5grove[fastapi]',
     'jupyterhub<5.0.0', # Connection issues with newer versions

@@ -48,7 +48,8 @@ et-xmlfile==2.0.0         # via openpyxl, -r requirements.txt
 exceptiongroup==1.3.0 ; python_full_version < '3.11'  # via anyio, pytest, -r requirements.txt
 execnet==2.1.1            # via pytest-xdist
 executing==2.2.0          # via devtools
-fastapi==0.116.1          # via h5grove, -r requirements.txt, nomad-lab (pyproject.toml)
+fastapi==0.116.1          # via fastapi-cache2, h5grove, -r requirements.txt, nomad-lab (pyproject.toml)
+fastapi-cache2==0.2.2     # via -r requirements.txt, nomad-lab (pyproject.toml)
 flexcache==0.3            # via pint, -r requirements.txt
 flexparser==0.4           # via pint, -r requirements.txt
 fonttools==4.59.1         # via matplotlib, -r requirements.txt
@@ -104,6 +105,7 @@ palettable==3.3.3         # via pymatgen, -r requirements.txt
 pamela==1.2.0 ; sys_platform != 'win32'  # via jupyterhub, -r requirements.txt
 pandas==2.3.2             # via pymatgen, xarray, -r requirements.txt, nomad-lab (pyproject.toml)
 pathspec==0.12.1          # via mypy
+pendulum==3.1.0           # via fastapi-cache2, -r requirements.txt
 pillow==11.3.0            # via matplotlib, -r requirements.txt
 pint==0.24.4 ; python_full_version < '3.11'  # via --override (workspace), -r requirements.txt, nomad-lab (pyproject.toml)
 pint==0.25 ; python_full_version >= '3.11'  # via --override (workspace), -r requirements.txt, nomad-lab (pyproject.toml)
@@ -180,13 +182,13 @@ tornado==6.5.2            # via jupyterhub, -r requirements.txt
 tqdm==4.67.1              # via pymatgen, -r requirements.txt
 traitlets==5.14.3         # via jupyter-telemetry, jupyterhub, -r requirements.txt
 types-protobuf==6.30.2.20250822  # via temporalio, -r requirements.txt
-typing-extensions==4.15.0  # via alembic, anyio, exceptiongroup, fastapi, flexcache, flexparser, h5grove, jwcrypto, mypy, nexus-rpc, pint, pydantic, pydantic-core, referencing, spglib, sqlalchemy, starlette, structlog, temporalio, typing-inspection, uvicorn, -r requirements.txt
+typing-extensions==4.15.0  # via alembic, anyio, exceptiongroup, fastapi, fastapi-cache2, flexcache, flexparser, h5grove, jwcrypto, mypy, nexus-rpc, pint, pydantic, pydantic-core, referencing, spglib, sqlalchemy, starlette, structlog, temporalio, typing-inspection, uvicorn, -r requirements.txt
 typing-inspection==0.4.1  # via pydantic, pydantic-settings, -r requirements.txt
 tzdata==2025.2            # via kombu, pandas, -r requirements.txt
 uncertainties==3.2.3      # via pymatgen, -r requirements.txt
 unidecode==1.4.0          # via --override (workspace), -r requirements.txt, nomad-lab (pyproject.toml)
 urllib3==1.26.20          # via docker, elasticsearch, requests, -r requirements.txt
-uvicorn==0.35.0           # via h5grove, -r requirements.txt, nomad-lab (pyproject.toml)
+uvicorn==0.35.0           # via fastapi-cache2, h5grove, -r requirements.txt, nomad-lab (pyproject.toml)
 uvloop==0.21.0 ; platform_python_implementation != 'PyPy' and sys_platform != 'cygwin' and sys_platform != 'win32'  # via uvicorn, -r requirements.txt
 validators==0.35.0        # via -r requirements.txt, nomad-lab (pyproject.toml)
 vine==5.1.0               # via amqp, celery, kombu, -r requirements.txt

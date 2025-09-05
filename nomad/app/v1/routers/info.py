@@ -21,25 +21,23 @@ API endpoint that deliver backend configuration details.
 """
 
 import re
-from datetime import timedelta
 from enum import Enum
 from typing import Final
 
 from fastapi.routing import APIRouter
+from fastapi_cache.decorator import cache
 from pydantic.fields import Field
 from pydantic.main import BaseModel
 
 from nomad import normalizing
 from nomad.app.v1.models import Aggregation, StatisticsAggregation
 from nomad.config import config
-from nomad.mongo.cache import cache
 from nomad.parsing import parsers
 from nomad.parsing.parsers import code_metadata
 from nomad.search import search
 from nomad.utils import strip
 
-INFO_CACHE_KEY: Final[str] = 'info'
-INFO_CACHE_TTL: Final[timedelta] = timedelta(days=1)
+INFO_CACHE_TTL: Final[int] = 1 * 24 * 60 * 60  # 1 day in seconds
 
 router = APIRouter()
 
@@ -150,7 +148,7 @@ def get_statistics():
     response_model_exclude_none=True,
     response_model=InfoModel,
 )
-@cache(key=INFO_CACHE_KEY, ttl=INFO_CACHE_TTL)
+@cache(expire=INFO_CACHE_TTL)
 async def get_info():
     """Return information about the nomad backend and its configuration."""
 
