@@ -17,8 +17,9 @@
 #
 from datetime import timezone
 
+from fastapi_cache import FastAPICache
+
 import nomad.mongo.cache as cache_module
-from nomad.app.v1.routers.info import INFO_CACHE_KEY
 from nomad.common import now
 
 
@@ -33,7 +34,8 @@ def assert_info(client):
 
 
 def get_cached():
-    return cache_module.get_cached(INFO_CACHE_KEY)
+    mongo_backend = cache_module.MongoBackend()
+    return mongo_backend._get_cached('::087b452df0dbc495df6fcbe9466c55d8')
 
 
 def test_info(monkeypatch, client, mongo_function, elastic_function):
@@ -41,6 +43,7 @@ def test_info(monkeypatch, client, mongo_function, elastic_function):
     # check for expired documents and we do not want to wait for 60+ seconds until it
     # happens on its own.
 
+    FastAPICache.init(cache_module.MongoBackend())
     noon = now().replace(hour=12, minute=34, second=56, microsecond=789000)
     morning = noon.replace(hour=6)
     evening = noon.replace(hour=18)
