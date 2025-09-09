@@ -156,7 +156,15 @@ def test_create_user_dependency_auth_methods(
             signature_token_auth_allowed and _get_user_signature_token_auth,
         ]
     ):
-        assert dep() == allowed_user
+        assert (
+            dep(
+                form_data=object() if basic_auth_allowed else None,
+                bearer_token='abc' if bearer_token_auth_allowed else None,
+                token='abc' if upload_token_auth_allowed else None,
+                signature_token='abc' if signature_token_auth_allowed else None,
+            )
+            == allowed_user
+        )
     else:
         with pytest.raises(HTTPException, match='Authorization required.') as exc:
             dep()
@@ -235,7 +243,7 @@ def test_create_user_dependency_oasis_allowed_users(
 
     if expected_exc:
         with pytest.raises(HTTPException, match=exc_msg) as exc:
-            dep()
+            dep(bearer_token='abc')
         assert exc.value.status_code == 401
 
     else:
@@ -243,7 +251,7 @@ def test_create_user_dependency_oasis_allowed_users(
             'nomad.app.v1.routers.auth.datamodel.User.get',
             lambda *args, **kwargs: allowed_user,
         )
-        assert dep() == allowed_user
+        assert dep(bearer_token='abc') == allowed_user
 
 
 def test_create_user_dependency_unknown_user(allowed_user, monkeypatch):
@@ -254,5 +262,5 @@ def test_create_user_dependency_unknown_user(allowed_user, monkeypatch):
 
     dep = create_user_dependency(required=False)
     with pytest.raises(HTTPException, match='logged in with an unknown user') as exc:
-        dep()
+        dep(bearer_token='abc')
     assert exc.value.status_code == 401

@@ -21,7 +21,7 @@ import json
 import re
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Response, status
+from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.exception_handlers import (
     http_exception_handler as default_http_exception_handler,
 )
@@ -32,7 +32,6 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from temporalio.client import Client
 
-from nomad import infrastructure
 from nomad.actions.client import get_client
 from nomad.config import config
 from nomad.config.models.plugins import APIEntryPoint
@@ -41,6 +40,7 @@ from nomad.mongo.cache import MongoBackend
 from .static import GuiFiles
 from .static import app as static_files_app
 from .v1.main import app as v1_app
+from .v1.routers.auth import resolve_user
 
 
 class OasisAuthenticationMiddleware(BaseHTTPMiddleware):
@@ -70,31 +70,25 @@ class OasisAuthenticationMiddleware(BaseHTTPMiddleware):
         ):
             return await call_next(request)
 
-        if 'Authorization' not in request.headers:
-            return Response(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                content='You have to authenticate to use this Oasis endpoint.',
-            )
-
-        token = request.headers['Authorization'].split(' ')[1]
+        # Extract tokens (dependency injection isn’t available now)
+        # Here any token would be allowed
+        bearer_token = None
+        if 'Authorization' in request.headers:
+            parts = request.headers['Authorization'].split()
+            if len(parts) == 2 and parts[0].lower() == 'bearer':
+                bearer_token = parts[1]
 
         try:
-            user = infrastructure.keycloak.tokenauth(token)
-        except infrastructure.KeycloakError:
-            return Response(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                content='Invalid access token.',
+            # NOTE: cannot handle `form_data` as the stream would be consumed
+            _user = resolve_user(
+                request=request,
+                bearer_token=bearer_token,
+                upload_token=request.query_params.get('token'),
+                signature_token=request.query_params.get('signature_token'),
+                required=True,
             )
-
-        if (
-            config.oasis.allowed_users is not None
-            and user.email not in config.oasis.allowed_users
-            and user.username not in config.oasis.allowed_users
-        ):
-            return Response(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                content='You are not authorized to access this Oasis endpoint.',
-            )
+        except HTTPException as exc:
+            return Response(status_code=exc.status_code, content=exc.detail)
 
         return await call_next(request)
 
