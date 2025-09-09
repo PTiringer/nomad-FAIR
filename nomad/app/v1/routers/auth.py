@@ -67,6 +67,74 @@ oauth2_scheme = OAuth2PasswordBearer(
 )
 
 
+def resolve_user(
+    *,
+    request: Request,
+    form_data: OAuth2PasswordRequestForm | None = None,
+    bearer_token: str | None = None,
+    upload_token: str | None = None,
+    signature_token: str | None = None,
+    required: bool = False,
+) -> User | None:
+    user: User | None = None
+    # `config.oasis.require_authentication` would require authentication globally
+    required = required or config.oasis.require_authentication
+
+    # Get user token
+    if form_data:
+        user = _get_user_basic_auth(form_data)
+    if user is None and bearer_token:
+        user = _get_user_bearer_token_auth(bearer_token)
+    if user is None and upload_token:
+        user = _get_user_upload_token_auth(upload_token)
+    if user is None and signature_token:
+        user = _get_user_signature_token_auth(signature_token, request)
+
+    if user is None and config.tests.assume_auth_for_username:
+        user = datamodel.User.get(username=config.tests.assume_auth_for_username)
+
+    # Check if token is available
+    if required and user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail='Authorization required.'
+        )
+
+    # `allowed_users` would enforce an explicit whitelist of users
+    if config.oasis.allowed_users is not None:
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail='Authentication is required for this Oasis',
+                headers={'WWW-Authenticate': 'Bearer'},
+            )
+        if (
+            user.email not in config.oasis.allowed_users
+            and user.username not in config.oasis.allowed_users
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail='You are not authorized to access this Oasis',
+                headers={'WWW-Authenticate': 'Bearer'},
+            )
+
+    # Validate user against recording
+    if user is not None:
+        try:
+            assert datamodel.User.get(user.user_id) is not None
+        except Exception as e:
+            logger = utils.get_logger(__name__)
+            logger.error(
+                'API usage by unknown user. Possible misconfiguration', exc_info=e
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail='You are logged in with an unknown user',
+                headers={'WWW-Authenticate': 'Bearer'},
+            ) from e
+
+    return user
+
+
 def create_user_dependency(
     required: bool = False,
     basic_auth_allowed: bool = False,
@@ -80,64 +148,16 @@ def create_user_dependency(
     """
 
     def user_dependency(**kwargs) -> User | None:
-        user: User | None = None
-
-        # Get user token as query parameters
-        if basic_auth_allowed:
-            user = _get_user_basic_auth(kwargs.get('form_data'))
-        if user is None and bearer_token_auth_allowed:
-            user = _get_user_bearer_token_auth(kwargs.get('bearer_token'))
-        if user is None and upload_token_auth_allowed:
-            user = _get_user_upload_token_auth(kwargs.get('token'))
-        if user is None and signature_token_auth_allowed:
-            user = _get_user_signature_token_auth(
-                kwargs.get('signature_token'), kwargs.get('request')
-            )
-
-        if user is None and config.tests.assume_auth_for_username:
-            user = datamodel.User.get(username=config.tests.assume_auth_for_username)
-
-        # Check if token is available
-        if required and user is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail='Authorization required.',
-            )
-
-        if config.oasis.allowed_users is not None:
-            # We're an oasis, and have allowed_users set
-            if user is None:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail='Authentication is required for this Oasis',
-                    headers={'WWW-Authenticate': 'Bearer'},
-                )
-            if (
-                user.email not in config.oasis.allowed_users
-                and user.username not in config.oasis.allowed_users
-            ):
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail='You are not authorized to access this Oasis',
-                    headers={'WWW-Authenticate': 'Bearer'},
-                )
-
-        # Validate user against recording
-        if user is not None:
-            try:
-                assert datamodel.User.get(user.user_id) is not None
-            except Exception as e:
-                logger = utils.get_logger(__name__)
-                logger.error(
-                    'API usage by unknown user. Possible misconfiguration', exc_info=e
-                )
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail='You are logged in with an unknown user',
-                    headers={'WWW-Authenticate': 'Bearer'},
-                ) from e
-
-        return user
+        # We don't need to check token allowed flags here as
+        # `fastapi` would only inject based on signature
+        return resolve_user(
+            request=kwargs.get('request'),
+            form_data=kwargs.get('form_data'),
+            bearer_token=kwargs.get('bearer_token'),
+            upload_token=kwargs.get('token'),
+            signature_token=kwargs.get('signature_token'),
+            required=required,
+        )
 
     # Create the desired function signature (as it depends on which auth options are allowed)
     parameters: list[Parameter] = []
