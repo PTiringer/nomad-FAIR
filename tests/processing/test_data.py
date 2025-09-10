@@ -1034,23 +1034,6 @@ def test_creating_new_entries_during_processing(proc_infra, user1):
 
 
 @pytest.mark.timeout(config.tests.default_timeout)
-def test_ems_data(proc_infra, user1):
-    upload = run_processing(
-        ('test_ems_upload', 'tests/data/proc/examples_ems.zip'), user1
-    )
-
-    additional_keys = ['results.method.method_name', 'results.material.elements']
-    assert upload.total_entries_count == 1
-    assert len(upload.successful_entries) == 1
-
-    with upload.entries_metadata() as entries:
-        assert_upload_files(
-            upload.upload_id, entries, StagingUploadFiles, published=False
-        )
-        assert_search_upload(entries, additional_keys, published=False)
-
-
-@pytest.mark.timeout(config.tests.default_timeout)
 def test_qcms_data(proc_infra, user1):
     upload = run_processing(
         ('test_qcms_upload', 'tests/data/proc/examples_qcms.zip'), user1

@@ -314,9 +314,6 @@ export function entryType(entry) {
     if (!parser) {
       return null
     }
-    if (parser === 'parsers/eels') {
-      return 'EELS DB entry'
-    }
     const program = parserLabels[parser]
     if (!program) {
       return null

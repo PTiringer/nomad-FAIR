@@ -86,14 +86,6 @@ def parsed(example_mainfile: tuple[str, str]) -> EntryArchive:
 
 
 @pytest.fixture(scope='session')
-def parsed_ems() -> EntryArchive:
-    """Provides a parsed experiment in the form of a EntryArchive."""
-    return test_parsing.run_singular_parser(
-        'parsers/eels', 'tests/data/parsers/eels.json'
-    )
-
-
-@pytest.fixture(scope='session')
 def normalized(parsed: EntryArchive) -> EntryArchive:
     """Provides a normalized entry in the form of a EntryArchive."""
     return run_normalize(parsed)
