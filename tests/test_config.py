@@ -336,7 +336,7 @@ def test_parser_plugins():
         for entry_point in config.plugins.entry_points.options.values()
         if isinstance(entry_point, Parser | ParserEntryPoint)
     ]
-    assert len(parsers) == 69
+    assert len(parsers) == 68
 
 
 def test_plugin_polymorphism(mockopen, monkeypatch):
