@@ -27,7 +27,7 @@ import warnings
 from collections.abc import Callable as TypingCallable
 from collections.abc import Iterable
 from copy import copy, deepcopy
-from functools import wraps
+from functools import cached_property, wraps
 from typing import Any, Literal, TypeVar, cast
 from urllib.parse import urlsplit, urlunsplit
 
@@ -151,111 +151,104 @@ class MProxy:
         m_proxy_context:
             Optional Context instance. Default is None and the m_context of the m_proxy_section
             is used.
-        m_proxy_type:
-            The quantity definition. Typically, MProxy is used for proxy-ing sections. With
-            this set, the proxy will still act as a normal section proxy, but it will
-            be used by quantities of type `QuantityReference` to resolve and return
-            a quantity value.
     """
 
     def __init__(
         self,
-        m_proxy_value: str | int,
+        m_proxy_value: str,
+        *,
         m_proxy_section: MSection | None = None,
         m_proxy_context: Context | None = None,
-        m_proxy_type: Reference | None = None,
     ):
         self.m_proxy_value = m_proxy_value
         self.m_proxy_section = m_proxy_section
-        self.m_proxy_resolved = None
-        self.m_proxy_type = m_proxy_type
         self.m_proxy_context = m_proxy_context
+        self.m_proxy_resolved = None
 
-        if self.m_proxy_section and (
-            valid_context := self.m_proxy_context or self.m_proxy_section.m_context
-        ):
-            self.m_proxy_value = valid_context.normalize_reference(
-                self.m_proxy_section,
-                self.m_proxy_value,  # type: ignore
+        if self._effective_context:
+            self.m_proxy_value = self._effective_context.normalize_reference(
+                self.m_proxy_section, self.m_proxy_value
             )
 
-    def m_serialize_proxy_value(self):
-        if isinstance(self.m_proxy_type, QuantityReference):
-            return f'{self.m_proxy_value}/{self.m_proxy_type.target_quantity_def.name}'
+    @cached_property
+    def _effective_context(self) -> Context | None:
+        if self.m_proxy_context is not None:
+            return self.m_proxy_context
 
+        if self.m_proxy_section is None:
+            return None
+
+        if self.m_proxy_section.m_context is not None:
+            return self.m_proxy_section.m_context
+
+        return self.m_proxy_section.m_root().m_context  # type: ignore
+
+    def m_serialize_proxy_value(self):
         return self.m_proxy_value
 
-    def _set_resolved(self, resolved):
-        self.m_proxy_resolved = resolved
+    @staticmethod
+    def _resolve_fragment(section, fragment):
+        if isinstance(section, Definition):
+            definitions = section
+        elif isinstance(attached := getattr(section, 'definitions', None), Package):
+            definitions = attached
+        else:
+            return section.m_resolve(fragment)
 
-        if self.m_proxy_resolved is not None and isinstance(self, MProxy):
-            setattr(self, '__class__', self.m_proxy_resolved.__class__)
-            self.__dict__.update(**self.m_proxy_resolved.__dict__)
-
-        return self.m_proxy_resolved
-
-    def _resolve_fragment(self, section, fragment):
-        if isinstance(self.m_proxy_type, MSectionReference):
-            if isinstance(section, Definition):
-                definitions = section
-            elif isinstance(attached := getattr(section, 'definitions', None), Package):
-                definitions = attached
+        resolved = definitions
+        for segment in filter(None, fragment.split('/')):
+            for content in resolved.m_contents():
+                if isinstance(content, Definition) and content.name == segment:
+                    resolved = content
+                    break
             else:
                 return section.m_resolve(fragment)
 
-            if len(split_fragment := fragment.lstrip('/').split('/', 1)) == 2:
-                first_segment, remaining_fragment = split_fragment
-            else:
-                first_segment, remaining_fragment = split_fragment[0], None
+        return resolved
 
-            resolved: MSection | None = None
-            for content in definitions.m_contents():
-                if isinstance(content, Definition) and content.name == first_segment:
-                    if not remaining_fragment:
-                        return content
-                    resolved = self._resolve_fragment(content, remaining_fragment)
+    def _resolve_impl(self):
+        if not self.m_proxy_context and not self.m_proxy_section:
+            return None
 
-            if resolved:
-                return resolved
+        url_parts = urlsplit(
+            self.m_proxy_value
+            if '#' in self.m_proxy_value
+            else f'#{self.m_proxy_value}'
+        )
+        archive_url: str = str(urlunsplit(url_parts[:4] + ('',)))
+        fragment = url_parts.fragment
 
-        return section.m_resolve(fragment)
+        if (ref_section := self.m_proxy_section) is not None:
+            ref_section = ref_section.m_root()
+
+        if archive_url or '@' in fragment:
+            if not self._effective_context:
+                raise MetainfoReferenceError(
+                    'Proxy with archive url, but no context to resolve it.'
+                )
+            if '@' in fragment:
+                # It's a reference to a section definition
+                definition, definition_id = f'{archive_url}#{fragment}'.split('@')
+                return self._effective_context.resolve_section_definition(
+                    definition, definition_id
+                ).m_def
+
+            ref_section = self._effective_context.resolve_archive_url(archive_url)
+
+        if isinstance(ref_section, Package) and 'definitions' in fragment:
+            fragment = fragment.replace('/definitions', '')
+
+        return self._resolve_fragment(ref_section, fragment)
 
     def m_proxy_resolve(self):
-        def _resolve_impl():
-            url_parts = urlsplit(
-                self.m_proxy_value
-                if '#' in self.m_proxy_value
-                else f'#{self.m_proxy_value}'
-            )
-            archive_url: str = str(urlunsplit(url_parts[:4] + ('',)))
-            fragment = url_parts.fragment
+        if self.m_proxy_resolved is not None:
+            return self.m_proxy_resolved
 
-            if (ref_section := self.m_proxy_section) is not None:
-                ref_section = ref_section.m_root()
-            if archive_url or '@' in fragment:
-                if (context := self.m_proxy_context) is None:
-                    context = ref_section.m_context
-                if not context:
-                    raise MetainfoReferenceError(
-                        'Proxy with archive url, but no context to resolve it.'
-                    )
-                if '@' in fragment:
-                    # It's a reference to a section definition
-                    definition, definition_id = f'{archive_url}#{fragment}'.split('@')
-                    return context.resolve_section_definition(
-                        definition, definition_id
-                    ).m_def
+        self.m_proxy_resolved = self._resolve_impl()
 
-                ref_section = context.resolve_archive_url(archive_url)
-
-            if isinstance(ref_section, Package) and 'definitions' in fragment:
-                fragment = fragment.replace('/definitions', '')
-
-            return self._resolve_fragment(ref_section, fragment)
-
-        if not self.m_proxy_resolved:
-            if self.m_proxy_type and (self.m_proxy_context or self.m_proxy_section):
-                self._set_resolved(_resolve_impl())
+        if self.m_proxy_resolved is not None and isinstance(self, MProxy):
+            self.__class__ = self.m_proxy_resolved.__class__
+            self.__dict__.update(**self.m_proxy_resolved.__dict__)
 
         return self.m_proxy_resolved
 
@@ -269,15 +262,31 @@ class MProxy:
         return f'{self.__class__.__name__}({self.m_proxy_value})'
 
 
-class SectionProxy(MProxy):
-    def __init__(self, m_proxy_value, **kwargs):
-        kwargs['m_proxy_type'] = MSectionReference()
-        super().__init__(m_proxy_value=m_proxy_value, **kwargs)
+class QuantityProxy(MProxy):
+    def __init__(
+        self,
+        m_proxy_value: str,
+        *,
+        m_proxy_type: QuantityReference,
+        m_proxy_section: MSection | None = None,
+        m_proxy_context: Context | None = None,
+    ):
+        self._proxy_type = m_proxy_type
+        super().__init__(
+            m_proxy_value,
+            m_proxy_section=m_proxy_section,
+            m_proxy_context=m_proxy_context,
+        )
 
-    def m_proxy_resolve(self):
+    def m_serialize_proxy_value(self):
+        return f'{self.m_proxy_value}/{self._proxy_type.target_quantity_def.name}'
+
+
+class SectionProxy(MProxy):
+    def _resolve_impl(self):
         if '#' in self.m_proxy_value or '/' in self.m_proxy_value:
             # This is not a python reference, use the usual mechanism
-            return super().m_proxy_resolve()
+            return super()._resolve_impl()
 
         python_name, definition_id = split_python_definition(self.m_proxy_value)
 
@@ -297,7 +306,7 @@ class SectionProxy(MProxy):
             try:
                 module = importlib.import_module(package_name)
                 if section_def := getattr(getattr(module, section_name), 'm_def', None):
-                    return self._set_resolved(section_def)
+                    return section_def
             except Exception:  # noqa
                 pass
 
@@ -334,7 +343,7 @@ class SectionProxy(MProxy):
             current = _resolve_name(segment, current)
 
         if current is not None:
-            return self._set_resolved(current)
+            return current
 
         raise MetainfoReferenceError(
             f'Could not resolve {self.m_proxy_value} from scope {self.m_proxy_section}.'
@@ -382,11 +391,7 @@ class QuantityType(Datatype):
 
             if type_kind == 'quantity_reference':
                 return QuantityReference(
-                    MProxy(
-                        type_data,
-                        m_proxy_section=section,
-                        m_proxy_type=Reference(Quantity.m_def),
-                    )
+                    MProxy(type_data, m_proxy_section=section)
                 ).attach_definition(section)
 
         if isinstance(value, str):
@@ -478,6 +483,9 @@ class Reference:
         section: MSection | None = kwargs.get('section', None)
         context: Context | None = kwargs.get('context', None)
 
+        if isinstance(value, MProxy):
+            value = value.m_proxy_value
+
         if isinstance(value, str | int | dict):
             if isinstance(value, str):
                 if context is None and section is not None:
@@ -485,18 +493,13 @@ class Reference:
                 value = (
                     context.normalize_reference(section, value) if context else value
                 )
-            return MProxy(
-                value,
-                m_proxy_section=section,
-                m_proxy_context=context,
-                m_proxy_type=self._proxy_type,
-            )
 
-        if isinstance(self.target_section_def, MProxy):
-            proxy = self.target_section_def
-            proxy.m_proxy_section = self._definition
-            proxy.m_proxy_type = Quantity.type.type
-            self.target_section_def = proxy.m_proxy_resolve()
+            assert not isinstance(self._proxy_type, QuantityReference)
+            if isinstance(self, MSectionReference):
+                return SectionProxy(
+                    value, m_proxy_section=section, m_proxy_context=context
+                )
+            return MProxy(value, m_proxy_section=section, m_proxy_context=context)
 
         if (
             self.target_section_def.m_follows(Definition.m_def)
@@ -505,12 +508,6 @@ class Reference:
         ):
             if definition.m_follows(self.target_section_def):
                 return definition
-
-        if isinstance(value, MProxy):
-            value.m_proxy_section = section
-            value.m_proxy_context = context
-            value.m_proxy_type = self._proxy_type
-            return value
 
         if not isinstance(value, MSection):
             raise TypeError(
@@ -609,7 +606,8 @@ class QuantityReference(Reference):
 
     def _normalize_impl(self, value, **kwargs):
         if isinstance(value, str):
-            return MProxy(
+            assert isinstance(self._proxy_type, QuantityReference)
+            return QuantityProxy(
                 value.rsplit('/', 1)[0],
                 m_proxy_section=kwargs.get('section', None),
                 m_proxy_context=kwargs.get('context', None),
