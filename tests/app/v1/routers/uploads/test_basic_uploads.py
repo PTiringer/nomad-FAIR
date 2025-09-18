@@ -47,6 +47,7 @@ from tests.config.models.test_plugins import (
     mock_plugin_package,
 )
 from tests.fixtures.infrastructure import TemporalWorkerContext
+from tests.processing import test_data as test_processing
 from tests.processing.test_edit_metadata import (
     all_admin_metadata,
     all_coauthor_metadata,
@@ -3856,20 +3857,23 @@ def test_get_upload_bundle(
         pytest.param(True, False, None, dict(), dict(), 401, id='no-credentials'),
     ],
 )
-@pytest.mark.xfail(reason='flaky test')
 def test_post_upload_bundle(
     auth_headers,
     client,
     proc_infra,
-    non_empty_processed,
+    non_empty_uploaded,
     internal_example_user_metadata,
     publish,
     test_duplicate,
     user,
+    users_dict,
     export_args,
     query_args,
     expected_status_code,
 ):
+    non_empty_processed = test_processing.run_processing(
+        non_empty_uploaded, users_dict[user or 'user0']
+    )
     # Create the bundle
     set_upload_entry_metadata(non_empty_processed, internal_example_user_metadata)
     if publish:
