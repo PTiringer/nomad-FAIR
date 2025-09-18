@@ -171,9 +171,8 @@ class MProxy:
         self.m_proxy_type = m_proxy_type
         self.m_proxy_context = m_proxy_context
 
-        valid_context: Context
-        if valid_context := self.m_proxy_context or getattr(
-            self.m_proxy_section, 'm_context', None
+        if self.m_proxy_section and (
+            valid_context := self.m_proxy_context or self.m_proxy_section.m_context
         ):
             self.m_proxy_value = valid_context.normalize_reference(
                 self.m_proxy_section,
@@ -193,27 +192,18 @@ class MProxy:
             setattr(self, '__class__', self.m_proxy_resolved.__class__)
             self.__dict__.update(**self.m_proxy_resolved.__dict__)
 
-    def _resolve_fragment(self, context_section, fragment_with_id):
-        if not isinstance(self.m_proxy_type, MSectionReference):
-            return context_section.m_resolve(fragment_with_id)
+        return self.m_proxy_resolved
 
-        # First, we try to resolve based on definition names
-        if '@' in fragment_with_id:
-            fragment, definition_id = fragment_with_id.split('@')
-        else:
-            definition_id = None
-            fragment = fragment_with_id
+    def _resolve_fragment(self, section, fragment):
+        if isinstance(self.m_proxy_type, MSectionReference):
+            if isinstance(section, Definition):
+                definitions = section
+            elif isinstance(attached := getattr(section, 'definitions', None), Package):
+                definitions = attached
+            else:
+                return section.m_resolve(fragment)
 
-        definitions = None
-        if isinstance(getattr(context_section, 'definitions', None), Definition):
-            definitions = getattr(context_section, 'definitions')
-
-        if isinstance(context_section, Definition):
-            definitions = context_section
-
-        if definitions:
-            split_fragment = fragment.lstrip('/').split('/', 1)
-            if len(split_fragment) == 2:
+            if len(split_fragment := fragment.lstrip('/').split('/', 1)) == 2:
                 first_segment, remaining_fragment = split_fragment
             else:
                 first_segment, remaining_fragment = split_fragment[0], None
@@ -221,54 +211,51 @@ class MProxy:
             resolved: MSection | None = None
             for content in definitions.m_contents():
                 if isinstance(content, Definition) and content.name == first_segment:
-                    if remaining_fragment:
-                        resolved = self._resolve_fragment(content, remaining_fragment)
-                    else:
+                    if not remaining_fragment:
                         return content
+                    resolved = self._resolve_fragment(content, remaining_fragment)
 
             if resolved:
                 return resolved
 
-        # Resolve regularly as a fallback
-        return context_section.m_resolve(fragment_with_id)
-
-    def _resolve(self):
-        url_parts = urlsplit(
-            self.m_proxy_value
-            if '#' in self.m_proxy_value
-            else f'#{self.m_proxy_value}'
-        )
-        archive_url: str = str(urlunsplit(url_parts[:4] + ('',)))
-        fragment = url_parts.fragment
-        context_section = self.m_proxy_section
-        if context_section is not None:
-            context_section = context_section.m_root()
-        if archive_url or '@' in fragment:
-            context = self.m_proxy_context
-            if context is None:
-                context = context_section.m_context
-            if not context:
-                raise MetainfoReferenceError(
-                    'Proxy with archive url, but no context to resolve it.'
-                )
-            if '@' in fragment:
-                # It's a reference to a section definition
-                definition, definition_id = f'{archive_url}#{fragment}'.split('@')
-                return context.resolve_section_definition(
-                    definition, definition_id
-                ).m_def
-
-            context_section = context.resolve_archive_url(archive_url)
-
-        if isinstance(context_section, Package) and 'definitions' in fragment:
-            fragment = fragment.replace('/definitions', '')
-
-        return self._resolve_fragment(context_section, fragment)
+        return section.m_resolve(fragment)
 
     def m_proxy_resolve(self):
+        def _resolve_impl():
+            url_parts = urlsplit(
+                self.m_proxy_value
+                if '#' in self.m_proxy_value
+                else f'#{self.m_proxy_value}'
+            )
+            archive_url: str = str(urlunsplit(url_parts[:4] + ('',)))
+            fragment = url_parts.fragment
+
+            if (ref_section := self.m_proxy_section) is not None:
+                ref_section = ref_section.m_root()
+            if archive_url or '@' in fragment:
+                if (context := self.m_proxy_context) is None:
+                    context = ref_section.m_context
+                if not context:
+                    raise MetainfoReferenceError(
+                        'Proxy with archive url, but no context to resolve it.'
+                    )
+                if '@' in fragment:
+                    # It's a reference to a section definition
+                    definition, definition_id = f'{archive_url}#{fragment}'.split('@')
+                    return context.resolve_section_definition(
+                        definition, definition_id
+                    ).m_def
+
+                ref_section = context.resolve_archive_url(archive_url)
+
+            if isinstance(ref_section, Package) and 'definitions' in fragment:
+                fragment = fragment.replace('/definitions', '')
+
+            return self._resolve_fragment(ref_section, fragment)
+
         if not self.m_proxy_resolved:
             if self.m_proxy_type and (self.m_proxy_context or self.m_proxy_section):
-                self._set_resolved(self._resolve())
+                self._set_resolved(_resolve_impl())
 
         return self.m_proxy_resolved
 
@@ -284,7 +271,7 @@ class MProxy:
 
 class SectionProxy(MProxy):
     def __init__(self, m_proxy_value, **kwargs):
-        kwargs.setdefault('m_proxy_type', MSectionReference())
+        kwargs['m_proxy_type'] = MSectionReference()
         super().__init__(m_proxy_value=m_proxy_value, **kwargs)
 
     def m_proxy_resolve(self):
@@ -292,76 +279,66 @@ class SectionProxy(MProxy):
             # This is not a python reference, use the usual mechanism
             return super().m_proxy_resolve()
 
+        python_name, definition_id = split_python_definition(self.m_proxy_value)
+
+        if definition_id:
+            # todo: if present need to fetch from mongo
+            pass
+
         if '.' in self.m_proxy_value:
-            # Try to interpret as python class name
-            python_name, definition_id = split_python_definition(self.m_proxy_value)
+            # try to interpret as python module/class name
             package_name = '.'.join(python_name[:-1])
             section_name = python_name[-1]
 
-            # Resolve package alias or assume package_name
+            # resolve package alias or assume package_name
             if package := Package.registry.get(package_name):
                 package_name = package.name
 
             try:
                 module = importlib.import_module(package_name)
-                cls = getattr(module, section_name)
-                if cls.m_def:
-                    if not definition_id or cls.m_def.definition_id == definition_id:
-                        # matches, happy ending
-                        self._set_resolved(cls.m_def)
-                        return self.m_proxy_resolved
-
-                    # mismatches, use the usual mechanism
-                    return super().m_proxy_resolve()
+                if section_def := getattr(getattr(module, section_name), 'm_def', None):
+                    return self._set_resolved(section_def)
             except Exception:  # noqa
                 pass
 
-        # Try relative name
-        if not self.m_proxy_section or self.m_proxy_resolved:
-            return self.m_proxy_resolved
-
-        def _resolve_name(name: str, context):
-            if context is None:
+        def _resolve_name(name: str, section: Definition):
+            if section is None:
                 return None
 
-            if context.name == name and context != self.m_proxy_section:
-                return context
+            if section.name == name and section != self.m_proxy_section:
+                return section
 
-            if isinstance(context, Section):
-                resolved = context.all_aliases.get(name)
+            if isinstance(section, Section):
+                resolved = section.all_aliases.get(name)
                 if resolved and resolved != self.m_proxy_section:
                     return resolved
 
-                resolved = context.all_inner_section_definitions.get(name)
+                resolved = section.all_inner_section_definitions.get(name)
                 if resolved and resolved != self.m_proxy_section:
                     return resolved
 
-            if isinstance(context, Package):
-                resolved = context.all_definitions.get(name)
+            if isinstance(section, Package):
+                resolved = section.all_definitions.get(name)
                 if resolved and resolved != self.m_proxy_section:
                     return resolved
 
-            if isinstance(parent := context.m_parent, Definition):
+            if isinstance(parent := section.m_parent, Definition):
                 return _resolve_name(name, parent)
 
             return None
 
-        python_name, definition_id = split_python_definition(self.m_proxy_value)
+        # must be a relative name
+
         current = self.m_proxy_section
         for segment in python_name:
             current = _resolve_name(segment, current)
 
-        if current is None:
-            raise MetainfoReferenceError(
-                f'Could not resolve {self.m_proxy_value} from scope {self.m_proxy_section}.'
-            )
-        if not definition_id or current.m_def.definition_id == definition_id:
-            # matches, happy ending
-            self._set_resolved(current)
-            return self.m_proxy_resolved
+        if current is not None:
+            return self._set_resolved(current)
 
-        # mismatches, use the usual mechanism
-        return super().m_proxy_resolve()
+        raise MetainfoReferenceError(
+            f'Could not resolve {self.m_proxy_value} from scope {self.m_proxy_section}.'
+        )
 
 
 class QuantityType(Datatype):
@@ -497,14 +474,23 @@ class Reference:
 
         return {'type_kind': 'reference', 'type_data': type_data}
 
-    def _normalize_impl(self, section, value):
+    def _normalize_impl(self, value, **kwargs):
+        section: MSection | None = kwargs.get('section', None)
+        context: Context | None = kwargs.get('context', None)
+
         if isinstance(value, str | int | dict):
             if isinstance(value, str):
-                context = section.m_root().m_context if section else None
+                if context is None and section is not None:
+                    context = section.m_root().m_context
                 value = (
                     context.normalize_reference(section, value) if context else value
                 )
-            return MProxy(value, m_proxy_section=section, m_proxy_type=self._proxy_type)
+            return MProxy(
+                value,
+                m_proxy_section=section,
+                m_proxy_context=context,
+                m_proxy_type=self._proxy_type,
+            )
 
         if isinstance(self.target_section_def, MProxy):
             proxy = self.target_section_def
@@ -522,6 +508,7 @@ class Reference:
 
         if isinstance(value, MProxy):
             value.m_proxy_section = section
+            value.m_proxy_context = context
             value.m_proxy_type = self._proxy_type
             return value
 
@@ -536,12 +523,12 @@ class Reference:
         raise TypeError(f'{value} is not a valid value of {self._definition}.')
 
     # noinspection PyUnusedLocal
-    def normalize(self, value, *, section=None, **kwargs):
+    def normalize(self, value, *, section=None, context=None, **kwargs):
         def _convert(_v):
             if isinstance(_v, list):
                 return [_convert(v) for v in _v]
 
-            return self._normalize_impl(section, _v)
+            return self._normalize_impl(_v, section=section, context=context)
 
         return self._check_shape(_convert(value))
 
@@ -579,15 +566,15 @@ class MSectionReference(Reference):
     def __init__(self):
         super().__init__(Section.m_def)
 
-    def _normalize_impl(self, section, value):
+    def _normalize_impl(self, value, **kwargs):
         if isinstance(value, str) and self.python_definition.match(value):
             return SectionProxy(
                 value,
-                m_proxy_section=section,
-                m_proxy_type=self._proxy_type,
+                m_proxy_section=kwargs.get('section', None),
+                m_proxy_context=kwargs.get('context', None),
             )
 
-        return super()._normalize_impl(section, value)
+        return super()._normalize_impl(value, **kwargs)
 
     def _serialize_impl(self, section, value):
         if (
@@ -620,18 +607,19 @@ class QuantityReference(Reference):
             'type_data': self.target_quantity_def.m_path(),
         }
 
-    def _normalize_impl(self, section, value):
+    def _normalize_impl(self, value, **kwargs):
         if isinstance(value, str):
             return MProxy(
                 value.rsplit('/', 1)[0],
-                m_proxy_section=section,
+                m_proxy_section=kwargs.get('section', None),
+                m_proxy_context=kwargs.get('context', None),
                 m_proxy_type=self._proxy_type,
             )
 
         if not value.m_is_set(self.target_quantity_def):
             return _UNSET_
 
-        return super()._normalize_impl(section, value)
+        return super()._normalize_impl(value, **kwargs)
 
     def _serialize_impl(self, section, value):
         parent_path: str = super()._serialize_impl(section, value)
@@ -1213,7 +1201,7 @@ class MSection(metaclass=MObjectMeta):
         hint: str | None = None,
         skip_virtual: bool = False,
         index: int | None = None,
-        context: Context | MSection | None = None,
+        context: Context | None = None,
         **kwargs,
     ):
         """
@@ -1372,7 +1360,7 @@ class MSection(metaclass=MObjectMeta):
         *,
         hint: str | None = None,
         skip_virtual: bool = False,
-        context: Context | MSection | None = None,
+        context: Context | None = None,
         **kwargs,
     ):
         """
@@ -2126,7 +2114,7 @@ class MSection(metaclass=MObjectMeta):
         Updates this section with the serialized data from the given dict, e.g., data
         produced by :func:`m_to_dict`.
         """
-        m_context: Context | MSection = self.m_context if self.m_context else self
+        m_context: Context = self.m_context or self.m_root().m_context  # type: ignore
 
         # todo: the hack flag shall be removed
         # it is required due to json serialize nan and inf to null
@@ -2272,30 +2260,44 @@ class MSection(metaclass=MObjectMeta):
                     entry_url, MSection.from_dict(archive_json, m_context=m_context)
                 )
 
-        m_def = dct.get('m_def', None)
-        m_def_id = dct.get('m_def_id', None)
+        def _ensure_definition(m_def: str | None, m_def_id: str | None):
+            """
+            If `m_def_id` is given, always try to get it from mongodb.
+            If not cached, then consider `m_def`.
+            If it does not match the existing definition, initialize it.
+            """
 
-        # if `m_def_id` exists, check if id matches
-        # in case of mismatch, retrieve the Package and use the corresponding section definition
-        tried_id = False
-        if (
-            m_def_id
-            and isinstance(m_context, Context)
-            and (m_def_id != getattr(getattr(cls, 'm_def', {}), 'definition_id', None))
-        ):
-            tried_id = True
-            cls = m_context.resolve_section_definition(m_def, m_def_id)  # noqa
+            current_id = getattr(getattr(cls, 'm_def', {}), 'definition_id', None)
+            if m_def_id is not None:
+                if m_def_id == current_id:
+                    return cls  # cls is not None
 
-        if (tried_id and cls is None) or (not tried_id and m_def):
-            def_section = m_parent
-            if archive_root := def_section.m_root() if def_section else None:
-                if isinstance(
-                    definitions := getattr(archive_root, 'definitions', None), Package
-                ):
-                    def_section = definitions
-            m_def_proxy = MSectionReference().normalize(m_def, section=def_section)  # noqa
-            m_def_proxy.m_proxy_context = m_context
-            cls = m_def_proxy.section_cls
+                if isinstance(m_context, Context):  # id mismatch
+                    if new_def := m_context.resolve_section_definition(m_def, m_def_id):  # type: ignore
+                        return new_def
+
+            if m_def is None:
+                return cls
+
+            # if m_def is present, always load it
+            if (ref_section := m_parent) is not None:
+                # archive with custom schema may directly use the section definition without
+                # '/definitions/' prefix, thus the following line
+                # if necessary, it will be switched back to the root later in resolution
+                ref_section = (
+                    getattr(ref_section.m_root(), 'definitions', None) or ref_section
+                )
+
+            # whether it is a python module name or a reference to an archive
+            # it shall be able to be resolved
+            target_section_def = MSectionReference().normalize(
+                m_def,  # noqa
+                section=ref_section,
+                context=m_context,
+            )
+            return target_section_def.section_cls
+
+        cls = _ensure_definition(dct.get('m_def', None), dct.get('m_def_id', None))
 
         assert cls is not None, 'Section definition or class needs to be known.'
 
