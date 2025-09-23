@@ -12,7 +12,7 @@ async def run_worker():
         worker = get_worker(
             client=client, task_queue=TaskQueue.CPU, activity_executor=executor
         )
-    await worker.run()
+        await worker.run()
 
 
 def main():
