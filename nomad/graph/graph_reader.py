@@ -2648,8 +2648,14 @@ class ArchiveReader(ArchiveLikeReader):
 
         # update node definition if required
         node = await self._check_definition(node, current_config)
-        # in case of a reference, resolve it implicitly
-        node = await self._check_reference(node, current_config, implicit_resolve=True)
+        try:
+            # in case of a reference, resolve it implicitly
+            node = await self._check_reference(
+                node, current_config, implicit_resolve=True
+            )
+        except ValueError as e:
+            self._log(str(e), error_type=QueryError.ARCHIVEERROR)
+            return
 
         # walk through the required fields
         for key, value in required.items():
@@ -2828,10 +2834,14 @@ class ArchiveReader(ArchiveLikeReader):
 
         # no matter if to resolve, it is always necessary to replace the definition with potential custom definition
         node = await self._check_definition(node, config)
-        # if it needs to resolve, it is necessary to check references
-        node = await self._check_reference(
-            node, config, implicit_resolve=omit_keys is not None
-        )
+        try:
+            # if it needs to resolve, it is necessary to check references
+            node = await self._check_reference(
+                node, config, implicit_resolve=omit_keys is not None
+            )
+        except ValueError as e:
+            self._log(str(e), error_type=QueryError.ARCHIVEERROR)
+            return
 
         if not isinstance(node.archive, GenericDict):  # type: ignore
             # primitive type data is always included
@@ -2998,7 +3008,10 @@ class ArchiveReader(ArchiveLikeReader):
         if not implicit_resolve and config.directive is not DirectiveType.resolved:
             return node
 
-        assert isinstance(node.archive, str), 'A reference string is expected.'
+        if not isinstance(node.archive, str):
+            raise ValueError(
+                f'A reference string is expected at {"/".join(node.current_path)}.'
+            )
 
         # maximum resolve depth reached, do not resolve further
         if config.resolve_depth and len(node.visited_path) == config.resolve_depth:
