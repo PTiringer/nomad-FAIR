@@ -20,6 +20,20 @@ import { Unit as UnitMathJS } from 'mathjs'
 import { Unit } from './Unit'
 import { unitMap } from './UnitContext'
 
+test.each([
+  ['base unit', 'joule', true],
+  ['derived unit with explicit dimension', 'steradian', true],
+  ['derived unit without explicit dimension', 'horsepower', true],
+  ['constant should not be included', 'speed_of_light', false]
+]
+)('test that expected units are found: %s', async (name, unit, available) => {
+  if (available) {
+    expect(() => new Unit(unit)).not.toThrow()
+  } else {
+    expect(() => new Unit(unit)).toThrow()
+  }
+})
+
 test('each unit can be created using its full name, alias or short form (+ all available prefixes)', async () => {
   for (const [name, def] of Object.entries(unitMap)) {
     // Full name + prefixes
