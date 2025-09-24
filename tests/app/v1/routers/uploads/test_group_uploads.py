@@ -1,4 +1,7 @@
+import asyncio
+
 import pytest
+import pytest_asyncio
 
 from nomad.processing.data import Upload
 from tests.utils import dict_to_params
@@ -124,29 +127,34 @@ def test_get_group_upload_and_entries(
         assert_entry(entry, has_metadata=False, upload_id=upload_id)
 
 
-@pytest.fixture(scope='function')
-def perform_edit_upload_agents_test(
+@pytest_asyncio.fixture(scope='function')
+async def perform_edit_upload_agents_test(
     auth_headers,
     client,
     convert_agent_labels_to_ids,
-    proc_infra,
+    temporal_worker,
     groups_function,
 ):
-    def perform(upload_fixture, user, metadata, expected_status_code, changed_agents):
+    async def perform(
+        upload_fixture, user, metadata, expected_status_code, changed_agents
+    ):
         upload = list(upload_fixture.uploads.values())[0]
         expected_agents = get_agents_from_upload(upload)
         expected_agents.update(changed_agents)
         expected_agents = convert_agent_labels_to_ids(expected_agents)
         upload_id = upload['upload_id']
 
-        url = f'uploads/{upload_id}/edit'
-        metadata = convert_agent_labels_to_ids(metadata)
-        edit_request = dict(metadata=metadata)
-        response = perform_post(client, url, auth_headers[user], json=edit_request)
-        assert_response(response, expected_status_code)
+        async with temporal_worker():
+            url = f'uploads/{upload_id}/edit'
+            metadata = convert_agent_labels_to_ids(metadata)
+            edit_request = dict(metadata=metadata)
+            response = await asyncio.to_thread(
+                lambda: perform_post(client, url, auth_headers[user], json=edit_request)
+            )
+            assert_response(response, expected_status_code)
 
-        upload = Upload.get(upload_id)
-        upload.block_until_complete()
+            upload = Upload.get(upload_id)
+            await upload.await_workflows()
         agents = get_agents_from_upload(upload)
         assert sorted(agents) == sorted(expected_agents)
 
@@ -239,7 +247,8 @@ edit_upload_agents_params = dict_to_params(edit_upload_agents_params)
     'metadata, code_or_changed_agents',
     edit_upload_agents_params,
 )
-def test_edit_upload_agents(
+@pytest.mark.asyncio
+async def test_edit_upload_agents(
     perform_edit_upload_agents_test,
     upload_full_agents,
     metadata,
@@ -252,7 +261,7 @@ def test_edit_upload_agents(
         expected_status_code = 200
         changed_agents = code_or_changed_agents
 
-    perform_edit_upload_agents_test(
+    await perform_edit_upload_agents_test(
         upload_full_agents, 'user1', metadata, expected_status_code, changed_agents
     )
 

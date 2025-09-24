@@ -55,6 +55,7 @@ class ProcessEntryActivityInput:
     upload_id: str
     entry_id: str
     workflow_id: str
+    error_details: str | None = None
 
 
 @dataclass

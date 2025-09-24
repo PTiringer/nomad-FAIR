@@ -15,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import asyncio
 import json
 import os
 from zipfile import ZipFile
@@ -68,7 +69,10 @@ def test_metainfo_section_id_endpoint(metainfo_data, mongo_module, client):
     assert response.status_code == 404
 
 
-def test_upload_and_download(client, user1, proc_infra, mongo_module, no_warn, tmp):
+@pytest.mark.asyncio
+async def test_upload_and_download(
+    client, user1, temporal_worker, mongo_module, no_warn, tmp
+):
     m_def = '../upload/raw/schema.archive.json#/definitions/section_definitions/1'
 
     def client_context():
@@ -81,7 +85,7 @@ def test_upload_and_download(client, user1, proc_infra, mongo_module, no_warn, t
     data_file_name = 'sample.archive.json'
     archive_name = 'example_versioned_metainfo.zip'
 
-    def pack_and_publish(
+    async def pack_and_publish(
         property_name: str, property_value: str, with_schema: bool, def_id: str = None
     ):
         """
@@ -133,13 +137,16 @@ def test_upload_and_download(client, user1, proc_infra, mongo_module, no_warn, t
                 zipObj.write(schema_path, arcname=schema_file_name)
             zipObj.write(data_path, arcname=data_file_name)
 
-        processed = run_processing(
-            (create_uuid(), archive_path), user1, publish_directly=True
-        )
+        async with temporal_worker():
+            processed = await asyncio.to_thread(
+                lambda: run_processing(
+                    (create_uuid(), archive_path), user1, publish_directly=True
+                )
+            )
         return processed.upload_id
 
     # 1. create a first upload
-    upload_1_id = pack_and_publish(
+    upload_1_id = await pack_and_publish(
         property_name='test_quantity',
         property_value='test_value',
         with_schema=True,
@@ -162,7 +169,7 @@ def test_upload_and_download(client, user1, proc_infra, mongo_module, no_warn, t
     assert response.status_code == 200
 
     # 3. prepare a new entry refers to the previously uploaded package
-    upload_2_id = pack_and_publish(
+    upload_2_id = await pack_and_publish(
         property_name='test_quantity',
         property_value='new_value',
         with_schema=False,
@@ -199,7 +206,7 @@ def test_upload_and_download(client, user1, proc_infra, mongo_module, no_warn, t
     # 8. generate version two with 'updated_quantity' quantity
     # TODO this test is kinda pointless, because it does not test different version, but a
     # fully new schema
-    upload_3_id = pack_and_publish(
+    upload_3_id = await pack_and_publish(
         property_name='updated_quantity',
         property_value='new_value',
         with_schema=True,
@@ -272,7 +279,10 @@ def example_upload_two_schemas():
     }
 
 
-def test_two_schemas(example_upload_two_schemas, client, user1, proc_infra, no_warn):
+@pytest.mark.asyncio
+async def test_two_schemas(
+    example_upload_two_schemas, client, user1, temporal_worker, no_warn
+):
     def tmp(fn: str) -> str:
         return os.path.join(config.fs.tmp, fn)
 
@@ -285,11 +295,14 @@ def test_two_schemas(example_upload_two_schemas, client, user1, proc_infra, no_w
         for k, v in example_upload_two_schemas.items():
             zipObj.writestr(f'{k}.archive.json', json.dumps(v))
 
-    processed = run_processing(
-        (upload_id, tmp(f'{upload_id}.zip')),
-        user1,
-        publish_directly=True,
-    )
+    async with temporal_worker():
+        processed = await asyncio.to_thread(
+            lambda: run_processing(
+                (upload_id, tmp(f'{upload_id}.zip')),
+                user1,
+                publish_directly=True,
+            )
+        )
 
     # Use the actual randomized id after `run_processing`
     upload_id = processed.upload_id

@@ -1,3 +1,4 @@
+import asyncio
 import math
 import os
 import uuid
@@ -201,32 +202,38 @@ def oasis_publishable_upload(
     return non_empty_processed.upload_id, suffix
 
 
-@pytest.mark.timeout(config.tests.default_timeout)
-@pytest.fixture(scope='function')
-def processed(
-    uploaded: tuple[str, str], user1: User, proc_infra, mails
+@pytest_asyncio.fixture(scope='function')
+async def processed(
+    uploaded: tuple[str, str], user1: User, temporal_worker, mails
 ) -> processing.Upload:
     """
     Provides a processed upload. Upload was uploaded with user1.
     """
-    return test_processing.run_processing(uploaded, user1)
+    async with temporal_worker():
+        result = await asyncio.to_thread(
+            lambda: test_processing.run_processing(uploaded, user1)
+        )
+        return result
 
 
-@pytest.mark.timeout(config.tests.default_timeout)
-@pytest.fixture(scope='function')
-def processeds(
-    non_empty_example_upload: str, user1: User, proc_infra
+@pytest_asyncio.fixture(scope='function')
+async def processeds(
+    non_empty_example_upload: str, user1: User, temporal_worker
 ) -> list[processing.Upload]:
-    result: list[processing.Upload] = []
-    for i in range(2):
-        upload_id = (
-            f'{os.path.basename(non_empty_example_upload).replace(".zip", "")}_{i}'
-        )
-        result.append(
-            test_processing.run_processing((upload_id, non_empty_example_upload), user1)
-        )
+    results: list[processing.Upload] = []
+    async with temporal_worker():
+        for i in range(2):
+            upload_id = (
+                f'{os.path.basename(non_empty_example_upload).replace(".zip", "")}_{i}'
+            )
+            result = await asyncio.to_thread(
+                lambda: test_processing.run_processing(
+                    (upload_id, non_empty_example_upload), user1
+                )
+            )
+            results.append(result)
 
-    return result
+    return results
 
 
 @pytest.mark.timeout(config.tests.default_timeout)
@@ -271,39 +278,40 @@ async def non_empty_processed_with_temporal(
     return upload
 
 
-@pytest.mark.timeout(config.tests.default_timeout)
-@pytest.fixture(scope='function')
-def published(
-    non_empty_processed: processing.Upload, internal_example_user_metadata
+@pytest_asyncio.fixture(scope='function')
+async def published(
+    non_empty_processed_with_temporal: processing.Upload,
+    internal_example_user_metadata,
+    temporal_worker: TemporalWorkerContext,
 ) -> processing.Upload:
     """
     Provides a processed published upload. Upload was uploaded with user1 and is embargoed.
     """
-    set_upload_entry_metadata(non_empty_processed, internal_example_user_metadata)
-    non_empty_processed.publish_upload(embargo_length=12)
-    try:
-        non_empty_processed.block_until_complete(interval=0.01)
-    except Exception:
-        pass
+    set_upload_entry_metadata(
+        non_empty_processed_with_temporal, internal_example_user_metadata
+    )
+    async with temporal_worker():
+        await asyncio.to_thread(
+            non_empty_processed_with_temporal.publish_upload, embargo_length=12
+        )
+        await non_empty_processed_with_temporal.await_workflows()
 
-    return non_empty_processed
+    return non_empty_processed_with_temporal
 
 
-@pytest.mark.timeout(config.tests.default_timeout)
-@pytest.fixture(scope='function')
-def published_wo_user_metadata(
-    non_empty_processed: processing.Upload,
+@pytest_asyncio.fixture(scope='function')
+async def published_wo_user_metadata(
+    non_empty_processed_with_temporal: processing.Upload,
+    temporal_worker: TemporalWorkerContext,
 ) -> processing.Upload:
     """
     Provides a processed upload. Upload was uploaded with user1.
     """
-    non_empty_processed.publish_upload()
-    try:
-        non_empty_processed.block_until_complete(interval=0.01)
-    except Exception:
-        pass
+    async with temporal_worker() as _:
+        await asyncio.to_thread(non_empty_processed_with_temporal.publish_upload)
+        await non_empty_processed_with_temporal.await_workflows()
 
-    return non_empty_processed
+    return non_empty_processed_with_temporal
 
 
 @pytest.fixture(scope='module')

@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 
+import asyncio
 import datetime
 import json
 import os
@@ -123,7 +124,10 @@ class TestAdmin:
             (datetime.datetime(year=2012, month=1, day=1), False, True),
         ],
     )
-    def test_lift_embargo(self, published, publish_time, dry, lifted):
+    @pytest.mark.asyncio
+    async def test_lift_embargo(
+        self, published, publish_time, dry, lifted, temporal_worker
+    ):
         upload_id = published.upload_id
         published.publish_time = publish_time
         published.save()
@@ -137,14 +141,17 @@ class TestAdmin:
             == 0
         )
 
-        result = invoke_cli(
-            cli,
-            ['admin', 'lift-embargo'] + (['--dry'] if dry else []),
-            catch_exceptions=False,
-        )
+        async with temporal_worker():
+            result = await asyncio.to_thread(
+                lambda: invoke_cli(
+                    cli,
+                    ['admin', 'lift-embargo'] + (['--dry'] if dry else []),
+                    catch_exceptions=False,
+                )
+            )
 
-        assert result.exit_code == 0
-        published.block_until_complete()
+            assert result.exit_code == 0
+            await published.await_workflows()
         assert not published.with_embargo == lifted
         assert (
             search(owner='public', query=dict(upload_id=upload_id)).pagination.total > 0
@@ -265,22 +272,26 @@ class TestAdminUploads:
 
         assert search(owner='all', query=dict(comment='specific')).pagination.total == 1
 
-    def test_re_process(self, published, monkeypatch):
+    @pytest.mark.asyncio
+    async def test_re_process(self, published, monkeypatch, temporal_worker):
         monkeypatch.setattr('nomad.config.meta.version', 'test_version')
         upload_id = published.upload_id
         entry = Entry.objects(upload_id=upload_id).first()
         assert entry.nomad_version != 'test_version'
 
-        result = invoke_cli(
-            cli,
-            ['admin', 'uploads', 'process', '--parallel', '2', upload_id],
-            catch_exceptions=False,
-        )
+        async with temporal_worker():
+            result = await asyncio.to_thread(
+                lambda: invoke_cli(
+                    cli,
+                    ['admin', 'uploads', 'process', '--parallel', '2', upload_id],
+                    catch_exceptions=False,
+                )
+            )
 
-        assert result.exit_code == 0
-        assert 'processing' in result.stdout
-        entry.reload()
-        assert entry.nomad_version == 'test_version'
+            assert result.exit_code == 0
+            assert 'processing' in result.stdout
+            entry.reload()
+            assert entry.nomad_version == 'test_version'
 
     def test_publish(self, non_empty_processed, monkeypatch):
         monkeypatch.setattr('nomad.config.meta.version', 'test_version')
@@ -328,23 +339,27 @@ class TestAdminUploads:
         published.reload()
         assert published.process_status == ProcessStatus.SUCCESS
 
-    def test_chown(self, published: Upload, user1, user2):
+    @pytest.mark.asyncio
+    async def test_chown(self, published: Upload, user1, user2, temporal_worker):
         upload_id = published.upload_id
         assert published.main_author == user1.user_id
         with published.entries_metadata() as entries_metadata:
             for entry_metadata in entries_metadata:
                 assert entry_metadata.main_author.user_id == user1.user_id
 
-        result = invoke_cli(
-            cli,
-            ['admin', 'uploads', 'chown', user2.username, upload_id],
-            catch_exceptions=False,
-        )
+        async with temporal_worker():
+            result = await asyncio.to_thread(
+                lambda: invoke_cli(
+                    cli,
+                    ['admin', 'uploads', 'chown', user2.username, upload_id],
+                    catch_exceptions=False,
+                )
+            )
 
-        assert result.exit_code == 0
-        assert 'changing' in result.stdout
+            assert result.exit_code == 0
+            assert 'changing' in result.stdout
 
-        published.block_until_complete()
+            await published.await_workflows()
 
         assert published.main_author == user2.user_id
         with published.entries_metadata() as entries_metadata:

@@ -15,17 +15,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import asyncio
+
+import pytest
 
 from tests.normalizing.conftest import run_processing
 
 
-def test_processing(raw_files_function, no_warn):
+@pytest.mark.asyncio
+async def test_processing(temporal_worker, raw_files_function, no_warn):
     directory = 'tests/data/datamodel/metainfo/eln/structure_file'
     mainfile = 'structure_file.archive.json'
     mainfile_schema = 'eln_with_structure.schema.archive.yaml'
 
-    test_archive_schema = run_processing(directory, mainfile_schema)
-    test_archive = run_processing(directory, mainfile)
-    # assert archive for schema and solar cell entry
-    assert len(test_archive_schema.definitions.section_definitions) == 1
-    assert len(test_archive.results.material.chemical_formula_reduced) > 0
+    async with temporal_worker():
+        test_archive_schema = await asyncio.to_thread(
+            lambda: run_processing(directory, mainfile_schema)
+        )
+        test_archive = await asyncio.to_thread(
+            lambda: run_processing(directory, mainfile)
+        )
+        # assert archive for schema and solar cell entry
+        assert len(test_archive_schema.definitions.section_definitions) == 1
+        assert len(test_archive.results.material.chemical_formula_reduced) > 0

@@ -1,6 +1,7 @@
 import json
 import os
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from temporalio import activity
@@ -61,6 +62,7 @@ def delete_upload_record_activity(input: DeleteUploadWorkflowInput):
 def process_entry_activity(input: ProcessEntryActivityInput):
     entry = Entry.get(input.entry_id)
     try:
+        entry.errors = []
         entry._process_entry_local()
     except ProcessFailure as e:
         # ProcessFailure represents permanent failures (data validation, business logic errors)
@@ -216,7 +218,9 @@ def cleanup_activity(input: UploadProcessingWorkflowInput):
 @activity.defn
 def process_entry_success(input: ProcessEntryActivityInput):
     entry = Entry.get(input.entry_id)
+    entry.on_success()
     entry.process_status = ProcessStatus.SUCCESS
+    entry.complete_time = datetime.now(timezone.utc)
     entry.save()
 
 
@@ -230,9 +234,13 @@ def process_upload_success(input: UploadWorkflowIdInput):
 @activity.defn
 def process_entry_failure_activity(input: ProcessEntryActivityInput):
     entry = Entry.get(input.entry_id)
+    if error_details := input.error_details:
+        if error_details not in entry.errors:
+            entry.errors.append(error_details)
     entry.on_fail()
     entry.process_status = ProcessStatus.FAILURE
     entry.last_status_message = 'Process process_entry failed'
+    entry.complete_time = datetime.now(timezone.utc)
     entry.save()
 
 
@@ -246,6 +254,7 @@ def process_upload_failure_activity(input: UploadWorkflowIdInput):
     if input.error_details:
         upload.errors.append(input.error_details)  # type: ignore
     upload.workflow_ids = []  # Clear workflow IDs on failure
+    upload.complete_time = datetime.now(timezone.utc)
     upload.save()
 
 

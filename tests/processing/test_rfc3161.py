@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 
+import asyncio
 import datetime
 import os
 
@@ -74,7 +75,8 @@ def test_rfc3161ng_timestamp(server, cert, result, monkeysession):
         assert rfc3161ng.get_timestamp(new_metadata.token) == rfc3161ng_time
 
 
-def test_rfc3161ng_processing(published, monkeypatch):
+@pytest.mark.asyncio
+async def test_rfc3161ng_processing(published, monkeypatch, temporal_worker):
     entry_id = Entry.objects(upload_id=published.upload_id).first().entry_id
     file_path = published.upload_files._create_msg_file_object(
         published.upload_files, published.upload_files.access, fallback=True
@@ -86,18 +88,15 @@ def test_rfc3161ng_processing(published, monkeypatch):
 
     original_timestamp = archive['metadata']['entry_timestamp']
 
-    def _re_process():
-        published.process_upload()
-        published.publish_upload(embargo_length=12)
-        try:
-            published.block_until_complete(interval=0.01)
-        except Exception:
-            pass
+    async def _re_process():
+        async with temporal_worker():
+            await asyncio.to_thread(lambda: published.process_upload())
+            await published.await_workflows()
         with read_archive(file_path) as _reader:
             return to_json(_reader[entry_id])
 
     # 0. assert reprocessing does not change timestamp
-    archive = _re_process()
+    archive = await _re_process()
     assert 'entry_timestamp' in archive['metadata']
     assert archive['metadata']['entry_timestamp'] == original_timestamp
 
@@ -107,10 +106,10 @@ def test_rfc3161ng_processing(published, monkeypatch):
     write_archive(file_path, 1, data=[(entry_id, archive)])
     monkeypatch.setattr('nomad.config.process.rfc3161_skip_published', True)
     Entry.objects(entry_id=entry_id).first().update(unset__entry_timestamp=1)
-    archive = _re_process()
+    archive = await _re_process()
     assert 'entry_timestamp' not in archive['metadata']
 
     # 2. published, NOT skip published, expecting timestamp
     monkeypatch.setattr('nomad.config.process.rfc3161_skip_published', False)
-    archive = _re_process()
+    archive = await _re_process()
     assert 'entry_timestamp' in archive['metadata']

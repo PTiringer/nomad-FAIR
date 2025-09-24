@@ -113,6 +113,10 @@ class ProcessEntryWorkflow:
             return result
 
         except Exception as e:
+            if isinstance(e, ActivityError):
+                input.error_details = str(e.cause)
+            else:
+                input.error_details = str(e)
             # Set entry to failure status
             await workflow.execute_activity(
                 process_entry_failure_activity,

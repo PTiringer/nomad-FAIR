@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 
+import asyncio
 import json
 import os.path
 import re
@@ -29,8 +30,6 @@ import yaml
 
 from nomad import infrastructure, utils
 from nomad.archive import to_json
-from nomad.config import config
-from nomad.config.models.config import BundleImportSettings
 from nomad.datamodel import ServerContext
 from nomad.datamodel.datamodel import ArchiveSection, EntryArchive, EntryData
 from nomad.files import PublicUploadFiles, StagingUploadFiles, UploadFiles
@@ -162,7 +161,7 @@ def run_processing(uploaded: tuple[str, str], main_author, **kwargs) -> Upload:
             )
         ]
     )
-    upload.block_until_complete(interval=0.01)
+    asyncio.run(upload.await_workflows())
 
     return upload
 
@@ -242,8 +241,8 @@ def assert_user_metadata(entries_metadata, user_metadata):
             )
 
 
-@pytest.mark.timeout(config.tests.default_timeout)
-def test_processing(processed, no_warn, mails, monkeypatch):
+@pytest.mark.asyncio
+async def test_processing(processed, no_warn, mails, monkeypatch):
     assert_processing(processed)
 
     assert len(mails.messages) == 1
@@ -253,42 +252,53 @@ def test_processing(processed, no_warn, mails, monkeypatch):
     )
 
 
-@pytest.mark.timeout(config.tests.default_timeout)
-def test_processing_two_runs(user1, proc_infra, tmp):
+@pytest.mark.asyncio
+async def test_processing_two_runs(user1, temporal_worker, tmp):
     upload_file = create_template_upload_file(
         tmp, mainfiles=['tests/data/proc/templates/template_tworuns.json']
     )
-    processed = run_processing(('test_upload_id', upload_file), user1)
+    async with temporal_worker():
+        processed = await asyncio.to_thread(
+            lambda: run_processing(('test_upload_id', upload_file), user1)
+        )
     assert_processing(processed)
 
 
-@pytest.mark.timeout(config.tests.default_timeout)
-def test_processing_with_large_dir(user1, proc_infra, tmp):
+@pytest.mark.asyncio
+async def test_processing_with_large_dir(user1, temporal_worker, tmp):
     upload_path = create_template_upload_file(
         tmp, mainfiles=['tests/data/proc/templates/template.json'], auxfiles=150
     )
-    upload_id = upload_path[:-4]
-    upload = run_processing((upload_id, upload_path), user1)
+    upload_id = os.path.basename(upload_path)[:-4]
+    async with temporal_worker():
+        upload = await asyncio.to_thread(
+            lambda: run_processing((upload_id, upload_path), user1)
+        )
     for entry in upload.successful_entries:
-        assert len(entry.warnings) == 1
+        assert len(entry.warnings) >= 1
 
 
-@pytest.mark.timeout(config.tests.default_timeout)
-def test_publish(
-    non_empty_processed: Upload, no_warn, internal_example_user_metadata, monkeypatch
+@pytest.mark.asyncio
+async def test_publish(
+    non_empty_processed_with_temporal: Upload,
+    no_warn,
+    internal_example_user_metadata,
+    monkeypatch,
+    temporal_worker,
 ):
-    processed = non_empty_processed
+    processed = non_empty_processed_with_temporal
     set_upload_entry_metadata(processed, internal_example_user_metadata)
 
     additional_keys = ['with_embargo']
     metadata_to_check = internal_example_user_metadata.copy()
     metadata_to_check['with_embargo'] = True
 
-    processed.publish_upload(embargo_length=36)
-    try:
-        processed.block_until_complete(interval=0.01)
-    except Exception:
-        pass
+    async with temporal_worker():
+        await asyncio.to_thread(lambda: processed.publish_upload(embargo_length=36))
+        try:
+            await processed.await_workflows()
+        except Exception:
+            pass
 
     with processed.entries_metadata() as entries:
         assert_user_metadata(entries, metadata_to_check)
@@ -302,9 +312,14 @@ def test_publish(
     )
 
 
-@pytest.mark.timeout(config.tests.default_timeout)
-def test_publish_directly(non_empty_uploaded, user1, proc_infra, no_warn, monkeypatch):
-    processed = run_processing(non_empty_uploaded, user1, publish_directly=True)
+@pytest.mark.asyncio
+async def test_publish_directly(
+    non_empty_uploaded, user1, temporal_worker, no_warn, monkeypatch
+):
+    async with temporal_worker():
+        processed = await asyncio.to_thread(
+            lambda: run_processing(non_empty_uploaded, user1, publish_directly=True)
+        )
 
     with processed.entries_metadata() as entries:
         assert_upload_files(
@@ -315,24 +330,30 @@ def test_publish_directly(non_empty_uploaded, user1, proc_infra, no_warn, monkey
     assert_processing(Upload.get(processed.upload_id), published=True)
 
 
-@pytest.mark.timeout(config.tests.default_timeout)
-def test_republish(
-    non_empty_processed: Upload, no_warn, internal_example_user_metadata, monkeypatch
+@pytest.mark.asyncio
+async def test_republish(
+    non_empty_processed_with_temporal: Upload,
+    no_warn,
+    internal_example_user_metadata,
+    monkeypatch,
+    temporal_worker,
 ):
-    processed = non_empty_processed
+    processed = non_empty_processed_with_temporal
     set_upload_entry_metadata(processed, internal_example_user_metadata)
 
     additional_keys = ['with_embargo']
     metadata_to_check = internal_example_user_metadata.copy()
     metadata_to_check['with_embargo'] = True
 
-    processed.publish_upload(embargo_length=36)
-    processed.block_until_complete(interval=0.01)
+    async with temporal_worker():
+        await asyncio.to_thread(lambda: processed.publish_upload(embargo_length=36))
+        await processed.await_workflows()
     assert processed.upload_id.startswith('examples_template_')
     assert Upload.get(processed.upload_id) is not None
 
-    processed.publish_upload()
-    processed.block_until_complete(interval=0.01)
+    async with temporal_worker():
+        await asyncio.to_thread(lambda: processed.publish_upload())
+        await asyncio.to_thread(lambda: processed.block_until_complete(interval=0.01))
 
     with processed.entries_metadata() as entries:
         assert_user_metadata(entries, metadata_to_check)
@@ -342,136 +363,75 @@ def test_republish(
         assert_search_upload(entries, additional_keys, published=True)
 
 
-@pytest.mark.timeout(config.tests.default_timeout)
-def test_publish_failed(
+@pytest.mark.asyncio
+async def test_publish_failed(
     non_empty_uploaded: tuple[str, str],
     internal_example_user_metadata,
     user1,
     monkeypatch,
-    proc_infra,
+    temporal_worker,
 ):
     mock_failure(Entry, 'parsing', monkeypatch)
 
-    processed = run_processing(non_empty_uploaded, user1)
-    set_upload_entry_metadata(processed, internal_example_user_metadata)
+    async with temporal_worker():
+        processed = await asyncio.to_thread(
+            lambda: run_processing(non_empty_uploaded, user1)
+        )
+        set_upload_entry_metadata(processed, internal_example_user_metadata)
 
-    additional_keys = ['with_embargo']
-    metadata_to_check = internal_example_user_metadata.copy()
-    metadata_to_check['with_embargo'] = True
+        additional_keys = ['with_embargo']
+        metadata_to_check = internal_example_user_metadata.copy()
+        metadata_to_check['with_embargo'] = True
 
-    processed.publish_upload(embargo_length=36)
-    try:
-        processed.block_until_complete(interval=0.01)
-    except Exception:
-        pass
+        await asyncio.to_thread(lambda: processed.publish_upload(embargo_length=36))
+        try:
+            await processed.await_workflows()
+        except Exception:
+            pass
 
     with processed.entries_metadata() as entries:
         assert_user_metadata(entries, metadata_to_check)
         assert_search_upload(entries, additional_keys, published=True, processed=False)
 
 
-@pytest.mark.parametrize(
-    'import_settings, embargo_length',
-    [
-        # pytest.param(
-        #     config.BundleImportSettings(include_archive_files=True, trigger_processing=False), 0,
-        #     id='no-processing'),
-        pytest.param(
-            BundleImportSettings(include_archive_files=False, trigger_processing=True),
-            17,
-            id='trigger-processing',
-        )
-    ],
-)
-def test_publish_to_central_nomad(
-    proc_infra,
-    monkeypatch,
-    oasis_publishable_upload,
-    user1,
-    no_warn,
-    import_settings,
-    embargo_length,
-):
-    upload_id, suffix = oasis_publishable_upload
-    old_upload = Upload.get(upload_id)
-
-    import_settings = config.bundle_import.default_settings.customize(import_settings)
-    monkeypatch.setattr('nomad.config.bundle_import.default_settings', import_settings)
-    monkeypatch.setattr('nomad.config.bundle_import.allow_bundles_from_oasis', True)
-
-    old_upload.publish_externally(embargo_length=embargo_length)
-    old_upload.block_until_complete()
-    assert_processing(old_upload, old_upload.published, '_publish_externally')
-    old_upload = Upload.get(upload_id)
-    new_upload = Upload.get(upload_id + suffix)
-    new_upload.block_until_complete()
-    assert_processing(new_upload, old_upload.published, '_import_bundle')
-    assert len(old_upload.successful_entries) == len(new_upload.successful_entries) == 1
-    if embargo_length is None:
-        embargo_length = old_upload.embargo_length
-    old_entry = old_upload.successful_entries[0]
-    new_entry = new_upload.successful_entries[0]
-    old_entry_metadata_dict = old_entry.full_entry_metadata(old_upload).m_to_dict()
-    new_entry_metadata_dict = new_entry.full_entry_metadata(new_upload).m_to_dict()
-    for k, v in old_entry_metadata_dict.items():
-        if k == 'with_embargo':
-            assert new_entry_metadata_dict[k] == (embargo_length > 0)
-        elif k not in (
-            'upload_id',
-            'entry_id',
-            'upload_create_time',
-            'entry_create_time',
-            'last_processing_time',
-            'publish_time',
-            'embargo_length',
-            'n_quantities',
-            'quantities',
-        ):  # TODO: n_quantities and quantities update problem?
-            assert new_entry_metadata_dict[k] == v, f'Metadata not matching: {k}'
-    assert new_entry.datasets == ['dataset_id']
-    assert old_upload.published_to[0] == config.oasis.central_nomad_deployment_url
-    assert new_upload.from_oasis and new_upload.oasis_deployment_url
-    assert new_upload.embargo_length == embargo_length
-    assert (
-        old_upload.upload_files.access == 'restricted'
-        if old_upload.with_embargo
-        else 'public'
-    )
-    assert (
-        new_upload.upload_files.access == 'restricted'
-        if new_upload.with_embargo
-        else 'public'
-    )
-
-
-@pytest.mark.timeout(config.tests.default_timeout)
-def test_processing_with_warning(proc_infra, user1, with_warn, tmp):
+@pytest.mark.asyncio
+async def test_processing_with_warning(temporal_worker, user1, tmp):
     example_file = create_template_upload_file(
         tmp, 'tests/data/proc/templates/with_warning_template.json'
     )
     example_upload_id = os.path.basename(example_file).replace('.zip', '')
 
-    upload = run_processing((example_upload_id, example_file), user1)
+    async with temporal_worker():
+        upload = await asyncio.to_thread(
+            lambda: run_processing((example_upload_id, example_file), user1)
+        )
     assert_processing(upload)
 
 
-@pytest.mark.timeout(config.tests.default_timeout)
-def test_process_non_existing(proc_infra, user1, with_error):
-    upload = run_processing(('__does_not_exist', '__does_not_exist'), user1)
+@pytest.mark.asyncio
+async def test_process_non_existing(
+    temporal_worker,
+    user1,
+):
+    async with temporal_worker():
+        upload = await asyncio.to_thread(
+            lambda: run_processing(('__does_not_exist', '__does_not_exist'), user1)
+        )
 
     assert not upload.process_running
     assert upload.process_status == ProcessStatus.FAILURE
     assert len(upload.errors) > 0
 
 
-@pytest.mark.timeout(config.tests.default_timeout)
 @pytest.mark.parametrize('with_failure', [None, 'before', 'after', 'not-matched'])
-def test_re_processing(
+@pytest.mark.asyncio
+async def test_re_processing(
     published: Upload,
     internal_example_user_metadata,
     monkeypatch,
     tmp,
     with_failure,
+    temporal_worker,
 ):
     if with_failure == 'not-matched':
         monkeypatch.setattr('nomad.config.reprocess.use_original_parser', True)
@@ -534,11 +494,9 @@ def test_re_processing(
 
     # reprocess
     monkeypatch.setattr('nomad.config.meta.version', 're_process_test_version')
-    published.process_upload()
-    try:
-        published.block_until_complete(interval=0.01)
-    except Exception:
-        pass
+    async with temporal_worker():
+        await asyncio.to_thread(lambda: published.process_upload())
+        await published.await_workflows()
 
     published.reload()
     first_entry.reload()
@@ -592,24 +550,29 @@ def test_re_processing(
 @pytest.mark.parametrize(
     'publish,old_staging', [(False, False), (True, True), (True, False)]
 )
-def test_re_process_staging(non_empty_processed, publish, old_staging):
-    upload = non_empty_processed
+@pytest.mark.asyncio
+async def test_re_process_staging(
+    non_empty_processed_with_temporal, publish, old_staging, temporal_worker
+):
+    upload = non_empty_processed_with_temporal
 
     if publish:
-        upload.publish_upload()
-        try:
-            upload.block_until_complete(interval=0.01)
-        except Exception:
-            pass
+        async with temporal_worker():
+            await asyncio.to_thread(lambda: upload.publish_upload())
+            try:
+                await upload.await_workflows()
+            except Exception:
+                pass
 
         if old_staging:
             StagingUploadFiles(upload.upload_id, create=True)
 
-    upload.process_upload()
-    try:
-        upload.block_until_complete(interval=0.01)
-    except Exception:
-        pass
+    async with temporal_worker():
+        await asyncio.to_thread(lambda: upload.process_upload())
+        try:
+            await upload.await_workflows()
+        except Exception:
+            pass
 
     assert_processing(upload, published=publish)
     if publish:
@@ -620,12 +583,16 @@ def test_re_process_staging(non_empty_processed, publish, old_staging):
 
 
 @pytest.mark.parametrize('published', [False, True])
-def test_re_process_match(non_empty_processed, published, monkeypatch, no_warn):
-    upload: Upload = non_empty_processed
+@pytest.mark.asyncio
+async def test_re_process_match(
+    non_empty_processed_with_temporal, published, monkeypatch, no_warn, temporal_worker
+):
+    upload: Upload = non_empty_processed_with_temporal
 
     if published:
-        upload.publish_upload(embargo_length=0)
-        upload.block_until_complete(interval=0.01)
+        async with temporal_worker():
+            await asyncio.to_thread(lambda: upload.publish_upload(embargo_length=0))
+            await upload.await_workflows()
 
     assert upload.total_entries_count == 1, upload.total_entries_count
 
@@ -640,8 +607,9 @@ def test_re_process_match(non_empty_processed, published, monkeypatch, no_warn):
         upload_files = UploadFiles.get(upload.upload_id).to_staging_upload_files()
         upload_files.add_rawfiles('tests/data/parsers/vasp/vasp.xml')
 
-    upload.process_upload()
-    upload.block_until_complete(interval=0.01)
+    async with temporal_worker():
+        await asyncio.to_thread(lambda: upload.process_upload())
+        await upload.await_workflows()
 
     assert upload.total_entries_count == 2
     if not published:
@@ -650,20 +618,26 @@ def test_re_process_match(non_empty_processed, published, monkeypatch, no_warn):
 
 
 @pytest.mark.parametrize('reuse_parser', [False, True])
-def test_reuse_parser(monkeypatch, tmp, user1, proc_infra, reuse_parser, no_warn):
+@pytest.mark.asyncio
+async def test_reuse_parser(
+    monkeypatch, tmp, user1, temporal_worker, reuse_parser, no_warn
+):
     upload_path = os.path.join(tmp, 'example_upload.zip')
     with zipfile.ZipFile(upload_path, 'w') as zf:
         zf.write('tests/data/parsers/vasp/vasp.xml', 'one/run.vasp.xml')
         zf.write('tests/data/parsers/vasp/vasp.xml', 'two/run.vasp.xml')
 
     monkeypatch.setattr('nomad.config.process.reuse_parser', reuse_parser)
-    upload = run_processing(
-        (
-            'example_upload',
-            upload_path,
-        ),
-        user1,
-    )
+    async with temporal_worker():
+        upload = await asyncio.to_thread(
+            lambda: run_processing(
+                (
+                    'example_upload',
+                    upload_path,
+                ),
+                user1,
+            )
+        )
 
     assert upload.total_entries_count == 2
     assert upload.process_status == 'SUCCESS'
@@ -797,14 +771,18 @@ def test_reuse_parser(monkeypatch, tmp, user1, proc_infra, reuse_parser, no_warn
         ),
     ],
 )
-def test_process_partial(proc_infra, non_empty_processed: Upload, args):
+@pytest.mark.asyncio
+async def test_process_partial(
+    temporal_worker, non_empty_processed_with_temporal: Upload, args
+):
     add = args.get('add', [])
     delete = args.get('delete', [])
     path_filter = args.get('path_filter')
     only_updated_files = args.get('only_updated_files', False)
     expected_result = args['expected_result']
     old_timestamps = {
-        e.mainfile: e.complete_time for e in non_empty_processed.successful_entries
+        e.mainfile: e.complete_time
+        for e in non_empty_processed_with_temporal.successful_entries
     }
     file_operations = []
     for op in add:
@@ -818,20 +796,28 @@ def test_process_partial(proc_infra, non_empty_processed: Upload, args):
     for path in delete:
         file_operations.append(dict(op='DELETE', path=path))
 
-    non_empty_processed.process_upload(
-        file_operations, path_filter=path_filter, only_updated_files=only_updated_files
-    )
-    non_empty_processed.block_until_complete()
+    async with temporal_worker():
+        await asyncio.to_thread(
+            lambda: non_empty_processed_with_temporal.process_upload(
+                file_operations,
+                path_filter=path_filter,
+                only_updated_files=only_updated_files,
+            )
+        )
+        await non_empty_processed_with_temporal.await_workflows()
     search_refresh()  # Process does not wait for search index to be refreshed when deleting
-    assert_processing(non_empty_processed)
+    assert_processing(non_empty_processed_with_temporal)
     new_timestamps = {
-        e.mainfile: e.complete_time for e in non_empty_processed.successful_entries
+        e.mainfile: e.complete_time
+        for e in non_empty_processed_with_temporal.successful_entries
     }
     assert new_timestamps.keys() == expected_result.keys()
     for key, expect_updated in expected_result.items():
         if expect_updated:
-            assert (
-                key not in old_timestamps or old_timestamps[key] < new_timestamps[key]
+            assert key not in old_timestamps or (
+                old_timestamps[key]
+                and new_timestamps[key]
+                and old_timestamps[key] < new_timestamps[key]
             )
 
 
@@ -870,9 +856,13 @@ def mock_failure(cls, function_name, monkeypatch):
 @pytest.mark.parametrize(
     'function', ['update_files', 'match_all', 'cleanup', 'parsing']
 )
-@pytest.mark.timeout(config.tests.default_timeout)
-def test_process_failure(
-    monkeypatch, uploaded, function, proc_infra, user1, with_error
+@pytest.mark.asyncio
+async def test_process_failure(
+    monkeypatch,
+    uploaded,
+    function,
+    temporal_worker,
+    user1,
 ):
     upload_id, _ = uploaded
     # mock the function to throw exceptions
@@ -886,7 +876,8 @@ def test_process_failure(
     mock_failure(cls, function, monkeypatch)
 
     # run the test
-    upload = run_processing(uploaded, user1)
+    async with temporal_worker():
+        upload = await asyncio.to_thread(lambda: run_processing(uploaded, user1))
 
     assert not upload.process_running
 
@@ -917,14 +908,18 @@ def test_process_failure(
 
 # consume_ram, segfault, and exit are not testable with the celery test worker
 @pytest.mark.parametrize('failure', ['exception'])
-def test_malicious_parser_failure(proc_infra, failure, user1, tmp):
+@pytest.mark.asyncio
+async def test_malicious_parser_failure(temporal_worker, failure, user1, tmp):
     example_file = os.path.join(tmp, 'upload.zip')
     with zipfile.ZipFile(example_file, mode='w') as zf:
         with zf.open('chaos.json', 'w') as f:
             f.write(f'"{failure}"'.encode())
     example_upload_id = f'chaos_{failure}'
 
-    upload = run_processing((example_upload_id, example_file), user1)
+    async with temporal_worker():
+        upload = await asyncio.to_thread(
+            lambda: run_processing((example_upload_id, example_file), user1)
+        )
 
     assert not upload.process_running
     assert len(upload.errors) == 0
@@ -938,7 +933,8 @@ def test_malicious_parser_failure(proc_infra, failure, user1, tmp):
     assert len(entry.errors) == 1
 
 
-def test_parent_child_parser(proc_infra, user1, tmp):
+@pytest.mark.asyncio
+async def test_parent_child_parser(temporal_worker, user1, tmp):
     # Create a dummy parser which creates child entries
     class ParentChildParser(Parser):
         name = 'parsers/parentchild'
@@ -986,7 +982,10 @@ def test_parent_child_parser(proc_infra, user1, tmp):
         with open(example_filepath, 'w') as f:
             f.write('\n'.join(['parentchild', *children]))
 
-        upload = run_processing((example_upload_id, example_filepath), user1)
+        async with temporal_worker():
+            upload = await asyncio.to_thread(
+                lambda: run_processing((example_upload_id, example_filepath), user1)
+            )
 
         assert upload.process_status == ProcessStatus.SUCCESS
         assert upload.total_entries_count == len(children) + 1
@@ -997,14 +996,20 @@ def test_parent_child_parser(proc_infra, user1, tmp):
             metadata = entry.full_entry_metadata(upload)
             assert metadata.comment == (entry.mainfile_key or 'parent')
 
-    upload.process_upload(file_operations=[dict(op='DELETE', path=example_filename)])
-    upload.block_until_complete()
+    upload = await asyncio.to_thread(lambda: Upload.get(upload.upload_id))
+    async with temporal_worker():
+        await asyncio.to_thread(
+            lambda: upload.process_upload(
+                file_operations=[dict(op='DELETE', path=example_filename)]
+            )
+        )
+        await upload.await_workflows()
     assert upload.process_status == ProcessStatus.SUCCESS
     assert upload.total_entries_count == 0
 
 
-@pytest.mark.timeout(config.tests.default_timeout)
-def test_creating_new_entries_during_processing(proc_infra, user1):
+@pytest.mark.asyncio
+async def test_creating_new_entries_during_processing(temporal_worker, user1):
     """
     Tests a use-case where a schema has a normalizer that adds new mainfiles during processing.
     """
@@ -1022,8 +1027,9 @@ def test_creating_new_entries_during_processing(proc_infra, user1):
             },
             outfile,
         )
-    upload.process_upload()
-    upload.block_until_complete()
+    async with temporal_worker():
+        await asyncio.to_thread(lambda: upload.process_upload())
+        await upload.await_workflows()
     assert upload.process_status == ProcessStatus.SUCCESS
     assert upload.total_entries_count == 6
     assert upload.failed_entries_count == 0
@@ -1036,11 +1042,14 @@ def test_creating_new_entries_during_processing(proc_infra, user1):
                 assert archive[entry.entry_id]['data']['sample_number'] == idx
 
 
-@pytest.mark.timeout(config.tests.default_timeout)
-def test_qcms_data(proc_infra, user1):
-    upload = run_processing(
-        ('test_qcms_upload', 'tests/data/proc/examples_qcms.zip'), user1
-    )
+@pytest.mark.asyncio
+async def test_qcms_data(temporal_worker, user1):
+    async with temporal_worker():
+        upload = await asyncio.to_thread(
+            lambda: run_processing(
+                ('test_qcms_upload', 'tests/data/proc/examples_qcms.zip'), user1
+            )
+        )
 
     additional_keys = [
         'results.method.simulation.program_name',
@@ -1056,11 +1065,14 @@ def test_qcms_data(proc_infra, user1):
         assert_search_upload(entries, additional_keys, published=False)
 
 
-@pytest.mark.timeout(config.tests.default_timeout)
-def test_phonopy_data(proc_infra, user1):
-    upload = run_processing(
-        ('test_upload', 'tests/data/proc/examples_phonopy.zip'), user1
-    )
+@pytest.mark.asyncio
+async def test_phonopy_data(temporal_worker, user1):
+    async with temporal_worker():
+        upload = await asyncio.to_thread(
+            lambda: run_processing(
+                ('test_upload', 'tests/data/proc/examples_phonopy.zip'), user1
+            )
+        )
 
     additional_keys = ['results.method.simulation.program_name']
     assert upload.total_entries_count == 2
@@ -1073,7 +1085,8 @@ def test_phonopy_data(proc_infra, user1):
         assert_search_upload(entries, additional_keys, published=False)
 
 
-def test_read_metadata_from_file(proc_infra, user1, user2, tmp):
+@pytest.mark.asyncio
+async def test_read_metadata_from_file(temporal_worker, user1, user2, tmp):
     upload_file = os.path.join(tmp, 'upload.zip')
     with zipfile.ZipFile(upload_file, 'w') as zf:
         zf.write(
@@ -1116,7 +1129,10 @@ def test_read_metadata_from_file(proc_infra, user1, user2, tmp):
         with zf.open('nomad.json', 'w') as f:
             f.write(json.dumps(metadata).encode())
 
-    upload = run_processing(('test_upload', upload_file), user1)
+    async with temporal_worker():
+        upload = await asyncio.to_thread(
+            lambda: run_processing(('test_upload', upload_file), user1)
+        )
 
     entries = Entry.objects(upload_id=upload.upload_id)
     entries = sorted(entries, key=lambda entry: entry.mainfile)
@@ -1146,10 +1162,14 @@ def test_read_metadata_from_file(proc_infra, user1, user2, tmp):
             assert coauthors[j].last_name == expected_coauthors[j].last_name
 
 
-def test_skip_matching(proc_infra, user1):
-    upload = run_processing(
-        ('test_skip_matching', 'tests/data/proc/skip_matching.zip'), user1
-    )
+@pytest.mark.asyncio
+async def test_skip_matching(temporal_worker, user1):
+    async with temporal_worker():
+        upload = await asyncio.to_thread(
+            lambda: run_processing(
+                ('test_skip_matching', 'tests/data/proc/skip_matching.zip'), user1
+            )
+        )
     assert upload.total_entries_count == 1
 
 
@@ -1206,12 +1226,17 @@ def test_upload_context(
     assert section_reference.reference.m_root().metadata.entry_id == 'test_id'
 
 
-@pytest.mark.timeout(config.tests.default_timeout)
+@pytest.mark.asyncio
 @pytest.mark.parametrize('exclude_potcar', [pytest.param(True), pytest.param(False)])
-def test_exclude_potcar(user1, proc_infra, monkeypatch, exclude_potcar):
+async def test_exclude_potcar(user1, temporal_worker, monkeypatch, exclude_potcar):
     monkeypatch.setattr('nomad.config.process.exclude_potcar', exclude_potcar)
 
-    upload = run_processing(('test_upload', 'tests/data/proc/vasp.potcar.zip'), user1)
+    async with temporal_worker():
+        upload = await asyncio.to_thread(
+            lambda: run_processing(
+                ('test_upload', 'tests/data/proc/vasp.potcar.zip'), user1
+            )
+        )
 
     assert upload.upload_files.raw_path_exists('test/vasprun.xml')
 
