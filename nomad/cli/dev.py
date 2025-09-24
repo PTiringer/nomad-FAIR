@@ -541,13 +541,17 @@ def _generate_units_json() -> tuple[Any, Any]:
         unit_label = unit_long_name.replace('_', ' ')
         unit_label = unit_label[0].upper() + unit_label[1:]
 
-        return {
+        unit_data = {
             'name': unit_long_name,
-            'dimension': dimension[1:-1],
             'label': unit_label,
             'abbreviation': unit_abbreviation,
             'aliases': aliases[unit_long_name],
         }
+
+        if dimension is not None:
+            unit_data['dimension'] = dimension.replace('[', '').replace(']', '')
+
+        return unit_data
 
     # For some reason, the method ureg.get_compatible_units is not returning all
     # options (https://github.com/hgrecco/pint/issues/610). This is a workaround
@@ -560,6 +564,17 @@ def _generate_units_json() -> tuple[Any, Any]:
     si_prefixes = [
         value['name'] for value in prefixes.values() if len(str(value['name'])) > 2
     ]
+
+    # Load the constants to filter them out
+    constant_names = set()
+    with open(
+        os.path.join(os.path.dirname(__file__), '../units/constants_en.txt')
+    ) as fin:
+        for line in fin:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                first_word = line.split()[0]
+                constant_names.add(first_word)
 
     def is_prefix_only(unit_base_name):
         unit = ureg.parse_units(unit_base_name)
@@ -592,6 +607,9 @@ def _generate_units_json() -> tuple[Any, Any]:
         # Filter out delta units
         if unit_base_name.startswith('delta_'):
             continue
+        # Filter out constants
+        if unit_base_name in constant_names:
+            continue
         try:
             unit = getattr(ureg, unit_str)
         except UndefinedUnitError:
@@ -599,9 +617,9 @@ def _generate_units_json() -> tuple[Any, Any]:
         if not isinstance(unit, Unit):
             continue
         if hasattr(unit, 'dimensionality'):
-            dimension_name = dimension_def_name_map.get(str(unit.dimensionality))  # type: ignore[attr-defined]
-            if dimension_name:
-                unit_list.append(get_unit_data(unit_str, dimension_name))
+            dimensionality = str(unit.dimensionality)  # type: ignore[attr-defined]
+            dimension_name = dimension_def_name_map.get(dimensionality)
+            unit_list.append(get_unit_data(unit_str, dimension_name))
 
     # Add kilogram as SI base unit
     unit_list.append(
@@ -646,7 +664,7 @@ def _generate_units_json() -> tuple[Any, Any]:
             value['definition'] = str(a).replace('**', '^')
             value['offset'] = b / a.magnitude
 
-        if value['dimension'] == '' and not value.get('definition'):
+        if value.get('dimension') == '' and not value.get('definition'):
             dimensionless_units.append(value)
         else:
             units.append(value)
@@ -664,10 +682,21 @@ def _generate_units_json() -> tuple[Any, Any]:
         }
     )
 
-    # Reorder unit list so that base dimensions come first. Units are registered
-    # in the list order and base units need to be registered before derived
-    # ones.
+    # Reorder unit list. The order needs to be as follows for Math.js to work properly:
+    # 1) Base units that do not have 'definition' (e.g. mass)
+    # 2) Units with 'dimension' and 'definition' (e.g. force)
+    # 3) Units without 'dimension', but with 'definition' (e.g. steradian)
     units.sort(key=lambda x: x.get('name'))
-    units.sort(key=lambda x: 0 if x.get('definition') is None else 1)
+
+    def sort_units(x):
+        definition = x.get('definition')
+        dimension = x.get('dimension')
+        if definition is None and dimension is not None:
+            return 0
+        if definition is not None and dimension is None:
+            return 2
+        return 1
+
+    units.sort(key=sort_units)
 
     return units, prefixes

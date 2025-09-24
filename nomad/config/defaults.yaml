@@ -563,6 +563,9 @@ ui:
           angle:
             definition: rad
             locked: true
+          solid_angle:
+            definition: sr
+            locked: true
           capacitance:
             definition: F
             locked: true
