@@ -1201,6 +1201,7 @@ def process_local(func):
                 self.on_success()
                 self.process_status = ProcessStatus.SUCCESS
                 self.complete_time = datetime.now(timezone.utc)
+                self.save()
                 if self.warnings:
                     self.last_status_message = (
                         f'Process {func_name} completed with warnings'

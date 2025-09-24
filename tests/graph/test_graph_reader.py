@@ -16,10 +16,12 @@
 # limitations under the License.
 #
 
+import asyncio
 import json
 from datetime import datetime
 
 import pytest
+import pytest_asyncio
 import yaml
 
 from nomad.datamodel import EntryArchive, ServerContext
@@ -3306,11 +3308,10 @@ def test_general_reader_search(json_dict, example_data_with_reference, user1):
     )
 
 
-@pytest.fixture(scope='function')
-def custom_data(user1, proc_infra):
+@pytest_asyncio.fixture(scope='function')
+async def custom_data(user1, temporal_worker):
     yaml_archive = yaml.safe_load(
         """
----
 definitions:
   name: test_package_name
   section_definitions:
@@ -3342,19 +3343,22 @@ data:
     data.create_upload(
         upload_id='id_custom', upload_name='name_published', published=True
     )
-    data.create_entry(
-        upload_id='id_custom', entry_id='id_example', entry_archive=archive
-    )
-    data.save(
-        with_files=True,
-        with_es=True,
-        with_mongo=True,
-        additional_files_path='tests/data/proc/nested.zip',
-    )
+    async with temporal_worker():
+        data.create_entry(
+            upload_id='id_custom', entry_id='id_example', entry_archive=archive
+        )
+        await asyncio.to_thread(
+            lambda: data.save(
+                with_files=True,
+                with_es=True,
+                with_mongo=True,
+                additional_files_path='tests/data/proc/nested.zip',
+            )
+        )
 
     yield data
 
-    data.delete()
+    await asyncio.to_thread(lambda: data.delete())
 
 
 def test_custom_schema_archive_and_definition(user1, custom_data):
@@ -4038,8 +4042,10 @@ def json_dict():
     }
 
 
-@pytest.fixture(scope='function')
-def example_data_with_figure(proc_infra, user1):
+@pytest_asyncio.fixture(scope='function')
+async def example_data_with_figure(
+    elastic_function, raw_files_module, mongo_function, user1, temporal_worker
+):
     data = ExampleData(main_author=user1)
 
     data.create_upload(
@@ -4048,20 +4054,30 @@ def example_data_with_figure(proc_infra, user1):
 
     directory = 'tests/data/datamodel/metainfo/plotly'
     mainfile = 'plotly.schema.archive.yaml'
-    data.create_entry(
-        upload_id='id_published_with_ref',
-        entry_id='id_plotly',
-        entry_archive=run_processing(directory, mainfile),
-    )
+    async with temporal_worker():
+        data.create_entry(
+            upload_id='id_published_with_ref',
+            entry_id='id_plotly',
+            entry_archive=await asyncio.to_thread(
+                lambda: run_processing(directory, mainfile)
+            ),
+        )
 
-    for archive in data.archives.values():
-        archive.metadata.apply_archive_metadata(archive)
+        for archive in data.archives.values():
+            archive.metadata.apply_archive_metadata(archive)
 
-    data.save(with_files=True, with_es=True, with_mongo=True)
+        await asyncio.to_thread(
+            lambda: data.save(
+                with_files=True,
+                with_es=True,
+                with_mongo=True,
+                additional_files_path='tests/data/proc/nested.zip',
+            )
+        )
 
     yield data
 
-    data.delete()
+    await asyncio.to_thread(lambda: data.delete())
 
 
 @pytest.mark.parametrize(

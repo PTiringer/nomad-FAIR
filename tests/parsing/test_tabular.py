@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 
+import asyncio
 import datetime
 import os
 import os.path
@@ -339,15 +340,17 @@ def test_tabular_complex_schema(raw_files_function, monkeypatch, schema):
         )
 
 
-def test_tabular_entry_mode(
-    mongo_function, user1, raw_files_function, monkeypatch, proc_infra
+@pytest.mark.asyncio
+async def test_tabular_entry_mode(
+    mongo_function, user1, raw_files_function, monkeypatch, temporal_worker
 ):
     upload = Upload(upload_id='test_upload_id', main_author=user1.user_id)
     upload.save()
     files.StagingUploadFiles(upload_id=upload.upload_id, create=True)
     upload.staging_upload_files.add_rawfiles('tests/data/parsers/tabular/')
-    upload.process_upload()
-    upload.block_until_complete()
+    async with temporal_worker():
+        await asyncio.to_thread(lambda: upload.process_upload())
+        await upload.await_workflows()
     assert upload is not None
     assert upload.processed_entries_count == 1
 

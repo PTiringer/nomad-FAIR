@@ -766,7 +766,7 @@ def all_archive():
     ],
 )
 def test_required_reader(
-    archive, required, inplace_result, root_result, resolve_inplace, mongo_function
+    archive, required, inplace_result, root_result, resolve_inplace, temporal_worker
 ):
     f = BytesIO()
     write_archive(f, 1, [('entry_id', archive.m_to_dict())], entry_toc_depth=2)
@@ -791,7 +791,7 @@ def test_required_reader(
 
 
 @pytest.fixture(scope='function')
-def example_data_with_reference(proc_infra, user1, json_dict):
+def example_data_with_reference(temporal_worker, user1, json_dict):
     """
     Provides a couple of entries with references.
 
@@ -1018,7 +1018,7 @@ def test_required_reader_with_remote_reference(
             assert calculation.system_ref.symmetry[0].space_group_number == 221
 
 
-def test_custom_schema(user1, proc_infra):
+def test_custom_schema(user1, temporal_worker):
     yaml_archive = yaml.safe_load(
         """
 ---

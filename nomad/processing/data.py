@@ -1027,6 +1027,7 @@ class Entry(Proc):
 
         self._parser_results = EntryArchive(m_context=self.upload.archive_context)
         self._parser_results.metadata = self._entry_metadata
+        self.save()
 
     def _apply_metadata_from_process(self, entry_metadata: EntryMetadata):
         """
@@ -1169,6 +1170,7 @@ class Entry(Proc):
             if value := rfc3161_timestamp.get(item, None):
                 setattr(timestamp, item, value)
         self.entry_timestamp = timestamp
+        self.save()
 
     def set_mongo_entry_metadata(self, *args, **kwargs):
         """
@@ -1440,7 +1442,12 @@ class Entry(Proc):
     def on_success(self):
         # Mark any child entries as successfully completed (necessary because the child entries
         # are not processed the normal way)
-        for child_entry in self._child_entries:
+        child_entries = list(
+            Entry.objects(  # type: ignore
+                upload_id=self.upload_id, mainfile=self.mainfile, mainfile_key__ne=None
+            )
+        )
+        for child_entry in child_entries:
             child_entry.errors = []
             child_entry.process_status = ProcessStatus.SUCCESS
             child_entry.last_status_message = (
@@ -1452,7 +1459,12 @@ class Entry(Proc):
         self._on_fail()
         # Mark any child entries as failed (necessary because the child entries
         # are not processed the normal way)
-        for child_entry in self._child_entries:
+        child_entries = list(
+            Entry.objects(  # type: ignore
+                upload_id=self.upload_id, mainfile=self.mainfile, mainfile_key__ne=None
+            )
+        )
+        for child_entry in child_entries:
             child_entry.errors = self.errors
             child_entry.process_status = ProcessStatus.FAILURE
             child_entry.last_status_message = (
@@ -1495,6 +1507,7 @@ class Entry(Proc):
             self.get_logger().error(
                 'could not create minimal metadata after processing failure', exc_info=e
             )
+            self.errors.append(str(e))
 
         if self._perform_index:
             try:
@@ -1641,6 +1654,7 @@ class Entry(Proc):
         # persist the entry metadata
         with utils.timer(logger, 'entry metadata saved'):
             self._apply_metadata_to_mongo_entry(self._entry_metadata)
+            self.save()
 
         # index in search
         if self._perform_index:
@@ -1794,6 +1808,22 @@ class Upload(Proc):
         super().__init__(**kwargs)
         self._upload_files: UploadFiles = None
         self.archive_context = ServerContext(self)
+
+    async def await_workflows(self):
+        self.reload()
+        while self.process_running:
+            await asyncio.sleep(0.1)
+            self.reload()
+
+        if self.workflow_ids:
+            client = await get_client()
+            for workflow_id in self.workflow_ids:
+                try:
+                    handle = client.get_workflow_handle(workflow_id)
+                    await handle.result()
+                except RPCError:
+                    # might have already finished and been removed
+                    pass
 
     @classmethod
     def get(cls, id: str) -> 'Upload':

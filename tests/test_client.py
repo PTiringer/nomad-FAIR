@@ -15,11 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import asyncio
 import contextlib
 import json
 import os
 
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient
 from pydantic import ValidationError
 
@@ -75,18 +77,20 @@ def assert_results(
                 current = sub_sections[0]
 
 
-@pytest.fixture(scope='function')
-def many_uploads(non_empty_uploaded: tuple[str, str], user1: User, proc_infra):
+@pytest_asyncio.fixture(scope='function')
+async def many_uploads(
+    non_empty_uploaded: tuple[str, str], user1: User, temporal_worker
+):
     _, upload_file = non_empty_uploaded
-    for index in range(0, 4):
-        upload = test_processing.run_processing(
-            (f'test_upload_{index}', upload_file), user1
-        )
-        upload.publish_upload()  # pylint: disable=no-member
-        try:
-            upload.block_until_complete(interval=0.01)
-        except Exception:
-            pass
+    async with temporal_worker() as client:
+        for index in range(0, 4):
+            upload = await asyncio.to_thread(
+                test_processing.run_processing,
+                (f'test_upload_{index}', upload_file),
+                user1,
+            )
+            await upload._start_publish_upload_workflow()
+    yield
 
 
 @pytest.fixture(scope='module')
@@ -122,7 +126,8 @@ def async_api_v1(monkeysession):
     return test_client
 
 
-def test_async_query_basic(async_api_v1, published_wo_user_metadata):
+@pytest.mark.asyncio
+async def test_async_query_basic(async_api_v1, published_wo_user_metadata):
     async_query = ArchiveQuery()
 
     assert_results(async_query.download())
@@ -134,6 +139,7 @@ def test_async_query_basic(async_api_v1, published_wo_user_metadata):
     assert_results(async_query.download())
 
 
+@pytest.mark.asyncio
 @pytest.mark.skipif(runschema is None, reason=SCHEMA_IMPORT_ERROR)
 @pytest.mark.parametrize(
     'q_required,sub_sections',
@@ -143,7 +149,7 @@ def test_async_query_basic(async_api_v1, published_wo_user_metadata):
         ({'run[0]': {'system': '*'}}, [EntryArchive.run, runschema.run.Run.system]),
     ],
 )
-def test_async_query_required(
+async def test_async_query_required(
     async_api_v1, published_wo_user_metadata, q_required, sub_sections
 ):
     async_query = ArchiveQuery(required=q_required)
@@ -151,7 +157,8 @@ def test_async_query_required(
     assert_results(async_query.download(), sub_section_defs=sub_sections)
 
 
-def test_async_query_auth(async_api_v1, published, user2, user1):
+@pytest.mark.asyncio
+async def test_async_query_auth(async_api_v1, published, user2, user1):
     async_query = ArchiveQuery(username=user2.username, password='password')
 
     assert_results(async_query.download(), total=0)
@@ -161,7 +168,8 @@ def test_async_query_auth(async_api_v1, published, user2, user1):
     assert_results(async_query.download(), total=1)
 
 
-def test_async_query_parallel(async_api_v1, many_uploads, monkeypatch):
+@pytest.mark.asyncio
+async def test_async_query_parallel(async_api_v1, many_uploads, monkeypatch):
     async_query = ArchiveQuery(required=dict(run='*'))
 
     assert_results(async_query.download(), total=4)

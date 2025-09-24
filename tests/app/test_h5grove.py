@@ -63,7 +63,7 @@ def test_h5grove(
     auth_headers,
     h5grove_api,
     upload_id,
-    proc_infra,
+    temporal_worker,
     example_data_nxs,
     user,
     status_code,

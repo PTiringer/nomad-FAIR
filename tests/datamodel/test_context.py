@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 
+import asyncio
 import json
 import os
 import re
@@ -549,15 +550,17 @@ def test_client_custom_schema(api_v1, published_wo_user_metadata):
         )
     ],
 )
-def test_client_external_schema(
-    referencing_upload_contents, raw_files_function, user1, api_v1, proc_infra
+@pytest.mark.asyncio
+async def test_client_external_schema(
+    referencing_upload_contents, raw_files_function, user1, api_v1, temporal_worker
 ):
     upload1 = Upload(upload_id='references_upload_id1', main_author=user1.user_id)
     upload1.save()
     files.StagingUploadFiles(upload_id=upload1.upload_id, create=True)
     upload1.staging_upload_files.add_rawfiles('examples/data/references/upload1')
-    upload1.process_upload()
-    upload1.block_until_complete()
+    async with temporal_worker():
+        await asyncio.to_thread(lambda: upload1.process_upload())
+        await upload1.await_workflows()
 
     upload2_files = files.StagingUploadFiles('upload2_id', create=True)
     for file_name, content in referencing_upload_contents.items():
@@ -590,12 +593,16 @@ def test_client_external_schema(
         assert results == content
 
 
-def test_circular_external_schema(raw_files_function, user1, api_v1, proc_infra):
+@pytest.mark.asyncio
+async def test_circular_external_schema(
+    raw_files_function, user1, api_v1, temporal_worker
+):
     upload1 = Upload(upload_id='upload_id', main_author=user1.user_id)
     upload1.save()
     files.StagingUploadFiles(upload_id=upload1.upload_id, create=True)
     upload1.staging_upload_files.add_rawfiles('examples/data/references/circular')
-    upload1.process_upload()
-    upload1.block_until_complete()
+    async with temporal_worker():
+        await asyncio.to_thread(lambda: upload1.process_upload())
+        await upload1.await_workflows()
     for entry in Entry.objects(upload_id='upload_id'):
         assert entry.process_status == ProcessStatus.SUCCESS

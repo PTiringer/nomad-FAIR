@@ -15,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import asyncio
 from datetime import datetime
 
 import pytest
@@ -61,7 +62,7 @@ all_admin_entry_metadata = {
 }
 
 
-def assert_edit_request(user, **kwargs):
+async def assert_edit_request(user, **kwargs):
     # Extract test parameters (lots of defaults)
     upload_id = kwargs.get('upload_id', 'id_unpublished_w')
     query = kwargs.get('query')
@@ -85,7 +86,12 @@ def assert_edit_request(user, **kwargs):
     edit_start = datetime.utcnow().isoformat()[0:22]
     error_locs = []
     try:
-        MetadataEditRequestHandler.edit_metadata(edit_request_json, upload_id, user)
+        await asyncio.to_thread(
+            MetadataEditRequestHandler.edit_metadata,
+            edit_request_json,
+            upload_id,
+            user,
+        )
     except RequestValidationError as e:
         error_locs = [error_dict['loc'] for error_dict in e.errors()]
     # Validate result
@@ -299,8 +305,9 @@ def convert_to_comparable_value_single(quantity, value, format, user):
         ),
     ],
 )
-def test_edit_metadata(
-    proc_infra,
+@pytest.mark.asyncio
+async def test_edit_metadata(
+    temporal_worker,
     purged_app,
     example_data_writeable,
     example_datasets,
@@ -308,26 +315,31 @@ def test_edit_metadata(
     kwargs,
 ):
     kwargs['user'] = users_dict[kwargs.get('user', 'user1')]
-    assert_edit_request(**kwargs)
+    async with temporal_worker():
+        await assert_edit_request(**kwargs)
 
 
-def test_set_and_clear_all(proc_infra, example_data_writeable, example_datasets, user1):
+@pytest.mark.asyncio
+async def test_set_and_clear_all(
+    temporal_worker, example_data_writeable, example_datasets, user1
+):
     # Set all fields a coauthor can set
-    assert_edit_request(user=user1, metadata=all_coauthor_metadata)
-    # Clear all fields that can be cleared with a 'set' operation
-    # = all of the above, except embargo_length and datasets
-    assert_edit_request(
-        user=user1,
-        metadata=dict(
-            upload_name='',
-            coauthors=[],
-            external_id='',
-            comment='',
-            references=[],
-            external_db='',
-            reviewers=[],
-        ),
-    )
+    async with temporal_worker():
+        await assert_edit_request(user=user1, metadata=all_coauthor_metadata)
+        # Clear all fields that can be cleared with a 'set' operation
+        # = all of the above, except embargo_length and datasets
+        await assert_edit_request(
+            user=user1,
+            metadata=dict(
+                upload_name='',
+                coauthors=[],
+                external_id='',
+                comment='',
+                references=[],
+                external_db='',
+                reviewers=[],
+            ),
+        )
 
 
 @pytest.mark.parametrize(
@@ -512,8 +524,9 @@ def test_set_and_clear_all(proc_infra, example_data_writeable, example_datasets,
         ),
     ],
 )
-def test_list_quantities(
-    proc_infra,
+@pytest.mark.asyncio
+async def test_list_quantities(
+    temporal_worker,
     purged_app,
     example_data_writeable,
     example_datasets,
@@ -548,45 +561,52 @@ def test_list_quantities(
             else:
                 datasets = replace_dataset_ref_or_reflist(datasets)
             kwargs['metadata']['datasets'] = datasets
-        assert_edit_request(**kwargs)
+        async with temporal_worker():
+            await assert_edit_request(**kwargs)
 
 
-def test_admin_quantities(proc_infra, example_data_writeable, user1, user2, user0):
-    assert_edit_request(
-        user=user0, upload_id='id_published_w', metadata=all_admin_metadata
-    )
-    # try to do the same as a non-admin
-    for k, v in all_admin_metadata.items():
-        assert_edit_request(
-            user=user1,
-            upload_id='id_unpublished_w',
-            metadata={k: v},
-            expected_error_loc=('metadata', k),
-        )
-
-
-def test_query_cannot_set_upload_attributes(
-    proc_infra, example_data_writeable, example_datasets, user1
+@pytest.mark.asyncio
+async def test_admin_quantities(
+    temporal_worker, example_data_writeable, user1, user2, user0
 ):
-    query = {'and': [{'upload_create_time:gt': '2021-01-01'}, {'published': False}]}
-    for k, v in all_coauthor_upload_metadata.items():
-        # Attempting to edit an upload level attribute with query should always fail,
-        # regardless of if upload_id is specified
-        for upload_id in (None, 'id_unpublished_w'):
-            assert_edit_request(
+    async with temporal_worker():
+        await assert_edit_request(
+            user=user0, upload_id='id_published_w', metadata=all_admin_metadata
+        )
+        # try to do the same as a non-admin
+        for k, v in all_admin_metadata.items():
+            await assert_edit_request(
                 user=user1,
-                query=query,
-                owner='user',
-                upload_id=upload_id,
+                upload_id='id_unpublished_w',
                 metadata={k: v},
                 expected_error_loc=('metadata', k),
             )
-    # Attempting to edit an entry level attribute with query should always succeed
-    assert_edit_request(
-        user=user1,
-        query=query,
-        owner='user',
-        upload_id=None,
-        metadata=all_coauthor_entry_metadata,
-        affected_upload_ids=['id_unpublished_w'],
-    )
+
+
+@pytest.mark.asyncio
+async def test_query_cannot_set_upload_attributes(
+    temporal_worker, example_data_writeable, example_datasets, user1
+):
+    query = {'and': [{'upload_create_time:gt': '2021-01-01'}, {'published': False}]}
+    async with temporal_worker():
+        for k, v in all_coauthor_upload_metadata.items():
+            # Attempting to edit an upload level attribute with query should always fail,
+            # regardless of if upload_id is specified
+            for upload_id in (None, 'id_unpublished_w'):
+                await assert_edit_request(
+                    user=user1,
+                    query=query,
+                    owner='user',
+                    upload_id=upload_id,
+                    metadata={k: v},
+                    expected_error_loc=('metadata', k),
+                )
+        # Attempting to edit an entry level attribute with query should always succeed
+        await assert_edit_request(
+            user=user1,
+            query=query,
+            owner='user',
+            upload_id=None,
+            metadata=all_coauthor_entry_metadata,
+            affected_upload_ids=['id_unpublished_w'],
+        )
