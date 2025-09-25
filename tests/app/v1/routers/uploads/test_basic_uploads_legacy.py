@@ -337,7 +337,7 @@ def test_post_upload_action_publish_to_central_nomad(
         pytest.param(
             dict(user='invalid', expected_status_code=401), id='invalid-credentials'
         ),
-        pytest.param(dict(user='user2', expected_status_code=401), id='no-access'),
+        pytest.param(dict(user='user2', expected_status_code=403), id='no-access'),
     ],
 )
 @pytest.mark.asyncio
@@ -372,7 +372,7 @@ async def test_post_upload_action_publish(
     'upload_id, user, preprocess, expected_status_code',
     [
         pytest.param('id_published_w', 'user1', None, 200, id='ok'),
-        pytest.param('id_published_w', 'user2', None, 401, id='no-access'),
+        pytest.param('id_published_w', 'user2', None, 403, id='no-access'),
         pytest.param('id_published_w', 'user2', 'make-coauthor', 200, id='ok-coauthor'),
         pytest.param('id_published_w', None, None, 401, id='no-credentials'),
         pytest.param('id_published_w', 'invalid', None, 401, id='invalid-credentials'),
@@ -422,7 +422,7 @@ async def test_post_upload_action_lift_embargo(
     [
         pytest.param('id_published_w', 'user1', dict(), 200, id='published-owner'),
         pytest.param('id_published_w', 'user0', dict(), 200, id='published-admin'),
-        pytest.param('id_published_w', 'user2', dict(), 401, id='published-not-owner'),
+        pytest.param('id_published_w', 'user2', dict(), 403, id='published-not-owner'),
         pytest.param(
             'id_published_w',
             'user1',
@@ -443,7 +443,7 @@ async def test_post_upload_action_lift_embargo(
             'id_unpublished_w',
             'user2',
             dict(),
-            401,
+            403,
             id='unpublished-not-owner',
         ),
     ],

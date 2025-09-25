@@ -89,10 +89,10 @@ def test_get_group_uploads(
     [
         pytest.param('user2', 'id_CGg2', 200, id='CGg2'),
         pytest.param('invalid', 'id_CGg2', 401, id='CGg2-invalid'),
-        pytest.param(None, 'id_CGg2', 401, id='CGg2-guest'),
+        pytest.param(None, 'id_CGg2', 401, id='CGg2-nologin'),
         pytest.param('user2', 'id_RGg2', 200, id='RGg2'),
         pytest.param('invalid', 'id_RGg2', 401, id='RGg2-invalid'),
-        pytest.param(None, 'id_RGg2', 401, id='RGg2-guest'),
+        pytest.param(None, 'id_RGg2', 401, id='RGg2-nologin'),
         pytest.param('user2', 'id_CGg123', 200, id='CGg123'),
         pytest.param('user2', 'id_RGg123', 200, id='RGg123'),
         pytest.param('user2', 'id_RGall', 200, id='RGall-user2'),

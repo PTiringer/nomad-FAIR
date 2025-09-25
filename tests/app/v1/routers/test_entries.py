@@ -76,10 +76,6 @@ def perform_entries_raw_test(
     else:
         total_entries, total_mainfiles = total
 
-    if owner == 'all':
-        # This operation is not allow for owner 'all'
-        status_code = 401
-
     if http_method == 'post':
         body = {'query': query, 'files': files}
         if owner is not None:
@@ -118,10 +114,6 @@ def perform_entries_rawdir_test(
     files_per_entry=-1,
     **kwargs,
 ):
-    if owner == 'all':
-        # This operation is not allow for owner 'all'
-        status_code = 401
-
     if http_method == 'get':
         params = {}
         if owner is not None:
@@ -166,10 +158,6 @@ def perform_entries_archive_download_test(
     status_code=200,
     http_method='get',
 ):
-    if owner == 'all':
-        # This operation is not allow for owner 'all'
-        status_code = 401
-
     if http_method == 'post':
         body = {
             'query': query,
@@ -205,10 +193,6 @@ def perform_entries_archive_download_test(
 def perform_entries_archive_test(
     client, headers={}, total=-1, status_code=200, http_method='get', **kwargs
 ):
-    if kwargs.get('owner') == 'all':
-        # This operation is not allow for owner 'all'
-        status_code = 401
-
     if http_method == 'get':
         assert 'required' not in kwargs
         params = {}
@@ -766,7 +750,7 @@ class TestEntriesExportMetadata:
         'user, owner, query, status_code',
         [
             pytest.param(None, None, {}, 200, id='all'),
-            pytest.param(None, 'all', {}, 401, id='owner_all'),
+            pytest.param(None, 'all', {}, 403, id='owner_all'),
         ],
     )
     @pytest.mark.parametrize('content_type', ['application/json', 'text/csv'])
@@ -782,10 +766,6 @@ class TestEntriesExportMetadata:
         content_type,
         page_size: int = 10_000,
     ):
-        if owner == 'all':
-            # This operation is not allow for owner 'all'
-            status_code = 401
-
         params = dict(**query)
         params['page_size'] = page_size
 

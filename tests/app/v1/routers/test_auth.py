@@ -208,16 +208,16 @@ def test_create_user_dependency_assume_auth_for_username(
 
 
 @pytest.mark.parametrize(
-    'user, expected_exc, exc_msg',
+    'user, status_code, exc_msg',
     [
-        (None, True, 'Authentication is required for this Oasis'),
-        ('not_allowed', True, 'not authorized to access this Oasis'),
-        ('allowed', False, None),
+        (None, 401, 'Authentication is required for this Oasis'),
+        ('not_allowed', 403, 'not authorized to access this Oasis'),
+        ('allowed', 200, None),
     ],
 )
 def test_create_user_dependency_oasis_allowed_users(
     user,
-    expected_exc: bool,
+    status_code: int,
     exc_msg: str,
     allowed_user,
     monkeypatch,
@@ -241,10 +241,10 @@ def test_create_user_dependency_oasis_allowed_users(
 
     dep = create_user_dependency(required=False)
 
-    if expected_exc:
+    if status_code != 200:
         with pytest.raises(HTTPException, match=exc_msg) as exc:
             dep(bearer_token='abc')
-        assert exc.value.status_code == 401
+        assert exc.value.status_code == status_code
 
     else:
         monkeypatch.setattr(
@@ -263,4 +263,4 @@ def test_create_user_dependency_unknown_user(allowed_user, monkeypatch):
     dep = create_user_dependency(required=False)
     with pytest.raises(HTTPException, match='logged in with an unknown user') as exc:
         dep(bearer_token='abc')
-    assert exc.value.status_code == 401
+    assert exc.value.status_code == 403

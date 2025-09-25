@@ -112,9 +112,8 @@ def resolve_user(
             and user.username not in config.oasis.allowed_users
         ):
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail='You are not authorized to access this Oasis',
-                headers={'WWW-Authenticate': 'Bearer'},
             )
 
     # Validate user against recording
@@ -127,9 +126,8 @@ def resolve_user(
                 'API usage by unknown user. Possible misconfiguration', exc_info=e
             )
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail='You are logged in with an unknown user',
-                headers={'WWW-Authenticate': 'Bearer'},
             ) from e
 
     return user

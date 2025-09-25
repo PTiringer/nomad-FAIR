@@ -229,7 +229,7 @@ class BundleImporter:
             for k, v in self.import_settings.model_dump().items():
                 if v != config.bundle_import.default_settings.model_dump().get(k):
                     raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        status_code=status.HTTP_403_FORBIDDEN,
                         detail=f'Changing the setting {k} requires an admin user',
                     )
 
