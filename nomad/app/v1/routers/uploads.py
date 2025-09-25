@@ -2150,12 +2150,12 @@ async def post_upload_action_publish(
             )
         if not upload.published:
             raise HTTPException(
-                status.HTTP_401_UNAUTHORIZED,
+                status.HTTP_400_BAD_REQUEST,
                 detail='The upload must be published on the OASIS first.',
             )
         if not user.is_admin:
             raise HTTPException(
-                status.HTTP_401_UNAUTHORIZED,
+                status.HTTP_403_FORBIDDEN,
                 detail='Only admin of OASIS can publish to the central NOMAD.',
             )
         # Everything looks ok, try to publish it to the central NOMAD!
@@ -2164,7 +2164,7 @@ async def post_upload_action_publish(
         # Publish to this repository
         if upload.published:
             raise HTTPException(
-                status.HTTP_401_UNAUTHORIZED,
+                status.HTTP_400_BAD_REQUEST,
                 detail='The upload is already published.',
             )
         try:
@@ -2674,7 +2674,7 @@ async def _get_files_if_provided(
         # Method 0: Local file - only for admin use.
         if not user.is_admin:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail=strip("""
                 You are not authorized to access this path.
                 """),
@@ -2823,7 +2823,8 @@ def get_role_query(roles: list[UploadRole], user: User, include_all=False) -> Q:
     return role_query
 
 
-def is_user_upload_viewer(upload: Upload, user: User | None):
+def is_user_upload_viewer(upload: Upload, user: User | None) -> bool:
+    """Check whether user has access to that upload."""
     if 'all' in upload.reviewer_groups:
         return True
 
@@ -2884,24 +2885,24 @@ def get_upload_with_read_access(
 
     if not include_others:
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
             detail='You do not have access to the specified upload.',
         )
 
     if not upload.published:
-        if user:
+        if user is None:
             raise HTTPException(
                 status.HTTP_401_UNAUTHORIZED,
-                detail='You do not have access to the specified upload.',
+                detail='You need to log in to access the specified upload.',
             )
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
-            detail='You need to log in to access the specified upload.',
+            status.HTTP_403_FORBIDDEN,
+            detail='You do not have access to the specified upload.',
         )
 
     if upload.with_embargo:
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
             detail='You do not have access to the specified upload - published with embargo.',
         )
 
@@ -2936,13 +2937,13 @@ def _get_upload_with_write_access(
 
     if not is_user_upload_writer(upload, user):
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
             detail='You do not have write access to the specified upload.',
         )
 
     if only_main_author and not user.is_admin and upload.main_author != user.user_id:
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
             detail='Only main author has permissions for this operation.',
         )
 
@@ -2951,7 +2952,7 @@ def _get_upload_with_write_access(
 
     if not include_published:
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_400_BAD_REQUEST,
             detail='Upload is already published, operation not possible.',
         )
 
@@ -2966,7 +2967,7 @@ def _get_upload_with_write_access(
         and not (is_failed_import and include_failed_imports)
     ):
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
             detail='Upload is already published, only admins can perform this operation.',
         )
 

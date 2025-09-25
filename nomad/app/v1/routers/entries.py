@@ -57,6 +57,7 @@ from nomad.mongo.groups import MongoUserGroup
 from nomad.processing.data import Upload
 from nomad.search import (
     AuthenticationRequiredError,
+    PermissionDeniedError,
     QueryValidationError,
     SearchError,
     search,
@@ -353,7 +354,7 @@ class EntryEditResponse(EntryEdit):
     entry_id: str
 
 
-_bad_owner_response = (
+_bad_owner_response_unauthorized = (
     status.HTTP_401_UNAUTHORIZED,
     {
         'model': HTTPExceptionModel,
@@ -378,28 +379,37 @@ _bad_id_response = (
 
 _bad_path_response = (
     status.HTTP_404_NOT_FOUND,
-    {'model': HTTPExceptionModel, 'description': strip('File or directory not found.')},
+    {'model': HTTPExceptionModel, 'description': 'File or directory not found.'},
 )
 
 _bad_edit_request = (
     status.HTTP_400_BAD_REQUEST,
     {
         'model': HTTPExceptionModel,
-        'description': strip('Edit request could not be executed.'),
+        'description': 'Edit request could not be executed.',
     },
 )
 
-_bad_edit_request_authorization = (
+
+_bad_edit_request_unauthorized = (
     status.HTTP_401_UNAUTHORIZED,
     {
         'model': HTTPExceptionModel,
-        'description': strip('Not enough permissions to execute edit request.'),
+        'description': 'Authorization required.',
+    },
+)
+
+_bad_edit_request_forbidden = (
+    status.HTTP_403_FORBIDDEN,
+    {
+        'model': HTTPExceptionModel,
+        'description': 'Not enough permissions to execute edit request.',
     },
 )
 
 _bad_edit_request_empty_query = (
     status.HTTP_404_NOT_FOUND,
-    {'model': HTTPExceptionModel, 'description': strip('No matching entries found.')},
+    {'model': HTTPExceptionModel, 'description': 'No matching entries found.'},
 )
 
 _raw_response = (
@@ -492,6 +502,9 @@ def perform_search(*args, **kwargs):
         except AuthenticationRequiredError as e:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail=str(e))
 
+        except PermissionDeniedError as e:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, detail=str(e))
+
         except SearchError as e:
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST,
@@ -504,7 +517,7 @@ def perform_search(*args, **kwargs):
     tags=[APITag.METADATA],
     summary='Search entries and retrieve their metadata',
     response_model=MetadataResponse,
-    responses=create_responses(_bad_owner_response),
+    responses=create_responses(_bad_owner_response_unauthorized),
     response_model_exclude_unset=True,
     response_model_exclude_none=True,
 )
@@ -545,7 +558,7 @@ async def post_entries_metadata_query(
     tags=[APITag.METADATA],
     summary='Search entries and retrieve their metadata',
     response_model=MetadataResponse,
-    responses=create_responses(_bad_owner_response),
+    responses=create_responses(_bad_owner_response_unauthorized),
     response_model_exclude_unset=True,
     response_model_exclude_none=True,
 )
@@ -672,7 +685,7 @@ def _answer_entries_rawdir_request(
 ):
     if owner == Owner.all_:
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
             detail=strip(
                 """
             The owner=all is not allowed for this operation as it will search for entries
@@ -706,7 +719,7 @@ def _answer_entries_rawdir_request(
 def _answer_entries_raw_request(owner: Owner, query: Query, files: Files, user: User):
     if owner == Owner.all_:
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
             detail=strip(
                 """
             The owner=all is not allowed for this operation as it will search for entries
@@ -800,7 +813,7 @@ _entries_rawdir_query_docstring = strip(
     summary='Search entries and get their raw files metadata',
     description=_entries_rawdir_query_docstring,
     response_model=EntriesRawDirResponse,
-    responses=create_responses(_bad_owner_response),
+    responses=create_responses(_bad_owner_response_unauthorized),
     response_model_exclude_unset=True,
     response_model_exclude_none=True,
 )
@@ -827,7 +840,7 @@ async def post_entries_rawdir_query(
     response_model=EntriesRawDirResponse,
     response_model_exclude_unset=True,
     response_model_exclude_none=True,
-    responses=create_responses(_bad_owner_response),
+    responses=create_responses(_bad_owner_response_unauthorized),
 )
 async def get_entries_rawdir(
     request: Request,
@@ -872,7 +885,7 @@ _entries_raw_query_docstring = strip(
     summary='Search entries and download their raw files',
     description=_entries_raw_query_docstring,
     response_class=StreamingResponse,
-    responses=create_responses(_raw_response, _bad_owner_response),
+    responses=create_responses(_raw_response, _bad_owner_response_unauthorized),
 )
 async def post_entries_raw_query(
     data: EntriesRaw, user: User = Depends(create_user_dependency())
@@ -891,7 +904,7 @@ async def post_entries_raw_query(
     summary='Search entries and download their raw files',
     description=_entries_raw_query_docstring,
     response_class=StreamingResponse,
-    responses=create_responses(_raw_response, _bad_owner_response),
+    responses=create_responses(_raw_response, _bad_owner_response_unauthorized),
 )
 async def get_entries_raw(
     with_query: WithQuery = Depends(query_parameters),
@@ -911,7 +924,7 @@ async def get_entries_raw(
     tags=[APITag.METADATA],
     summary='Search entries and download their metadata in selected format',
     response_class=StreamingResponse,
-    responses=create_responses(_bad_owner_response),
+    responses=create_responses(_bad_owner_response_unauthorized),
 )
 async def export_entries_metadata(
     with_query: WithQuery = Depends(query_parameters),
@@ -929,7 +942,7 @@ async def export_entries_metadata(
     """
     if with_query.owner == Owner.all_:
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
             detail=strip(
                 """
             The owner=all is not allowed for this operation as it will search for entries
@@ -1076,7 +1089,7 @@ async def _answer_entries_archive_request(
 ):
     if owner == Owner.all_:
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
             detail=strip(
                 """The owner=all is not allowed for this operation as it will search for entries
                 that you might now be allowed to access."""
@@ -1152,7 +1165,9 @@ _entries_archive_docstring = strip(
     response_model=EntriesArchiveResponse,
     response_model_exclude_unset=True,
     response_model_exclude_none=True,
-    responses=create_responses(_bad_owner_response, _bad_archive_required_response),
+    responses=create_responses(
+        _bad_owner_response_unauthorized, _bad_archive_required_response
+    ),
 )
 async def post_entries_archive_query(
     request: Request,
@@ -1188,7 +1203,9 @@ async def post_entries_archive_query(
     response_model=EntriesArchiveResponse,
     response_model_exclude_unset=True,
     response_model_exclude_none=True,
-    responses=create_responses(_bad_owner_response, _bad_archive_required_response),
+    responses=create_responses(
+        _bad_owner_response_unauthorized, _bad_archive_required_response
+    ),
 )
 async def get_entries_archive_query(
     request: Request,
@@ -1212,7 +1229,7 @@ def _answer_entries_archive_download_request(
 ):
     if owner == Owner.all_:
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
             detail=strip(
                 """
             The owner=all is not allowed for this operation as it will search for entries
@@ -1309,7 +1326,9 @@ _entries_archive_download_docstring = strip(
     description=_entries_archive_download_docstring,
     response_class=StreamingResponse,
     responses=create_responses(
-        _archives_download_response, _bad_owner_response, _bad_archive_required_response
+        _archives_download_response,
+        _bad_owner_response_unauthorized,
+        _bad_archive_required_response,
     ),
 )
 async def post_entries_archive_download_query(
@@ -1331,7 +1350,9 @@ async def post_entries_archive_download_query(
     description=_entries_archive_download_docstring,
     response_class=StreamingResponse,
     responses=create_responses(
-        _archives_download_response, _bad_owner_response, _bad_archive_required_response
+        _archives_download_response,
+        _bad_owner_response_unauthorized,
+        _bad_archive_required_response,
     ),
 )
 async def get_entries_archive_download(
@@ -1609,7 +1630,10 @@ def answer_entry_archive_request(
     response_model_exclude_unset=True,
     response_model_exclude_none=True,
     responses=create_responses(
-        _bad_id_response, _bad_edit_request, _bad_edit_request_authorization
+        _bad_id_response,
+        _bad_edit_request,
+        _bad_edit_request_forbidden,
+        _bad_edit_request_unauthorized,
     ),
 )
 async def post_entry_edit(
@@ -1645,7 +1669,7 @@ async def post_entry_edit(
 
     if not (is_admin or is_writer):
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
             detail='Not enough permissions to execute edit request.',
         )
 
@@ -2081,7 +2105,8 @@ async def post_entry_metadata_edit(
     response_model_exclude_none=True,
     responses=create_responses(
         _bad_edit_request,
-        _bad_edit_request_authorization,
+        _bad_edit_request_unauthorized,
+        _bad_edit_request_forbidden,
         _bad_edit_request_empty_query,
     ),
 )

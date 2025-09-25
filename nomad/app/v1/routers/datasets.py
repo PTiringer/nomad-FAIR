@@ -70,8 +70,8 @@ _bad_id_response = (
     },
 )
 
-_bad_user_response = (
-    status.HTTP_401_UNAUTHORIZED,
+_forbidden_user_response = (
+    status.HTTP_403_FORBIDDEN,
     {
         'model': HTTPExceptionModel,
         'description': strip(
@@ -444,7 +444,7 @@ async def post_datasets(
     summary='Delete a dataset',
     response_model=DatasetResponse,
     responses=create_responses(
-        _bad_id_response, _dataset_is_fixed_response, _bad_user_response
+        _bad_id_response, _dataset_is_fixed_response, _forbidden_user_response
     ),
     response_model_exclude_unset=True,
     response_model_exclude_none=True,
@@ -473,8 +473,8 @@ async def delete_dataset(
 
     if dataset.user_id != user.user_id:
         raise HTTPException(
-            status_code=_bad_user_response[0],
-            detail=_bad_user_response[1]['description'],
+            status_code=_forbidden_user_response[0],
+            detail=_forbidden_user_response[1]['description'],
         )
 
     # delete dataset from entries in mongo and elastic
@@ -493,7 +493,7 @@ async def delete_dataset(
         _bad_id_response,
         _dataset_is_fixed_response,
         _dataset_has_unpublished_contents,
-        _bad_user_response,
+        _forbidden_user_response,
         _dataset_is_empty,
     ),
     response_model_exclude_unset=True,
@@ -530,8 +530,8 @@ async def assign_doi(
 
     if dataset.user_id != user.user_id:
         raise HTTPException(
-            status_code=_bad_user_response[0],
-            detail=_bad_user_response[1]['description'],
+            status_code=_forbidden_user_response[0],
+            detail=_forbidden_user_response[1]['description'],
         )
 
     response = search(

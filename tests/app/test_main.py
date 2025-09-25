@@ -164,7 +164,7 @@ def test_oasis_auth_middleware_user_not_allowed(
     response = app_middleware_client.get(
         '/protected', headers={'Authorization': 'Bearer valid'}
     )
-    assert response.status_code == 401
+    assert response.status_code == 403
     assert response.text == 'You are not authorized to access this Oasis'
 
 

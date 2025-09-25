@@ -42,7 +42,13 @@ from nomad.metainfo.elasticsearch_extension import (
 from nomad.metainfo.metainfo import Datetime, Quantity
 from nomad.metainfo.util import MEnum
 from nomad.search import AuthenticationRequiredError as ARE
-from nomad.search import quantity_values, refresh, search, update_by_query
+from nomad.search import (
+    PermissionDeniedError,
+    quantity_values,
+    refresh,
+    search,
+    update_by_query,
+)
 from nomad.utils import deep_get
 from nomad.utils.exampledata import ExampleData
 from tests.variables import python_schema_name, yaml_schema_name
@@ -312,7 +318,7 @@ class TestsWithGroups:
         'owner, user, exc_or_total',
         [
             pytest.param('admin', None, ARE, id='admin-none'),
-            pytest.param('admin', 'user1', ARE, id='admin-user1'),
+            pytest.param('admin', 'user1', PermissionDeniedError, id='admin-user1'),
             pytest.param('admin', 'user0', 11, id='admin-user0'),
             pytest.param('user', None, ARE, id='user-none'),
             pytest.param('user', 'user1', 10, id='user-user1'),

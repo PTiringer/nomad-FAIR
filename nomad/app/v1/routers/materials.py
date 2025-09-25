@@ -27,6 +27,7 @@ from nomad import utils
 from nomad.metainfo.elasticsearch_extension import material_index, material_type
 from nomad.search import (
     AuthenticationRequiredError,
+    PermissionDeniedError,
     QueryValidationError,
     SearchError,
     search,
@@ -100,6 +101,8 @@ def perform_search(*args, **kwargs) -> MetadataResponse:
         return search_response
     except QueryValidationError as e:
         raise RequestValidationError(errors=e.errors)
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except AuthenticationRequiredError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
     except SearchError as e:

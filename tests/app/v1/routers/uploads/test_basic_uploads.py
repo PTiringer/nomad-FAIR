@@ -718,7 +718,7 @@ def test_get_uploads(auth_headers, client, mongo_module, example_data, kwargs):
         pytest.param('user1', 'silly_value', 404, id='invalid-upload_id'),
         pytest.param(None, 'id_unpublished', 401, id='no-credentials'),
         pytest.param('invalid', 'id_unpublished', 401, id='invalid-credentials'),
-        pytest.param('user2', 'id_unpublished', 401, id='no-access'),
+        pytest.param('user2', 'id_unpublished', 403, id='no-access'),
         pytest.param('user0', 'id_unpublished', 200, id='admin-access'),
     ],
 )
@@ -775,11 +775,26 @@ def test_get_upload(
             ),
             id='upload-w-child-entries',
         ),
-        pytest.param(dict(user=None, expected_status_code=401), id='no-credentials'),
+        pytest.param(
+            dict(
+                user=None,
+                expected_status_code=200,
+                upload_id='id_published',  # avoid falling back to `id_embargo`
+                expected_data_len=10,
+            ),
+            id='published-visible-nologin',
+        ),
         pytest.param(
             dict(user='invalid', expected_status_code=401), id='invalid-credentials'
         ),
-        pytest.param(dict(user='user2', expected_status_code=401), id='no-access'),
+        pytest.param(
+            dict(user='user2', upload_id='id_embargo', expected_status_code=403),
+            id='no-access-embargo',
+        ),
+        pytest.param(
+            dict(user=None, upload_id='id_embargo', expected_status_code=403),
+            id='nologin-embargo',
+        ),
         pytest.param(dict(user='user0', expected_data_len=1), id='admin-access'),
         pytest.param(
             dict(upload_id='silly_value', expected_status_code=404),
@@ -981,7 +996,7 @@ def test_get_upload_entries(auth_headers, client, mongo_module, example_data, kw
         pytest.param(
             'id_embargo', 'id_embargo_1', 'invalid', 401, id='invalid-credentials'
         ),
-        pytest.param('id_embargo', 'id_embargo_1', 'user2', 401, id='no-access'),
+        pytest.param('id_embargo', 'id_embargo_1', 'user2', 403, id='no-access'),
         pytest.param('id_embargo', 'id_embargo_1', 'user0', 200, id='admin-access'),
         pytest.param(
             'silly_value', 'id_embargo_1', 'user1', 404, id='invalid-upload_id'
@@ -1032,7 +1047,7 @@ def test_get_upload_entry(
         ),
         pytest.param(
             dict(user='user2', upload_id='id_embargo'),
-            401,
+            403,
             None,
             id='embargo-file',
         ),
@@ -1101,7 +1116,7 @@ def test_get_upload_raw(
                 upload_id='id_unpublished',
                 path='test_content/id_unpublished_1/1.aux',
             ),
-            401,
+            403,
             None,
             None,
             id='unpublished-file-unauthorized',
@@ -1344,7 +1359,7 @@ def test_get_upload_raw(
                 upload_id='id_unpublished',
                 path='test_content/id_unpublished_1/1.aux',
             ),
-            401,
+            403,
             None,
             None,
             id='no-access',
@@ -1604,7 +1619,7 @@ def test_get_upload_raw_path(
             'id_unpublished',
             'test_content/id_unpublished_1',
             {},
-            401,
+            403,
             None,
             None,
             None,
@@ -1615,7 +1630,7 @@ def test_get_upload_raw_path(
             'id_embargo',
             'test_content/id_embargo_1',
             {},
-            401,
+            403,
             None,
             None,
             None,
@@ -1718,7 +1733,14 @@ def test_get_upload_rawdir_path(
             'test_content/id_unpublished_1/mainfile.json',
             None,
             401,
-            id='unpublished',
+            id='unpublished-nologin',
+        ),
+        pytest.param(
+            'id_unpublished',
+            'test_content/id_unpublished_1/mainfile.json',
+            'user2',
+            403,
+            id='unpublished-login-no-access',
         ),
         pytest.param(
             'id_unpublished',
@@ -1759,7 +1781,9 @@ def test_get_upload_entry_archive_mainfile(
         pytest.param('id_published', 'id_01', None, 200, id='published'),
         pytest.param('id_published', 'doesnotexist', None, 404, id='bad-entry-id'),
         pytest.param('id_doesnotexist', 'id_01', None, 404, id='bad-upload-id'),
-        pytest.param('id_unpublished', 'id_unpublished_1', None, 401, id='unpublished'),
+        pytest.param(
+            'id_unpublished', 'id_unpublished_1', None, 401, id='unpublished-nologin'
+        ),
         pytest.param('id_unpublished', 'id_unpublished_1', 'user1', 200, id='auth'),
         pytest.param(
             'id_child_entries',
@@ -1850,7 +1874,7 @@ def test_get_upload_entry_archive(
             {},
             True,
             False,
-            401,
+            400,
             None,
             id='published',
         ),
@@ -1889,7 +1913,7 @@ def test_get_upload_entry_archive(
             {},
             True,
             False,
-            401,
+            403,
             None,
             id='no-access-to-upload',
         ),
@@ -1915,7 +1939,7 @@ def test_get_upload_entry_archive(
             {},
             True,
             False,
-            401,
+            403,
             None,
             id='local_path-not-admin',
         ),
@@ -2369,7 +2393,7 @@ async def test_put_upload_raw_path(
     'user, upload_id, path, expected_status_code',
     [
         pytest.param(
-            'user1', 'id_published_w', 'test_content/newdir', 401, id='published'
+            'user1', 'id_published_w', 'test_content/newdir', 400, id='published'
         ),
         pytest.param(
             None, 'id_unpublished_w', 'test_content/newdir', 401, id='no-credentials'
@@ -2378,7 +2402,7 @@ async def test_put_upload_raw_path(
             'user2',
             'id_unpublished_w',
             'test_content/newdir',
-            401,
+            403,
             id='no-access',
         ),
         pytest.param(
@@ -2488,7 +2512,7 @@ async def test_post_upload_raw_create_dir_path(
             None,
             'examples_template/1.aux',
             False,
-            401,
+            403,
             None,
             id='no-access',
         ),
@@ -2524,7 +2548,7 @@ async def test_post_upload_raw_create_dir_path(
             'id_published_w',
             'examples_template/1.aux',
             False,
-            401,
+            400,
             None,
             id='published',
         ),
@@ -2908,7 +2932,7 @@ async def test_post_upload_edit(
             False,
             False,
             True,
-            401,
+            403,
             id='local_path-not-admin',
         ),
         pytest.param(
@@ -3187,11 +3211,11 @@ async def test_post_upload(
     'upload_id, publish, user, expected_status_code',
     [
         pytest.param(None, True, 'user0', 200, id='published-admin'),
-        pytest.param(None, True, 'user1', 401, id='published-not-admin'),
+        pytest.param(None, True, 'user1', 403, id='published-not-admin'),
         pytest.param(None, False, 'user1', 200, id='not-published'),
         pytest.param(None, False, None, 401, id='no-credentials'),
         pytest.param(None, False, 'invalid', 401, id='invalid-credentials'),
-        pytest.param(None, False, 'user2', 401, id='no-access'),
+        pytest.param(None, False, 'user2', 403, id='no-access'),
         pytest.param('id_processing_w', False, 'user1', 400, id='already-processing'),
         pytest.param('silly_value', False, 'user1', 404, id='invalid-upload_id'),
     ],
@@ -3251,7 +3275,7 @@ async def test_post_upload_action_process(
             None,
             {'entry_id': 'id_published_w_entry'},
             False,
-            401,
+            400,
             [],
             [],
             id='published-admin',
@@ -3262,7 +3286,7 @@ async def test_post_upload_action_process(
             None,
             {'entry_id': 'id_unpublished_w_entry'},
             False,
-            401,
+            403,
             [],
             [],
             id='unpublished-no-access',
@@ -3370,9 +3394,9 @@ async def test_post_upload_action_delete_entry_files(
     'upload_id, user, expected_status_code',
     [
         pytest.param('id_unpublished_w', 'user1', 200, id='delete-own'),
-        pytest.param('id_unpublished_w', 'user2', 401, id='delete-others-not-admin'),
+        pytest.param('id_unpublished_w', 'user2', 403, id='delete-others-not-admin'),
         pytest.param('id_unpublished_w', 'user0', 200, id='delete-others-admin'),
-        pytest.param('id_published_w', 'user1', 401, id='delete-own-published'),
+        pytest.param('id_published_w', 'user1', 403, id='delete-own-published'),
         pytest.param(
             'id_published_w', 'user0', 200, id='delete-others-published-admin'
         ),
@@ -3431,8 +3455,8 @@ def test_get_command_examples(auth_headers, client, authorized, expected_status_
     'has_write_access,is_published,upload_state,expected_status',
     [
         pytest.param(True, False, ProcessStatus.PENDING, 200, id='success-case'),
-        pytest.param(False, False, ProcessStatus.PENDING, 401, id='permission-denied'),
-        pytest.param(True, True, ProcessStatus.PENDING, 401, id='published-upload'),
+        pytest.param(False, False, ProcessStatus.PENDING, 403, id='permission-denied'),
+        pytest.param(True, True, ProcessStatus.PENDING, 400, id='published-upload'),
         pytest.param(
             True, False, ProcessStatus.SUCCESS, 400, id='success-state-invalid'
         ),

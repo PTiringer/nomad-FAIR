@@ -42,6 +42,7 @@ import elasticsearch.helpers
 from elasticsearch.exceptions import RequestError, TransportError
 from elasticsearch_dsl import A, Q, Search
 from elasticsearch_dsl.query import Query as EsQuery
+from fastapi import status
 from pydantic import ValidationError
 
 from nomad import datamodel, infrastructure, utils
@@ -337,7 +338,15 @@ class SearchError(Exception):
 
 
 class AuthenticationRequiredError(Exception):
-    pass
+    """Raised when an operation requires authentication but not provided."""
+
+    status_code = status.HTTP_401_UNAUTHORIZED
+
+
+class PermissionDeniedError(Exception):
+    """Raised when the user is authenticated but does not have access rights."""
+
+    status_code = status.HTTP_403_FORBIDDEN
 
 
 _entry_metadata_defaults = {
@@ -541,7 +550,7 @@ def _es_to_entry_dict(
 
 
 def _owner_es_query(
-    owner: str,
+    owner: str | None,
     user_id: str | None = None,
     doc_type: DocumentType = entry_type,
 ):
@@ -566,42 +575,38 @@ def _owner_es_query(
 
         return q
 
+    if owner in {'shared', 'user', 'staging', 'admin'}:
+        if user_id is None:
+            raise AuthenticationRequiredError(f'Authentication required for {owner=}.')
+
+        if owner == 'admin' and not datamodel.User.get(user_id=user_id).is_admin:
+            raise PermissionDeniedError('This can only be used by the admin user.')
+
     if owner == 'all':
         q = query(published=True)
         q |= viewers_query(user_id, force_groups=True)
+
     elif owner == 'public':
         q = query(published=True) & query(with_embargo=False)
+
     elif owner == 'visible':
         q = query(published=True) & query(with_embargo=False)
         q |= viewers_query(user_id, force_groups=True)
+
     elif owner == 'shared':
-        if user_id is None:
-            raise AuthenticationRequiredError(
-                'Authentication required for owner value shared.'
-            )
         q = viewers_query(user_id)
+
     elif owner == 'user':
-        if user_id is None:
-            raise AuthenticationRequiredError(
-                'Authentication required for owner value user.'
-            )
         q = query(main_author__user_id=user_id)
+
     elif owner == 'staging':
-        if user_id is None:
-            raise AuthenticationRequiredError(
-                'Authentication required for owner value user'
-            )
         q = query(published=False) & viewers_query(user_id)
-    elif owner == 'admin':
-        if user_id is None or not datamodel.User.get(user_id=user_id).is_admin:
-            raise AuthenticationRequiredError(
-                'This can only be used by the admin user.'
-            )
+
+    elif owner in {'admin', None}:
         q = None
-    elif owner is None:
-        q = None
+
     else:
-        raise KeyError('Unsupported owner value')
+        raise KeyError(f'Unsupported {owner=}')
 
     if q is not None:
         return q

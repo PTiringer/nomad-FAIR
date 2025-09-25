@@ -86,7 +86,7 @@ def check_user_may_edit_user_group(user: User, user_group: MongoUserGroup):
         return
 
     raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
+        status_code=status.HTTP_403_FORBIDDEN,
         detail=strip(
             f"Not authorized to edit user group '{user_group.group_id}'."
             ' Only group owners and admins are allowed to edit a group.'
