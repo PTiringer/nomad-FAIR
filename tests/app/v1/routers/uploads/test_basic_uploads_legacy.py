@@ -384,7 +384,6 @@ async def test_post_upload_action_publish(
 async def test_post_upload_action_lift_embargo(
     auth_headers,
     client,
-    proc_infra,
     example_data_writeable,
     users_dict,
     upload_id,
@@ -448,10 +447,11 @@ async def test_post_upload_action_lift_embargo(
         ),
     ],
 )
-def test_get_upload_bundle(
+@pytest.mark.asyncio
+async def test_get_upload_bundle(
     auth_headers,
     client,
-    proc_infra,
+    temporal_worker,
     example_data_writeable,
     upload_id,
     user,
@@ -497,10 +497,11 @@ def test_get_upload_bundle(
         pytest.param(True, False, None, dict(), dict(), 401, id='no-credentials'),
     ],
 )
-def test_post_upload_bundle(
+@pytest.mark.asyncio
+async def test_post_upload_bundle(
     auth_headers,
     client,
-    proc_infra,
+    temporal_worker,
     non_empty_uploaded,
     internal_example_user_metadata,
     publish,
@@ -511,35 +512,46 @@ def test_post_upload_bundle(
     query_args,
     expected_status_code,
 ):
-    non_empty_processed = test_processing.run_processing(
-        non_empty_uploaded, users_dict[user or 'user0']
-    )
-    # Create the bundle
-    set_upload_entry_metadata(non_empty_processed, internal_example_user_metadata)
-    if publish:
-        non_empty_processed.publish_upload()
-        non_empty_processed.block_until_complete(interval=0.01)
-    upload = non_empty_processed
-    upload_id = upload.upload_id
-    export_path = os.path.join(config.fs.tmp, 'bundle_' + upload_id)
-    export_args_with_defaults = dict(
-        export_as_stream=False,
-        export_path=export_path,
-        zipped=True,
-        overwrite=True,
-        export_settings=config.bundle_export.default_settings,
-    )
-    export_args_with_defaults.update(export_args)
-    BundleExporter(upload, **export_args_with_defaults).export_bundle()
+    async with temporal_worker():
+        non_empty_processed = await asyncio.to_thread(
+            lambda: test_processing.run_processing(
+                non_empty_uploaded, users_dict[user or 'user0']
+            )
+        )
+        # Create the bundle
+        set_upload_entry_metadata(non_empty_processed, internal_example_user_metadata)
+        if publish:
+            await asyncio.to_thread(lambda: non_empty_processed.publish_upload())
+            await non_empty_processed.await_workflows()
+        upload = non_empty_processed
+        upload_id = upload.upload_id
+        export_path = os.path.join(config.fs.tmp, 'bundle_' + upload_id)
+        export_args_with_defaults = dict(
+            export_as_stream=False,
+            export_path=export_path,
+            zipped=True,
+            overwrite=True,
+            export_settings=config.bundle_export.default_settings,
+        )
+        export_args_with_defaults.update(export_args)
+        BundleExporter(upload, **export_args_with_defaults).export_bundle()
 
-    if not test_duplicate:
-        # Delete the upload so we can import the bundle without id collisions
-        upload.delete_upload_local()
-    # Finally, import the bundle
-    user_auth = auth_headers[user]
-    response = perform_post_put_file(
-        client, 'POST', 'uploads/bundle', 'stream', export_path, user_auth, **query_args
-    )
+        if not test_duplicate:
+            # Delete the upload so we can import the bundle without id collisions
+            upload.delete_upload_local()
+        # Finally, import the bundle
+        user_auth = auth_headers[user]
+        response = await asyncio.to_thread(
+            lambda: perform_post_put_file(
+                client,
+                'POST',
+                'uploads/bundle',
+                'stream',
+                export_path,
+                user_auth,
+                **query_args,
+            )
+        )
     assert_response(response, expected_status_code)
     if expected_status_code == 200:
         assert_processing(client, upload_id, user_auth, published=publish)

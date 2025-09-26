@@ -83,7 +83,7 @@ elastic:
   port: 9200
   timeout: 60
 temporal:
-  enabled: False
+  enabled: True
   host: localhost
   namespace: default
   port: 7233

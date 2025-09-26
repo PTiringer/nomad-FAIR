@@ -234,8 +234,11 @@ def reset_infra(mongo_function, elastic_function):
 
 
 @pytest.fixture(scope='function')
-def proc_infra(worker, elastic_function, mongo_function, raw_files_function):
+def proc_infra(
+    worker, elastic_function, mongo_function, raw_files_function, monkeypatch
+):
     """Combines all fixtures necessary for processing (elastic, worker, files, mongo)"""
+    monkeypatch.setattr(config.temporal, 'enabled', False)
     return dict(elastic=elastic_function)
 
 
@@ -252,13 +255,10 @@ def temporal_worker(
     monkeypatch,
 ) -> TemporalWorkerContext:
     """Combines all fixtures necessary for temporal processing (elastic, files, mongo)"""
-    from nomad.config import config
-
     temporal_activities = get_nomad_internal_activities()
     temporal_workflows = get_nomad_internal_workflows()
 
     # Much smaller timeout for tests.
-    monkeypatch.setattr(config.temporal, 'enabled', True)
     monkeypatch.setattr(workflows, 'WORKFLOW_TIMEOUT', timedelta(seconds=120))
 
     @asynccontextmanager
