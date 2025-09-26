@@ -26,7 +26,6 @@ with workflow.unsafe.imports_passed_through():
         next_level_entries,
         parser_min_level,
         process_entry_activity,
-        process_entry_failure_activity,
         process_entry_success,
         process_upload_failure_activity,
         process_upload_success,
@@ -93,38 +92,23 @@ class ProcessEntryWorkflow:
         retry_policy = RetryPolicy(
             maximum_attempts=3,
         )
-        try:
-            # Process the entry
-            result = await workflow.execute_activity(
-                process_entry_activity,
-                input,
-                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-                retry_policy=retry_policy,
-            )
+        # Process the entry
+        result = await workflow.execute_activity(
+            process_entry_activity,
+            input,
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+            retry_policy=retry_policy,
+        )
 
-            # Mark entry as successful
-            await workflow.execute_activity(
-                process_entry_success,
-                input,
-                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-                retry_policy=retry_policy,
-            )
+        # Mark entry as successful
+        await workflow.execute_activity(
+            process_entry_success,
+            input,
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+            retry_policy=retry_policy,
+        )
 
-            return result
-
-        except Exception as e:
-            if isinstance(e, ActivityError):
-                input.error_details = str(e.cause)
-            else:
-                input.error_details = str(e)
-            # Set entry to failure status
-            await workflow.execute_activity(
-                process_entry_failure_activity,
-                input,
-                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-                retry_policy=retry_policy,
-            )
-            raise e
+        return result
 
 
 @workflow.defn

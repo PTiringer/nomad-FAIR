@@ -64,10 +64,15 @@ def process_entry_activity(input: ProcessEntryActivityInput):
     try:
         entry.errors = []
         entry._process_entry_local()
-    except ProcessFailure as e:
-        # ProcessFailure represents permanent failures (data validation, business logic errors)
-        # that cannot be resolved through retries.
-        raise ApplicationError(str(e), non_retryable=True) from e
+    except Exception as e:
+        entry.fail(*[e])
+        entry.save()
+        if isinstance(e, ProcessFailure):
+            # ProcessFailure represents permanent failures (data validation, business logic errors)
+            # that cannot be resolved through retries.
+            raise ApplicationError(str(e), non_retryable=True) from e
+        else:
+            raise e
 
 
 @activity.defn
@@ -232,29 +237,14 @@ def process_upload_success(input: UploadWorkflowIdInput):
 
 
 @activity.defn
-def process_entry_failure_activity(input: ProcessEntryActivityInput):
-    entry = Entry.get(input.entry_id)
-    if error_details := input.error_details:
-        if error_details not in entry.errors:
-            entry.errors.append(error_details)
-    entry.on_fail()
-    entry.process_status = ProcessStatus.FAILURE
-    entry.last_status_message = 'Process process_entry failed'
-    entry.complete_time = datetime.now(timezone.utc)
-    entry.save()
-
-
-@activity.defn
 def process_upload_failure_activity(input: UploadWorkflowIdInput):
     upload = Upload.get(input.upload_id)
-    upload.process_status = ProcessStatus.FAILURE
     upload.last_status_message = (
         input.failure_message if input.failure_message else 'Process upload failed'
     )
-    if input.error_details:
-        upload.errors.append(input.error_details)  # type: ignore
+    errors = [input.error_details] if input.error_details else []
     upload.workflow_ids = []  # Clear workflow IDs on failure
-    upload.complete_time = datetime.now(timezone.utc)
+    upload.fail(*errors)
     upload.save()
 
 
