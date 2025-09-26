@@ -1109,6 +1109,8 @@ export function parseNomadUrl(url) {
       // There is more. Expect "raw" or "archive"
       if (restParts[0] === 'raw') {
         rawPath = restParts.slice(1).map(decodeURIComponent).join('/')
+      } else if (restParts[1] === 'raw') {
+        rawPath = restParts.slice(2).map(decodeURIComponent).join('/')
       } else if (restParts[0] === 'archive' && !entryId) {
         if (restParts.length === 1) throw new Error(prefix + '"archive" must be followed by entry id or "mainfile"')
         if (restParts[1] === 'mainfile') {
