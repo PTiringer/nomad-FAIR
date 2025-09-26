@@ -107,14 +107,14 @@ class Context(MetainfoContext):
         fragment = value.m_path()
         target_root: MSection = value.m_root()
 
-        if global_reference:
-            # need to consider packages that are initialised via loading PART of the archive, or via mongo
-            # in that case, `_get_ids` will fail as there is no attached archive
-            # meanwhile, the reference shall be located under `definitions` in the original archive
-            # we distinguish between the two cases by checking if the target_root is a package
-            if isinstance(target_root, Package) and target_root.m_is_custom_package:
-                return f'../uploads/{target_root.upload_id}/archive/{target_root.entry_id}#definitions/{fragment}'
+        # need to consider packages that are initialised via loading PART of the archive, or via mongo
+        # in that case, `_get_ids` will fail as there is no attached archive
+        # meanwhile, the reference shall be located under `definitions` in the original archive
+        # we distinguish between the two cases by checking if the target_root is a package
+        if isinstance(target_root, Package) and target_root.m_is_custom_package:
+            return f'../uploads/{target_root.upload_id}/archive/{target_root.entry_id}#definitions/{fragment}'
 
+        if global_reference:
             upload_id, entry_id = self._get_ids(target_root, required=True)
 
             return f'../uploads/{upload_id}/archive/{entry_id}#{fragment}'
