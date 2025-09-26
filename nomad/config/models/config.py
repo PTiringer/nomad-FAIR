@@ -463,7 +463,7 @@ class Temporal(ConfigBaseModel):
     host: str = 'localhost'
     port: int = 7233
     namespace: str = 'default'
-    enabled: bool = False
+    enabled: bool = True
     secret: str = 'secret-key'
 
 

@@ -597,7 +597,7 @@ def example_data_schema_yaml(
 
 
 @pytest.fixture(scope='function')
-def example_data_writeable(mongo_function, user1, normalized):
+def example_data_writeable(mongo_function, user1, normalized, elastic_function):
     data = ExampleData(main_author=user1)
 
     # one upload with one entry, published
