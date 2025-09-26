@@ -2138,19 +2138,21 @@ class MSection(metaclass=MObjectMeta):
         for annotation_name, annotation in all_annotations.items():
             AnnotationModel.model_rebuild()
             if annotation_model := AnnotationModel.m_registry.get(annotation_name):
+                adapter = TypeAdapter(annotation_model)
 
-                def to_model(_model, _data):
+                def to_model(_data):
                     if isinstance(_data, list):
-                        return [to_model(annotation_model, _v) for _v in _data]
+                        return [to_model(_v) for _v in _data]
 
                     if _data is None:
                         return None
 
                     try:
-                        if isinstance(_data, AnnotationModel):
-                            _annotation = _data
-                        else:
-                            _annotation = TypeAdapter(_model).validate_python(_data)
+                        _annotation = (
+                            _data
+                            if isinstance(_data, AnnotationModel)
+                            else adapter.validate_python(_data)
+                        )
 
                         if isinstance(self, Definition):
                             _annotation.m_definition = self
@@ -2159,7 +2161,7 @@ class MSection(metaclass=MObjectMeta):
                     except ValidationError as e:
                         return AnnotationModel(m_error=str(e))
 
-                annotation = to_model(annotation_model, annotation)
+                annotation = to_model(annotation)
 
             if annotation:
                 self.m_annotations[annotation_name] = annotation
@@ -4126,8 +4128,8 @@ class Package(Definition):
         self.entry_id = None
 
     @property
-    def m_is_custom_package(self):
-        return self.upload_id and self.entry_id
+    def m_is_custom_package(self) -> bool:
+        return self.upload_id is not None and self.entry_id is not None
 
     def __init_metainfo__(self):
         super().__init_metainfo__()
