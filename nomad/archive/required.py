@@ -534,8 +534,7 @@ class RequiredReader:
                     entry_id,
                 )
 
-        proxy = MSectionReference().normalize(definition)
-        proxy.m_proxy_context = context
+        proxy = MSectionReference().normalize(definition, context=context)
         return self._unwrap_reference(proxy.section_cls.m_def)
 
     def _apply_required(
