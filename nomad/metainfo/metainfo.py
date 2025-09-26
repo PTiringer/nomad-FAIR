@@ -27,7 +27,7 @@ import warnings
 from collections.abc import Callable as TypingCallable
 from collections.abc import Iterable
 from copy import copy, deepcopy
-from functools import cached_property, wraps
+from functools import wraps
 from typing import Any, Literal, TypeVar, cast
 from urllib.parse import urlsplit, urlunsplit
 
@@ -170,7 +170,7 @@ class MProxy:
                 self.m_proxy_section, self.m_proxy_value
             )
 
-    @cached_property
+    @property
     def _effective_context(self) -> Context | None:
         if self.m_proxy_context is not None:
             return self.m_proxy_context
