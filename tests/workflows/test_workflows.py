@@ -653,6 +653,13 @@ class TestPublishExternallyWorkflow:
         mock_upload_instance = mock_data_layer['upload_instance']
         mock_upload_instance.errors = ['old error']
         mock_upload_instance._publish_externally_local = raise_generic_error
+
+        def mock_fail(*errors):
+            mock_upload_instance.process_status = ProcessStatus.FAILURE
+            mock_upload_instance.errors.clear()
+            mock_upload_instance.errors.extend(str(error) for error in errors)
+
+        mock_upload_instance.fail = mock_fail
         with pytest.raises(Exception):
             async with temporal_worker() as env:
                 input_data = TestFixtures.publish_externally_input()
@@ -739,7 +746,15 @@ class TestWorkflowErrorHandling:
     ):
         """Test that workflows fail when upload is already being processed."""
         # Set up upload to already have a workflow ID
-        mock_data_layer['upload_instance'].workflow_ids = [EXISTING_WORKFLOW_ID]
+        mock_upload_instance = mock_data_layer['upload_instance']
+        mock_upload_instance.workflow_ids = [EXISTING_WORKFLOW_ID]
+
+        def mock_fail(*errors):
+            mock_upload_instance.process_status = ProcessStatus.FAILURE
+            mock_upload_instance.errors.clear()
+            mock_upload_instance.errors.extend(str(error) for error in errors)
+
+        mock_upload_instance.fail = mock_fail
 
         async with temporal_worker() as env:
             input_data = TestFixtures.edit_upload_metadata_input()
@@ -818,6 +833,12 @@ class TestWorkflowErrorHandling:
         getattr(mock_target, activity_to_fail).side_effect = Exception(
             f'Simulated {activity_to_fail} failure'
         )
+
+        def mock_fail(*errors):
+            mock_target.process_status = ProcessStatus.FAILURE
+            mock_target.errors.extend(str(error) for error in errors)
+
+        mock_target.fail = mock_fail
 
         # Special setup for ProcessUploadWorkflow
         if workflow_class == 'ProcessUploadWorkflow':
@@ -921,8 +942,8 @@ class TestWorkflowErrorHandling:
         )
 
         # Verify that entry processing was attempted for both entries
-        # 24 calls accounts for the number of retries
-        assert mock_data_layer['entry_class'].get.call_count == 24
+        # 18 calls accounts for the number of retries
+        assert mock_data_layer['entry_class'].get.call_count == 18
 
         # Verify that the upload workflow completed successfully
         # (The upload should not be marked as failed due to individual entry failures)

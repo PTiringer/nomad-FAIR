@@ -57,6 +57,7 @@ from mongoengine import (
 from pymongo import UpdateOne
 from structlog import wrap_logger
 from structlog.processors import StackInfoRenderer, TimeStamper, format_exc_info
+from temporalio.common import RetryPolicy
 from temporalio.service import RPCError
 
 from nomad import client, datamodel, infrastructure, metainfo, parsing, search, utils
@@ -1314,6 +1315,7 @@ class Entry(Proc):
                 ),
                 id=workflow_id,
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS.value,
+                retry_policy=RetryPolicy(maximum_attempts=1),
             )
         except Exception as e:
             raise ProcessFailure(f'Failed to start temporal workflow: {e}')
@@ -1942,6 +1944,7 @@ class Upload(Proc):
                 DeleteUploadWorkflowInput(upload_id=self.upload_id),
                 id=workflow_id,
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS.value,
+                retry_policy=RetryPolicy(maximum_attempts=1),
             )
         except Exception as e:
             raise ProcessFailure(f'Failed to start temporal workflow: {e}')
@@ -1977,6 +1980,7 @@ class Upload(Proc):
                 ),
                 id=workflow_id,
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS.value,
+                retry_policy=RetryPolicy(maximum_attempts=1),
             )
         except Exception as e:
             raise ProcessFailure(f'Failed to start temporal workflow: {e}')
@@ -2060,6 +2064,7 @@ class Upload(Proc):
                 ),
                 id=workflow_id,
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS.value,
+                retry_policy=RetryPolicy(maximum_attempts=1),
             )
         except Exception as e:
             raise ProcessFailure(f'Failed to start temporal workflow: {e}')
@@ -2190,6 +2195,7 @@ class Upload(Proc):
                 ),
                 id=workflow_id,
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS.value,
+                retry_policy=RetryPolicy(maximum_attempts=1),
             )
             self.process_status = ProcessStatus.PENDING
             self.save()
@@ -2306,6 +2312,7 @@ class Upload(Proc):
                 data,
                 id=workflow_id,
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS.value,
+                retry_policy=RetryPolicy(maximum_attempts=1),
             )
             self.process_status = ProcessStatus.PENDING
             self.save()
@@ -3305,6 +3312,7 @@ class Upload(Proc):
                 ),
                 id=workflow_id,
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS.value,
+                retry_policy=RetryPolicy(maximum_attempts=1),
             )
         except Exception as e:
             raise ProcessFailure(f'Failed to execute temporal workflow: {e}')
@@ -3421,6 +3429,7 @@ class Upload(Proc):
                 ),
                 id=workflow_id,
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS.value,
+                retry_policy=RetryPolicy(maximum_attempts=1),
             )
         except Exception as e:
             raise ProcessFailure(f'Failed to execute temporal workflow: {e}')

@@ -37,6 +37,7 @@ from nomad.metainfo import Package, Quantity, Reference, SubSection
 from nomad.parsing import parsers
 from nomad.parsing.parser import Parser
 from nomad.processing import Entry, ProcessStatus, Upload
+from nomad.processing.base import ProcessFailure
 from nomad.search import refresh as search_refresh
 from nomad.search import search
 from nomad.utils.exampledata import ExampleData
@@ -846,7 +847,7 @@ def test_re_pack(published: Upload):
 
 def mock_failure(cls, function_name, monkeypatch):
     def mock(self, *args, **kwargs):
-        raise Exception('fail for test')
+        raise ProcessFailure('fail for test')
 
     mock.__name__ = function_name
 

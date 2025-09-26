@@ -438,7 +438,8 @@ class Proc(Document):
         NOTE, processes should NOT call this method directly, or tamper with self.errors etc.
         Rather, if something goes wrong in a process, it should raise an exception!
         """
-        assert self.process_running, 'Cannot fail a completed process.'
+        if not config.temporal.enabled:
+            assert self.process_running, 'Cannot fail a completed process.'
 
         failed_with_exception = False
 
