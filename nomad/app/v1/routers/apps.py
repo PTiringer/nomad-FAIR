@@ -17,6 +17,7 @@
 import fnmatch
 import re
 from enum import Enum
+from threading import Lock
 from typing import Any
 
 import jmespath
@@ -76,6 +77,9 @@ app_entry_points_cache: dict[str, AppEntryPoint] = {}
 app_cache: dict[str, dict[str, Any]] = {}
 app_search_quantity_cache: dict[str, list['SearchQuantity']] = {}
 all_search_quantities: dict[str, 'SearchQuantity'] = {}
+
+_init_lock = Lock()
+_initialized = False
 
 
 class SearchQuantity(BaseModel):
@@ -409,8 +413,134 @@ def _lazy_build_search_quantities():
 # without this, the dictionary will be built once at import time—before the Elasticsearch extension had
 # finished registering all of its entry_type.quantities, so it remained partially filled
 def _ensure_initialized():
-    if not all_search_quantities:
+    """
+    Race-safe initializer. Warmup may already have run; this is a defensive guard.
+    """
+    global _initialized
+    if _initialized:
+        return
+    with _init_lock:
+        if _initialized:
+            return
         _lazy_build_search_quantities()
+        _initialized = True
+
+
+def _build_app_response(entry_point: AppEntryPoint) -> dict[str, Any]:
+    """
+    Builds the response payload for GET /entry-points/{app_path}, including
+    validation and collection of referenced search quantities.
+    """
+    _ensure_initialized()
+    search_quantities: dict[str, Any] = {}
+    app = entry_point.app
+
+    def add_jmespath(name: str, location: str | None = None):
+        data = parse_jmespath(name)
+        if data['error']:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f'Could not parse the search quantity "{name}" used in {location}.',
+            )
+        for q in [data['quantity']] + data['extras']:
+            add_search(q, location)
+
+    def add_search(name: str, location: str | None = None):
+        if name in search_quantities:
+            return
+
+        # Search quantities with an explicit dtype are not validated
+        parsed = parse_quantity_name(name)
+        if parsed['dtype']:
+            return
+
+        sq = all_search_quantities.get(name)
+        if sq is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f'Could not load the search quantity "{name}" used in {location}.',
+            )
+        search_quantities[name] = sq.model_dump()
+
+    # columns
+    for column in app.columns or []:
+        add_jmespath(column.search_quantity, 'the results table column')
+    # widgets
+    if app.dashboard and app.dashboard.widgets:
+        for widget in app.dashboard.widgets:
+            if isinstance(widget, (WidgetPeriodicTable | WidgetTerms)):
+                add_search(widget.search_quantity)
+            elif isinstance(widget, WidgetHistogram) and widget.x:
+                qty = (
+                    widget.x if isinstance(widget.x, str) else widget.x.search_quantity
+                )
+                add_search(qty)
+            elif isinstance(widget, WidgetScatterPlot):
+                if widget.x:
+                    add_jmespath(
+                        widget.x.search_quantity
+                        if not isinstance(widget.x, str)
+                        else widget.x,
+                        'the x-axis of a scatter plot widget',
+                    )
+                if widget.y:
+                    add_jmespath(
+                        widget.y.search_quantity
+                        if not isinstance(widget.y, str)
+                        else widget.y,
+                        'the y-axis of a scatter plot widget',
+                    )
+                if widget.markers and widget.markers.color:
+                    cd = widget.markers.color
+                    add_jmespath(
+                        cd.search_quantity if not isinstance(cd, str) else cd,
+                        'the marker color of a scatter plot widget',
+                    )
+
+    # menus
+    def load_menu(menu: Menu | MenuItemNestedObject):
+        for item in menu.items or []:
+            if isinstance(item, Menu):
+                load_menu(item)
+            if isinstance(item, MenuItemNestedObject):
+                add_search(item.path, 'a menu nested object item')
+                load_menu(item)
+            elif isinstance(item, MenuItemTerms):
+                add_search(item.search_quantity, 'a menu terms item')
+            elif isinstance(item, MenuItemHistogram):
+                if isinstance(item.x, str):
+                    add_search(item.x, 'a menu histogram item')
+                else:
+                    add_search(item.x.search_quantity, 'a menu histogram item')
+            elif isinstance(item, MenuItemPeriodicTable):
+                add_search(item.search_quantity, 'a menu periodic table item')
+
+    if app.menu:
+        load_menu(app.menu)
+    # filters_locked
+    for key in (app.filters_locked or {}).keys():
+        add_search(key, 'filters_locked')
+
+    return {
+        'app': entry_point.app.model_dump(),
+        'search_quantities': search_quantities,
+    }
+
+
+def warm_caches() -> None:
+    """
+    Eagerly build caches during app startup (within lifespan).
+    """
+    _ensure_initialized()
+
+    # Pre-build per-app filtered search quantities and the app response payloads.
+    for app_path, ep in app_entry_points_cache.items():
+        if app_path not in app_search_quantity_cache:
+            app_search_quantity_cache[app_path] = prefilter_search_quantities(
+                all_search_quantities, app_path
+            )
+        if app_path not in app_cache:
+            app_cache[app_path] = _build_app_response(ep)
 
 
 @router.get(
