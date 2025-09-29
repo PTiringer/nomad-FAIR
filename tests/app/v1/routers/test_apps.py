@@ -15,9 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import uuid
 
 import pytest
 
+from nomad.app.v1.routers import apps as apps_router
 from nomad.app.v1.routers.apps import parse_jmespath
 from nomad.config import config
 from nomad.config.models.plugins import AppEntryPoint
@@ -198,16 +200,18 @@ def test_app_search_quantity_validation(
     """
     Test that search quantities used in apps are validated correctly.
     """
-    # Patch the endpoint to use the given app
+    app_id = f'test_{uuid.uuid4().hex}'
+
     monkeypatch.setattr('nomad.app.v1.routers.apps.app_cache', {})
+    monkeypatch.setattr('nomad.app.v1.routers.apps.app_search_quantity_cache', {})
     monkeypatch.setattr(
         'nomad.app.v1.routers.apps.app_entry_points_cache',
         {
-            'test': AppEntryPoint(
-                id='test',
+            app_id: AppEntryPoint(
+                id=app_id,
                 app=App(
                     label='test',
-                    path='test',
+                    path=app_id,
                     category='test',
                     columns=[Column(search_quantity=search_quantity)],
                 ),
@@ -215,8 +219,17 @@ def test_app_search_quantity_validation(
         },
     )
 
-    # Try to get app, assert status code and potential error
-    resp = client.get(f'{BASE}/entry-points/test')
+    try:
+        from fastapi_cache import FastAPICache
+
+        backend = FastAPICache.get_backend()
+        clear = getattr(backend, 'clear', None)
+        if clear:
+            clear()
+    except Exception:
+        pass
+
+    resp = client.get(f'{BASE}/entry-points/{app_id}')
     assert resp.status_code == status_code
     if error:
         body = resp.json()
@@ -376,3 +389,69 @@ def test_app_search_quantity_validation(
 def test_parse_jmespath(input_path, expected):
     result = parse_jmespath(input_path)
     assert result == expected
+
+
+def test_warm_caches_populates_and_endpoint_uses_cache(client, no_warn, monkeypatch):
+    """
+    Ensure warm_caches() eagerly builds all caches and that GET /entry-points/{app}
+    returns the prebuilt response without invoking _build_app_response again.
+    """
+    all_q = list(entry_type.quantities.keys())
+    assert all_q, 'No search quantities registered!'
+    valid_q = all_q[0]
+
+    def fake_lazy_build():
+        apps_router.app_entry_points_cache.clear()
+        apps_router.all_search_quantities.clear()
+
+        from nomad.config.models.plugins import AppEntryPoint
+        from nomad.config.models.ui import App, Column
+
+        apps_router.app_entry_points_cache['app'] = AppEntryPoint(
+            id='app',
+            app=App(
+                label='app',
+                path='app',
+                category='test',
+                columns=[Column(search_quantity=valid_q)],
+            ),
+        )
+
+        apps_router.all_search_quantities[valid_q] = apps_router.SearchQuantity(
+            quantity=valid_q,
+            quantity_normalized=apps_router.normalize_name(valid_q),
+        )
+
+    monkeypatch.setattr(
+        apps_router, '_lazy_build_search_quantities', fake_lazy_build, raising=True
+    )
+    monkeypatch.setattr(apps_router, '_initialized', False, raising=False)
+    apps_router.app_cache.clear()
+    apps_router.app_search_quantity_cache.clear()
+
+    apps_router.warm_caches()
+
+    assert 'app' in apps_router.app_entry_points_cache
+    assert 'app' in apps_router.app_cache
+    assert 'app' in apps_router.app_search_quantity_cache
+
+    cached = apps_router.app_cache['app']
+    assert 'app' in cached and 'search_quantities' in cached
+    assert cached['app']['path'] == 'app'
+    assert isinstance(cached['search_quantities'], dict)
+
+    filtered = apps_router.app_search_quantity_cache['app']
+    if filtered:
+        assert all(isinstance(x, apps_router.SearchQuantity) for x in filtered)
+
+    def _raise(_):
+        raise AssertionError('Should not rebuild app response after warmup')
+
+    monkeypatch.setattr(apps_router, '_build_app_response', _raise, raising=True)
+
+    BASE = config.services.api_base_path.rstrip('/') + '/apps'
+    resp = client.get(f'{BASE}/entry-points/app')
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body['app']['path'] == 'app'
+    assert isinstance(body['search_quantities'], dict)

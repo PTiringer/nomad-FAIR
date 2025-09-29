@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Final
 
 from fastapi_cache import Backend
-from mongoengine import BinaryField, DateTimeField, Document, StringField
+from mongoengine import BinaryField, DateTimeField, Document, DoesNotExist, StringField
 
 from nomad.common import now
 
@@ -15,6 +15,7 @@ class MongoCache(Document):
     An arbitrary value to cache for fast retrieval.
     """
 
+    DoesNotExist = DoesNotExist()
     key = StringField(required=True, unique=True)
     value = BinaryField()
     create_time = DateTimeField(default=now)

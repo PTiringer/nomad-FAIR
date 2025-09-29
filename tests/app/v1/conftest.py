@@ -17,8 +17,12 @@
 #
 
 import pytest
+from fastapi_cache import FastAPICache
+
+import nomad.mongo.cache as cache_module
 
 
 @pytest.fixture(scope='module')
 def client(api_v1):
+    FastAPICache.init(cache_module.MongoBackend())
     return api_v1

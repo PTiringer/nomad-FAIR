@@ -41,6 +41,7 @@ from nomad.utils.structlogging import get_logger
 from .static import GuiFiles
 from .static import app as static_files_app
 from .v1.main import app as v1_app
+from .v1.routers import apps as apps_router
 from .v1.routers.auth import resolve_user
 
 
@@ -135,6 +136,8 @@ async def lifespan(app: FastAPI):
     infrastructure.setup()
 
     FastAPICache.init(backend=MongoBackend())
+
+    apps_router.warm_caches()
 
     if config.temporal.enabled:
         try:
