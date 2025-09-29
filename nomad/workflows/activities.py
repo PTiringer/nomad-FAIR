@@ -64,6 +64,10 @@ def process_entry_activity(input: ProcessEntryActivityInput):
     try:
         entry.errors = []
         entry._process_entry_local()
+        entry.on_success()
+        entry.process_status = ProcessStatus.SUCCESS
+        entry.complete_time = datetime.now(timezone.utc)
+        entry.save()
     except Exception as e:
         entry.fail(*[e])
         entry.save()
@@ -218,15 +222,6 @@ def remove_workflow_id_activity(input: UploadWorkflowIdInput):
 def cleanup_activity(input: UploadProcessingWorkflowInput):
     upload = Upload.get(input.upload_id)
     upload.cleanup()
-
-
-@activity.defn
-def process_entry_success(input: ProcessEntryActivityInput):
-    entry = Entry.get(input.entry_id)
-    entry.on_success()
-    entry.process_status = ProcessStatus.SUCCESS
-    entry.complete_time = datetime.now(timezone.utc)
-    entry.save()
 
 
 @activity.defn
