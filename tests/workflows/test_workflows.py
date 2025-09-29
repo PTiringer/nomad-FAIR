@@ -278,9 +278,7 @@ class TestBatchProcessEntriesWorkflow:
             )
 
         # Verify entries were processed
-        assert (
-            mock_data_layer['entry_class'].get.call_count == 10
-        )  # 5 entries * 2 calls each
+        assert mock_data_layer['entry_class'].get.call_count == 5  # 5 entries
 
     @pytest.mark.asyncio
     async def test_large_batch_sequential_processing(

@@ -26,7 +26,6 @@ with workflow.unsafe.imports_passed_through():
         next_level_entries,
         parser_min_level,
         process_entry_activity,
-        process_entry_success,
         process_upload_failure_activity,
         process_upload_success,
         publish_externally_activity,
@@ -95,14 +94,6 @@ class ProcessEntryWorkflow:
         # Process the entry
         result = await workflow.execute_activity(
             process_entry_activity,
-            input,
-            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-            retry_policy=retry_policy,
-        )
-
-        # Mark entry as successful
-        await workflow.execute_activity(
-            process_entry_success,
             input,
             schedule_to_close_timeout=WORKFLOW_TIMEOUT,
             retry_policy=retry_policy,
