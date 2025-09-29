@@ -156,12 +156,14 @@ sub-sections as if they were direct sub-sections.
 .. autoclass:: Index
 """
 
+import json
 import math
 import re
 from collections import defaultdict
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Optional, cast
 
+from elasticsearch.exceptions import TransportError
 from elasticsearch_dsl import Q
 from pint import Quantity as PintQuantity
 
@@ -189,6 +191,37 @@ schema_separator = '#'
 dtype_separator = '#'
 yaml_prefix = 'entry_id:'
 nexus_prefix = 'pynxtools.nomad.schema'
+ES_DEFAULT_PAYLOAD_SIZE = 100  # in MB
+
+
+class PayloadTooLarge(Exception):
+    """Raised when a request's payload exceeds Elasticsearch's request size limit (100MB)."""
+
+
+def _estimate_bytes(obj) -> int | None:
+    try:
+        if obj is None:
+            return None
+        if isinstance(obj, bytes | bytearray):
+            return len(obj)
+        if isinstance(obj, str):
+            return len(obj.encode('utf-8'))
+        if isinstance(obj, list | tuple):
+            total = 0
+            for item in obj:
+                if isinstance(item, bytes | bytearray):
+                    b = item
+                elif isinstance(item, str):
+                    b = item.encode('utf-8')
+                else:
+                    b = json.dumps(item, separators=(',', ':')).encode('utf-8')
+                total += len(b) + 1
+            return total
+        if isinstance(obj, dict):
+            return len(json.dumps(obj, separators=(',', ':')).encode('utf-8'))
+    except Exception:
+        return None
+    return None
 
 
 class DocumentType:
@@ -638,8 +671,24 @@ class Index:
         if 'index' not in kwargs:
             kwargs['index'] = self.index_name
 
-        results = getattr(self.elastic_client, name)(*args, **kwargs)
-        return results
+        try:
+            return getattr(self.elastic_client, name)(*args, **kwargs)
+        except TransportError as e:
+            status = getattr(e, 'status_code', None) or getattr(e, 'status', None)
+            if status == 413:
+                payload = kwargs.get('body', kwargs.get('operations', None))
+                estimated_bytes = _estimate_bytes(payload)
+                size_mb = (
+                    f'{(estimated_bytes or 0) / 1_000_000:.1f}'
+                    if estimated_bytes is not None
+                    else 'unknown'
+                )
+                raise PayloadTooLarge(
+                    f'Failed to index upload data in Elasticsearch during {name} operation due to too large payload '
+                    f'({size_mb} MB). The payload for a single index operation is limited to '
+                    f'{ES_DEFAULT_PAYLOAD_SIZE} MB by default.'
+                ) from e
+            raise
 
     @property
     def index_name(self):
