@@ -69,7 +69,7 @@ oauth2_scheme = OAuth2PasswordBearer(
 
 def resolve_user(
     *,
-    request: Request,
+    request: Request | None = None,
     form_data: OAuth2PasswordRequestForm | None = None,
     bearer_token: str | None = None,
     upload_token: str | None = None,
@@ -80,20 +80,21 @@ def resolve_user(
     # `config.oasis.require_authentication` would require authentication globally
     required = required or config.oasis.require_authentication
 
-    # Get user token
+    # Resolve user token/form_data
     if form_data:
         user = _get_user_basic_auth(form_data)
     if user is None and bearer_token:
         user = _get_user_bearer_token_auth(bearer_token)
     if user is None and upload_token:
         user = _get_user_upload_token_auth(upload_token)
-    if user is None and signature_token:
+    # `_get_user_signature_token_auth` would also handle token in cookie
+    if user is None and (signature_token or request):
         user = _get_user_signature_token_auth(signature_token, request)
 
     if user is None and config.tests.assume_auth_for_username:
         user = datamodel.User.get(username=config.tests.assume_auth_for_username)
 
-    # Check if token is available
+    # Check if token is provided
     if required and user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail='Authorization required.'
@@ -305,6 +306,8 @@ def _get_user_signature_token_auth(
 ) -> User | None:
     """
     Verifies the signature token (throwing HTTPException if illegal value provided).
+
+    NOTE: it would also handle token in cookie
 
     Returns:
         The corresponding User object,

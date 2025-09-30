@@ -73,7 +73,6 @@ class OasisAuthenticationMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         # Extract tokens (dependency injection isn’t available now)
-        # Here any token would be allowed
         bearer_token = None
         if 'Authorization' in request.headers:
             parts = request.headers['Authorization'].split()
@@ -81,11 +80,12 @@ class OasisAuthenticationMiddleware(BaseHTTPMiddleware):
                 bearer_token = parts[1]
 
         try:
+            # Here any token would be allowed
             # NOTE: cannot handle `form_data` as the stream would be consumed
             _user = resolve_user(
-                request=request,
                 bearer_token=bearer_token,
                 upload_token=request.query_params.get('token'),
+                request=request,
                 signature_token=request.query_params.get('signature_token'),
                 required=True,
             )

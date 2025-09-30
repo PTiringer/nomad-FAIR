@@ -19,7 +19,7 @@
 from urllib.parse import urlencode
 
 import pytest
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 
 from nomad.app.v1.models.models import User
 from nomad.app.v1.routers.auth import create_user_dependency
@@ -167,6 +167,43 @@ def test_create_user_dependency_auth_methods(
         with pytest.raises(HTTPException, match='Authorization required.') as exc:
             dep()
         assert exc.value.status_code == 401
+
+
+def test_create_user_dependency_signature_token_from_cookie(monkeypatch, allowed_user):
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.infrastructure.keycloak.tokenauth',
+        lambda token: allowed_user,
+    )
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.datamodel.User.get',
+        lambda *args, **kwargs: allowed_user,
+    )
+
+    dep = create_user_dependency(
+        required=True,
+        basic_auth_allowed=False,
+        bearer_token_auth_allowed=False,
+        upload_token_auth_allowed=False,
+        signature_token_auth_allowed=True,
+    )
+
+    # Success case
+    request = Request(
+        {
+            'type': 'http',
+            'headers': [],
+            'path': '/',
+            'query_string': b'',
+        }
+    )
+    request._cookies = {'Authorization': 'Bearer abc'}
+    assert dep(request=request) == allowed_user
+
+    # Failure case: no token in cookies
+    request._cookies = {}
+    with pytest.raises(HTTPException, match='Authorization required.') as exc:
+        dep(request=request)
+    assert exc.value.status_code == 401
 
 
 @pytest.mark.parametrize('required', [True, False])

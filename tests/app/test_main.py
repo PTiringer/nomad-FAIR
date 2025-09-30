@@ -17,6 +17,7 @@
 #
 
 import re
+import urllib
 from unittest.mock import MagicMock
 
 import pytest
@@ -168,8 +169,9 @@ def test_oasis_auth_middleware_user_not_allowed(
     assert response.text == 'You are not authorized to access this Oasis'
 
 
+@pytest.mark.parametrize('auth_method', ['header', 'cookie'])
 def test_oasis_auth_middleware_valid_user(
-    app_middleware_client, monkeypatch, mock_user
+    app_middleware_client, monkeypatch, mock_user, auth_method
 ):
     monkeypatch.setattr('nomad.config.oasis.require_authentication', True)
     monkeypatch.setattr(
@@ -180,9 +182,15 @@ def test_oasis_auth_middleware_valid_user(
         'nomad.app.v1.routers.auth.datamodel.User.get',
         lambda *args, **kwargs: mock_user,
     )
-    response = app_middleware_client.get(
-        '/protected', headers={'Authorization': 'Bearer valid'}
-    )
+    if auth_method == 'header':
+        response = app_middleware_client.get(
+            '/protected', headers={'Authorization': 'Bearer valid'}
+        )
+    else:  # cookie
+        cookie_val = urllib.parse.quote('Bearer valid')
+        response = app_middleware_client.get(
+            '/protected', cookies={'Authorization': cookie_val}
+        )
     assert response.status_code == 200
     assert response.text == 'protected endpoint'
 
