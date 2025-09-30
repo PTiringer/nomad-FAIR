@@ -236,6 +236,7 @@ class UploadProcDataPagination(Pagination):
                 'publish_time',
                 'upload_name',
                 'last_status_message',
+                'process_status',
             ):
                 raise PydanticCustomError(
                     'invalid_order_by', 'order_by must be a valid attribute'
