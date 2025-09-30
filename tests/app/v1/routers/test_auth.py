@@ -38,14 +38,12 @@ def perform_get_token_test(client, http_method, status_code, username, password)
     assert response.status_code == status_code
 
 
-@pytest.mark.parametrize('http_method', ['post', 'get'])
-def test_get_token(client, user1, http_method):
-    perform_get_token_test(client, http_method, 200, user1.username, 'password')
+def test_post_token_success(client, user1):
+    perform_get_token_test(client, 'post', 200, user1.username, 'password')
 
 
-@pytest.mark.parametrize('http_method', ['post', 'get'])
-def test_get_token_bad_credentials(client, http_method):
-    perform_get_token_test(client, http_method, 401, 'bad', 'credentials')
+def test_post_token_bad_credentials(client):
+    perform_get_token_test(client, 'post', 401, 'bad', 'credentials')
 
 
 def test_get_signature_token(auth_headers, client):

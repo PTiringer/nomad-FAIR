@@ -415,37 +415,6 @@ async def get_token(form_data: OAuth2PasswordRequestForm = Depends()) -> Token:
 
 
 @router.get(
-    '/token',
-    tags=[APITag.DEFAULT],
-    summary='Get an access token',
-    responses=create_responses(_bad_credentials_response),
-    response_model=Token,
-    deprecated=True,
-)
-async def get_token_via_query(username: str, password: str) -> Token:
-    """
-    **[DEPRECATED]** This endpoint is **no longer recommended**.
-    Please use the **POST** endpoint instead.
-
-    This was a convenience alternative to the **POST** version, allowing retrieval of
-    an *access token* by providing a username and password via query parameters.
-
-    **Why is this deprecated?**
-        Query parameters expose credentials in URLs, which can be logged or cached.
-    """
-    try:
-        access_token = infrastructure.keycloak.basicauth(username, password)
-    except infrastructure.KeycloakError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='Incorrect username or password',
-            headers={'WWW-Authenticate': 'Bearer'},
-        )
-
-    return Token(access_token=access_token, token_type='bearer')
-
-
-@router.get(
     '/signature_token',
     tags=[APITag.DEFAULT],
     summary='Get a signature token',
