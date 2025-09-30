@@ -69,6 +69,12 @@ from .cli import cli
     default=None,
     help='Directory to save the plot',
 )
+@click.option(
+    '--theme',
+    type=click.Choice(['light', 'dark'], case_sensitive=False),
+    default='light',
+    help='Color theme to use (light, dark). only applies when previewing or saving plots.',
+)
 def _parse(
     mainfile,
     show_archive,
@@ -82,6 +88,7 @@ def _parse(
     username,
     password,
     save_plot_dir,
+    theme,
 ):
     import json
     import os
@@ -90,6 +97,7 @@ def _parse(
     from nomad import utils
     from nomad.client import normalize_all, parse
     from nomad.datamodel.metainfo.plot import resolve_plot_references
+    from nomad.plots.template import get_plotly_template, update_plotly_layout
 
     kwargs = dict(
         strict=not not_strict,
@@ -131,8 +139,14 @@ def _parse(
 
             for i, fig in enumerate(entry_archive.data['figures']):
                 logger = utils.get_logger(__name__)
-                config = fig.figure.get('config', {})
-                fig_kwargs = {}
+                config = {
+                    'scrollZoom': True,
+                    'displayModeBar': False,
+                    'showTips': False,
+                    'responsive': True,
+                }
+                if 'config' in fig.figure:
+                    config.update(fig.figure['config'])
 
                 file_path = (
                     os.path.join(
@@ -143,9 +157,14 @@ def _parse(
                     else None
                 )
 
+                selected_theme = theme or 'light'
+                template = get_plotly_template(selected_theme)
+                fig.figure['layout']['template'] = template
+                fig.figure['layout'] = update_plotly_layout(fig.figure, selected_theme)
+
                 try:
                     if preview_plots:
-                        pio.show(fig.figure, **config)
+                        pio.show(fig.figure, config=config)
                     if file_path:
                         pio.write_image(fig.figure, file_path)
                 except ValueError:
@@ -159,7 +178,7 @@ def _parse(
                             or v
                         )
                     if preview_plots:
-                        pio.show(fig_kwargs, **config)
+                        pio.show(fig_kwargs, config=config)
                     if file_path:
                         pio.write_image(
                             fig_kwargs,
