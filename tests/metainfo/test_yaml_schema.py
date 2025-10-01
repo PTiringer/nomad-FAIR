@@ -20,8 +20,8 @@ import numpy as np
 import pytest
 import yaml
 
+from nomad.datamodel import Context
 from nomad.metainfo import (
-    Context,
     MetainfoError,
     MProxy,
     MSection,
@@ -310,7 +310,7 @@ def test_sub_section_tree():
             'nomad.datamodel.data.ArchiveSection',
             id='python',
         ),
-        pytest.param('MySection', '/section_definitions/0', id='yaml'),
+        pytest.param('MySection', '#/section_definitions/0', id='yaml'),
     ],
 )
 def test_references(source_type, target_type):

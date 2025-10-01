@@ -20,9 +20,9 @@ import numpy as np
 import pytest
 import yaml
 
-from nomad.app.v1.routers.metainfo import PackageDefinition
 from nomad.metainfo import MCategory, MSection, Quantity, SubSection
 from nomad.metainfo.metainfo import Definition, MEnum, Package, Reference
+from nomad.mongo.package import PackageDefinition
 
 # resolve_references are tested in .test_references
 # type specific serialization is tested in .test_quantities

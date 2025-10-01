@@ -22,10 +22,10 @@ from zipfile import ZipFile
 
 import pytest
 
-from nomad.app.v1.routers.metainfo import PackageDefinition
 from nomad.config import config
 from nomad.datamodel import ClientContext, EntryArchive
 from nomad.metainfo import MSection
+from nomad.mongo.package import PackageDefinition
 from nomad.utils import create_uuid, generate_entry_id
 from tests.processing.test_data import run_processing
 
