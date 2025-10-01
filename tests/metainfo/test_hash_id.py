@@ -95,7 +95,9 @@ def test_section():
         q1 = simple_quantity()
 
     # assert equality
-    assert ref_hash == Sample.m_def.definition_id
+    assert ref_hash != Sample.m_def.definition_id
+
+    ref_hash = Sample.m_def.definition_id
 
     # if the containing definition changes the parent section shall have a different ID
     Sample.q1.type = int

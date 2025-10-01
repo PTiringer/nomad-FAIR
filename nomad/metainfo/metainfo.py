@@ -2249,34 +2249,29 @@ class MSection(metaclass=MObjectMeta):
         self, *, quantity_def: Quantity | None = None, package_path: bool = False
     ) -> str:
         """
-        Returns the path of this section or the given quantity within the section hierarchy.
+        Generate the path of this section or the specified quantity within the section hierarchy.
 
         Parameters:
             quantity_def: The quantity definition for which to return the path.
                 If None, the path of the section itself is returned.
-            package_path: If True, the path starts from the package instead of the environment.
+            package_path: If True, the path starts from the package instead of other roots.
         """
+        if quantity_def is not None:
+            assert quantity_def in self.m_def.all_quantities.values()
+            return f'{self.m_path(package_path=package_path).rstrip("/")}/{quantity_def.name}'
+
+        if package_path and isinstance(self, Package):
+            return self.name if self.entry_id is None else f'entry_id:{self.entry_id}'
+
         if self.m_parent is None:
             return '/'
 
         segment = self.m_parent_sub_section.name
         if self.m_parent_index != -1:
             segment += f'/{self.m_parent_index:d}'
-        if quantity_def is not None:
-            assert quantity_def in self.m_def.all_quantities.values()
-            segment += f'/{quantity_def.name}'
 
-        if not (package_path and isinstance(self.m_parent, Package)):
-            return f'{self.m_parent.m_path(package_path=package_path).rstrip("/")}/{segment}'
-
-        # for packages provide path starting from package instead of environment
-        # two cases:
-        # 1. build-in packages that does not contain a valid `entry_id`
-        if self.m_parent.entry_id is None:
-            return f'{self.m_parent.name}/{segment}'
-
-        # 2. custom packages that need valid `upload_id` and `entry_id` (for generating correct references)
-        return f'entry_id:{self.m_parent.entry_id}/{segment}'
+        parent_path = self.m_parent.m_path(package_path=package_path).rstrip('/')
+        return f'{parent_path}/{segment}'
 
     def m_root(self, cls: type[MSectionBound] | None = None) -> MSectionBound:
         """Returns the first parent of the parent section that has no parent; the root."""
@@ -3911,6 +3906,7 @@ class Section(Definition):
             return self._cached_hash
 
         self._cached_hash = super().hash()
+        self._cached_hash.update(self.m_path(package_path=True).encode('utf-8'))
         self._cached_hash.update(
             ('T' if self.extends_base_section else 'F').encode('utf-8')
         )
