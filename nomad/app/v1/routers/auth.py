@@ -23,7 +23,7 @@ import uuid
 from collections.abc import Callable
 from enum import Enum
 from inspect import Parameter, Signature
-from typing import cast
+from typing import Literal, cast
 
 import jwt
 import requests
@@ -51,7 +51,7 @@ class APITag(str, Enum):
 
 class Token(BaseModel):
     access_token: str
-    token_type: str
+    token_type: Literal['bearer']
 
 
 class SignatureToken(BaseModel):
@@ -94,10 +94,19 @@ def resolve_user(
     if user is None and config.tests.assume_auth_for_username:
         user = datamodel.User.get(username=config.tests.assume_auth_for_username)
 
-    # Check if token is provided
+    # Check if token is available
+    schemes: list[str] = []
+    if bearer_token or upload_token or signature_token:
+        schemes.append('Bearer')
+    if form_data:
+        schemes.append('Basic')
+    unauthorized_www_auth_header = ', '.join(schemes)
+
     if required and user is None:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail='Authorization required.'
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='Authorization required.',
+            headers={'WWW-Authenticate': unauthorized_www_auth_header},
         )
 
     # `allowed_users` would enforce an explicit whitelist of users
@@ -106,7 +115,7 @@ def resolve_user(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail='Authentication is required for this Oasis',
-                headers={'WWW-Authenticate': 'Bearer'},
+                headers={'WWW-Authenticate': unauthorized_www_auth_header},
             )
         if (
             user.email not in config.oasis.allowed_users
@@ -212,14 +221,20 @@ def create_user_dependency(
 def _get_user_basic_auth(form_data: OAuth2PasswordRequestForm | None) -> User | None:
     """
     Verifies basic auth (username and password), throwing HTTPException
-    if illegal credentials are provided.
+    if invalid or incomplete credentials are provided.
 
     Returns:
         The corresponding User object if successful,
         None if no credentials provided.
     """
-    if form_data is None or not form_data.username or not form_data.password:
+    if form_data is None:
         return None
+
+    if not form_data.username or not form_data.password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Both username and password are required',
+        )
 
     try:
         infrastructure.keycloak.basicauth(form_data.username, form_data.password)
@@ -231,7 +246,7 @@ def _get_user_basic_auth(form_data: OAuth2PasswordRequestForm | None) -> User | 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail='Incorrect username or password',
-            headers={'WWW-Authenticate': 'Bearer'},
+            headers={'WWW-Authenticate': 'Basic'},
         )
 
 
@@ -241,9 +256,9 @@ def _get_user_bearer_token_auth(bearer_token: str | None) -> User | None:
 
     Returns:
         The corresponding User object,
-        or None if no bearer_token provided.
+        or None if no token provided.
     """
-    if not bearer_token or bearer_token == 'undefined':
+    if bearer_token in {None, 'undefined'}:
         return None
 
     try:
@@ -252,8 +267,8 @@ def _get_user_bearer_token_auth(bearer_token: str | None) -> User | None:
         )
         if unverified_payload.keys() == {'user', 'exp'}:
             return _get_user_from_simple_token(bearer_token)
-    except jwt.DecodeError:
-        pass  # token could be non-JWT, e.g. for testing
+    except jwt.DecodeError as e:  # token could be non-JWT, e.g. for testing
+        logger.debug('Failed to decode JWT', exc_info=e)
 
     try:
         return cast(datamodel.User, infrastructure.keycloak.tokenauth(bearer_token))
@@ -298,6 +313,7 @@ def _get_user_upload_token_auth(upload_token: str | None) -> User | None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail='An invalid upload token was supplied.',
+            headers={'WWW-Authenticate': 'Bearer'},
         )
 
 
@@ -321,12 +337,11 @@ def _get_user_signature_token_auth(
         if auth_cookie is not None:
             try:
                 auth_cookie = requests.utils.unquote(auth_cookie)
-                if auth_cookie.startswith('Bearer '):
-                    cookie_bearer_token = auth_cookie[7:]
-                    return cast(
-                        datamodel.User,
-                        infrastructure.keycloak.tokenauth(cookie_bearer_token),
-                    )
+                cookie_bearer_token = auth_cookie.removeprefix('Bearer ')
+                return cast(
+                    datamodel.User,
+                    infrastructure.keycloak.tokenauth(cookie_bearer_token),
+                )
 
             except infrastructure.KeycloakError as e:
                 raise HTTPException(
@@ -334,8 +349,8 @@ def _get_user_signature_token_auth(
                     detail=str(e),
                     headers={'WWW-Authenticate': 'Bearer'},
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug('Failed to process token from cookie', exc_info=e)
 
     return None
 
@@ -359,14 +374,19 @@ def _get_user_from_simple_token(token: str | None) -> User | None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail='Token with invalid/unexpected payload.',
+            headers={'WWW-Authenticate': 'Bearer'},
         )
     except jwt.ExpiredSignatureError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail='Expired token.'
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='Expired token.',
+            headers={'WWW-Authenticate': 'Bearer'},
         )
     except jwt.InvalidTokenError:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid token.'
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='Invalid token.',
+            headers={'WWW-Authenticate': 'Bearer'},
         )
 
 
@@ -411,7 +431,7 @@ async def get_token(form_data: OAuth2PasswordRequestForm = Depends()) -> Token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail='Incorrect username or password',
-            headers={'WWW-Authenticate': 'Bearer'},
+            headers={'WWW-Authenticate': 'Basic'},
         )
 
     return Token(access_token=access_token, token_type='bearer')
