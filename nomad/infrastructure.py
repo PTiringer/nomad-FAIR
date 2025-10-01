@@ -34,7 +34,7 @@ import smtplib
 import warnings
 from datetime import datetime
 from email.mime.text import MIMEText
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import jwt
 import unidecode
@@ -172,12 +172,12 @@ class Keycloak:
     configuration
     """
 
-    def __init__(self):
-        self.__oidc_client = None
-        self.__public_keys = None
+    def __init__(self) -> None:
+        self.__oidc_client: KeycloakOpenID | None = None
+        self.__public_keys: dict | None = None
 
     @property
-    def _oidc_client(self):
+    def _oidc_client(self) -> KeycloakOpenID:
         if self.__oidc_client is None:
             self.__oidc_client = KeycloakOpenID(
                 server_url=config.keycloak.server_url,
@@ -189,14 +189,14 @@ class Keycloak:
         return self.__oidc_client
 
     @property
-    def _public_keys(self):
+    def _public_keys(self) -> dict:
         if self.__public_keys is None:
             try:
                 jwks = self._oidc_client.certs()
                 self.__public_keys = {}
                 for jwk in jwks['keys']:
                     kid = jwk['kid']
-                    self.__public_keys[kid] = jwt.algorithms.RSAAlgorithm.from_jwk(  # type: ignore
+                    self.__public_keys[kid] = jwt.algorithms.RSAAlgorithm.from_jwk(  # type: ignore[index]
                         json.dumps(jwk)
                     )
             except Exception as e:
@@ -205,7 +205,7 @@ class Keycloak:
 
         return self.__public_keys
 
-    def refresh_token(self, access_token: str, refresh_token: str, **kwargs) -> str:
+    def refresh_token(self, access_token: str, refresh_token: str, **kwargs) -> dict:
         return self._oidc_client.refresh_token(refresh_token)
 
     def basicauth(self, username: str, password: str) -> str:
@@ -298,7 +298,7 @@ keycloak = Keycloak()
 
 
 class UserManagement:
-    def add_user(self, user, bcrypt_password=None, invite=False):
+    def add_user(self, user, bcrypt_password=None, invite: bool = False):
         """
         Adds the given :class:`nomad.datamodel.User` instance to the configured keycloak
         realm using the keycloak admin API.
@@ -358,7 +358,7 @@ class OasisUserManagement(UserManagement):
         user_id: str | None = None,
         username: str | None = None,
         email: str | None = None,
-    ):
+    ) -> 'User | None':
         import requests
 
         kwargs = {}
@@ -383,10 +383,10 @@ class OasisUserManagement(UserManagement):
 
 
 class KeycloakUserManagement(UserManagement):
-    def __init__(self):
-        self.__admin_client = None
+    def __init__(self) -> None:
+        self.__admin_client: KeycloakAdmin | None = None
 
-    def __create_username(self, user):
+    def __create_username(self, user: 'User') -> None:
         if user.first_name is not None and user.last_name is not None:
             user.username = f'{user.first_name[:1]}{user.last_name}'
         elif user.last_name is not None:
@@ -405,7 +405,20 @@ class KeycloakUserManagement(UserManagement):
         except KeyError:
             pass
 
-    def add_user(self, user, bcrypt_password=None, invite=False):
+    def add_user(
+        self,
+        user: 'User | dict[str, Any]',
+        bcrypt_password: str | None = None,
+        invite: bool = False,
+    ) -> str | None:
+        """
+        Add a user to Keycloak and NOMAD's internal database.
+
+        Returns:
+            str | None:
+                - A string with an error message if user creation fails
+                - None if the user was created successfully.
+        """
         from nomad import datamodel
 
         if not isinstance(user, datamodel.User):
@@ -493,7 +506,7 @@ class KeycloakUserManagement(UserManagement):
 
         return None
 
-    def __user_from_keycloak_user(self, keycloak_user):
+    def __user_from_keycloak_user(self, keycloak_user: dict[str, Any]) -> 'User':
         from nomad import datamodel
 
         kwargs = {
@@ -512,12 +525,13 @@ class KeycloakUserManagement(UserManagement):
             **kwargs,
         )
 
-    def search_user(self, query: str):
-        kwargs = {}
+    def search_user(self, query: str) -> list['User']:
+        kwargs: dict[str, Any] = {}
         if query is not None:
             kwargs['query'] = dict(search=query, max=1000)
         else:
             kwargs['query'] = dict(max=1000)
+
         try:
             keycloak_results = self._admin_client.get_users(**kwargs)
         except Exception as e:
@@ -534,7 +548,7 @@ class KeycloakUserManagement(UserManagement):
         user_id: str | None = None,
         username: str | None = None,
         email: str | None = None,
-    ):
+    ) -> 'User':
         if username is not None and user_id is None:
             with utils.lnr(logger, 'Could not use keycloak admin client'):
                 user_id = self._admin_client.get_user_id(username)
@@ -552,7 +566,8 @@ class KeycloakUserManagement(UserManagement):
             if user_id is None:
                 raise KeyError(f'User with email {email} does not exist')
 
-        assert user_id is not None, 'Could not determine user from given kwargs'
+        if user_id is None:
+            raise KeycloakError('Could not determine user from given kwargs')
 
         try:
             keycloak_user = self._admin_client.get_user(user_id)
@@ -567,7 +582,7 @@ class KeycloakUserManagement(UserManagement):
         return self.__user_from_keycloak_user(keycloak_user)
 
     @property
-    def _admin_client(self):
+    def _admin_client(self) -> KeycloakAdmin:
         if (
             True
         ):  # TODO (self.__admin_client is None:), client becomes unusable after 60s
@@ -578,19 +593,18 @@ class KeycloakUserManagement(UserManagement):
                 realm_name=config.keycloak.realm_name,
                 verify=True,
             )
-            self.__admin_client.realm_name = config.keycloak.realm_name
+            self.__admin_client.realm_name = config.keycloak.realm_name  # type: ignore[attr-defined]
 
         return self.__admin_client
 
 
-user_management: UserManagement
 if config.oasis.uses_central_user_management:
-    user_management = OasisUserManagement()
+    user_management: UserManagement = OasisUserManagement()
 else:
     user_management = KeycloakUserManagement()
 
 
-def reset(remove: bool):
+def reset(remove: bool) -> None:
     """
     Resets the databases mongo, elastic/entries, and all files. Be careful.
     In contrast to :func:`remove`, it will only remove the contents of dbs and indices.
@@ -647,7 +661,7 @@ def reset(remove: bool):
         logger.error('exception deleting files', exc_info=e)
 
 
-def send_mail(name: str, email: str, message: str, subject: str):
+def send_mail(name: str, email: str, message: str, subject: str) -> None:
     """Used to programmatically send mails.
 
     Args:
