@@ -1000,7 +1000,7 @@ class Formula:
         atomic_fractions = {key: value / total_count for key, value in count.items()}
         return atomic_fractions
 
-    def mass_fractions(self) -> dict[str, float]:
+    def mass_fractions(self) -> dict[str, float | None]:
         """
         Returns a dictionary that maps chemical symbol to mass fraction.
 
@@ -1009,6 +1009,8 @@ class Formula:
             fraction as value.
         """
         count = self.count()
+        if 'X' in count:  # Cannot determine mass fractions with unknown elements
+            return {element: None for element in count}
         masses = {
             element: atomic_masses[ase.data.atomic_numbers[element]] * count
             for element, count in count.items()
