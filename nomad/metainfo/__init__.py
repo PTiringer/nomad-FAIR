@@ -59,7 +59,6 @@ from .metainfo import (
     JSON,
     Dimension,
     Bytes,
-    Context,
     m_package,
     SectionProxy,
     derived,

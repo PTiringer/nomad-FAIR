@@ -28,13 +28,12 @@ from collections.abc import Callable as TypingCallable
 from collections.abc import Iterable
 from copy import copy, deepcopy
 from functools import wraps
-from typing import Any, Literal, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, cast
 from urllib.parse import urlsplit, urlunsplit
 
 import docstring_parser
 import jmespath
 import pint
-from cachetools import LRUCache
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from nomad.metainfo.data_type import JSON as JSONType
@@ -76,6 +75,9 @@ from .annotation import (
     DefinitionAnnotation,
     SectionAnnotation,
 )
+
+if TYPE_CHECKING:
+    from nomad.datamodel.context import Context
 
 m_package: Package | None = None
 
@@ -229,7 +231,7 @@ class MProxy:
             if '@' in fragment:
                 # It's a reference to a section definition
                 definition, definition_id = f'{archive_url}#{fragment}'.split('@')
-                return self._effective_context.resolve_section_definition(
+                return self._effective_context.fetch_section(
                     definition, definition_id
                 ).m_def
 
@@ -704,160 +706,6 @@ def metainfo_setter(method):
         return method(self, obj, value, **kwargs)
 
     return wrapper
-
-
-# use to cache packages that are retrieved from MongoDB
-_mongo_package_cache = LRUCache(1024)
-
-
-class Context:
-    """
-    The root of a metainfo section hierarchy can have a Context. Contexts allow to customize
-    the resolution of references based on how and in what context a metainfo-based
-    archive (or otherwise top-level section is used). This allows to logically combine
-    multiple hierarchies (e.g. archives) with references.
-    """
-
-    @property
-    def child_archives(self):
-        return []
-
-    def warning(self, event, **kwargs):
-        """
-        Used to log (or otherwise handle) warning that are issued, e.g. while serialization,
-        reference resolution, etc.
-        """
-        pass
-
-    def create_reference(
-        self,
-        section: MSection,
-        quantity_def: Quantity,
-        value: MSection,
-        global_reference: bool = False,
-    ) -> str:
-        """
-        Returns a reference for the given target section (value) based on the given context.
-        Allows subclasses to build references across resources, if necessary.
-
-        Arguments:
-            section: The containing section.
-            quantity_def: The definition of the quantity.
-            value: The reference value.
-            global_reference: A boolean flag that forces references with upload_ids.
-                Should be used if the reference needs to be used outside the context
-                of the own upload.
-
-        Raises: MetainfoReferenceError
-        """
-        return value.m_path()
-
-    def normalize_reference(self, source: MSection, url: str) -> str:
-        """
-        Rewrites the url into a normalized form. E.g., it replaces `..` with absolute paths,
-        or replaces mainfiles with ids, etc.
-
-        Arguments:
-            source: The source section or root section of the source of the reference.
-            url: The reference to normalize.
-
-        Raises: MetainfoReferenceError
-        """
-        return url
-
-    def resolve_archive_url(self, url: str) -> MSection:
-        """
-        Resolves the archive part of the given URL and returns the root section of the
-        referenced archive.
-
-        Raises: MetainfoReferenceError
-        """
-        raise NotImplementedError()
-
-    def resolve_archive(self, *args, **kwargs):
-        return self.resolve_archive_url(*args, **kwargs)
-
-    def cache_archive(self, url: str, archive):
-        raise NotImplementedError()
-
-    def retrieve_package_by_section_definition_id(
-        self, definition_reference: str, definition_id: str
-    ) -> dict:
-        raise NotImplementedError()
-
-    def resolve_section_definition(
-        self, definition_reference: str, definition_id: str
-    ) -> type[MSectionBound] | None:
-        try:
-            mongo_package = self.retrieve_package_by_section_definition_id(
-                definition_reference, definition_id
-            )
-        except Exception:  # noqa
-            return None
-
-        snapshot_package_id = mongo_package['snapshot_package_id']
-
-        pkg: Package
-        if snapshot_package_id in _mongo_package_cache:
-            pkg = _mongo_package_cache[snapshot_package_id]
-        else:
-            pkg = Package.m_from_dict(mongo_package['data'], m_context=self)
-            pkg.upload_id = mongo_package.get('upload_id', None)
-            pkg.entry_id = mongo_package.get('entry_id', None)
-
-            pkg.init_metainfo()
-            pkg.snapshot_id = snapshot_package_id
-            for snapshot, section in zip(
-                mongo_package['snapshot_section_ids'], pkg.section_definitions
-            ):
-                section.snapshot_id = snapshot
-
-            _mongo_package_cache[snapshot_package_id] = pkg
-
-        for section in pkg.section_definitions:
-            if section.snapshot_id == definition_id:
-                return section.section_cls
-
-        return None
-
-    def hdf5_path(self, section: MSection):
-        raise NotImplementedError
-
-    def update_entry(
-        self,
-        mainfile: str,
-        *,
-        write: bool = True,
-        process: bool = True,
-        **kwargs,
-    ):
-        """
-        Open the target file and send it to the updater function.
-        The updater function shall return the updated file content.
-        The updated file will be stored and processed if needed.
-
-        WARNING:
-            If `process=True`, the updated file will be processed immediately.
-            Please be aware of the fact that this method may be called during the processing of
-            the parent/main file.
-            This means if there are any data dependencies, there is a risk of infinite loops,
-            racing conditions and/or other unexpected behavior.
-            You must carefully design the logic to mitigate these risks.
-
-        To use this function, you shall use the with-statement as follows:
-
-        ```python
-        with context.update_entry('mainfile.json',**kwargs) as content:
-            # do something with content
-        ```
-
-        Parameters:
-            mainfile: The relative path (from upload root) to the file to update.
-            write: Whether to write the updated file back to the storage.
-                If False, no processing will be triggered whatsoever.
-            process: Whether to trigger processing of the updated file.
-        """
-        raise NotImplementedError
 
 
 # TODO find a way to make this a subclass of collections.abs.Mapping
@@ -2253,7 +2101,7 @@ class MSection(metaclass=MObjectMeta):
 
         treat_none_as_nan: bool = kwargs.pop('treat_none_as_nan', False)
 
-        if isinstance(m_context, Context):
+        if m_context:
             for entry_url, archive_json in dct.pop('m_ref_archives', {}).items():
                 m_context.cache_archive(
                     entry_url, MSection.from_dict(archive_json, m_context=m_context)
@@ -2271,9 +2119,8 @@ class MSection(metaclass=MObjectMeta):
                 if m_def_id == current_id:
                     return cls  # cls is not None
 
-                if isinstance(m_context, Context):  # id mismatch
-                    if new_def := m_context.resolve_section_definition(m_def, m_def_id):  # type: ignore
-                        return new_def
+                if m_context and (new_def := m_context.fetch_section(m_def, m_def_id)):  # type: ignore
+                    return new_def
 
             if m_def is None:
                 return cls
@@ -2300,7 +2147,7 @@ class MSection(metaclass=MObjectMeta):
 
         assert cls is not None, 'Section definition or class needs to be known.'
 
-        if isinstance(m_context, Context):
+        if m_context:
             kwargs['m_context'] = m_context
 
         section = cls(**kwargs)

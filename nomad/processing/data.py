@@ -71,7 +71,6 @@ from nomad.app.v1.models import (
     TermsAggregation,
     restrict_query_to_upload,
 )
-from nomad.app.v1.routers.metainfo import PackageDefinition
 from nomad.archive import to_json
 from nomad.common import is_safe_relative_path
 from nomad.config import config
@@ -98,6 +97,7 @@ from nomad.files import (
 )
 from nomad.metainfo.data_type import Datatype, Datetime
 from nomad.mongo.groups import MongoUserGroup, user_group_exists
+from nomad.mongo.package import PackageDefinition
 from nomad.normalizing import normalizers
 from nomad.parsing import Parser
 from nomad.parsing.parsers import match_parser, parser_dict, parsers

@@ -1274,9 +1274,7 @@ class ArchiveLikeReader(GeneralReader):
             return custom_package.m_resolve_path(_path_stack)
 
         if m_def_id is not None:
-            if new_def := new_context(node.upload_id).resolve_section_definition(
-                m_def, m_def_id
-            ):
+            if new_def := new_context(node.upload_id).fetch_section(m_def, m_def_id):
                 return new_def.m_def
 
         if m_def is not None:

@@ -21,9 +21,8 @@ from typing import cast
 
 import pytest
 
-from nomad.datamodel import AuthorReference, UserReference
+from nomad.datamodel import AuthorReference, Context, UserReference
 from nomad.metainfo import (
-    Context,
     File,
     MetainfoReferenceError,
     MProxy,
@@ -285,6 +284,9 @@ def test_section_reference_deserialize(ref):
 )
 def test_reference_urls(example_data, url, value):
     class MyContext(Context):
+        def normalize_reference(self, source: MSection, url: str) -> str:
+            return url
+
         def resolve_archive_url(self, url):
             if url == '../upload/archive/my_entry_id':
                 return example_data

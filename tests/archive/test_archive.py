@@ -36,9 +36,8 @@ from nomad.archive import (
 from nomad.archive.converter import convert_archive
 from nomad.archive.storage import _decode, _entries_per_block, to_json
 from nomad.config import config
-from nomad.datamodel import ClientContext, EntryArchive
+from nomad.datamodel import ClientContext, Context, EntryArchive
 from nomad.metainfo import (
-    Context,
     MProxy,
     MSection,
     Quantity,
@@ -454,12 +453,10 @@ def test_archive_with_id_in_reference(json_dict, m_def, m_def_id, monkeypatch):
     Patch Context to return proper section definition to test if the archive is correctly created.
     """
 
-    def resolve_section_definition(self, definition: str, definition_id: str):  # pylint: disable=unused-argument
+    def _fetch_section(self, definition: str, definition_id: str):  # pylint: disable=unused-argument
         return EntryArchive
 
-    monkeypatch.setattr(
-        'nomad.metainfo.Context.resolve_section_definition', resolve_section_definition
-    )
+    monkeypatch.setattr('nomad.datamodel.context.Context.fetch_section', _fetch_section)
 
     if m_def is not None:
         json_dict['m_def'] = m_def
