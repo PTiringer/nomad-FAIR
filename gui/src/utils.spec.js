@@ -719,6 +719,17 @@ test.each([
       error: 'Expected Rbracket, got: EOF',
       schema: ''
     }
+  ],
+  [
+    'multiple logical operators in filter expression',
+    'data.jv_curves[?(open_circuit_voltage > `100` && efficiency > `0.4`)].open_circuit_voltage#MySchema',
+    {
+        quantity: 'data.jv_curves.open_circuit_voltage#MySchema',
+        path: 'data.jv_curves[?(open_circuit_voltage > `100` && efficiency > `0.4`)].open_circuit_voltage',
+        extras: ['data.jv_curves.efficiency#MySchema'],
+        error: undefined,
+        schema: '#MySchema'
+    }
   ]
   // Object projection is not supported, as we cannot tell ES which properties
   // to fetch. If the JMESPath query is made by the API, then this might work as

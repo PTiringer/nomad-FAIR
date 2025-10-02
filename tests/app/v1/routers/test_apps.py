@@ -384,6 +384,17 @@ def test_app_search_quantity_validation(
             },
             id='syntax-error',
         ),
+        pytest.param(
+            'data.jv_curves[?(open_circuit_voltage > `100` && efficiency > `0.4`)].open_circuit_voltage#MySchema',
+            {
+                'quantity': 'data.jv_curves.open_circuit_voltage#MySchema',
+                'path': 'data.jv_curves[?(open_circuit_voltage > `100` && efficiency > `0.4`)].open_circuit_voltage',
+                'extras': ['data.jv_curves.efficiency#MySchema'],
+                'error': None,
+                'schema': '#MySchema',
+            },
+            id='multiple-logical-operators',
+        ),
     ],
 )
 def test_parse_jmespath(input_path, expected):
