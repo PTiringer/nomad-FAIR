@@ -116,12 +116,13 @@ def check_mongo():
 
     # 'cache' is also known but should have been removed by setup
     expected_names = {
+        'action_document',
+        'archive',
+        'dataset',
+        'entry',
+        'package_definition',
         'upload',
         'user_group',
-        'entry',
-        'dataset',
-        'archive',
-        'action_document',
     }
     if not expected_names.issuperset(names):
         logger.warning(
