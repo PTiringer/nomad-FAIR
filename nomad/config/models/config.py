@@ -695,7 +695,7 @@ class Client(ConfigBaseModel):
     user: str | None = None
     password: str | None = None
     access_token: str = None
-    url: str = 'http://nomad-lab.eu/prod/v1/api'
+    url: str = 'https://nomad-lab.eu/prod/v1/api'
 
 
 class DataCite(ConfigBaseModel):
