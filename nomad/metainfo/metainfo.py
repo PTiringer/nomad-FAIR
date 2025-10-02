@@ -2261,7 +2261,7 @@ class MSection(metaclass=MObjectMeta):
             return f'{self.m_path(package_path=package_path).rstrip("/")}/{quantity_def.name}'
 
         if package_path and isinstance(self, Package):
-            return self.name if self.entry_id is None else f'entry_id:{self.entry_id}'
+            return f'entry_id:{self.entry_id}' if self.entry_id else (self.name or '*')
 
         if self.m_parent is None:
             return '/'
@@ -2422,35 +2422,16 @@ class MSection(metaclass=MObjectMeta):
         all_errors: list[str] = []
         all_warnings: list[str] = []
 
-        def _execute(
-            _name: str, _constraint: TypingCallable, include_self: bool = False
-        ):
-            if _constraint is None:
-                raise MetainfoError(
-                    f'Could not find implementation for constraint {_name} of section {self.m_def}.'
-                )
+        for constraint_name in self.m_def.constraints:
+            constraint_func = getattr(self, constraint_name)
             try:
-                _constraint(self) if include_self else _constraint()
+                constraint_func()
             except AssertionError as _e:
-                message = str(_e).strip()
-                if message == '':
-                    message = f'Constraint {_name} violated.'
-                if getattr(_constraint, 'm_warning', False):
+                message = str(_e).strip() or f'Constraint {constraint_name} violated.'
+                if getattr(constraint_func, 'm_warning', False):
                     all_warnings.append(message)
                 else:
                     all_errors.append(message)
-
-        if base_sections := getattr(self.m_parent, 'all_base_sections', None):
-            for base_section in base_sections:
-                for constraint_name in base_section.constraints:
-                    _execute(
-                        constraint_name,
-                        getattr(base_section.section_cls, constraint_name, None),
-                        include_self=True,
-                    )
-
-        for constraint_name in self.m_def.constraints:
-            _execute(constraint_name, getattr(self, constraint_name, None))
 
         def _validate(_annotation):
             if isinstance(_annotation, list):

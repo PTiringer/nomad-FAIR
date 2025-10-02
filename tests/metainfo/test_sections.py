@@ -254,4 +254,4 @@ def test_path():
     from nomad.datamodel.metainfo.workflow import Task, Workflow
 
     assert Workflow.m_def.path == 'workflow2'
-    assert Task.m_def.path == '__no_archive_path__'
+    assert Task.m_def.path == 'workflow2.tasks'
