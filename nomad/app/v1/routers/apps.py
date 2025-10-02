@@ -252,14 +252,16 @@ def parse_jmespath(input: str) -> dict[str, Any]:
             child_path_lists.reverse()
             for child_path in child_path_lists:
                 main_path_list.extend(child_path)
-        # In filter projections we save the filter field in extras
+        # In filter projections we save each filter field in extras. Note that there can
+        # be multiple conditions
         elif node_type == 'filter_projection':
             for child_path in child_path_lists[0:2]:
                 main_path_list.extend(child_path)
-            aux_path = []
-            aux_path.extend(child_path_lists[0])
-            aux_path.extend(child_path_lists[2])
-            aux_paths.append(aux_path)
+            for path in child_path_lists[2]:
+                aux_path = []
+                aux_path.extend(child_path_lists[0])
+                aux_path.append(path)
+                aux_paths.append(aux_path)
         # In *_by we save the referenced variable as an auxiliary path
         elif node_type == 'function_expression' and node_value in {'min_by', 'max_by'}:
             main_path_list.extend(child_path_lists[0])
@@ -279,11 +281,14 @@ def parse_jmespath(input: str) -> dict[str, Any]:
 
     main_path_list, aux_path_list = traverse(ast)
     quantity = '.'.join(main_path_list) + schema
-    extras = ['.'.join(x) + schema for x in aux_path_list]
+    extras = set(['.'.join(x) + schema for x in aux_path_list])
+    if quantity in extras:
+        extras.remove(quantity)
+    extras_list = list(extras)
 
     return {
         'quantity': quantity,
-        'extras': extras,
+        'extras': extras_list,
         'path': path,
         'schema': schema,
         'error': None,

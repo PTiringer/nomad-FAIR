@@ -1692,12 +1692,15 @@ export function parseJMESPath(input) {
         for (const childExtra of childExtras) {
           extras = [...extras, ...childExtra]
         }
-      // In filter projections we save the filter field in extras
+      // In filter projections we save each filter field in extras. Note that there can be
+      // multiple conditions
       } else if (type === 'FilterProjection') {
         for (const childField of childFields.slice(0, 2)) {
           field = [...field, ...childField]
         }
-        extras = [...extras, [...childFields[0], ...childFields[2]]]
+        for (const childExtra of childFields[2]) {
+          extras = [...extras, [...childFields[0], childExtra]]
+        }
       // In *_by we save the referenced variable in extras
       } else if (type === 'Function' && name === 'min_by') {
         field = [...field, ...childFields[0]]
@@ -1722,7 +1725,9 @@ export function parseJMESPath(input) {
 
   const [field, extrasList] = recurseAST(ast)
   const quantity = field.join('.') + schema
-  const extras = extrasList.map(x => x.join('.') + schema)
+  const extrasSet = new Set(extrasList.map(x => x.join('.') + schema))
+  extrasSet.delete(quantity) // Remove quantity if present
+  const extras = [...extrasSet] // Convert back to array
 
   return {quantity, extras, path, schema, error}
 }
