@@ -143,6 +143,8 @@ class VaspRun(Run):
     )
 
 
+m_package.__init_metainfo__()
+
 if __name__ == '__main__':
     # Demonstration of how to reflect on the definitions
 

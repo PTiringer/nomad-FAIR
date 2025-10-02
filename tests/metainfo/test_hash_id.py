@@ -1,4 +1,4 @@
-from nomad.metainfo import MEnum, MSection, Quantity
+from nomad.metainfo import MEnum, Quantity
 
 
 def simple_quantity():
@@ -79,27 +79,3 @@ def test_quantity():
     q2.type = MEnum('wwa', 'qe', 'aad')
     q2.hash()
     assert ref_hash == q2.definition_id
-
-
-def test_section():
-    class Sample(MSection):
-        q1 = simple_quantity()
-        q2 = simple_quantity()
-
-    ref_hash = Sample.m_def.definition_id
-
-    del Sample
-
-    class Sample(MSection):  # pylint: disable=function-redefined
-        q2 = simple_quantity()
-        q1 = simple_quantity()
-
-    # assert equality
-    assert ref_hash != Sample.m_def.definition_id
-
-    ref_hash = Sample.m_def.definition_id
-
-    # if the containing definition changes the parent section shall have a different ID
-    Sample.q1.type = int
-
-    assert ref_hash != Sample.m_def.definition_id

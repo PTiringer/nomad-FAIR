@@ -17,7 +17,9 @@
 #
 
 from nomad.datamodel.data import ArchiveSection, EntryData, WorkflowsElnCategory
-from nomad.metainfo import Quantity, Section, SubSection
+from nomad.metainfo import Package, Quantity, Section, SubSection
+
+m_package = Package(name='workflow')
 
 
 class Link(ArchiveSection):
@@ -137,3 +139,6 @@ class Workflow(Task, EntryData):
 
         if isinstance(self.m_parent, EntryArchive):
             archive.workflow2 = self
+
+
+m_package.__init_metainfo__()
