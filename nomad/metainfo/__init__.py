@@ -90,3 +90,21 @@ from .data_type import (
     Datetime,
     Enum,
 )
+
+
+def __getattr__(name):
+    if name == 'Context':
+        from nomad.utils.structlogging import get_logger
+
+        logger = get_logger(__name__)
+        logger.warn(
+            'Context import from nomad.metainfo is deprecated. Please import from nomad.datamodel instead.',
+        )
+
+        from nomad.datamodel import Context
+
+        # Cache the context in globals to avoid running this again.
+        globals()['Context'] = Context
+        return Context
+
+    raise ImportError(f"cannot import name '{name}' from 'nomad.metainfo'")
