@@ -94,7 +94,7 @@ def test_action_input_schemas(
 def test_actions_list(
     client: TestClient, auth_headers, saved_action_document, monkeypatch
 ):
-    monkeypatch.setattr('nomad.actions.utils._update_status', lambda action: None)
+    monkeypatch.setattr('nomad.actions.manager._update_status', lambda action: None)
     response = client.get('/actions/', headers=auth_headers['user1'])
     assert response.status_code == 200
     response_json = response.json()
@@ -106,7 +106,7 @@ def test_actions_list(
 def test_get_action(
     client: TestClient, auth_headers, saved_action_document, monkeypatch
 ):
-    monkeypatch.setattr('nomad.actions.utils._update_status', lambda action: None)
+    monkeypatch.setattr('nomad.actions.manager._update_status', lambda action: None)
     response = client.get(
         f'/actions/{saved_action_document.action_instance_id}',
         headers=auth_headers['user1'],
@@ -216,7 +216,7 @@ def test_action_endpoints_wrong_user(
 def test_actions_list_does_not_contain_other_users_actions(
     client: TestClient, auth_headers, mongo_function, user1, user2, monkeypatch
 ):
-    monkeypatch.setattr('nomad.actions.utils._update_status', lambda action: None)
+    monkeypatch.setattr('nomad.actions.manager._update_status', lambda action: None)
     # user1 has one action, user2 has another
     ActionDocument(
         action_id='action1',

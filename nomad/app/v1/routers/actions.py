@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi_cache.decorator import cache
 from pydantic import BaseModel
 
-from nomad.actions.utils import (
+from nomad.actions.manager import (
     ActionModel,
     ActionModelSummary,
     ActionSchemaInfo,
