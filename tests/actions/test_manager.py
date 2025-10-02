@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from temporalio.client import WorkflowExecutionStatus
 
 from nomad.actions.action import Action
-from nomad.actions.utils import (
+from nomad.actions.manager import (
     _get_param_schema,
     _validate_with_pydantic,
     get_action_result,
@@ -74,7 +74,7 @@ def test_get_param_schema():
 
 def test_validate_action_arg(monkeypatch, mock_action_entry_point):
     monkeypatch.setattr(
-        'nomad.actions.utils.get_actions',
+        'nomad.actions.manager.get_actions',
         lambda: {'my-action': mock_action_entry_point},
     )
 
@@ -87,7 +87,7 @@ def test_validate_action_arg(monkeypatch, mock_action_entry_point):
 
 def test_get_all_action_schemas(monkeypatch, mock_action_entry_point):
     monkeypatch.setattr(
-        'nomad.actions.utils.get_actions',
+        'nomad.actions.manager.get_actions',
         lambda: {'my-action': mock_action_entry_point},
     )
     schemas = get_all_action_schemas()
@@ -98,7 +98,7 @@ def test_get_all_action_schemas(monkeypatch, mock_action_entry_point):
 
 def test_start_action(monkeypatch, mongo_function, user1, mock_action_entry_point):
     monkeypatch.setattr(
-        'nomad.actions.utils.get_actions',
+        'nomad.actions.manager.get_actions',
         lambda: {'my-action': mock_action_entry_point},
     )
 
@@ -106,7 +106,7 @@ def test_start_action(monkeypatch, mongo_function, user1, mock_action_entry_poin
         return 'workflow-id-start-test'
 
     monkeypatch.setattr(
-        'nomad.actions.utils._async_start_workflow', mock_async_start_workflow
+        'nomad.actions.manager._async_start_workflow', mock_async_start_workflow
     )
 
     args = MyActionArgs(arg1='test', arg2=123, user_id=user1.user_id)
@@ -136,7 +136,7 @@ def mock_temporal_client(monkeypatch):
     async def get_client():
         return mock_client
 
-    monkeypatch.setattr('nomad.actions.utils.get_client', get_client)
+    monkeypatch.setattr('nomad.actions.manager.get_client', get_client)
     return mock_client
 
 
@@ -200,7 +200,7 @@ def test_get_all_user_actions(monkeypatch, mongo_function, user1):
     def mock_update_status(action):
         pass
 
-    monkeypatch.setattr('nomad.actions.utils._update_status', mock_update_status)
+    monkeypatch.setattr('nomad.actions.manager._update_status', mock_update_status)
 
     actions = get_all_user_actions(user1.user_id)
     assert len(actions) == 2
