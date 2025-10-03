@@ -209,13 +209,16 @@ NumberField.propTypes = {
 
 export const NumberEditQuantity = React.memo((props) => {
   const {quantityDef, value, onChange, ...otherProps} = props
-  const defaultUnit = useMemo(() => quantityDef.unit && new Unit(quantityDef.unit), [quantityDef])
-  const dimension = defaultUnit && defaultUnit.dimension(false)
-  const dimensionBase = defaultUnit && defaultUnit.dimension(true)
+  const [defaultUnit, defaultUnitLabel] = useMemo(() => {
+    const defaultUnit = new Unit(quantityDef.unit || 'dimensionless')
+    return [defaultUnit, defaultUnit.label(true, false, true)]
+  }, [quantityDef])
+  const dimension = defaultUnit.dimension(false)
+  const dimensionBase = defaultUnit.dimension(true)
   const [checked, setChecked] = useState(true)
   const [displayedValue, setDisplayedValue] = useState(true)
   const {defaultDisplayUnit: deprecatedDefaultDisplayUnit, ...fieldProps} = getFieldProps(quantityDef)
-  const displayUnit = useDisplayUnit(quantityDef)
+  const {displayUnit, explicit} = useDisplayUnit(quantityDef, true)
   const config = useRecoilValue(configState)
   const label = getDisplayLabel(quantityDef, true, config?.showMeta)
   const [unit, setUnit] = useState(displayUnit)
@@ -227,12 +230,12 @@ export const NumberEditQuantity = React.memo((props) => {
 
   // Get a list of unit options for this field
   const options = useMemo(() => {
-    const units = [...getUnits(dimension)].map(x => new Unit(x).label())
-    unit && units.push(unit.label())
-    defaultUnit && units.push(defaultUnit.label())
-    displayUnit && units.push(displayUnit.label())
+    const units = [...getUnits(dimension)].map(x => new Unit(x).label(true, false, true))
+    unit && units.push(unit.label(true, false, true))
+    units.push(defaultUnitLabel)
+    units.push(displayUnit.label(true, false, true))
     return [...new Set(units)]
-  }, [displayUnit, defaultUnit, dimension, unit])
+  }, [displayUnit, defaultUnitLabel, dimension, unit])
 
   // Handle a change in NumberField input
   const handleChange = useCallback((value, unit) => {
@@ -251,7 +254,7 @@ export const NumberEditQuantity = React.memo((props) => {
       const storedValue = new Quantity(Number(displayedValue), newUnit).to(quantityDef.unit).value()
       onChange(storedValue)
     }
-    setUnit(new Unit(newUnit))
+    setUnit(new Unit(newUnit || 'dimensionless'))
   }, [checked, displayedValue, onChange, quantityDef.unit, value])
 
   return <Box display='flex'>
@@ -268,7 +271,7 @@ export const NumberEditQuantity = React.memo((props) => {
       {...otherProps}
       label={label}
     />
-    {unit && (
+    {(defaultUnitLabel !== 'dimensionless' || explicit) && (
       <Box display='flex'>
         <Tooltip title={'If checked, numeric value is converted when the unit is changed.'}>
           <Checkbox
@@ -302,12 +305,12 @@ export const UnitSelect = React.memo(({options, unit, onChange, dimension, disab
 
   // Set the input value when unit changes
   useEffect(() => {
-    unit && setValue(unit.label())
+    unit && setValue(unit.label(true, false, true))
   }, [unit])
 
   // Validate input and submit unit if valid
   const submit = useCallback((val) => {
-    const {unit, error} = parse(val, {dimension, requireUnit: true})
+    const {unit, error} = parse(val, {dimension, requireUnit: dimension !== 'dimensionless'})
     if (error) {
       setError(error)
     } else {
@@ -366,7 +369,6 @@ export const UnitSelect = React.memo(({options, unit, onChange, dimension, disab
       onKeyDown={handleEnter}
       InputProps={{
         ...params.InputProps
-        // endAdornment: <HelpAdornment title={'Moi'} description={'Terve'}/>
       }}
     />}
   />

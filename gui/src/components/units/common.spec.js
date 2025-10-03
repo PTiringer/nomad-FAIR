@@ -32,7 +32,8 @@ test.each([
   ['missing unit with dimension specified', '100', {dimension: 'energy', requireUnit: true}, {error: 'Unit is required'}],
   ['missing value', 'joule', {requireValue: true}, {error: 'Enter a valid numerical value'}],
   ['mixing number and quantity #1', '1 / joule', {dimension: 'energy^-1'}, {valueString: '1', value: 1, unit: new Unit('1 / joule')}],
-  ['mixing number and quantity #2', '100 / joule', {dimension: 'energy^-1'}, {valueString: '100', value: 100, unit: new Unit('1 / joule')}]
+  ['mixing number and quantity #2', '100 / joule', {dimension: 'energy^-1'}, {valueString: '100', value: 100, unit: new Unit('1 / joule')}],
+  ['special character %', '%', {dimension: 'dimensionless'}, {valueString: undefined, value: undefined, unit: new Unit('%')}]
 
 ]
 )('test parse: %s', async (name, input, options, expected) => {

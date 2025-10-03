@@ -65,9 +65,12 @@ export class Unit {
    * @param {bool} abbreviate Whether to abbreviate the label using the
    * abbreviations for each unit and prefix. If false, the original unit names
    * (as given or defined by the unit system) are used.
+   * @param {bool} showDelta Whether to show the delta symbol for delta-units.
+   * @param {bool} showDimensionless Whether to return the explicit label 'dimensionless'
+   * for the base dimensionless unit.
    * @returns A string representing the unit.
    */
-  label(abbreviate = true, showDelta = false) {
+  label(abbreviate = true, showDelta = false, showDimensionless = false) {
     // TODO: The label caching is disabled for now. Because Quantities are
     // stored as recoil.js atoms, they become immutable which causes problems
     // with internal state mutation.
@@ -181,6 +184,10 @@ export class Unit {
       str += ' / '
     }
     str += strDen
+
+    if (showDimensionless && str === '') {
+      str = 'dimensionless'
+    }
 
     return str
   }

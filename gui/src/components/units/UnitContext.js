@@ -39,7 +39,7 @@ UnitMathJS.PREFIXES.PINT = prefixes
 // Customize the unit parsing to allow certain special symbols
 const isAlphaOriginal = UnitMathJS.isValidAlpha
 const isSpecialChar = function(c) {
-  const specialChars = new Set(['_', 'Å', 'Å', 'å', '°', 'µ', 'ö', 'é', '∞', 'Δ'])
+  const specialChars = new Set(['_', 'Å', 'Å', 'å', '°', 'µ', 'ö', 'é', '∞', 'Δ', '%', '‰'])
   return specialChars.has(c)
 }
 const isGreekLetter = function(c) {
