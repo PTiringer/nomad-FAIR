@@ -559,6 +559,9 @@ def _generate_units_json() -> tuple[Any, Any]:
     dimension_def_name_map = {
         str(ureg.get_dimensionality(key)): key for key in ureg._dimensions
     }
+    # We need to explicitly add dimenionless unit into the map as Pint does not consider
+    # it to be a dimension
+    dimension_def_name_map['dimensionless'] = '[dimensionless]'
 
     # Define a function to check for an SI prefix
     si_prefixes = [
@@ -632,7 +635,6 @@ def _generate_units_json() -> tuple[Any, Any]:
     )
 
     # Add the unit definition and offset that come from the Pint setup.
-    dimensionless_units = []
     units = []
     for value in unit_list:
         i_unit = value['name']
@@ -664,21 +666,17 @@ def _generate_units_json() -> tuple[Any, Any]:
             value['definition'] = str(a).replace('**', '^')
             value['offset'] = b / a.magnitude
 
-        if value.get('dimension') == '' and not value.get('definition'):
-            dimensionless_units.append(value)
-        else:
-            units.append(value)
+        units.append(value)
 
     # Pint does not contain a separate definition for the dimensionless unit, but contains
-    # definitions for aliases of the dimensionless unit. In the JS version we instead have
-    # an explicit dimensionless unit and add aliases to it.
+    # definitions for the named dimensionless unit. In the JS version we need to add an
+    # explicit dimensionless unit.
     units.append(
         {
             'name': 'dimensionless',
             'dimension': 'dimensionless',
             'label': 'Dimensionless',
             'abbreviation': '',
-            'aliases': [value['name'] for value in dimensionless_units],
         }
     )
 

@@ -5,26 +5,24 @@ import {useUnitContext} from "./UnitContext"
 import {getFieldProps} from "../editQuantity/StringEditQuantity"
 
 /**
- * Used to retrieve the unit to use for displaying a quantity.
+ * Used to retrieve the unit to use for displaying a quantity. Primarily uses the display
+ * unit annotations, defaults to returning a display unit according to the currently set
+ * unit system.
  *
  * @param {*} quantityDef Definition for the quantity
+ * @param {*} returnExplicit Whether to return an object containing the display unit and a
+ * boolean indicating whether this display unit was explicitly set
  * @returns {Unit} The unit to use for displaying the quantity.
  */
-export function useDisplayUnit(quantityDef) {
+export function useDisplayUnit(quantityDef, returnExplicit = false) {
   const {units} = useUnitContext()
   const {raiseError} = useErrors()
-  const defaultUnit = useMemo(() => quantityDef.unit && new Unit(quantityDef.unit), [quantityDef])
-  const dimension = defaultUnit && defaultUnit.dimension(false)
+  const defaultUnit = useMemo(() => new Unit(quantityDef.unit || 'dimensionless'), [quantityDef])
   const {defaultDisplayUnit: deprecatedDefaultDisplayUnit} = getFieldProps(quantityDef)
   const defaultDisplayUnit = quantityDef?.m_annotations?.display?.[0]?.unit || deprecatedDefaultDisplayUnit
 
   const displayUnitObj = useMemo(() => {
-    if (!dimension) return
     let defaultDisplayUnitObj
-
-    // TODO: If we enable the new 'Schema' scope in the unit context, we should
-    // prioritize those values there. But for now we just read unit info from
-    // the schema.
 
     // If a default display unit has been defined, use it instead
     if (defaultDisplayUnit) {
@@ -42,7 +40,8 @@ export function useDisplayUnit(quantityDef) {
     }
 
     return defaultDisplayUnitObj
-  }, [defaultDisplayUnit, defaultUnit, dimension, quantityDef, raiseError, units])
+  }, [defaultDisplayUnit, defaultUnit, quantityDef, raiseError, units])
 
+  if (returnExplicit) return {displayUnit: displayUnitObj, explicit: !!defaultDisplayUnit}
   return displayUnitObj
 }
