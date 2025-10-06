@@ -566,7 +566,7 @@ def test_index_materials_capped(elastic_function, indices, monkeypatch, cap, ent
         assert material_doc['n_entries'] == entries
 
 
-class Test(MSection):
+class ClassA(MSection):
     float_value = Quantity(type=float)
     int_value = Quantity(type=int)
     str_value = Quantity(type=str)
@@ -574,98 +574,257 @@ class Test(MSection):
     bool_value = Quantity(type=bool)
 
 
+class ClassB(MSection):
+    multiple_inheritance = Quantity(type=bool)
+
+
+class ClassC(ClassA, ClassB):
+    new_value = Quantity(type=bool)
+
+
+class ClassD(ClassC):
+    pass
+
+
 @pytest.mark.parametrize(
-    'quantity_def, path, section, expected',
+    'quantity_def, path, sections, expected',
     [
         pytest.param(
-            Test.float_value,
-            'value_float',
-            Test(float_value=1.2),
+            ClassA.float_value,
+            'float_value',
+            [ClassC(float_value=1.2)],
             SearchableQuantity(
                 float_value=1.2,
-                id='value_float#test',
-                definition='tests.metainfo.test_elasticsearch_extension.Test.float_value',
+                id='float_value#test',
+                definition='tests.metainfo.test_elasticsearch_extension.ClassA.float_value',
                 path_archive='test',
+                segments={
+                    '-1': {
+                        'path': 'float_value',
+                        'definitions': [
+                            'tests.metainfo.test_elasticsearch_extension.ClassA',
+                        ],
+                    },
+                },
             ),
             id='float',
         ),
         pytest.param(
-            Test.int_value,
+            ClassA.int_value,
             'int_value',
-            Test(int_value=3),
+            [ClassC(int_value=3)],
             SearchableQuantity(
                 int_value=3,
                 id='int_value#test',
-                definition='tests.metainfo.test_elasticsearch_extension.Test.int_value',
+                definition='tests.metainfo.test_elasticsearch_extension.ClassA.int_value',
                 path_archive='test',
+                segments={
+                    '-1': {
+                        'path': 'int_value',
+                        'definitions': [
+                            'tests.metainfo.test_elasticsearch_extension.ClassA',
+                        ],
+                    },
+                },
             ),
             id='int',
         ),
         pytest.param(
-            Test.str_value,
+            ClassA.str_value,
             'str_value',
-            Test(str_value='testing'),
+            [ClassC(str_value='testing')],
             SearchableQuantity(
                 str_value='testing',
                 id='str_value#test',
-                definition='tests.metainfo.test_elasticsearch_extension.Test.str_value',
+                definition='tests.metainfo.test_elasticsearch_extension.ClassA.str_value',
                 path_archive='test',
+                segments={
+                    '-1': {
+                        'path': 'str_value',
+                        'definitions': [
+                            'tests.metainfo.test_elasticsearch_extension.ClassA',
+                        ],
+                    },
+                },
             ),
             id='str',
         ),
         pytest.param(
-            Test.datetime_value,
+            ClassA.datetime_value,
             'datetime_value',
-            Test(datetime_value=date(2000, 12, 31)),
+            [ClassC(datetime_value=date(2000, 12, 31))],
             SearchableQuantity(
                 datetime_value=date(2000, 12, 31).isoformat(),
                 id='datetime_value#test',
-                definition='tests.metainfo.test_elasticsearch_extension.Test.datetime_value',
+                definition='tests.metainfo.test_elasticsearch_extension.ClassA.datetime_value',
                 path_archive='test',
+                segments={
+                    '-1': {
+                        'path': 'datetime_value',
+                        'definitions': [
+                            'tests.metainfo.test_elasticsearch_extension.ClassA',
+                        ],
+                    },
+                },
             ),
             id='date',
         ),
         pytest.param(
-            Test.bool_value,
+            ClassA.bool_value,
             'bool_value',
-            Test(bool_value=True),
+            [ClassC(bool_value=True)],
             SearchableQuantity(
                 bool_value=True,
                 id='bool_value#test',
-                definition='tests.metainfo.test_elasticsearch_extension.Test.bool_value',
+                definition='tests.metainfo.test_elasticsearch_extension.ClassA.bool_value',
                 path_archive='test',
+                segments={
+                    '-1': {
+                        'path': 'bool_value',
+                        'definitions': [
+                            'tests.metainfo.test_elasticsearch_extension.ClassA',
+                        ],
+                    },
+                },
             ),
-            id='date',
+            id='bool',
         ),
         pytest.param(
-            Test.float_value,
+            ClassA.float_value,
+            'data.float_value',
+            [None, ClassA(float_value=1)],
+            SearchableQuantity(
+                float_value=1,
+                id='data.float_value#test',
+                definition='tests.metainfo.test_elasticsearch_extension.ClassA.float_value',
+                path_archive='test',
+                segments={
+                    '1': {
+                        'path': 'data',
+                        'definitions': [
+                            'tests.metainfo.test_elasticsearch_extension.ClassA',
+                        ],
+                    },
+                    '-1': {
+                        'path': 'float_value',
+                        'definitions': [
+                            'tests.metainfo.test_elasticsearch_extension.ClassA',
+                        ],
+                    },
+                },
+            ),
+            id='sections',
+        ),
+        pytest.param(
+            ClassC.multiple_inheritance,
+            'data.multiple_inheritance',
+            [None, ClassC(multiple_inheritance=True)],
+            SearchableQuantity(
+                bool_value=True,
+                id='data.multiple_inheritance#test',
+                definition='tests.metainfo.test_elasticsearch_extension.ClassB.multiple_inheritance',
+                path_archive='test',
+                segments={
+                    '1': {
+                        'path': 'data',
+                        'definitions': [
+                            'tests.metainfo.test_elasticsearch_extension.ClassC',
+                            'tests.metainfo.test_elasticsearch_extension.ClassA',
+                            'tests.metainfo.test_elasticsearch_extension.ClassB',
+                        ],
+                    },
+                    '-1': {
+                        'path': 'multiple_inheritance',
+                        'definitions': [
+                            'tests.metainfo.test_elasticsearch_extension.ClassB',
+                        ],
+                    },
+                },
+            ),
+            id='multiple-inheritance',
+        ),
+        pytest.param(
+            ClassC.new_value,
+            'new_value',
+            [ClassC(new_value=True)],
+            SearchableQuantity(
+                bool_value=True,
+                id='new_value#test',
+                definition='tests.metainfo.test_elasticsearch_extension.ClassC.new_value',
+                path_archive='test',
+                segments={
+                    '-1': {
+                        'path': 'new_value',
+                        'definitions': [
+                            'tests.metainfo.test_elasticsearch_extension.ClassC',
+                        ],
+                    }
+                },
+            ),
+            id='new-value',
+        ),
+        pytest.param(
+            ClassD.bool_value,
+            'data.bool_value',
+            [None, ClassD(bool_value=True)],
+            SearchableQuantity(
+                bool_value=True,
+                id='data.bool_value#test',
+                definition='tests.metainfo.test_elasticsearch_extension.ClassA.bool_value',
+                path_archive='test',
+                segments={
+                    '1': {
+                        'path': 'data',
+                        'definitions': [
+                            'tests.metainfo.test_elasticsearch_extension.ClassD',
+                            'tests.metainfo.test_elasticsearch_extension.ClassC',
+                            'tests.metainfo.test_elasticsearch_extension.ClassA',
+                            'tests.metainfo.test_elasticsearch_extension.ClassB',
+                        ],
+                    },
+                    '-1': {
+                        'path': 'bool_value',
+                        'definitions': [
+                            'tests.metainfo.test_elasticsearch_extension.ClassA',
+                        ],
+                    },
+                },
+            ),
+            id='multi-level-inheritance',
+        ),
+        pytest.param(
+            ClassC.float_value,
             'float_value',
-            Test(float_value=float('NaN')),
+            [ClassC(float_value=float('NaN'))],
             None,
             id='nan',
         ),
         pytest.param(
-            Test.float_value,
+            ClassC.float_value,
             'float_value',
-            Test(float_value=float('Infinity')),
+            [ClassC(float_value=float('Infinity'))],
             None,
             id='infinity',
         ),
         pytest.param(
-            Test.float_value,
+            ClassC.float_value,
             'float_value',
-            Test(float_value=float('-Infinity')),
+            [ClassC(float_value=float('-Infinity'))],
             None,
             id='-infinity',
         ),
         pytest.param(
-            Test.float_value, 'float_value', Test(float_value=None), None, id='none'
+            ClassC.float_value,
+            'float_value',
+            [ClassC(float_value=None)],
+            None,
+            id='none',
         ),
     ],
 )
-def test_create_searchable_quantity(quantity_def, path, section, expected):
+def test_create_searchable_quantity(quantity_def, path, sections, expected):
     searchable_quantity = create_searchable_quantity(
-        quantity_def, path, section, 'test', 'test'
+        quantity_def, path, sections, 'test', 'test'
     )
     if expected is None:
         assert searchable_quantity is None
