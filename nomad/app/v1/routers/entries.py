@@ -1873,7 +1873,7 @@ def edit(
                 updated_metadata.append(entry_metadata)
 
             failed = es_update_metadata(
-                updated_metadata, update_materials=True, refresh=True
+                updated_metadata, update_materials=False, refresh=True
             )
 
             if failed > 0:

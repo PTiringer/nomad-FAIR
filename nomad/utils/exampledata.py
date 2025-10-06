@@ -96,7 +96,7 @@ class ExampleData:
 
         if with_es:
             archives = list(self.archives.values())
-            errors = search.index(archives, update_materials=True, refresh=True)
+            errors = search.index(archives, update_materials=False, refresh=True)
             assert not errors, (
                 f'The following errors encountered during indexing: {errors}'
             )

@@ -643,7 +643,7 @@ def delete_upload(
     # delete elastic
     if not skip_es:
         search.delete_upload(
-            upload_id=upload.upload_id, update_materials=True, refresh=True
+            upload_id=upload.upload_id, update_materials=False, refresh=True
         )
 
     # delete files

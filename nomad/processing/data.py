@@ -2495,7 +2495,7 @@ class Upload(Proc):
         # Delete existing unmatched entries
         if entry_ids_to_delete:
             for entry_id in entry_ids_to_delete:
-                search.delete_entry(entry_id=entry_id, update_materials=True)
+                search.delete_entry(entry_id=entry_id, update_materials=False)
                 old_entries_dict[entry_id].delete()
         return main_entry
 
@@ -2823,7 +2823,7 @@ class Upload(Proc):
                         ):
                             for entry_id in old_entries:
                                 search.delete_entry(
-                                    entry_id=entry_id, update_materials=True
+                                    entry_id=entry_id, update_materials=False
                                 )
                                 entry = Entry.get(entry_id)
                                 entry.delete()
@@ -3378,7 +3378,7 @@ class Upload(Proc):
         if updated_metadata:
             with utils.timer(logger, 'ES updated', nupdates=len(updated_metadata)):
                 failed_es = es_update_metadata(
-                    updated_metadata, update_materials=True, refresh=True
+                    updated_metadata, update_materials=False, refresh=True
                 )
                 assert not failed_es, (
                     f'Failed to update ES, there were {failed_es} fails'
