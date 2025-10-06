@@ -99,6 +99,7 @@ def __getattr__(name):
         logger = get_logger(__name__)
         logger.warn(
             'Context import from nomad.metainfo is deprecated. Please import from nomad.datamodel instead.',
+            stack_info=True,
         )
 
         from nomad.datamodel import Context
