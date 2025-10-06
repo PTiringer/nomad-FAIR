@@ -36,7 +36,6 @@ from nomad.metainfo.elasticsearch_extension import (
     dtype_separator,
     entry_index,
     entry_type,
-    material_index,
     schema_separator,
 )
 from nomad.metainfo.metainfo import Datetime, Quantity
@@ -239,7 +238,6 @@ def example_eln_data(elastic_function, user1):
 
 
 def test_index(indices, example_data):
-    assert material_index.get(id='test_material_id') is not None
     assert entry_index.get(id='test_entry_id_0') is not None
 
 

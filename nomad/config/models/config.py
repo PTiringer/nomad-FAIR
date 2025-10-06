@@ -711,7 +711,7 @@ class GitLab(ConfigBaseModel):
 
 
 class Process(ConfigBaseModel):
-    index_materials: bool = True
+    index_materials: bool = False
     reuse_parser: bool = True
     metadata_file_name: str = 'nomad'
     metadata_file_extensions: tuple[str, ...] = ('json', 'yaml', 'yml')

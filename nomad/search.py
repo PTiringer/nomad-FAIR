@@ -262,7 +262,7 @@ def publish(entries: Iterable[EntryMetadata], index: str | None = None) -> int:
     of failed updates.
     """
     return update_metadata(
-        entries, index=index, published=True, update_materials=True, refresh=True
+        entries, index=index, published=True, update_materials=False, refresh=True
     )
 
 

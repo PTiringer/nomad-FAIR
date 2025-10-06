@@ -162,7 +162,7 @@ oasis:
   require_authentication: false
 process:
   auxfile_cutoff: 100
-  index_materials: true
+  index_materials: false
   max_upload_size: 34359738368
   metadata_file_extensions:
     - json
