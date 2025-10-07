@@ -305,7 +305,10 @@ class EQEAnalyzer:
                 h_Js**3 * c**2 * (np.exp(x / VT) - 1)
             )
             el = phi_BB * y
-            j0rad = np.trapz(el, x)
+            if np.lib.NumpyVersion(np.__version__) >= '2.0.0':
+                j0rad = np.trapezoid(el, x)
+            else:
+                j0rad = np.trapz(el, x)  # noqa: NPY201
             j0rad = j0rad * q
         except ValueError:
             raise ValueError("""Failed to estimate a reasonable Urbach Energy.""")
