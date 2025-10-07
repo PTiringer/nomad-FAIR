@@ -70,7 +70,6 @@ oauth2_scheme = OAuth2PasswordBearer(
 def resolve_user(
     *,
     request: Request | None = None,
-    form_data: OAuth2PasswordRequestForm | None = None,
     bearer_token: str | None = None,
     upload_token: str | None = None,
     signature_token: str | None = None,
@@ -81,8 +80,6 @@ def resolve_user(
     required = required or config.oasis.require_authentication
 
     # Resolve user token/form_data
-    if form_data:
-        user = _get_user_basic_auth(form_data)
     if user is None and bearer_token:
         user = _get_user_bearer_token_auth(bearer_token)
     if user is None and upload_token:
@@ -95,18 +92,11 @@ def resolve_user(
         user = datamodel.User.get(username=config.tests.assume_auth_for_username)
 
     # Check if token is available
-    schemes: list[str] = []
-    if bearer_token or upload_token or signature_token:
-        schemes.append('Bearer')
-    if form_data:
-        schemes.append('Basic')
-    unauthorized_www_auth_header = ', '.join(schemes)
-
     if required and user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail='Authorization required.',
-            headers={'WWW-Authenticate': unauthorized_www_auth_header},
+            headers={'WWW-Authenticate': 'Bearer'},
         )
 
     # `allowed_users` would enforce an explicit whitelist of users
@@ -115,7 +105,7 @@ def resolve_user(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail='Authentication is required for this Oasis',
-                headers={'WWW-Authenticate': unauthorized_www_auth_header},
+                headers={'WWW-Authenticate': 'Bearer'},
             )
         if (
             user.email not in config.oasis.allowed_users
@@ -145,7 +135,6 @@ def resolve_user(
 
 def create_user_dependency(
     required: bool = False,
-    basic_auth_allowed: bool = False,
     bearer_token_auth_allowed: bool = True,
     upload_token_auth_allowed: bool = False,
     signature_token_auth_allowed: bool = False,
@@ -160,7 +149,6 @@ def create_user_dependency(
         # `fastapi` would only inject based on signature
         return resolve_user(
             request=kwargs.get('request'),
-            form_data=kwargs.get('form_data'),
             bearer_token=kwargs.get('bearer_token'),
             upload_token=kwargs.get('token'),
             signature_token=kwargs.get('signature_token'),
@@ -169,15 +157,6 @@ def create_user_dependency(
 
     # Create the desired function signature (as it depends on which auth options are allowed)
     parameters: list[Parameter] = []
-    if basic_auth_allowed:
-        parameters.append(
-            Parameter(
-                name='form_data',
-                annotation=OAuth2PasswordRequestForm,
-                default=Depends(),
-                kind=Parameter.KEYWORD_ONLY,
-            )
-        )
     if bearer_token_auth_allowed:
         parameters.append(
             Parameter(
@@ -216,38 +195,6 @@ def create_user_dependency(
 
     user_dependency.__signature__ = Signature(parameters)  # type: ignore[attr-defined]
     return user_dependency
-
-
-def _get_user_basic_auth(form_data: OAuth2PasswordRequestForm | None) -> User | None:
-    """
-    Verifies basic auth (username and password), throwing HTTPException
-    if invalid or incomplete credentials are provided.
-
-    Returns:
-        The corresponding User object if successful,
-        None if no credentials provided.
-    """
-    if form_data is None:
-        return None
-
-    if not form_data.username or not form_data.password:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Both username and password are required',
-        )
-
-    try:
-        infrastructure.keycloak.basicauth(form_data.username, form_data.password)
-        return cast(
-            datamodel.User,
-            infrastructure.user_management.get_user(form_data.username),
-        )
-    except infrastructure.KeycloakError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='Incorrect username or password',
-            headers={'WWW-Authenticate': 'Basic'},
-        )
 
 
 def _get_user_bearer_token_auth(bearer_token: str | None) -> User | None:
