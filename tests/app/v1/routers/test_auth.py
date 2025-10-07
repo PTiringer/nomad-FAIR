@@ -96,30 +96,22 @@ def allowed_user():
     return User(user_id='123', email='test@example.com', username='tester')
 
 
-@pytest.mark.parametrize('basic_auth_allowed', [True, False])
 @pytest.mark.parametrize('bearer_token_auth_allowed', [True, False])
 @pytest.mark.parametrize('upload_token_auth_allowed', [True, False])
 @pytest.mark.parametrize('signature_token_auth_allowed', [True, False])
-@pytest.mark.parametrize('_get_user_basic_auth', [True, False])
 @pytest.mark.parametrize('_get_user_bearer_token_auth', [True, False])
 @pytest.mark.parametrize('_get_user_upload_token_auth', [True, False])
 @pytest.mark.parametrize('_get_user_signature_token_auth', [True, False])
 def test_create_user_dependency_auth_methods(
-    basic_auth_allowed: bool,
     bearer_token_auth_allowed: bool,
     upload_token_auth_allowed: bool,
     signature_token_auth_allowed: bool,
-    _get_user_basic_auth: bool,
     _get_user_bearer_token_auth: bool,
     _get_user_upload_token_auth: bool,
     _get_user_signature_token_auth: bool,
     allowed_user,
     monkeypatch,
 ):
-    monkeypatch.setattr(
-        'nomad.app.v1.routers.auth._get_user_basic_auth',
-        lambda *_: allowed_user if _get_user_basic_auth else None,
-    )
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth._get_user_bearer_token_auth',
         lambda *_: allowed_user if _get_user_bearer_token_auth else None,
@@ -140,7 +132,6 @@ def test_create_user_dependency_auth_methods(
 
     dep = create_user_dependency(
         required=True,
-        basic_auth_allowed=basic_auth_allowed,
         bearer_token_auth_allowed=bearer_token_auth_allowed,
         upload_token_auth_allowed=upload_token_auth_allowed,
         signature_token_auth_allowed=signature_token_auth_allowed,
@@ -148,7 +139,6 @@ def test_create_user_dependency_auth_methods(
 
     if any(
         [
-            basic_auth_allowed and _get_user_basic_auth,
             bearer_token_auth_allowed and _get_user_bearer_token_auth,
             upload_token_auth_allowed and _get_user_upload_token_auth,
             signature_token_auth_allowed and _get_user_signature_token_auth,
@@ -156,7 +146,6 @@ def test_create_user_dependency_auth_methods(
     ):
         assert (
             dep(
-                form_data=object() if basic_auth_allowed else None,
                 bearer_token='abc' if bearer_token_auth_allowed else None,
                 token='abc' if upload_token_auth_allowed else None,
                 signature_token='abc' if signature_token_auth_allowed else None,
@@ -181,7 +170,6 @@ def test_create_user_dependency_signature_token_from_cookie(monkeypatch, allowed
 
     dep = create_user_dependency(
         required=True,
-        basic_auth_allowed=False,
         bearer_token_auth_allowed=False,
         upload_token_auth_allowed=False,
         signature_token_auth_allowed=True,
