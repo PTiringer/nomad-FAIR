@@ -401,7 +401,7 @@ class MethodNormalizer:  # TODO: add normalizer for atom_parameters.label
                 if not k_mesh.sampling_method:
                     try:  # TODO double-check
                         _, k_grid_offset = get_monkhorst_pack_size_and_offset(
-                            k_mesh.points
+                            k_mesh.points.real
                         )
                         if not k_grid_offset.all():
                             k_mesh.sampling_method = 'Monkhorst-Pack'
