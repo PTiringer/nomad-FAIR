@@ -82,6 +82,16 @@ _init_lock = Lock()
 _initialized = False
 
 
+class DataType(Enum):
+    INT = 'int'
+    FLOAT = 'float'
+    TIMESTAMP = 'timestamp'
+    STRING = 'string'
+    ENUM = 'enum'
+    BOOLEAN = 'boolean'
+    UNKNOWN = 'unknown'
+
+
 class SearchQuantity(BaseModel):
     quantity: str = Field(description='Name of the search quantity.')
     quantity_normalized: str = Field(
@@ -92,9 +102,11 @@ class SearchQuantity(BaseModel):
     description: str | None = Field(
         None, description='Description of the search quantity.'
     )
-    dtype: str | None = Field(None, description='Type of the search quantity.')
+    dtype: DataType | None = Field(None, description='Type of the search quantity.')
     unit: str | None = Field(None, description='Unit of the search quantity.')
-    shape: str | None = Field(None, description='Shape of the search quantity.')
+    shape: str | list[str] | None = Field(
+        None, description='Shape of the search quantity.'
+    )
     aliases: list[str] | None = Field(
         None, description='Aliases for the search quantity.'
     )
@@ -131,16 +143,6 @@ class SearchQuantityRequest(BaseModel):
         description='Query for filtering search quantities.',
     )
     pagination: Pagination = Field(description='Controls the pagination of the values.')
-
-
-class DataType(Enum):
-    INT = 'int'
-    FLOAT = 'float'
-    TIMESTAMP = 'timestamp'
-    STRING = 'string'
-    ENUM = 'enum'
-    BOOLEAN = 'boolean'
-    UNKNOWN = 'unknown'
 
 
 def get_datatype(type_obj) -> DataType:
@@ -392,19 +394,37 @@ def match_search_quantities(
     return filtered
 
 
-def _lazy_build_search_quantities():
-    """Lazy-Populate entry point cache and all_search_quantities."""
-    # entry points
+def initialize_search_quantities():
+    """
+    Race-safe initialization for the all search quantities; global and app-specific. This
+    should be called only after all of the plugin have been loaded in order to have all of
+    the search quantities available.
+    """
+    global _initialized
+    if _initialized:
+        return
+    with _init_lock:
+        if _initialized:
+            return
+        _initialize_search_quantities()
+        _initialized = True
+
+
+def _initialize_search_quantities():
+    """This is an internal function that does the heavy operations and makes it easier to
+    test that the initialization works as expected.
+    """
+    # Entry points
     for entry_point in config.plugins.entry_points.filtered_values():
         if isinstance(entry_point, AppEntryPoint):
             app_entry_points_cache[entry_point.app.path] = entry_point
-    # base quantities
+    # Base quantities
     all_search_quantities.clear()
     for key, value in entry_type.quantities.items():
         if not value.annotation.suggestion:
             all_search_quantities[key] = get_search_quantity(value, key)
 
-    # section quantities
+    # Section quantities
     def _get_sections(m_def, prefix=None, repeats=False):
         for sub in m_def.all_sub_sections.values():
             name = f'{prefix}.{sub.name}' if prefix else sub.name
@@ -414,29 +434,34 @@ def _lazy_build_search_quantities():
 
     _get_sections(EntryArchive.results.sub_section, 'results')
 
+    # Pre-build per-app filtered search quantities
+    for app_path, ep in app_entry_points_cache.items():
+        if app_path not in app_search_quantity_cache:
+            app_search_quantity_cache[app_path] = prefilter_search_quantities(
+                all_search_quantities, app_path
+            )
 
-# without this, the dictionary will be built once at import time—before the Elasticsearch extension had
-# finished registering all of its entry_type.quantities, so it remained partially filled
-def _ensure_initialized():
-    """
-    Race-safe initializer. Warmup may already have run; this is a defensive guard.
-    """
-    global _initialized
-    if _initialized:
-        return
-    with _init_lock:
-        if _initialized:
-            return
-        _lazy_build_search_quantities()
-        _initialized = True
+
+@router.get(
+    '/entry-points',
+    tags=[APITag.DEFAULT],
+    summary='Get all apps',
+    response_model=dict[str, Any],
+    response_model_exclude_none=True,
+)
+async def get_entry_points():
+    """Entry point for getting information about all apps"""
+    initialize_search_quantities()
+
+    apps = []
+    for id, ep in app_entry_points_cache.items():
+        app = ep.app.model_dump()
+        app['id'] = id
+        apps.append(app)
+    return {'data': apps}
 
 
 def _build_app_response(entry_point: AppEntryPoint) -> dict[str, Any]:
-    """
-    Builds the response payload for GET /entry-points/{app_path}, including
-    validation and collection of referenced search quantities.
-    """
-    _ensure_initialized()
     search_quantities: dict[str, Any] = {}
     app = entry_point.app
 
@@ -445,7 +470,7 @@ def _build_app_response(entry_point: AppEntryPoint) -> dict[str, Any]:
         if data['error']:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f'Could not parse the search quantity "{name}" used in {location}.',
+                detail=f'Could not parse the app search quantity "{name}" used in {location}. Please verify that any JMESPath expressions are valid. Error: {data["error"]}',
             )
         for q in [data['quantity']] + data['extras']:
             add_search(q, location)
@@ -463,14 +488,14 @@ def _build_app_response(entry_point: AppEntryPoint) -> dict[str, Any]:
         if sq is None:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f'Could not load the search quantity "{name}" used in {location}.',
+                detail=f'Could not load the app search quantity "{name}" used in {location}. Please check for typos and ensure that the corresponding schema package is installed and contains the requested definition. Note that currently only scalar quantities can be used in the apps, and data from e.g. lists or matrices cannot be accessed.',
             )
         search_quantities[name] = sq.model_dump()
 
-    # columns
+    # Columns
     for column in app.columns or []:
         add_jmespath(column.search_quantity, 'the results table column')
-    # widgets
+    # Widgets
     if app.dashboard and app.dashboard.widgets:
         for widget in app.dashboard.widgets:
             if isinstance(widget, (WidgetPeriodicTable | WidgetTerms)):
@@ -502,7 +527,7 @@ def _build_app_response(entry_point: AppEntryPoint) -> dict[str, Any]:
                         'the marker color of a scatter plot widget',
                     )
 
-    # menus
+    # Menus
     def load_menu(menu: Menu | MenuItemNestedObject):
         for item in menu.items or []:
             if isinstance(item, Menu):
@@ -522,7 +547,7 @@ def _build_app_response(entry_point: AppEntryPoint) -> dict[str, Any]:
 
     if app.menu:
         load_menu(app.menu)
-    # filters_locked
+    # Filters_locked
     for key in (app.filters_locked or {}).keys():
         add_search(key, 'filters_locked')
 
@@ -530,40 +555,6 @@ def _build_app_response(entry_point: AppEntryPoint) -> dict[str, Any]:
         'app': entry_point.app.model_dump(),
         'search_quantities': search_quantities,
     }
-
-
-def warm_caches() -> None:
-    """
-    Eagerly build caches during app startup (within lifespan).
-    """
-    _ensure_initialized()
-
-    # Pre-build per-app filtered search quantities and the app response payloads.
-    for app_path, ep in app_entry_points_cache.items():
-        if app_path not in app_search_quantity_cache:
-            app_search_quantity_cache[app_path] = prefilter_search_quantities(
-                all_search_quantities, app_path
-            )
-        if app_path not in app_cache:
-            app_cache[app_path] = _build_app_response(ep)
-
-
-@router.get(
-    '/entry-points',
-    tags=[APITag.DEFAULT],
-    summary='Get all apps',
-    response_model=dict[str, Any],
-    response_model_exclude_none=True,
-)
-async def get_entry_points():
-    """Entry point for getting information about all apps"""
-    _ensure_initialized()
-    apps = []
-    for id, ep in app_entry_points_cache.items():
-        app = ep.app.model_dump()
-        app['id'] = id
-        apps.append(app)
-    return {'data': apps}
 
 
 @router.get(
@@ -576,110 +567,21 @@ async def get_entry_points():
 )
 async def get_entry_point(app_path: str):
     """Entry point for getting information about a specific app"""
-    _ensure_initialized()
-    if app_path in app_cache:
-        return app_cache[app_path]
+    initialize_search_quantities()
+
+    # Check that the entry points exists
     entry_point = app_entry_points_cache.get(app_path)
     if entry_point is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f'Could not find an app with the path "{app_path}".',
         )
-    search_quantities: dict[str, Any] = {}
-    app = entry_point.app
 
-    def add_jmespath(name: str, location: str | None = None):
-        data = parse_jmespath(name)
-        if data['error']:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f'Could not parse the search quantity "{name}" used in {location}.',
-            )
-        for q in [data['quantity']] + data['extras']:
-            add_search(q, location)
+    # Check the cache, if not found populate it
+    if app_path not in app_cache:
+        app_cache[app_path] = _build_app_response(entry_point)
 
-    def add_search(name: str, location: str | None = None):
-        if name in search_quantities:
-            return
-
-        # Search quantities with an explicit dtype are not validated
-        parsed = parse_quantity_name(name)
-        if parsed['dtype']:
-            return
-
-        sq = all_search_quantities.get(name)
-        if sq is None:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f'Could not load the search quantity "{name}" used in {location}.',
-            )
-        search_quantities[name] = sq.model_dump()
-
-    # columns
-    for column in app.columns or []:
-        add_jmespath(column.search_quantity, 'the results table column')
-    # widgets
-    if app.dashboard and app.dashboard.widgets:
-        for widget in app.dashboard.widgets:
-            if isinstance(widget, (WidgetPeriodicTable | WidgetTerms)):
-                add_search(widget.search_quantity)
-            elif isinstance(widget, WidgetHistogram) and widget.x:
-                qty = (
-                    widget.x if isinstance(widget.x, str) else widget.x.search_quantity
-                )
-                add_search(qty)
-            elif isinstance(widget, WidgetScatterPlot):
-                if widget.x:
-                    add_jmespath(
-                        widget.x.search_quantity
-                        if not isinstance(widget.x, str)
-                        else widget.x,
-                        'the x-axis of a scatter plot widget',
-                    )
-                if widget.y:
-                    add_jmespath(
-                        widget.y.search_quantity
-                        if not isinstance(widget.y, str)
-                        else widget.y,
-                        'the y-axis of a scatter plot widget',
-                    )
-                if widget.markers and widget.markers.color:
-                    cd = widget.markers.color
-                    add_jmespath(
-                        cd.search_quantity if not isinstance(cd, str) else cd,
-                        'the marker color of a scatter plot widget',
-                    )
-
-    # menus
-    def load_menu(menu: Menu | MenuItemNestedObject):
-        for item in menu.items or []:
-            if isinstance(item, Menu):
-                load_menu(item)
-            if isinstance(item, MenuItemNestedObject):
-                add_search(item.path, 'a menu nested object item')
-                load_menu(item)
-            elif isinstance(item, MenuItemTerms):
-                add_search(item.search_quantity, 'a menu terms item')
-            elif isinstance(item, MenuItemHistogram):
-                if isinstance(item.x, str):
-                    add_search(item.x, 'a menu histogram item')
-                else:
-                    add_search(item.x.search_quantity, 'a menu histogram item')
-            elif isinstance(item, MenuItemPeriodicTable):
-                add_search(item.search_quantity, 'a menu periodic table item')
-
-    if app.menu:
-        load_menu(app.menu)
-    # filters_locked
-    for key in (app.filters_locked or {}).keys():
-        add_search(key, 'filters_locked')
-
-    response = {
-        'app': entry_point.app.model_dump(),
-        'search_quantities': search_quantities,
-    }
-    app_cache[app_path] = response
-    return response
+    return app_cache[app_path]
 
 
 @router.post(
@@ -692,7 +594,8 @@ async def get_entry_point(app_path: str):
 )
 async def get_entry_point_search_quantities(data: SearchQuantityRequest):
     """Entry point for suggestions for search quantities"""
-    _ensure_initialized()
+    initialize_search_quantities()
+
     if data.app_path:
         if data.app_path not in app_entry_points_cache:
             raise HTTPException(

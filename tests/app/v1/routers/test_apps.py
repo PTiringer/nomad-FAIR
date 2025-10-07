@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 import uuid
+from unittest.mock import Mock
 
 import pytest
 
@@ -58,7 +59,8 @@ def test_list_apps_returns_data_list(client, no_warn):
     assert returned_ids == expected_ids
 
 
-def test_get_specific_app_returns_app_and_search_quantities(client, no_warn):
+@pytest.mark.asyncio
+async def test_get_specific_app_returns_app_and_search_quantities(client, no_warn):
     resp = client.get(f'{BASE}/entry-points')
     apps = resp.json()['data']
     assert apps, 'Expected at least one app'
@@ -170,7 +172,7 @@ def test_search_quantities_pagination(client, no_warn):
         ),
         pytest.param(
             'missing',
-            'Could not load the search quantity "missing" used in the results table column.',
+            'Could not load the app search quantity "missing" used in the results table column.',
             422,
             id='missing',
         ),
@@ -182,9 +184,15 @@ def test_search_quantities_pagination(client, no_warn):
         ),
         pytest.param(
             'min_by(results.properties.electronic.band_gap[*], &missing).type',
-            'Could not load the search quantity "results.properties.electronic.band_gap.missing" used in the results table column.',
+            'Could not load the app search quantity "results.properties.electronic.band_gap.missing" used in the results table column.',
             422,
             id='jmespath-missing-extra',
+        ),
+        pytest.param(
+            'results.properties.electronic.band_gap[0.value',
+            'Could not parse the app search quantity "results.properties.electronic.band_gap[0.value" used in the results table column.',
+            422,
+            id='jmespath-parsing-error',
         ),
         pytest.param(
             'data.datetime#pynxtools.nomad.schema.Root#datetime',
@@ -218,17 +226,6 @@ def test_app_search_quantity_validation(
             )
         },
     )
-
-    try:
-        from fastapi_cache import FastAPICache
-
-        backend = FastAPICache.get_backend()
-        clear = getattr(backend, 'clear', None)
-        if clear:
-            clear()
-    except Exception:
-        pass
-
     resp = client.get(f'{BASE}/entry-points/{app_id}')
     assert resp.status_code == status_code
     if error:
@@ -397,72 +394,54 @@ def test_app_search_quantity_validation(
         ),
     ],
 )
-def test_parse_jmespath(input_path, expected):
+def test_parse_jmespath(input_path, expected, no_warn):
     result = parse_jmespath(input_path)
     assert result == expected
 
 
-def test_warm_caches_populates_and_endpoint_uses_cache(client, no_warn, monkeypatch):
+def test_app_caching(client, monkeypatch, no_warn):
     """
-    Ensure warm_caches() eagerly builds all caches and that GET /entry-points/{app}
-    returns the prebuilt response without invoking _build_app_response again.
+    Tests that the app response is cached after the first request.
     """
-    all_q = list(entry_type.quantities.keys())
-    assert all_q, 'No search quantities registered!'
-    valid_q = all_q[0]
+    # Mock the internal function to track whether it is called
+    mock = Mock(side_effect=apps_router._build_app_response)
+    monkeypatch.setattr(apps_router, '_build_app_response', mock)
 
-    def fake_lazy_build():
-        apps_router.app_entry_points_cache.clear()
-        apps_router.all_search_quantities.clear()
-
-        from nomad.config.models.plugins import AppEntryPoint
-        from nomad.config.models.ui import App, Column
-
-        apps_router.app_entry_points_cache['app'] = AppEntryPoint(
-            id='app',
-            app=App(
-                label='app',
-                path='app',
-                category='test',
-                columns=[Column(search_quantity=valid_q)],
-            ),
-        )
-
-        apps_router.all_search_quantities[valid_q] = apps_router.SearchQuantity(
-            quantity=valid_q,
-            quantity_normalized=apps_router.normalize_name(valid_q),
-        )
-
+    # Fetch app and see that the the app building is not called
+    app_id = f'test_{uuid.uuid4().hex}'
     monkeypatch.setattr(
-        apps_router, '_lazy_build_search_quantities', fake_lazy_build, raising=True
+        'nomad.app.v1.routers.apps.app_entry_points_cache',
+        {
+            app_id: AppEntryPoint(
+                id=app_id,
+                app=App(
+                    label='test',
+                    path=app_id,
+                    category='test',
+                    columns=[],
+                ),
+            )
+        },
     )
-    monkeypatch.setattr(apps_router, '_initialized', False, raising=False)
     apps_router.app_cache.clear()
-    apps_router.app_search_quantity_cache.clear()
+    client.get(f'{BASE}/entry-points/{app_id}')
+    client.get(f'{BASE}/entry-points/{app_id}')
+    assert mock.call_count == 1, (
+        'Expected the app response build to not be called more than once'
+    )
 
-    apps_router.warm_caches()
 
-    assert 'app' in apps_router.app_entry_points_cache
-    assert 'app' in apps_router.app_cache
-    assert 'app' in apps_router.app_search_quantity_cache
+def test_search_quantity_initialization(client, monkeypatch, no_warn):
+    """
+    Tests that initialize_search_quantities is called only once.
+    """
+    # Mock the internal function to track whether it is called
+    mock = Mock(side_effect=apps_router._initialize_search_quantities)
+    monkeypatch.setattr(apps_router, '_initialize_search_quantities', mock)
 
-    cached = apps_router.app_cache['app']
-    assert 'app' in cached and 'search_quantities' in cached
-    assert cached['app']['path'] == 'app'
-    assert isinstance(cached['search_quantities'], dict)
-
-    filtered = apps_router.app_search_quantity_cache['app']
-    if filtered:
-        assert all(isinstance(x, apps_router.SearchQuantity) for x in filtered)
-
-    def _raise(_):
-        raise AssertionError('Should not rebuild app response after warmup')
-
-    monkeypatch.setattr(apps_router, '_build_app_response', _raise, raising=True)
-
-    BASE = config.services.api_base_path.rstrip('/') + '/apps'
-    resp = client.get(f'{BASE}/entry-points/app')
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body['app']['path'] == 'app'
-    assert isinstance(body['search_quantities'], dict)
+    # Fetch search_quantities and see that the initialization is not called
+    client.post(
+        f'{BASE}/search-quantities',
+        json={'query': {'input': 'a'}, 'pagination': {'page': 1, 'page_size': 10}},
+    )
+    assert mock.call_count == 0, 'Expected the initialization to not be called'

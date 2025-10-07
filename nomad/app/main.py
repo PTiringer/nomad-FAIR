@@ -137,7 +137,8 @@ async def lifespan(app: FastAPI):
 
     FastAPICache.init(backend=MongoBackend())
 
-    apps_router.warm_caches()
+    # By this point all of the schemas packages from plugins are loaded.
+    apps_router.initialize_search_quantities()
 
     if config.temporal.enabled:
         try:
