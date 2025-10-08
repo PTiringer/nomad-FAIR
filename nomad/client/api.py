@@ -54,7 +54,7 @@ def url(path):
     return f'{config.client.url}/v1/{path}'
 
 
-class Auth(requests.auth.AuthBase):  # type: ignore
+class Auth(requests.auth.AuthBase):
     """
     A request Auth class that can be used to authenticate in request callcs like this:
 
@@ -68,7 +68,7 @@ class Auth(requests.auth.AuthBase):  # type: ignore
     Arguments:
         user: Optional user name or email, default is take from ``config.client.user``
         password: Optional password, default is taken from ``config.client.password``
-        from_api: If true, the necessary access token is acquired through the NOMAD api via basic auth
+        from_api: If true, the necessary access token is acquired through the NOMAD API
             and not via keycloak directly. Default is False. Not recommended, but might
             be useful, if keycloak can't be configured (e.g. during tests) or reached.
     """
@@ -99,22 +99,28 @@ class Auth(requests.auth.AuthBase):  # type: ignore
             # no token, no auth
             self._token = None
 
-    def get_access_token_from_api(self):
-        if self._token is None:
-            response = requests.get(
-                url('auth/token'),
-                params=dict(username=self.user, password=self._password),
+    def get_access_token_from_api(self) -> None:
+        if self._token is not None:
+            return
+
+        response = requests.post(
+            url('auth/token'),
+            data={
+                'username': self.user,
+                'password': self._password,
+            },
+            headers={'Content-Type': 'application/x-www-form-urlencoded'},
+        )
+
+        if response.status_code != 200:
+            response_json = response.json()
+            raise APIError(
+                f'Could not acquire authentication token: '
+                f'{response_json.get("description") or response_json.get("detail") or "unknown reason"} '
+                f'({response_json.get("code", response.status_code)})'
             )
 
-            if response.status_code != 200:
-                response_json = response.json()
-                raise APIError(
-                    f'Could not acquire authentication token: '
-                    f'{response_json.get("description") or response_json.get("detail") or "unknown reason"} '
-                    f'({response_json.get("code", response.status_code)})'
-                )
-
-            self._token = response.json()
+        self._token = response.json()
 
     def get_access_token_from_keycloak(self):
         if self._token is None and self.user and self._password:
