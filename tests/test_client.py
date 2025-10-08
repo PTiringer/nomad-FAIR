@@ -26,6 +26,7 @@ from httpx import AsyncClient
 from pydantic import ValidationError
 
 from nomad.app.main import app
+from nomad.client.api import APIError, Auth
 from nomad.client.archive import ArchiveQuery
 from nomad.datamodel import EntryArchive, User
 from nomad.datamodel.metainfo import SCHEMA_IMPORT_ERROR, runschema
@@ -36,6 +37,53 @@ from tests.fixtures.users import users
 from tests.processing import test_data as test_processing
 
 # TODO: more tests
+
+
+def test_headers_empty_if_no_token():
+    auth = Auth(user=None, password=None)
+    auth._token = None
+    assert auth.headers() == {}
+
+
+def test_headers_with_token():
+    auth = Auth(user='u', password='p')
+    auth._token = {'access_token': 'abc'}
+    assert auth.headers() == {'Authorization': 'Bearer abc'}
+
+
+def test_get_access_token_from_api_success(monkeypatch):
+    class FakeResponse:
+        status_code = 200
+
+        def json(self):
+            return {'access_token': 'tok123'}
+
+    monkeypatch.setattr(
+        'nomad.client.api.requests.post', lambda *a, **k: FakeResponse()
+    )
+
+    auth = Auth(user='u', password='p', from_api=True)
+    auth._token = None
+    auth.get_access_token_from_api()
+    assert auth._token['access_token'] == 'tok123'
+
+
+def test_get_access_token_from_api_failure(monkeypatch):
+    class FakeResponse:
+        status_code = 401
+
+        def json(self):
+            return {'detail': 'bad creds', 'code': 401}
+
+    monkeypatch.setattr(
+        'nomad.client.api.requests.post', lambda *a, **k: FakeResponse()
+    )
+
+    auth = Auth(user='u', password='p', from_api=True)
+    auth._token = None
+    with pytest.raises(APIError) as e:
+        auth.get_access_token_from_api()
+    assert 'bad creds' in str(e.value)
 
 
 @pytest.fixture(autouse=True)
