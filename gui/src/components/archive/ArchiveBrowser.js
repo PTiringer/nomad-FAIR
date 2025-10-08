@@ -823,7 +823,6 @@ export const QuantityValue = React.memo(function QuantityValue({value, def}) {
   if (isMathValue) {
     const [renderValue, finalUnit] = getRenderValue(finalValue)
     if (def.shape.length > 0) {
-      console.log(renderValue)
       return <Box textAlign="center">
         <Matrix
           values={renderValue}

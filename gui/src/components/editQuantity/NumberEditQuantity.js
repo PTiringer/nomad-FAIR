@@ -232,8 +232,8 @@ export const NumberEditQuantity = React.memo((props) => {
   const options = useMemo(() => {
     const units = [...getUnits(dimension)].map(x => new Unit(x).label(true, false, true))
     unit && units.push(unit.label(true, false, true))
-    units.push(defaultUnitLabel)
-    units.push(displayUnit.label(true, false, true))
+    defaultUnitLabel && units.push(defaultUnitLabel)
+    displayUnit && units.push(displayUnit.label(true, false, true))
     return [...new Set(units)]
   }, [displayUnit, defaultUnitLabel, dimension, unit])
 
