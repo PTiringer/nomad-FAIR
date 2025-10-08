@@ -37,7 +37,7 @@ ENV NODE_OPTIONS="--max_old_space_size=4096 --openssl-legacy-provider"
 # Python cached base layers
 # ================================================================================
 
-FROM ghcr.io/astral-sh/uv:0.5-python3.12-bookworm-slim AS base_python
+FROM ghcr.io/astral-sh/uv:0.9-python3.13-bookworm-slim AS base_python
 # Keeps Python from buffering stdout and stderr to avoid situations where
 # the application crashes without emitting any logs due to buffering.
 ENV PYTHONUNBUFFERED=1
