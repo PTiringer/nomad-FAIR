@@ -3,11 +3,12 @@ import {useMemo} from "react"
 import {Unit} from "./Unit"
 import {useUnitContext} from "./UnitContext"
 import {getFieldProps} from "../editQuantity/StringEditQuantity"
+import { DType, getDatatype } from "../../utils"
 
 /**
  * Used to retrieve the unit to use for displaying a quantity. Primarily uses the display
  * unit annotations, defaults to returning a display unit according to the currently set
- * unit system.
+ * unit system. If the quantity is not of a numeric type, returns undefined.
  *
  * @param {*} quantityDef Definition for the quantity
  * @param {*} returnExplicit Whether to return an object containing the display unit and a
@@ -17,14 +18,22 @@ import {getFieldProps} from "../editQuantity/StringEditQuantity"
 export function useDisplayUnit(quantityDef, returnExplicit = false) {
   const {units} = useUnitContext()
   const {raiseError} = useErrors()
-  const defaultUnit = useMemo(() => new Unit(quantityDef.unit || 'dimensionless'), [quantityDef])
   const {defaultDisplayUnit: deprecatedDefaultDisplayUnit} = getFieldProps(quantityDef)
   const defaultDisplayUnit = quantityDef?.m_annotations?.display?.[0]?.unit || deprecatedDefaultDisplayUnit
 
-  const displayUnitObj = useMemo(() => {
-    let defaultDisplayUnitObj
+  // Get the storage unit if present
+  const defaultUnit = useMemo(() => {
+    const dtype = getDatatype(quantityDef)
+    return (dtype === DType.Int || dtype === DType.Float)
+      ? new Unit(quantityDef.unit || 'dimensionless')
+      : undefined
+  }, [quantityDef])
 
-    // If a default display unit has been defined, use it instead
+  // Get the display unit. Primarily uses the display unit annotation, but falls back to
+  // the global unit system if not present.
+  const displayUnitObj = useMemo(() => {
+    if (!defaultUnit) return undefined
+    let defaultDisplayUnitObj
     if (defaultDisplayUnit) {
       try {
         defaultDisplayUnitObj = new Unit(defaultDisplayUnit)
@@ -34,7 +43,6 @@ export function useDisplayUnit(quantityDef, returnExplicit = false) {
       if (defaultDisplayUnitObj.dimension(true) !== defaultUnit.dimension(true)) {
         raiseError(`The provided defaultDisplayUnit for ${quantityDef.name} has incorrect dimensionality for this field.`)
       }
-    // Use the global unit system defined in the schema
     } else {
       defaultDisplayUnitObj = new Unit(defaultUnit).toSystem(units)
     }
