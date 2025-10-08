@@ -24,8 +24,8 @@ variables:
   DOCKER_TAG: ${CI_COMMIT_REF_SLUG}
   DOCKER_HOST: tcp://docker-dind:2375
   DOCKER_TLS_CERTDIR: ""
-  UV_VERSION: 0.6
-  PYTHON_VERSION: 3.12
+  UV_VERSION: 0.9
+  PYTHON_VERSION: 3.13
 
 workflow:
   rules:
@@ -308,7 +308,7 @@ python package install tests:
     GIT_STRATEGY: none
   script:
     - |
-      for PYTHON_VERSION in 3.10 3.11 3.12; do
+      for PYTHON_VERSION in 3.10 3.11 3.12 3.13; do
         echo "Running for Python $PYTHON_VERSION"
 
         uv venv -p $PYTHON_VERSION
