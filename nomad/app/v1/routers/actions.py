@@ -1,4 +1,5 @@
 import asyncio
+from enum import Enum
 from typing import Final
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -28,6 +29,10 @@ from ..utils import create_responses
 router = APIRouter()
 
 
+class APITag(str, Enum):
+    DEFAULT = 'actions'
+
+
 class ActionStart(BaseModel):
     data: dict
 
@@ -35,7 +40,12 @@ class ActionStart(BaseModel):
 SCHEMA_CACHE_TTL: Final[int] = 1 * 24 * 60 * 60  # 1 day in seconds
 
 
-@router.post('/{action_id}/start')
+@router.post(
+    '/{action_id}/start',
+    tags=[APITag.DEFAULT],
+    summary='Start an action',
+    description='Starts a new action with the given ID and input data.',
+)
 async def action_start(
     action_id: str,
     start_data: ActionStart,
@@ -65,7 +75,12 @@ async def action_start(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post('/{action_instance_id}/stop')
+@router.post(
+    '/{action_instance_id}/stop',
+    tags=[APITag.DEFAULT],
+    summary='Stop an action',
+    description='Stops a running action instance.',
+)
 async def action_stop(
     action_instance_id: str,
     user: User = Depends(create_user_dependency(required=True)),
@@ -90,7 +105,12 @@ async def action_stop(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get('/{action_instance_id}/status')
+@router.get(
+    '/{action_instance_id}/status',
+    tags=[APITag.DEFAULT],
+    summary='Get action status',
+    description='Retrieves the current status of a specific action instance.',
+)
 async def action_status(
     action_instance_id: str, user: User = Depends(create_user_dependency(required=True))
 ):
@@ -117,7 +137,12 @@ async def action_status(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get('/{action_instance_id}/result')
+@router.get(
+    '/{action_instance_id}/result',
+    tags=[APITag.DEFAULT],
+    summary='Get action result',
+    description='Retrieves the result of a specific action instance.',
+)
 async def action_result(
     action_instance_id: str, user: User = Depends(create_user_dependency(required=True))
 ):
@@ -146,7 +171,10 @@ async def action_result(
 
 @router.get(
     '/schemas',
+    tags=[APITag.DEFAULT],
     response_model=list[ActionSchemaInfo],
+    summary='Get action schemas',
+    description='Retrieves the input schemas for all available actions.',
 )
 @cache(expire=SCHEMA_CACHE_TTL)
 async def action_input_schemas(
@@ -184,6 +212,7 @@ _not_authorized = (
 
 @router.get(
     '/{action_instance_id}',
+    tags=[APITag.DEFAULT],
     summary='Get a specific action of the authenticated user.',
     response_model=ActionModel,
     responses=create_responses(_not_authorized),
@@ -221,7 +250,9 @@ async def action(
 
 @router.get(
     '',
-    summary='List uploads of authenticated user.',
+    tags=[APITag.DEFAULT],
+    summary='List all actions of the authenticated user',
+    description='Retrieves a list of all action instances initiated by the authenticated user.',
     response_model=list[ActionModelSummary],
     responses=create_responses(_not_authorized),
     response_model_exclude_unset=True,
