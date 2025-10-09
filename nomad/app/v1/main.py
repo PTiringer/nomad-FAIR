@@ -117,6 +117,7 @@ async def unicorn_exception_handler(request: Request, e: Exception):
     )
 
 
+app.include_router(actions.router, prefix='/actions')
 app.include_router(auth.router, prefix='/auth')
 app.include_router(apps.router, prefix='/apps')
 app.include_router(datasets.router, prefix='/datasets')
@@ -133,4 +134,3 @@ app.include_router(suggestions.router, prefix='/suggestions')
 app.include_router(systems.router, prefix='/systems')
 app.include_router(uploads.router, prefix='/uploads')
 app.include_router(users.router, prefix='/users')
-app.include_router(actions.router, prefix='/actions')
