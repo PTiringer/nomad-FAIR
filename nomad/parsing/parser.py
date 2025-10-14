@@ -359,6 +359,12 @@ class MatchingParser(Parser):
                 and not re.match(r'.+\.(?:csv|xlsx?)$', filename)
             ):
                 try:
+                    if filename.endswith('.son'):
+                        with open(filename) as f:
+                            text = re.search(r'([\s\S]+?)[\-\=]{3}', f.read())
+                        is_match = match(
+                            self._mainfile_contents_dict, json.loads(text.group(1))
+                        )
                     is_match = match(
                         self._mainfile_contents_dict, json.load(open(filename))
                     )
