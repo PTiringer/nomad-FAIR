@@ -301,7 +301,7 @@ def test_tabular_complex_schema(raw_files_function, monkeypatch, schema):
 
     context = MyContext(local_dir='')
 
-    main_archive, _ = get_archives(context, schema_file, None)
+    main_archive, _ = get_archives(context, schema_file, 'sample_id')
     ArchiveParser().parse(schema_file, main_archive)
     run_normalize(main_archive)
 
@@ -434,7 +434,7 @@ def test_tabular_column_mode(
 
     context = MyContext(local_dir='')
 
-    main_archive, _ = get_archives(context, schema_file, None)
+    main_archive, _ = get_archives(context, schema_file, 'sample_id')
     ArchiveParser().parse(schema_file, main_archive)
     run_normalize(main_archive)
 
@@ -567,7 +567,7 @@ def test_tabular_row_mode(
 
     context = MyContext(local_dir='')
 
-    main_archive, _ = get_archives(context, schema_file, None)
+    main_archive, _ = get_archives(context, schema_file, 'sample_id')
     ArchiveParser().parse(schema_file, main_archive)
     run_normalize(main_archive)
 
@@ -759,7 +759,7 @@ def test_tabular_csv(raw_files_function, monkeypatch, schema, content):
 
     context = MyContext(local_dir='')
 
-    main_archive, _ = get_archives(context, schema_file, None)
+    main_archive, _ = get_archives(context, schema_file, 'sample_id')
     ArchiveParser().parse(schema_file, main_archive)
     run_normalize(main_archive)
     if re.search('space in header', schema):
@@ -883,7 +883,7 @@ def test_tabular_checkbox(raw_files_function, monkeypatch, schema, content):
 
     context = MyContext(local_dir='')
 
-    main_archive, _ = get_archives(context, schema_file, None)
+    main_archive, _ = get_archives(context, schema_file, 'sample_id')
     ArchiveParser().parse(schema_file, main_archive)
     run_normalize(main_archive)
 
@@ -941,7 +941,7 @@ def get_archives(context, mainfile, upload_id, keys=None):
     main_archive = EntryArchive(
         m_context=context,
         metadata=EntryMetadata(
-            upload_id=None,
+            upload_id=upload_id,
             mainfile=mainfile,
             entry_id=generate_entry_id(upload_id, mainfile),
         ),
