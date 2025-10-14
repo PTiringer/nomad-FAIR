@@ -36,27 +36,27 @@ import jmespath
 import pint
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from nomad.metainfo.data_type import JSON as JSONType
-from nomad.metainfo.data_type import URL as URLType
-from nomad.metainfo.data_type import Any as AnyType
-from nomad.metainfo.data_type import Bytes as BytesType
-from nomad.metainfo.data_type import Callable as CallableType
-from nomad.metainfo.data_type import Capitalized as CapitalizedType
-from nomad.metainfo.data_type import (
+from nomad.metainfo.data_type import (  # noqa: F401
+    JSON,
+    URL,
+    Bytes,
+    Callable,
+    Capitalized,
     Datatype,
+    Datetime,
+    Dimension,
     Enum,
     ExactNumber,
+    File,
     InexactNumber,
     Number,
+    Unit,
     check_dimensionality,
     m_str,
     normalize_type,
     to_json_schema_type,
 )
-from nomad.metainfo.data_type import Datetime as DatetimeType
-from nomad.metainfo.data_type import Dimension as DimensionType
-from nomad.metainfo.data_type import File as FileType
-from nomad.metainfo.data_type import Unit as UnitType
+from nomad.metainfo.data_type import Any as AnyType
 from nomad.metainfo.util import (
     MQuantity,
     MSubSectionList,
@@ -354,6 +354,12 @@ class SectionProxy(MProxy):
 
 class QuantityType(Datatype):
     __slots__ = ()
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
 
     def serialize_self(self):
         return {
@@ -415,9 +421,6 @@ class QuantityType(Datatype):
             return transform(serialized) if transform is not None else serialized
 
         raise MetainfoError(f'Type {value} is not a valid quantity type.')
-
-
-_adapter = QuantityType()
 
 
 class Reference:
@@ -560,13 +563,13 @@ class MSectionReference(Reference):
     !!! FOR INTERNAL USE ONLY !!!
     """
 
-    python_definition = re.compile(r'^\w*(\.\w*)*(@\w{40})?$')
+    _pattern = re.compile(r'^\w*(\.\w*)*(@\w{40})?$')
 
     def __init__(self):
         super().__init__(Section.m_def)
 
     def _normalize_impl(self, value, **kwargs):
-        if isinstance(value, str) and self.python_definition.match(value):
+        if isinstance(value, str) and self._pattern.match(value):
             return SectionProxy(
                 value,
                 m_proxy_section=kwargs.get('section', None),
@@ -625,18 +628,6 @@ class QuantityReference(Reference):
         parent_path: str = super()._serialize_impl(section, value)
 
         return parent_path.split('@')[0] + f'/{self.target_quantity_def.name}'
-
-
-MEnum = Enum
-Unit = UnitType
-Datetime = DatetimeType
-JSON = JSONType
-Capitalized = CapitalizedType
-Bytes = BytesType
-Callable = CallableType
-URL = URLType
-Dimension = DimensionType
-File = FileType
 
 
 # Metainfo data storage and reflection interface
@@ -816,7 +807,7 @@ class MSection(metaclass=MObjectMeta):
             # this manual checking is required only during bootstrapping
             # for normal cases it will be handled via `m_update`
             if (target := kwargs.pop('type', None)) is not None:
-                kwargs['type'] = _adapter.normalize(target, section=self)
+                kwargs['type'] = QuantityType().normalize(target, section=self)
 
             self.__dict__.update(kwargs)
         else:
@@ -2910,7 +2901,7 @@ class Attribute(Definition):
     def _hash_seed(self) -> str:
         return (
             super()._hash_seed()
-            + json.dumps(_adapter.serialize(self.type, section=self))
+            + json.dumps(QuantityType().serialize(self.type, section=self))
             + ''.join(str(x) for x in self.shape)
         )
 
@@ -3315,7 +3306,9 @@ class Quantity(Property):
         if isinstance(self.type, Reference):
             reference_seed = self.type.target_definition_id
         else:
-            reference_seed = json.dumps(_adapter.serialize(self.type, section=self))
+            reference_seed = json.dumps(
+                QuantityType().serialize(self.type, section=self)
+            )
 
         return (
             super()._hash_seed()
@@ -3408,7 +3401,7 @@ class DirectQuantity(Quantity):
             obj.__dict__.pop(self._name, None)
         else:
             if self._name == 'type':
-                value = _adapter.normalize(value, section=obj)
+                value = QuantityType().normalize(value, section=obj)
 
             obj.__dict__[self._name] = value
 
@@ -4443,4 +4436,6 @@ SubSection.__init_cls__()
 is_initializing_proto = False  # noqa
 
 AnnotationModel.model_rebuild()
+
 SchemaPackage = Package
+MEnum = Enum
