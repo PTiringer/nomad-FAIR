@@ -2730,14 +2730,6 @@ class Definition(MSection):
         class after the class was created. If metainfo definitions are created without
         a class context, this method must be called manually on all definitions.
         """
-
-        # for base_section in self.all_base_sections:
-        #     for constraint in base_section.constraints:
-        #         constraints.add(constraint)
-        #     for event_handler in base_section.event_handlers:
-        #         event_handlers.add(event_handler)
-
-        # initialize definition annotations
         for annotation in self.m_get_annotations(DefinitionAnnotation, as_list=True):
             annotation.init_annotation(self)
 
@@ -2759,6 +2751,17 @@ class Definition(MSection):
 
     def __repr__(self):
         return f'{self.qualified_name()}:{self.m_def.name}'
+
+    @constraint(warning=False)
+    def valid_name(self):
+        if not self.name or self.name.isidentifier():
+            return
+
+        if all(x.isidentifier() for x in self.name.split('.')):
+            return
+
+        if not isinstance(self, Package) or not self.m_is_custom_package:
+            raise AssertionError(f'Definition {self.name} is not valid.')
 
     def m_is_set(self, def_or_name: Property | str, *, hint: str | None = None) -> bool:
         definition = self._ensure_definition(def_or_name, hint=hint)
@@ -2924,10 +2927,8 @@ class Attribute(Definition):
 
     @constraint(warning=False)
     def is_primitive(self):
-        if isinstance(self.type, Datatype):
-            return
-
-        raise AssertionError('Attributes must have primitive type.')
+        if not isinstance(self.type, Datatype):
+            raise AssertionError(f'Attribute {self} must have primitive type.')
 
     def _hash_seed(self) -> str:
         return (
@@ -3109,9 +3110,7 @@ class Quantity(Property):
         super().__init_metainfo__()
 
         if self.derived is not None:
-            self.virtual = True  # type: ignore
-
-        check_dimensionality(self, self.unit)
+            self.virtual = True
 
     def __get__(self, obj, cls=None, **kwargs):
         if obj is None:
@@ -3126,24 +3125,22 @@ class Quantity(Property):
                 if kwargs.get('full', False):  # full storage requested
                     return value[actual_name]
                 value = value[actual_name].get()
+        elif self.derived is not None:
+            try:
+                if not self.cached:
+                    return self.derived(obj)
+
+                cached = obj.__dict__.setdefault(f'_cached_{self.name}', [-1, None])
+                if cached[0] != obj.m_mod_count:
+                    cached[0] = obj.m_mod_count
+                    cached[1] = self.derived(obj)
+                return cached[1]
+            except Exception as e:
+                raise DeriveError(f'Could not derive value for {self}: {str(e)}')
+        elif isinstance(self.default, dict | list):
+            value = self.default.copy()
         else:
-            if self.derived is not None:
-                try:
-                    if not self.cached:
-                        return self.derived(obj)
-
-                    cached = obj.__dict__.setdefault(f'_cached_{self.name}', [-1, None])
-                    if cached[0] != obj.m_mod_count:
-                        cached[0] = obj.m_mod_count
-                        cached[1] = self.derived(obj)
-                    return cached[1]
-                except Exception as e:
-                    raise DeriveError(f'Could not derive value for {self}: {str(e)}')
-
-            if isinstance(self.default, dict | list):
-                value = self.default.copy()
-            else:
-                value = self.default
+            value = self.default
 
         if value is None:
             return value
@@ -3290,16 +3287,13 @@ class Quantity(Property):
     @constraint(warning=False)
     def has_type(self):
         if self.type is None:
-            raise AssertionError(
-                f'The quantity {self.qualified_name()} must define a type.'
-            )
+            raise AssertionError(f'The quantity {self} must define a type.')
+
         if isinstance(self.type, Reference):
             try:
                 self.type.target_section_def.m_resolved()
             except MetainfoReferenceError as e:
-                raise AssertionError(
-                    f'Cannot resolve "type" of {self.qualified_name()}: {str(e)}'
-                )
+                raise AssertionError(f'Cannot resolve {self}: {str(e)}')
 
     @constraint(warning=False)
     def correct_dimensionality(self):
@@ -3512,7 +3506,7 @@ class SubSection(Property):
                 'Cannot resolve "sub_section"'
             )
         except MetainfoReferenceError as e:
-            assert False, f'Cannot resolve "sub_section": {str(e)}'
+            raise AssertionError(f'Cannot resolve "sub_section": {str(e)}')
 
     def hash(self) -> _HASH_OBJ:
         if self._cached_hash is None or self._cached_count != self.m_mod_count:
@@ -3760,23 +3754,21 @@ class Section(Definition):
     def __init_metainfo__(self):
         super().__init_metainfo__()
 
-        if self.extends_base_section:
-            # Init extending_sections
-            if len(self.base_sections) != 1:
-                raise MetainfoError(
-                    f'Section {self} extend the base section, but has no or more than one base section.'
-                )
-
+        if not self.extends_base_section:
+            for base_section in self.base_sections:
+                if self not in base_section.inheriting_sections:
+                    base_section.inheriting_sections += [self]  # cannot use append here
+        elif len(self.base_sections) == 1:
             base_section = self.base_sections[0]
             for name, attr in self.section_cls.__dict__.items():
                 if isinstance(attr, Property):
                     setattr(base_section.section_cls, name, attr)
-
-            base_section.extending_sections += [self]  # cannot use append here
+            if self not in base_section.inheriting_sections:
+                base_section.extending_sections += [self]  # cannot use append here
         else:
-            # Init inheriting_sections
-            for base_section in self.base_sections:
-                base_section.inheriting_sections += [self]  # cannot use append here
+            raise MetainfoError(
+                f'Section {self} extend the base section, but has no or more than one base section.'
+            )
 
         # Transfer properties of inherited and overwritten property definitions that
         # have not been overwritten
@@ -3867,7 +3859,7 @@ class Section(Definition):
             try:
                 base_section.m_resolved()
             except MetainfoReferenceError as e:
-                assert False, f'Cannot resolve base_section: {str(e)}'
+                raise AssertionError(f'Cannot resolve base_section: {str(e)}')
 
     @classmethod
     def m_from_dict(cls, data: dict[str, Any], **kwargs):
@@ -3996,18 +3988,13 @@ class Package(Definition):
 
         # access potential SectionProxies to resolve them
         for content in self.m_all_contents():
-            if isinstance(content, Quantity):
-                if isinstance(content.type, MProxy):
-                    content.type.m_proxy_resolve()
-            elif isinstance(content, SubSection):
-                target = content.sub_section
-                if isinstance(target, MProxy):
-                    target = target.m_proxy_resolve()
-                SubSection.used_sections.setdefault(target, []).append(content)
+            if isinstance(content, SubSection):
+                SubSection.used_sections.setdefault(
+                    content.sub_section.m_resolved(), []
+                ).append(content)
             elif isinstance(content, Section):
                 for base_section in content.base_sections:
-                    if isinstance(base_section, MProxy):
-                        base_section.m_proxy_resolve()
+                    base_section.m_resolved()
 
         # validate
         if is_bootstrapping:

@@ -328,3 +328,18 @@ def test_references(source_type, target_type):
         'type_kind': 'reference',
         'type_data': target_type,
     }
+
+
+def test_invalid_name():
+    result: Package = yaml_to_package("""
+                m_def: 'nomad.metainfo.metainfo.Package'
+                sections:
+                    Process-1:
+                        quantities:
+                            samples:
+                                type: 'str'
+                                shape: ['*']
+            """)
+
+    with pytest.raises(MetainfoError):
+        result.init_metainfo()
