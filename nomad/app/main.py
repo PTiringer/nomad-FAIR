@@ -32,6 +32,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from temporalio.client import Client
 
+from nomad._auth import check_api_secret
 from nomad.actions.client import get_client
 from nomad.config import config
 from nomad.config.models.plugins import APIEntryPoint
@@ -139,6 +140,9 @@ async def lifespan(app: FastAPI):
 
     # By this point all of the schemas packages from plugins are loaded.
     apps_router.initialize_search_quantities()
+
+    # Validate API secret
+    check_api_secret()
 
     if config.temporal.enabled:
         try:

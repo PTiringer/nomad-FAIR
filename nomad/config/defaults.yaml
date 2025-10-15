@@ -87,7 +87,6 @@ temporal:
   host: localhost
   namespace: default
   port: 7233
-  secret: secret-token
 fs:
   local_tmp: /tmp
   north_home: .volumes/fs/north/users
@@ -194,7 +193,6 @@ services:
   api_base_path: /nomad-oasis
   api_host: localhost
   api_port: 8000
-  api_secret: defaultApiSecret
   api_timeout: 600
   app_token_max_expires_in: 2592000
   console_log_level: 30

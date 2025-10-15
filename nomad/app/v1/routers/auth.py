@@ -33,6 +33,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 
 from nomad import datamodel, infrastructure, utils
+from nomad._auth import check_api_secret
 from nomad.config import config
 from nomad.utils import get_logger, strip
 
@@ -238,6 +239,8 @@ def _get_user_upload_token_auth(upload_token: str | None) -> User | None:
     if upload_token is None:
         return None
 
+    check_api_secret()
+
     try:
         payload, signature = upload_token.split('.')
         payload_bytes = utils.base64_decode(payload)
@@ -312,6 +315,8 @@ def _get_user_from_simple_token(token: str | None) -> User | None:
     """
     if token is None:
         return None
+
+    check_api_secret()
 
     try:
         decoded = jwt.decode(token, config.services.api_secret, algorithms=['HS256'])
@@ -430,6 +435,7 @@ def generate_simple_token(user_id: str, expires_in: int) -> str:
     Generates and returns JWT encoded user_id and expiration time,
     signed with the API secret.
     """
+    check_api_secret()
     expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
         seconds=expires_in
     )
@@ -439,6 +445,7 @@ def generate_simple_token(user_id: str, expires_in: int) -> str:
 
 def generate_upload_token(user: User) -> str:
     """Generates and returns upload token for user."""
+    check_api_secret()
     payload = uuid.UUID(user.user_id).bytes
     signature = hmac.new(
         bytes(config.services.api_secret, 'utf-8'), msg=payload, digestmod=hashlib.sha1
