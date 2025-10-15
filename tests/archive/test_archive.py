@@ -963,6 +963,7 @@ def test_required_reader_with_remote_reference(
     json_dict,
     remote_reference_required,
     resolve_inplace,
+    elastic_function,
     example_data_with_reference,
     user1,
     entry_id,

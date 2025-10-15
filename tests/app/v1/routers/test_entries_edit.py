@@ -502,6 +502,14 @@ async def test_post_entries_edit(
     user_auth = auth_headers[user]
     user = users_dict.get(user)
     query = kwargs.get('query')
+    if query and 'upload_id' in query:
+        upload_id = query['upload_id']
+        if isinstance(upload_id, str):
+            query['upload_id'] = example_data_writeable.get(upload_id, upload_id)
+        elif isinstance(upload_id, list):
+            query['upload_id'] = [
+                example_data_writeable.get(uid, uid) for uid in upload_id
+            ]
     owner = kwargs.get('owner', 'visible')
     metadata = kwargs.get('metadata')
     entries = kwargs.get('entries')
@@ -510,6 +518,11 @@ async def test_post_entries_edit(
     expected_error_loc = kwargs.get('expected_error_loc')
     expected_status_code = kwargs.get('expected_status_code')
     affected_upload_ids = kwargs.get('affected_upload_ids')
+    if affected_upload_ids:
+        affected_upload_ids = [
+            example_data_writeable.get(upload_id, upload_id)
+            for upload_id in affected_upload_ids
+        ]
     expected_metadata = kwargs.get('expected_metadata', metadata)
 
     add_coauthor = kwargs.get('add_coauthor', False)

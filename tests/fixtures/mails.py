@@ -29,16 +29,17 @@ class Handler:
 
 
 class SMTPServer:
-    def __init__(self):
+    def __init__(self, port=None):
         self.host_port = None
         self.smtp = None
         self.handler = None
+        self.port = port
 
     def run(self):
         self.handler = Handler()
-        self.smtp = Controller(
-            self.handler, hostname='127.0.0.1', port=config.mail.port
-        )
+        # Use provided port or fall back to config
+        port = self.port if self.port is not None else config.mail.port
+        self.smtp = Controller(self.handler, hostname='127.0.0.1', port=port)
         self.smtp.start()
         self.host_port = self.smtp.hostname, self.smtp.port
 
@@ -48,10 +49,9 @@ class SMTPServer:
 
 
 class SMTPServerFixture:
-    def __init__(self):
-        self.server = SMTPServer()
+    def __init__(self, port=None):
+        self.server = SMTPServer(port=port)
         self.server.run()
-        _ = self.host_port
 
     @property
     def host_port(self):
@@ -80,12 +80,43 @@ class SMTPServerFixture:
         self.server.close()
 
 
+def get_worker_port(worker_id, base_port=None):
+    """
+    Calculate a unique port for each xdist worker.
+
+    Args:
+        worker_id: pytest-xdist worker identifier (e.g., 'gw0', 'gw1', 'master')
+        base_port: Base port number (defaults to config.mail.port)
+
+    Returns:
+        Unique port number for the worker
+    """
+    if base_port is None:
+        base_port = config.mail.port
+
+    if worker_id == 'master':
+        return base_port
+
+    # Extract numeric part from worker_id (e.g., 'gw0' -> 0, 'gw1' -> 1)
+    worker_num = int(worker_id.replace('gw', ''))
+    return base_port + worker_num + 1
+
+
 @pytest.fixture(scope='session')
-def smtpd(request, monkeysession):
-    # on some local machines resolving the local machine takes quit a while and
+def smtpd(request, monkeysession, worker_id):
+    """
+    SMTP server fixture with xdist-aware port assignment.
+
+    Each xdist worker gets a unique port to avoid conflicts during parallel testing.
+    """
+    # on some local machines resolving the local machine takes quite a while and
     # is irrelevant for testing
     monkeysession.setattr('socket.getfqdn', lambda *args, **kwargs: 'local.server')
-    fixture = SMTPServerFixture()
+
+    # Calculate unique port for this worker
+    port = get_worker_port(worker_id)
+
+    fixture = SMTPServerFixture(port=port)
     request.addfinalizer(fixture.close)
     return fixture
 
@@ -95,4 +126,5 @@ def mails(smtpd, monkeypatch):
     smtpd.clear()
     monkeypatch.setattr('nomad.config.mail.enabled', True)
     monkeypatch.setattr('nomad.config.mail.host', 'localhost')
+    monkeypatch.setattr('nomad.config.mail.port', smtpd.port)
     yield smtpd

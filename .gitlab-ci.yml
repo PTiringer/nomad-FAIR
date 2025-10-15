@@ -176,7 +176,7 @@ python tests:
   parallel: 4
   extends: .base_test
   script:
-    - python -m pytest --cov=nomad --cov-report term --cov-config=.coveragerc -sv tests --splits $CI_NODE_TOTAL --group=$CI_NODE_INDEX
+    - python -m pytest -n=3 --dist=loadscope --cov=nomad --cov-report term --cov-config=.coveragerc -sv tests --splits $CI_NODE_TOTAL --group=$CI_NODE_INDEX --splitting-algorithm least_duration
   after_script:
     - cp .coverage .coverage_${CI_NODE_INDEX}
   artifacts:
