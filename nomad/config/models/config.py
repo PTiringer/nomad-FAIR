@@ -19,8 +19,17 @@
 import logging
 import os
 import warnings
+from enum import Enum
 from importlib.metadata import version
 from typing import Any
+
+_DEFAULT_API_KEY = 'default-api-secret-that-is-long-enough'
+
+
+class ModeEnum(str, Enum):
+    PRODUCTION = 'production'
+    DEVELOPMENT = 'development'
+
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -81,9 +90,16 @@ class Services(ConfigBaseModel):
     """,
     )
     api_secret: str = Field(
-        'defaultApiSecret',
+        _DEFAULT_API_KEY,
+        min_length=32,
         description="""
         A secret that is used to issue download and other tokens.
+    """,
+    )
+    mode: ModeEnum = Field(
+        ModeEnum.PRODUCTION,
+        description="""
+        The mode to run NOMAD in, defaults to production mode. Affects the security features and you should only run NOMAD in development mode if the instance is not publicly available.
     """,
     )
     api_timeout: int = Field(
@@ -464,7 +480,6 @@ class Temporal(ConfigBaseModel):
     port: int = 7233
     namespace: str = 'default'
     enabled: bool = True
-    secret: str = 'secret-key'
 
 
 class Keycloak(ConfigBaseModel):

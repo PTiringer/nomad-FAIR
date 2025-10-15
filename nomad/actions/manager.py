@@ -14,9 +14,9 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, is_dataclass
 from datetime import datetime
-from typing import Any, get_type_hints
+from typing import Any, get_args, get_origin, get_type_hints
 
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, Field, SecretBytes, SecretStr, TypeAdapter
 from temporalio.client import WorkflowExecutionStatus
 
 from nomad import infrastructure
@@ -60,7 +60,17 @@ class ActionSchemaInfo(BaseModel):
 
 def _to_dict(data: Any) -> dict:
     if isinstance(data, BaseModel):  # pydantic
-        return data.model_dump()
+        secret_types = (SecretStr, SecretBytes)
+        secret_fields = {
+            field_name
+            for field_name, field_info in type(data).model_fields.items()
+            if field_info.annotation in secret_types
+            or (
+                get_origin(field_info.annotation)
+                and any(arg in secret_types for arg in get_args(field_info.annotation))
+            )
+        }
+        return data.model_dump(exclude=secret_fields)
     elif is_dataclass(data) and not isinstance(data, type):
         return asdict(data)
     elif isinstance(data, dict):  # already a dict
