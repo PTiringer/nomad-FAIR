@@ -13,6 +13,7 @@ import elasticsearch.exceptions
 import pytest
 from temporalio.testing import WorkflowEnvironment
 from temporalio.worker import Worker
+from xdist.scheduler.loadscope import LoadScopeScheduling
 
 from nomad import infrastructure
 from nomad.actions import TaskQueue
@@ -21,10 +22,107 @@ from nomad.actions.workflows.util import get_nomad_internal_workflows
 from nomad.config import config
 from nomad.workflows import workflows
 
-elastic_test_entries_index = 'nomad_entries_v1_test'
-elastic_test_materials_index = 'nomad_materials_v1_test'
 
-indices = [elastic_test_entries_index, elastic_test_materials_index]
+class TrieNode:
+    def __init__(self):
+        """
+        Initialize a TrieNode.
+        """
+        self.children = {}
+        self.is_end_of_word = False
+
+
+class Trie:
+    def __init__(self):
+        """
+        Initialize a Trie data structure.
+        """
+        self.root = TrieNode()
+
+    def insert(self, word):
+        """
+        Insert a word into the Trie.
+
+        Args:
+            word (str): The word to be inserted.
+        """
+        node = self.root
+        for char in word:
+            if char not in node.children:
+                node.children[char] = TrieNode()
+            node = node.children[char]
+        node.is_end_of_word = True
+
+
+class CustomScheduler(LoadScopeScheduling):
+    """
+    Custom test scheduler for parallel test execution with pytest-xdist.
+
+    It defines a method for splitting the scope of tests to enable efficient parallel execution
+    by distributing tests across different workers based on predefined integration test prefixes.
+    By distributing it this way, all of the integration tests would be passed to one single worker,
+    thus avoiding any issues that may arise with running parallel tests that require celery workers.
+
+    The scheduler uses a Trie data structure for efficient integration test prefix matching,
+    reducing the time complexity of splitting test scopes.
+    """
+
+    integration_tests = [
+        'tests/app/v1/routers/test_apps.py',
+        'tests/app/v1/routers/test_federation.py',
+        'tests/app/v1/routers/uploads/test_basic_uploads_legacy.py',
+        'tests/app/v1/routers/uploads/test_transfer_bundle.py',
+        'tests/archive/test_archive.py',
+        'tests/logtransfer/test_logtransfer.py',
+        'tests/parsing/test_parsing.py',
+        'tests/processing/test_base.py',
+        'tests/processing/test_data_legacy.py',
+        'tests/processing/test_rfc3161.py',
+        'tests/test_cli.py',
+    ]
+
+    def __init__(self, config, log):
+        """
+        Initialize the CustomScheduler instance and build a Trie with integration tests.
+        """
+        self.trie = Trie()
+        for test in self.integration_tests:
+            self.trie.insert(test)
+        super().__init__(config, log)
+
+    def _split_scope(self, nodeid):
+        """
+        Split the scope of the test based on integration tests.
+
+        Args:
+            nodeid (str): The identifier of the test.
+
+        Returns:
+            str: 'integration-tests' if nodeid matches an integration test, else nodeid itself.
+        """
+        node = self.trie.root
+        for char in nodeid:
+            if char in node.children:
+                node = node.children[char]
+                if node.is_end_of_word:
+                    return 'integration-tests'
+            else:
+                break
+        return nodeid
+
+
+def pytest_xdist_make_scheduler(config, log):
+    """
+    Factory function for creating a custom scheduler for pytest-xdist parallel test execution.
+
+    This function is used by pytest-xdist to create a custom test scheduler for parallel test execution.
+    It is responsible for instantiating and returning an instance of the CustomScheduler class,
+    which determines how tests are distributed and executed across different workers in parallel.
+
+    Returns:
+        CustomScheduler: An instance of the CustomScheduler class, configured for parallel test scheduling.
+    """
+    return CustomScheduler(config, log)
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -125,33 +223,55 @@ def worker(mongo_function, celery_session_worker, celery_inspect):
 
 
 @pytest.fixture(scope='session')
-def mongo_infra(monkeysession):
-    monkeysession.setattr('nomad.config.mongo.db_name', 'test_db')
+def mongo_db_name(worker_id):
+    return f'test_db_{worker_id}'
+
+
+@pytest.fixture(scope='session')
+def mongo_infra(monkeysession, mongo_db_name):
+    monkeysession.setattr('nomad.config.mongo.db_name', mongo_db_name)
     # disconnecting and connecting again results in an empty database with mongomock
     monkeysession.setattr('mongoengine.disconnect', lambda *args, **kwargs: None)
     return infrastructure.setup_mongo()
 
 
-def clear_mongo(mongo_infra):
+def clear_mongo(mongo_infra, mongo_db_name):
     # Some test cases need to reset the database connection
-    infrastructure.mongo_client.drop_database('test_db')
+    infrastructure.mongo_client.drop_database(mongo_db_name)
     return infrastructure.mongo_client
 
 
 @pytest.fixture(scope='module')
-def mongo_module(mongo_infra):
+def mongo_module(mongo_infra, mongo_db_name):
     """Provides a cleaned mocked mongo per module."""
-    return clear_mongo(mongo_infra)
+    return clear_mongo(mongo_infra, mongo_db_name)
 
 
 @pytest.fixture(scope='function')
-def mongo_function(mongo_infra):
+def mongo_function(mongo_infra, mongo_db_name):
     """Provides a cleaned mocked mongo per function."""
-    return clear_mongo(mongo_infra)
+    return clear_mongo(mongo_infra, mongo_db_name)
 
 
 @pytest.fixture(scope='session')
-def elastic_infra(monkeysession):
+def elastic_test_entries_index(worker_id):
+    return f'nomad_entries_v1_test_{worker_id}'
+
+
+@pytest.fixture(scope='session')
+def elastic_test_materials_index(worker_id):
+    return f'nomad_materials_v1_test_{worker_id}'
+
+
+@pytest.fixture(scope='session')
+def elastic_test_indices(elastic_test_entries_index, elastic_test_materials_index):
+    return [elastic_test_entries_index, elastic_test_materials_index]
+
+
+@pytest.fixture(scope='session')
+def elastic_infra(
+    monkeysession, elastic_test_entries_index, elastic_test_materials_index
+):
     """Provides elastic infrastructure to the session"""
     monkeysession.setattr(
         'nomad.config.elastic.entries_index', elastic_test_entries_index
@@ -161,10 +281,12 @@ def elastic_infra(monkeysession):
     )
 
     # attempt to remove and recreate all indices
-    return clear_elastic_infra()
+    return clear_elastic_infra(
+        [elastic_test_entries_index, elastic_test_materials_index]
+    )
 
 
-def clear_elastic_infra():
+def clear_elastic_infra(indices):
     """
     Removes and re-creates all indices and mappings.
     """
@@ -183,13 +305,13 @@ def clear_elastic_infra():
     return infrastructure.setup_elastic()
 
 
-def clear_elastic(elastic_infra):
+def clear_elastic(elastic_infra, indices):
     """
     Removes all contents from the existing indices.
     """
     try:
         for index in indices:
-            retry_count = 10
+            retry_count = 30
             while True:
                 try:
                     elastic_infra.delete_by_query(
@@ -202,29 +324,35 @@ def clear_elastic(elastic_infra):
                 except elasticsearch.exceptions.ConflictError:
                     if retry_count:
                         # Sleep and try again
-                        time.sleep(0.1)
+                        time.sleep(0.5)
                         retry_count -= 1
                     else:
                         raise
-
+                except elasticsearch.exceptions.TransportError:
+                    if retry_count:
+                        # Sleep and try again
+                        time.sleep(1)
+                        retry_count -= 1
+                    else:
+                        raise
     except elasticsearch.exceptions.NotFoundError:
         # Happens if a test removed indices without recreating them.
-        clear_elastic_infra()
+        clear_elastic_infra(indices)
 
     assert infrastructure.elastic_client is not None
     return elastic_infra
 
 
 @pytest.fixture(scope='module')
-def elastic_module(elastic_infra):
+def elastic_module(elastic_infra, elastic_test_indices):
     """Provides a clean elastic per module. Clears elastic before test."""
-    return clear_elastic(elastic_infra)
+    return clear_elastic(elastic_infra, elastic_test_indices)
 
 
 @pytest.fixture(scope='function')
-def elastic_function(elastic_infra):
+def elastic_function(elastic_infra, elastic_test_indices):
     """Provides a clean elastic per function. Clears elastic before test."""
-    return clear_elastic(elastic_infra)
+    return clear_elastic(elastic_infra, elastic_test_indices)
 
 
 @pytest.fixture
@@ -249,7 +377,7 @@ TemporalWorkerContext: TypeAlias = Callable[
 
 @pytest.fixture(scope='function')
 def temporal_worker(
-    elastic_function,
+    elastic_infra,
     mongo_function,
     raw_files_function,
     monkeypatch,

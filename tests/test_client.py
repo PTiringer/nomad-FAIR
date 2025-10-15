@@ -198,7 +198,7 @@ async def test_async_query_basic(async_api_v1, published_wo_user_metadata):
     ],
 )
 async def test_async_query_required(
-    async_api_v1, published_wo_user_metadata, q_required, sub_sections
+    elastic_function, async_api_v1, published_wo_user_metadata, q_required, sub_sections
 ):
     async_query = ArchiveQuery(required=q_required)
 
@@ -206,7 +206,9 @@ async def test_async_query_required(
 
 
 @pytest.mark.asyncio
-async def test_async_query_auth(async_api_v1, published, user2, user1):
+async def test_async_query_auth(
+    elastic_function, async_api_v1, published, user2, user1
+):
     async_query = ArchiveQuery(username=user2.username, password='password')
 
     assert_results(async_query.download(), total=0)
@@ -217,7 +219,9 @@ async def test_async_query_auth(async_api_v1, published, user2, user1):
 
 
 @pytest.mark.asyncio
-async def test_async_query_parallel(async_api_v1, many_uploads, monkeypatch):
+async def test_async_query_parallel(
+    elastic_function, async_api_v1, many_uploads, monkeypatch
+):
     async_query = ArchiveQuery(required=dict(run='*'))
 
     assert_results(async_query.download(), total=4)

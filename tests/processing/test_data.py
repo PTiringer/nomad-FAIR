@@ -281,6 +281,7 @@ async def test_processing_with_large_dir(user1, temporal_worker, tmp):
 
 @pytest.mark.asyncio
 async def test_publish(
+    elastic_function,
     non_empty_processed_with_temporal: Upload,
     no_warn,
     internal_example_user_metadata,
@@ -315,7 +316,7 @@ async def test_publish(
 
 @pytest.mark.asyncio
 async def test_publish_directly(
-    non_empty_uploaded, user1, temporal_worker, no_warn, monkeypatch
+    non_empty_uploaded, user1, temporal_worker, no_warn, monkeypatch, elastic_function
 ):
     async with temporal_worker():
         processed = await asyncio.to_thread(
@@ -333,6 +334,7 @@ async def test_publish_directly(
 
 @pytest.mark.asyncio
 async def test_republish(
+    elastic_function,
     non_empty_processed_with_temporal: Upload,
     no_warn,
     internal_example_user_metadata,
@@ -366,6 +368,7 @@ async def test_republish(
 
 @pytest.mark.asyncio
 async def test_publish_failed(
+    elastic_function,
     non_empty_uploaded: tuple[str, str],
     internal_example_user_metadata,
     user1,
@@ -427,6 +430,7 @@ async def test_process_non_existing(
 @pytest.mark.parametrize('with_failure', [None, 'before', 'after', 'not-matched'])
 @pytest.mark.asyncio
 async def test_re_processing(
+    elastic_function,
     published: Upload,
     internal_example_user_metadata,
     monkeypatch,
@@ -1044,7 +1048,11 @@ async def test_creating_new_entries_during_processing(temporal_worker, user1):
 
 
 @pytest.mark.asyncio
-async def test_qcms_data(temporal_worker, user1):
+async def test_qcms_data(
+    elastic_function,
+    temporal_worker,
+    user1,
+):
     async with temporal_worker():
         upload = await asyncio.to_thread(
             lambda: run_processing(
@@ -1067,7 +1075,11 @@ async def test_qcms_data(temporal_worker, user1):
 
 
 @pytest.mark.asyncio
-async def test_phonopy_data(temporal_worker, user1):
+async def test_phonopy_data(
+    elastic_function,
+    temporal_worker,
+    user1,
+):
     async with temporal_worker():
         upload = await asyncio.to_thread(
             lambda: run_processing(

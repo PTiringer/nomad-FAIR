@@ -327,7 +327,7 @@ def example_entry():
 
 
 @pytest.fixture(scope='module')
-def indices(elastic_infra):
+def indices(elastic_infra, elastic_test_indices):
     # remove whatever the infrastructure created by default
     from nomad.infrastructure import elastic_client
 
@@ -340,7 +340,7 @@ def indices(elastic_infra):
     create_indices(Entry.m_def, Material.m_def)
     yield
     # re-establish the default elasticsearch setup.
-    clear_elastic_infra()
+    clear_elastic_infra(elastic_test_indices)
 
 
 def test_mappings(indices):

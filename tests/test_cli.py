@@ -126,7 +126,7 @@ class TestAdmin:
     )
     @pytest.mark.asyncio
     async def test_lift_embargo(
-        self, published, publish_time, dry, lifted, temporal_worker
+        self, elastic_function, published, publish_time, dry, lifted, temporal_worker
     ):
         upload_id = published.upload_id
         published.publish_time = publish_time
@@ -162,7 +162,7 @@ class TestAdmin:
             ) as archive:
                 assert entry.entry_id in archive
 
-    def test_delete_entry(self, published):
+    def test_delete_entry(self, elastic_function, published):
         upload_id = published.upload_id
         entry = Entry.objects(upload_id=upload_id).first()
 
@@ -183,7 +183,7 @@ def transform_for_index_test(entry):
 
 @pytest.mark.usefixtures('reset_config', 'no_warn')
 class TestAdminUploads:
-    def test_query_mongo(self, published):
+    def test_query_mongo(self, elastic_function, published):
         upload_id = published.upload_id
 
         query = dict(upload_id=upload_id)
@@ -196,7 +196,7 @@ class TestAdminUploads:
         assert result.exit_code == 0
         assert '1 uploads selected' in result.stdout
 
-    def test_ls(self, published):
+    def test_ls(self, elastic_function, published):
         upload_id = published.upload_id
 
         result = invoke_cli(
@@ -206,7 +206,7 @@ class TestAdminUploads:
         assert result.exit_code == 0
         assert '1 uploads selected' in result.stdout
 
-    def test_ls_query(self, published):
+    def test_ls_query(self, elastic_function, published):
         upload_id = published.upload_id
 
         result = invoke_cli(
@@ -223,7 +223,7 @@ class TestAdminUploads:
         assert result.exit_code == 0
         assert '1 uploads selected' in result.stdout
 
-    def test_rm(self, published):
+    def test_rm(self, elastic_function, published):
         upload_id = published.upload_id
 
         result = invoke_cli(
@@ -235,7 +235,7 @@ class TestAdminUploads:
         assert Upload.objects(upload_id=upload_id).first() is None
         assert Entry.objects(upload_id=upload_id).first() is None
 
-    def test_index(self, published):
+    def test_index(self, elastic_function, published):
         upload_id = published.upload_id
         entry = Entry.objects(upload_id=upload_id).first()
         entry.comment = 'specific'
@@ -251,7 +251,7 @@ class TestAdminUploads:
 
         assert search(owner='all', query=dict(comment='specific')).pagination.total == 1
 
-    def test_index_with_transform(self, published):
+    def test_index_with_transform(self, elastic_function, published):
         upload_id = published.upload_id
         assert search(owner='all', query=dict(comment='specific')).pagination.total == 0
 
@@ -273,7 +273,9 @@ class TestAdminUploads:
         assert search(owner='all', query=dict(comment='specific')).pagination.total == 1
 
     @pytest.mark.asyncio
-    async def test_re_process(self, published, monkeypatch, temporal_worker):
+    async def test_re_process(
+        self, elastic_function, published, monkeypatch, temporal_worker
+    ):
         monkeypatch.setattr('nomad.config.meta.version', 'test_version')
         upload_id = published.upload_id
         entry = Entry.objects(upload_id=upload_id).first()
@@ -312,7 +314,7 @@ class TestAdminUploads:
         assert upload.publish_time is not None
         assert upload.embargo_length == 2
 
-    def test_re_pack(self, published, monkeypatch):
+    def test_re_pack(self, elastic_function, published, monkeypatch):
         upload_id = published.upload_id
         entry = Entry.objects(upload_id=upload_id).first()
         assert published.with_embargo
@@ -340,7 +342,9 @@ class TestAdminUploads:
         assert published.process_status == ProcessStatus.SUCCESS
 
     @pytest.mark.asyncio
-    async def test_chown(self, published: Upload, user1, user2, temporal_worker):
+    async def test_chown(
+        self, elastic_function, published: Upload, user1, user2, temporal_worker
+    ):
         upload_id = published.upload_id
         assert published.main_author == user1.user_id
         with published.entries_metadata() as entries_metadata:
@@ -578,7 +582,9 @@ class TestClient:
         assert '1/0/1' in result.output
         assert proc.Upload.objects(upload_name='test_upload').first() is not None
 
-    def test_local(self, published_wo_user_metadata, client_with_api_v1):
+    def test_local(
+        self, elastic_function, published_wo_user_metadata, client_with_api_v1
+    ):
         result = invoke_cli(
             cli,
             [

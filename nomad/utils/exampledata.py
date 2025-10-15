@@ -233,7 +233,7 @@ class ExampleData:
         archive: dict | None = None,
         **kwargs,
     ) -> EntryArchive:
-        assert upload_id in self.uploads, 'Must create the upload first'
+        assert upload_id in self.uploads, f'Must create the upload {upload_id} first'
         upload_dict = self.uploads[upload_id]
 
         if entry_id is None:
