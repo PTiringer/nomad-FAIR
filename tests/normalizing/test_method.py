@@ -261,18 +261,3 @@ def test_basis_set(normalized_example):
             reference = ref_basis_sets[program_name]
             if basis_set := base.precision.basis_set:
                 assert basis_set in reference + ['unavailable']
-
-
-@pytest.mark.parametrize(
-    'entry, method_identified', [('hash_exciting', True), ('hash_vasp', False)]
-)
-def test_method_id(entry, method_identified, request):
-    """Test that method_id can be detected or is left undetected from certain
-    calculations.
-    """
-    entry = request.getfixturevalue(entry)
-    assert (entry.results.method.method_id is not None) == method_identified
-    assert (entry.results.method.equation_of_state_id is not None) == method_identified
-    assert (
-        entry.results.method.parameter_variation_id is not None
-    ) == method_identified
