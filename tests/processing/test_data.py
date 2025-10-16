@@ -53,7 +53,7 @@ from tests.utils import create_template_upload_file, set_upload_entry_metadata
 m_package = Package(name='test_schemas')
 
 
-class TestBatchSample(EntryData):
+class BatchSampleForTest(EntryData):
     batch_id = Quantity(type=str, description='Id for the batch')
     sample_number = Quantity(type=int, description='Sample index')
     comments = Quantity(
@@ -61,7 +61,7 @@ class TestBatchSample(EntryData):
     )
 
 
-class TestBatch(EntryData):
+class BatchForTest(EntryData):
     batch_id = Quantity(
         type=str,
         description='Id for the batch',
@@ -73,7 +73,7 @@ class TestBatch(EntryData):
         a_eln=dict(component='NumberEditQuantity'),
     )
     sample_refs = Quantity(
-        type=Reference(TestBatchSample.m_def),
+        type=Reference(BatchSampleForTest.m_def),
         shape=['*'],
         descriptions='The samples in the batch.',
     )
@@ -87,7 +87,7 @@ class TestBatch(EntryData):
             file_name = f'{self.batch_id}_{idx}.archive.json'
             if not archive.m_context.raw_path_exists(file_name):
                 # Create new sample file
-                sample = TestBatchSample(batch_id=self.batch_id, sample_number=idx)
+                sample = BatchSampleForTest(batch_id=self.batch_id, sample_number=idx)
                 sample_entry = sample.m_to_dict(with_root_def=True)
                 with archive.m_context.raw_file(file_name, 'w') as outfile:
                     json.dump({'data': sample_entry}, outfile)
@@ -97,17 +97,17 @@ class TestBatch(EntryData):
         self.sample_refs = sample_refs
 
 
-class TestSection(ArchiveSection):
+class SectionForTest(ArchiveSection):
     pass
 
 
-class TestReferenceSection(ArchiveSection):
-    reference = Quantity(type=Reference(TestSection))
+class ReferenceSectionForTest(ArchiveSection):
+    reference = Quantity(type=Reference(SectionForTest))
 
 
-class TestData(EntryData):
-    test_section = SubSection(sub_section=TestSection, repeats=True)
-    reference_section = SubSection(sub_section=TestReferenceSection)
+class DataForTest(EntryData):
+    test_section = SubSection(sub_section=SectionForTest, repeats=True)
+    reference_section = SubSection(sub_section=ReferenceSectionForTest)
 
 
 m_package.__init_metainfo__()
@@ -1025,7 +1025,7 @@ async def test_creating_new_entries_during_processing(temporal_worker, user1):
         json.dump(
             {
                 'data': {
-                    'm_def': 'tests.processing.test_data.TestBatch',
+                    'm_def': 'tests.processing.test_data.BatchForTest',
                     'batch_id': 'my_batch',
                     'n_samples': 5,
                 }
@@ -1209,8 +1209,8 @@ def test_upload_context(
     data = ExampleData(main_author=user1)
     data.create_upload(upload_id='test_id', published=True)
 
-    referenced_archive = EntryArchive(data=TestData())
-    referenced_archive.data.test_section.append(TestSection())
+    referenced_archive = EntryArchive(data=DataForTest())
+    referenced_archive.data.test_section.append(SectionForTest())
 
     data.create_entry(
         upload_id='test_id',
@@ -1227,8 +1227,8 @@ def test_upload_context(
     context = ServerContext(upload=upload)
     test_archive = EntryArchive(m_context=context)
 
-    section_reference = TestReferenceSection()
-    test_archive.data = TestData(reference_section=section_reference)
+    section_reference = ReferenceSectionForTest()
+    test_archive.data = DataForTest(reference_section=section_reference)
     assert section_reference.m_root().m_context is not None
     section_reference.reference = url
     assert (
