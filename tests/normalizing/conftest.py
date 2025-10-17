@@ -80,7 +80,9 @@ def run_processing(directory, mainfile):
     test_archive = EntryArchive(
         m_context=context,
         metadata=EntryMetadata(
-            upload_id=upload_id, entry_id=f'sample_id_{uuid.uuid4().hex[:8]}'
+            upload_id=upload_id,
+            entry_id=f'sample_id_{uuid.uuid4().hex[:8]}',
+            mainfile=mainfile,
         ),
     )
     parser.parse(upload_files.raw_file_object(mainfile).os_path, test_archive)

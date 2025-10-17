@@ -29,19 +29,17 @@ import requests
 from ase.data import atomic_masses, atomic_numbers, chemical_symbols
 from unidecode import unidecode
 
-from nomad.datamodel.metainfo.workflow import Link, Task, Workflow
-from nomad.metainfo.data_type import m_str
-
-if TYPE_CHECKING:
-    from structlog.stdlib import BoundLogger
 from nomad import utils
-from nomad.datamodel.data import ArchiveSection
+from nomad.datamodel.data import ArchiveSection, Schema
+from nomad.datamodel.datamodel import EntryArchive
 from nomad.datamodel.metainfo.annotations import (
     ELNAnnotation,
     Filter,
     HDF5Annotation,
+    SectionDisplayAnnotation,
     SectionProperties,
 )
+from nomad.datamodel.metainfo.workflow import Link, Task, Workflow
 from nomad.datamodel.results import ELN, Material, Results
 from nomad.datamodel.results import ElementalComposition as ResultsElementalComposition
 from nomad.datamodel.util import create_custom_mapping
@@ -53,8 +51,12 @@ from nomad.metainfo import (
     SectionProxy,
     SubSection,
 )
+from nomad.metainfo.data_type import m_str
 from nomad.metainfo.util import MEnum
 from nomad.units import ureg
+
+if TYPE_CHECKING:
+    from structlog.stdlib import BoundLogger
 
 PUB_CHEM_PUG_PATH = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound'
 CAS_API_PATH = 'https://commonchemistry.cas.org/api'
@@ -196,7 +198,7 @@ def is_cas_rn(candidate: str) -> bool:
         return False
 
 
-class BaseSection(ArchiveSection):
+class BaseSection(Schema):
     """
     A generic abstract base section that provides a few commonly used properties.
 
@@ -210,6 +212,9 @@ class BaseSection(ArchiveSection):
 
     m_def = Section(
         links=['http://purl.obolibrary.org/obo/BFO_0000001'],
+        a_display=SectionDisplayAnnotation(
+            order=['name', 'datetime', 'lab_id', 'description'],
+        ),
     )
     name = Quantity(
         type=str,
@@ -232,6 +237,44 @@ class BaseSection(ArchiveSection):
         description='Any information that cannot be captured in the other fields.',
         a_eln=dict(component='RichTextEditQuantity'),
     )
+
+    def normalize(self, archive: EntryArchive, logger: 'BoundLogger') -> None:
+        """
+        The normalizer for the `BaseSection` class.
+        Will set the `datetime` to now if not set. If this section is the top-level
+        section of the entry, it will update the `entry_name` in the metadata of the
+        archive. It will also ensure that `results.eln` exists and add information
+        from this section to `results.eln`.
+        """
+        super().normalize(archive, logger)
+
+        # Set datetime to now if not set
+        if self.datetime is None:
+            self.datetime = datetime.datetime.now()
+
+        # Update entry name if this is the top-level section
+        if isinstance(self.m_parent, EntryArchive):
+            if self.name is None:
+                self.name = archive.metadata.entry_name.split('.')[0].replace('_', ' ')
+            archive.metadata.entry_name = self.name
+
+        # Ensure results.eln exists
+        if not archive.results.eln:
+            archive.results.eln = ELN()
+
+        # Add values to results.eln attributes
+        for attr, value in [
+            ('sections', self.m_def.name),
+            ('names', self.name),
+            ('descriptions', self.description),
+            ('lab_ids', self.lab_id),
+        ]:
+            if value is None:
+                continue
+            if getattr(archive.results.eln, attr) is None:
+                setattr(archive.results.eln, attr, [])
+            if value not in getattr(archive.results.eln, attr):
+                getattr(archive.results.eln, attr).append(value)
 
 
 class Entity(BaseSection):
