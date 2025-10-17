@@ -1,0 +1,20 @@
+definitions:
+  sections:
+    TopLevelBaseSection:
+      base_sections:
+        - nomad.datamodel.metainfo.basesections.v2.BaseSection
+      sub_sections:
+        composed_basesections:
+          section: nomad.datamodel.metainfo.basesections.v2.BaseSection
+          repeats: true
+
+
+data:
+  m_def: TopLevelBaseSection
+  name: different than file name
+  lab_id: top-level-basesection
+  composed_basesections:
+    - lab_id: composed-basesection-1
+      description: Description for composed basesection 1
+    - name: composed basesection 2
+      description: Description for composed basesection 2
