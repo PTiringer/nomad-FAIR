@@ -550,7 +550,7 @@
       "showlegend": false,
       "autosize": false,
       "legend": {
-         "bgcolor": "rgba(0,0,0,0)",
+         "bgcolor": "rgba(255,255,255,0.9)",
          "font": {
              "family": "\"Titillium Web\", sans-serif",
              "size": 14,
@@ -732,7 +732,7 @@
          "style":"light"
       },
       "paper_bgcolor":"rgba(0,0,0,0)",
-      "plot_bgcolor":"#E5ECF6",
+      "plot_bgcolor":"rgba(0,0,0,0)",
       "polar":{
          "angularaxis":{
             "gridcolor":"#EBF0F8",
@@ -808,13 +808,13 @@
          "yanchor": "middle"
       },
       "xaxis":{
-         "zerolinecolor":"white",
-         "zerolinewidth":2,
+         "zerolinecolor":"#333333",
+         "zerolinewidth":1,
          "automargin": true,
          "autorange": true,
          "linecolor": "#666",
          "color": "#1D1D1D",
-         "gridcolor": "white",
+         "gridcolor": "#EEEEEE",
          "linewidth": 1,
          "mirror": true,
          "ticks": "outside",
@@ -835,13 +835,13 @@
          }
       },
       "yaxis":{
-         "zerolinecolor":"white",
-         "zerolinewidth":2,
+         "zerolinecolor":"#333333",
+         "zerolinewidth":1,
          "automargin": true,
          "autorange": true,
          "linecolor": "#666",
          "color": "#1D1D1D",
-         "gridcolor": "white",
+         "gridcolor": "#EEEEEE",
          "linewidth": 1,
          "mirror": true,
          "ticks": "outside",
@@ -861,13 +861,13 @@
          }
       },
       "xaxis1":{
-         "zerolinecolor":"white",
-         "zerolinewidth":2,
+         "zerolinecolor":"#333333",
+         "zerolinewidth":1,
          "automargin": true,
          "autorange": true,
          "linecolor": "#666",
          "color": "#1D1D1D",
-         "gridcolor": "white",
+         "gridcolor": "#EEEEEE",
          "linewidth": 1,
          "mirror": true,
          "ticks": "outside",
@@ -888,13 +888,13 @@
          }
       },
       "yaxis1":{
-         "zerolinecolor":"white",
-         "zerolinewidth":2,
+         "zerolinecolor":"#333333",
+         "zerolinewidth":1,
          "automargin": true,
          "autorange": true,
          "linecolor": "#666",
          "color": "#1D1D1D",
-         "gridcolor": "white",
+         "gridcolor": "#EEEEEE",
          "linewidth": 1,
          "mirror": true,
          "ticks": "outside",
@@ -914,13 +914,13 @@
          }
       },
       "xaxis2":{
-         "zerolinecolor":"white",
-         "zerolinewidth":2,
+         "zerolinecolor":"#333333",
+         "zerolinewidth":1,
          "automargin": true,
          "autorange": true,
          "linecolor": "#666",
          "color": "#1D1D1D",
-         "gridcolor": "white",
+         "gridcolor": "#EEEEEE",
          "linewidth": 1,
          "mirror": true,
          "ticks": "outside",
@@ -941,13 +941,13 @@
          }
       },
       "yaxis2":{
-         "zerolinecolor":"white",
-         "zerolinewidth":2,
+         "zerolinecolor":"#333333",
+         "zerolinewidth":1,
          "automargin": true,
          "autorange": true,
          "linecolor": "#666",
          "color": "#1D1D1D",
-         "gridcolor": "white",
+         "gridcolor": "#EEEEEE",
          "linewidth": 1,
          "mirror": true,
          "ticks": "outside",
