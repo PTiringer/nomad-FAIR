@@ -153,7 +153,7 @@ def test_create_user_dependency_auth_methods(
             == allowed_user
         )
     else:
-        with pytest.raises(HTTPException, match='Authorization required.') as exc:
+        with pytest.raises(HTTPException, match='Authentication required.') as exc:
             dep()
         assert exc.value.status_code == 401
 
@@ -189,7 +189,7 @@ def test_create_user_dependency_signature_token_from_cookie(monkeypatch, allowed
 
     # Failure case: no token in cookies
     request._cookies = {}
-    with pytest.raises(HTTPException, match='Authorization required.') as exc:
+    with pytest.raises(HTTPException, match='Authentication required.') as exc:
         dep(request=request)
     assert exc.value.status_code == 401
 
@@ -199,7 +199,7 @@ def test_create_user_dependency_required(required):
     dep = create_user_dependency(required=required)
 
     if required:
-        with pytest.raises(HTTPException, match='Authorization required.') as exc:
+        with pytest.raises(HTTPException, match='Authentication required.') as exc:
             dep()
         assert exc.value.status_code == 401
 
@@ -223,7 +223,7 @@ def test_create_user_dependency_assume_auth_for_username(
     dep = create_user_dependency(required=True)
 
     if tester is None:
-        with pytest.raises(HTTPException, match='Authorization required.') as exc:
+        with pytest.raises(HTTPException, match='Authentication required.') as exc:
             dep()
         assert exc.value.status_code == 401
     else:

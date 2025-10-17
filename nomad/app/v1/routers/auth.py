@@ -80,7 +80,7 @@ def resolve_user(
     # `config.oasis.require_authentication` would require authentication globally
     required = required or config.oasis.require_authentication
 
-    # Resolve user token/form_data
+    # Resolve user from token
     if user is None and bearer_token:
         user = _get_user_bearer_token_auth(bearer_token)
     if user is None and upload_token:
@@ -96,7 +96,7 @@ def resolve_user(
     if required and user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='Authorization required.',
+            detail='Authentication required.',
             headers={'WWW-Authenticate': 'Bearer'},
         )
 
@@ -122,10 +122,7 @@ def resolve_user(
         try:
             assert datamodel.User.get(user.user_id) is not None
         except Exception as e:
-            logger = utils.get_logger(__name__)
-            logger.error(
-                'API usage by unknown user. Possible misconfiguration', exc_info=e
-            )
+            logger.error('API usage by unknown user.', exc_info=e)
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail='You are logged in with an unknown user',
@@ -174,7 +171,7 @@ def create_user_dependency(
                 annotation=str,
                 default=FastApiQuery(
                     None,
-                    description='Token for simplified authorization for uploading.',
+                    description='Token for simplified authentication for uploading.',
                 ),
                 kind=Parameter.KEYWORD_ONLY,
             )
@@ -216,7 +213,7 @@ def _get_user_bearer_token_auth(bearer_token: str | None) -> User | None:
         if unverified_payload.keys() == {'user', 'exp'}:
             return _get_user_from_simple_token(bearer_token)
     except jwt.DecodeError as e:  # token could be non-JWT, e.g. for testing
-        logger.debug('Failed to decode JWT', exc_info=e)
+        logger.error('Failed to decode JWT', exc_info=e)
 
     try:
         return cast(datamodel.User, infrastructure.keycloak.tokenauth(bearer_token))
@@ -300,7 +297,7 @@ def _get_user_signature_token_auth(
                     headers={'WWW-Authenticate': 'Bearer'},
                 )
             except Exception as e:
-                logger.debug('Failed to process token from cookie', exc_info=e)
+                logger.error('Failed to process token from cookie', exc_info=e)
 
     return None
 
@@ -399,11 +396,12 @@ async def get_signature_token(
     user: User | None = Depends(create_user_dependency(required=True)),
 ) -> SignatureToken:
     """
-    Generates and returns a signature token for the authenticated user.
-    Authentication has to be provided with another method, e.g. access token.
+    Generate a signature token for the authenticated user.
+    Authentication has to be provided via access token.
     """
-    signature_token = generate_simple_token(user.user_id, expires_in=10)
-    return SignatureToken(signature_token=signature_token)
+    return SignatureToken(
+        signature_token=_generate_simple_token(user.user_id, expires_in=10)
+    )
 
 
 @router.get(
@@ -417,22 +415,19 @@ async def get_app_token(
     user: User = Depends(create_user_dependency(required=True)),
 ) -> AppToken:
     """
-    Generates and returns an app token with the requested expiration time for the
-    authenticated user. Authentication has to be provided with another method,
-    e.g. access token.
+    Generate an app token with the requested expiration time for the
+    authenticated user. Authentication has to be provided via access token.
 
     This app token can be used like the access token (see `/auth/token`) on subsequent API
     calls to authenticate you using the HTTP header `Authorization: Bearer <app token>`.
-    It is provided for user convenience as a shorter token with a user-defined (probably
-    longer) expiration time than the access token.
+    It is provided for user convenience with a user-defined (probably longer) expiration time.
     """
-    app_token = generate_simple_token(user.user_id, expires_in)
-    return AppToken(app_token=app_token)
+    return AppToken(app_token=_generate_simple_token(user.user_id, expires_in))
 
 
-def generate_simple_token(user_id: str, expires_in: int) -> str:
+def _generate_simple_token(user_id: str, expires_in: int) -> str:
     """
-    Generates and returns JWT encoded user_id and expiration time,
+    Generate a simple token: JWT encoded user_id and expiration time,
     signed with the API secret.
     """
     check_api_secret()
@@ -443,8 +438,8 @@ def generate_simple_token(user_id: str, expires_in: int) -> str:
     return jwt.encode(payload, config.services.api_secret, 'HS256')
 
 
-def generate_upload_token(user: User) -> str:
-    """Generates and returns upload token for user."""
+def _generate_upload_token(user: User) -> str:
+    """Generate an upload token for user."""
     check_api_secret()
     payload = uuid.UUID(user.user_id).bytes
     signature = hmac.new(

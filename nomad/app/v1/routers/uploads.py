@@ -88,7 +88,7 @@ from ..utils import (
     create_stream_from_string,
     parameter_dependency_from_model,
 )
-from .auth import create_user_dependency, generate_upload_token
+from .auth import _generate_upload_token, create_user_dependency
 from .entries import EntryArchiveResponse, answer_entry_archive_request
 
 router = APIRouter()
@@ -744,14 +744,14 @@ async def get_command_examples(
     user: User = Depends(create_user_dependency(required=True)),
 ):
     """Get url and example command for shell based uploads."""
-    token = generate_upload_token(user)
+    token = _generate_upload_token(user)
     api_url = config.api_url(ssl=config.services.https_upload, api='api/v1')
     upload_url = f'{api_url}/uploads?token={token}'
     upload_url_with_name = upload_url + '&upload_name=<name>'
     # Upload via streaming data tends to work much easier, e.g. no mime type issues, etc.
     # It is also easier for the user to unterstand IMHO.
     upload_command = f"curl -X POST '{upload_url}' -T <local_file>"
-    rv = UploadCommandExamplesResponse(
+    return UploadCommandExamplesResponse(
         upload_url=upload_url,
         upload_command=upload_command,
         upload_command_form=f"curl -X POST '{upload_url}' -F file=@<local_file>",
@@ -759,7 +759,6 @@ async def get_command_examples(
         upload_progress_command=upload_command + ' | xargs echo',
         upload_tar_command=f"tar -cf - <local_folder> | curl -# '{upload_url}' -X POST -T - | xargs echo",
     )
-    return rv
 
 
 @router.get(

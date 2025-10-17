@@ -82,7 +82,6 @@ class OasisAuthenticationMiddleware(BaseHTTPMiddleware):
 
         try:
             # Here any token would be allowed
-            # NOTE: cannot handle `form_data` as the stream would be consumed
             _user = resolve_user(
                 bearer_token=bearer_token,
                 upload_token=request.query_params.get('token'),
@@ -113,7 +112,7 @@ async def lifespan(app: FastAPI):
 
     import_all_parsers()
 
-    # each subprocess is supposed disconnect and
+    # each subprocess is supposed to disconnect and
     # connect again: https://jira.mongodb.org/browse/PYTHON-2090
     try:
         from mongoengine import disconnect

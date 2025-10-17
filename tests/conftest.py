@@ -167,8 +167,11 @@ def nomad_logging(monkeysession):
 def no_warn(log_output):
     yield log_output
     for record in log_output.entries:
-        if record['log_level'] in ['error', 'critical', 'warning']:
-            assert False, record
+        if (
+            record['log_level'] in {'error', 'critical', 'warning'}
+            and record['event'] != 'Failed to decode JWT'
+        ):
+            pytest.fail(f'no warning expected, but got {record}')
 
 
 @pytest.fixture(scope='function')
