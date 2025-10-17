@@ -74,7 +74,7 @@ class CustomScheduler(LoadScopeScheduling):
         'tests/app/v1/routers/uploads/test_transfer_bundle.py',
         'tests/archive/test_archive.py',
         'tests/logtransfer/test_logtransfer.py',
-        'tests/normalizing/test_method_integration.py',
+        'tests/normalizing',
         'tests/parsing/test_parsing.py',
         'tests/processing/test_base.py',
         'tests/processing/test_data_legacy.py',
