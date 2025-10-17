@@ -18,13 +18,14 @@
 
 import os
 from enum import Enum
+from typing import Any
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException, status
 from mongoengine.queryset.visitor import Q
 from pydantic import BaseModel
 
-from nomad.app.v1.routers.auth import generate_simple_token
+from nomad.app.v1.routers.auth import _generate_simple_token, create_user_dependency
 from nomad.config import config
 from nomad.config.models.north import NORTHTool
 from nomad.mongo.groups import MongoUserGroup
@@ -33,7 +34,6 @@ from nomad.utils import get_logger, slugify, strip
 
 from ..models import HTTPExceptionModel, User
 from ..utils import create_responses
-from .auth import create_user_dependency
 
 TOOLS = {k: v for k, v in config.north.tools.filtered_items()}
 
@@ -297,10 +297,10 @@ async def start_tool(
             )
 
     url = f'{config.hub_url()}/api/users/{user.username}/servers/{tool.name}'
-    access_token = generate_simple_token(
+    access_token = _generate_simple_token(
         user_id=user.user_id, expires_in=config.north.nomad_access_token_expiry_time
     )
-    body = {
+    body: dict[str, Any] = {
         'tool': {
             'image': tool.image,
             'cmd': tool.cmd,
@@ -327,7 +327,13 @@ async def start_tool(
         'external_mounts': external_mounts,
     }
 
-    logger.info('post tool start to jupyterhub', body=body)
+    logger.info(
+        'post tool start to jupyterhub',
+        body={
+            **body,
+            'environment': {**body['environment'], 'NOMAD_CLIENT_ACCESS_TOKEN': '***'},
+        },
+    )
 
     response = requests.post(url, json=body, headers=hub_api_headers)
 

@@ -43,13 +43,13 @@ from tests import ORIGINAL_API_BASE_PATH
             [r'^/info$'],
             '/protected',
             401,
-            'Authorization required.',
+            'Authentication required.',
         ),
         (
             [r'^/info$'],
             '/protected/info',
             401,
-            'Authorization required.',
+            'Authentication required.',
         ),
         # Prefix match: allow `/info` and all under `/info/...`
         ([r'^/info'], '/info', 200, 'I am nomad'),
@@ -57,7 +57,7 @@ from tests import ORIGINAL_API_BASE_PATH
             [r'^/info'],
             '/protected',
             401,
-            'Authorization required.',
+            'Authentication required.',
         ),
         # Allow `/protected` path
         ([r'^/protected'], '/protected', 200, 'protected endpoint'),
@@ -70,13 +70,13 @@ from tests import ORIGINAL_API_BASE_PATH
             [r'^/nonexistent$'],
             '/info',
             401,
-            'Authorization required.',
+            'Authentication required.',
         ),
         (
             [r'^/nonexistent$'],
             '/protected',
             401,
-            'Authorization required.',
+            'Authentication required.',
         ),
     ],
 )
@@ -209,12 +209,11 @@ def test_oasis_auth_middleware_non_bearer_token(
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth.config.oasis.require_authentication', True
     )
-    # Patch the non-bearer token auth method
+    # Patch the non-bearer token auth method to always return the mock user
     monkeypatch.setattr(
         f'nomad.app.v1.routers.auth.{token_auth}',
         lambda *args, **kwargs: mock_user,
     )
-
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth.config.oasis.allowed_users',
         {mock_user.email},
