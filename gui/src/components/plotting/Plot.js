@@ -214,7 +214,15 @@ const Plot = React.memo(forwardRef(({
         b: 6 * SPACING
       }
     }
-    return mergeObjects(layout, defaultLayout)
+    // The template stored in the data is ignored: it might still be saved for old
+    // archives, but new archives don't even store it anymore.
+    let cleanLayout = layout
+    if (layout) {
+      cleanLayout = cloneDeep(layout)
+      delete cleanLayout.template
+    }
+
+    return mergeObjects(cleanLayout, defaultLayout)
   }, [layout])
 
   // Set the final config
