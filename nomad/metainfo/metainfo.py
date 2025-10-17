@@ -2754,7 +2754,9 @@ class Definition(MSection):
 
     @constraint(warning=False)
     def valid_name(self):
-        if not self.name or self.name.isidentifier():
+        # package names are not effectively used in reference system thus not checked
+        # otherwise all names of definitions must be valid identifiers
+        if isinstance(self, Package) or not self.name or self.name.isidentifier():
             return
 
         if all(x.isidentifier() for x in self.name.split('.')):
