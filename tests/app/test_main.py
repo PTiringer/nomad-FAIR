@@ -198,8 +198,8 @@ def test_oasis_auth_middleware_valid_user(
 @pytest.mark.parametrize(
     'token_auth, token_param',
     [
-        ('_get_user_upload_token_auth', 'Upload-Token'),
-        ('_get_user_signature_token_auth', 'signature_token'),
+        ('_get_user_from_upload_token', 'Upload-Token'),
+        ('_get_user_from_signature_token', 'signature_token'),
     ],
 )
 def test_oasis_auth_middleware_non_bearer_token(

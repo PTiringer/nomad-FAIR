@@ -99,30 +99,30 @@ def allowed_user():
 @pytest.mark.parametrize('bearer_token_auth_allowed', [True, False])
 @pytest.mark.parametrize('upload_token_auth_allowed', [True, False])
 @pytest.mark.parametrize('signature_token_auth_allowed', [True, False])
-@pytest.mark.parametrize('_get_user_bearer_token_auth', [True, False])
-@pytest.mark.parametrize('_get_user_upload_token_auth', [True, False])
-@pytest.mark.parametrize('_get_user_signature_token_auth', [True, False])
+@pytest.mark.parametrize('_get_user_from_bearer_token', [True, False])
+@pytest.mark.parametrize('_get_user_from_upload_token', [True, False])
+@pytest.mark.parametrize('_get_user_from_signature_token', [True, False])
 def test_create_user_dependency_auth_methods(
     bearer_token_auth_allowed: bool,
     upload_token_auth_allowed: bool,
     signature_token_auth_allowed: bool,
-    _get_user_bearer_token_auth: bool,
-    _get_user_upload_token_auth: bool,
-    _get_user_signature_token_auth: bool,
+    _get_user_from_bearer_token: bool,
+    _get_user_from_upload_token: bool,
+    _get_user_from_signature_token: bool,
     allowed_user,
     monkeypatch,
 ):
     monkeypatch.setattr(
-        'nomad.app.v1.routers.auth._get_user_bearer_token_auth',
-        lambda *_: allowed_user if _get_user_bearer_token_auth else None,
+        'nomad.app.v1.routers.auth._get_user_from_bearer_token',
+        lambda *_: allowed_user if _get_user_from_bearer_token else None,
     )
     monkeypatch.setattr(
-        'nomad.app.v1.routers.auth._get_user_upload_token_auth',
-        lambda *_: allowed_user if _get_user_upload_token_auth else None,
+        'nomad.app.v1.routers.auth._get_user_from_upload_token',
+        lambda *_: allowed_user if _get_user_from_upload_token else None,
     )
     monkeypatch.setattr(
-        'nomad.app.v1.routers.auth._get_user_signature_token_auth',
-        lambda *_: allowed_user if _get_user_signature_token_auth else None,
+        'nomad.app.v1.routers.auth._get_user_from_signature_token',
+        lambda *_: allowed_user if _get_user_from_signature_token else None,
     )
 
     monkeypatch.setattr(
@@ -139,9 +139,9 @@ def test_create_user_dependency_auth_methods(
 
     if any(
         [
-            bearer_token_auth_allowed and _get_user_bearer_token_auth,
-            upload_token_auth_allowed and _get_user_upload_token_auth,
-            signature_token_auth_allowed and _get_user_signature_token_auth,
+            bearer_token_auth_allowed and _get_user_from_bearer_token,
+            upload_token_auth_allowed and _get_user_from_upload_token,
+            signature_token_auth_allowed and _get_user_from_signature_token,
         ]
     ):
         assert (
@@ -270,7 +270,7 @@ def test_create_user_dependency_oasis_allowed_users(
         'nomad.app.v1.routers.auth.config.oasis.allowed_users', ['tester']
     )
     monkeypatch.setattr(
-        'nomad.app.v1.routers.auth._get_user_bearer_token_auth',
+        'nomad.app.v1.routers.auth._get_user_from_bearer_token',
         lambda *_: auth_user,
     )
 
@@ -291,7 +291,7 @@ def test_create_user_dependency_oasis_allowed_users(
 
 def test_create_user_dependency_unknown_user(allowed_user, monkeypatch):
     monkeypatch.setattr(
-        'nomad.app.v1.routers.auth._get_user_bearer_token_auth',
+        'nomad.app.v1.routers.auth._get_user_from_bearer_token',
         lambda *_: allowed_user,
     )
 

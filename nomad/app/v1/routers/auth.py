@@ -93,12 +93,12 @@ def resolve_user(
     # Resolve user from token
     user: User | None = None
     if user is None and bearer_token:
-        user = _get_user_bearer_token_auth(bearer_token)
+        user = _get_user_from_bearer_token(bearer_token)
     if user is None and upload_token:
-        user = _get_user_upload_token_auth(upload_token)
+        user = _get_user_from_upload_token(upload_token)
     # `_get_user_signature_token_auth` would also handle token in cookie
     if user is None and (signature_token or request):
-        user = _get_user_signature_token_auth(signature_token, request)
+        user = _get_user_from_signature_token(signature_token, request)
 
     if user is None and config.tests.assume_auth_for_username:
         user = datamodel.User.get(username=config.tests.assume_auth_for_username)
@@ -221,7 +221,7 @@ def create_user_dependency(
     return user_dependency
 
 
-def _get_user_bearer_token_auth(bearer_token: str | None) -> User | None:
+def _get_user_from_bearer_token(bearer_token: str | None) -> User | None:
     """
     Verifies bearer_token (throwing HTTPException if illegal value provided).
 
@@ -251,46 +251,7 @@ def _get_user_bearer_token_auth(bearer_token: str | None) -> User | None:
         )
 
 
-def _get_user_upload_token_auth(upload_token: str | None) -> User | None:
-    """
-    Verifies the upload token (throwing HTTPException if illegal value provided).
-
-    Returns:
-        The corresponding User object,
-        or None if no upload_token provided.
-    """
-    if upload_token is None:
-        return None
-
-    check_api_secret()
-
-    try:
-        payload, signature = upload_token.split('.', 1)
-        payload_bytes = utils.base64_decode(payload)
-        signature_bytes = utils.base64_decode(signature)
-
-        expected = hmac.new(
-            config.services.api_secret.encode('utf-8'),
-            msg=payload_bytes,
-            digestmod=hashlib.sha256,
-        )
-
-        if not hmac.compare_digest(signature_bytes, expected.digest()):
-            raise ValueError('Invalid HMAC signature')
-
-        user_id = str(uuid.UUID(bytes=payload_bytes))
-        return cast(datamodel.User, infrastructure.user_management.get_user(user_id))
-
-    except Exception:
-        # Decode error, format error, user not found, etc.
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='An invalid upload token was supplied.',
-            headers={'WWW-Authenticate': 'Bearer'},
-        )
-
-
-def _get_user_signature_token_auth(
+def _get_user_from_signature_token(
     signature_token: str | None, request: Request | None
 ) -> User | None:
     """
@@ -361,6 +322,45 @@ def _get_user_from_simple_token(token: str | None) -> User | None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail='Invalid token.',
+            headers={'WWW-Authenticate': 'Bearer'},
+        )
+
+
+def _get_user_from_upload_token(upload_token: str | None) -> User | None:
+    """
+    Verifies the upload token (throwing HTTPException if illegal value provided).
+
+    Returns:
+        The corresponding User object,
+        or None if no upload_token provided.
+    """
+    if upload_token is None:
+        return None
+
+    check_api_secret()
+
+    try:
+        payload, signature = upload_token.split('.', 1)
+        payload_bytes = utils.base64_decode(payload)
+        signature_bytes = utils.base64_decode(signature)
+
+        expected = hmac.new(
+            config.services.api_secret.encode('utf-8'),
+            msg=payload_bytes,
+            digestmod=hashlib.sha256,
+        )
+
+        if not hmac.compare_digest(signature_bytes, expected.digest()):
+            raise ValueError('Invalid HMAC signature')
+
+        user_id = str(uuid.UUID(bytes=payload_bytes))
+        return cast(datamodel.User, infrastructure.user_management.get_user(user_id))
+
+    except Exception:
+        # Decode error, format error, user not found, etc.
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='An invalid upload token was supplied.',
             headers={'WWW-Authenticate': 'Bearer'},
         )
 
