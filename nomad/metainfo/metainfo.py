@@ -843,7 +843,7 @@ class MSection(metaclass=MObjectMeta):
         # transfer names, descriptions, constraints, event_handlers
         constraints: set[str] = set()
         event_handlers: set[TypingCallable] = set(m_def.event_handlers)
-        for name, attr in sorted(cls.__dict__.items()):
+        for name, attr in cls.__dict__.items():
             # transfer names and descriptions for properties, init properties
             if isinstance(attr, Attribute | Property):
                 attr.name = name
