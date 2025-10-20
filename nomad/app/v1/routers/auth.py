@@ -27,7 +27,7 @@ from typing import Literal, cast
 
 import jwt
 import requests
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi import Query as FastApiQuery
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
@@ -73,14 +73,25 @@ def resolve_user(
     request: Request | None = None,
     bearer_token: str | None = None,
     upload_token: str | None = None,
+    upload_token_query_param: str | None = None,
     signature_token: str | None = None,
     required: bool = False,
 ) -> User | None:
-    user: User | None = None
+    # Require upload token via header instead of query parameter
+    if upload_token_query_param is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Passing upload token via query parameter 'token' is no longer supported. "
+                "Please use the 'Upload-Token' header instead."
+            ),
+        )
+
     # `config.oasis.require_authentication` would require authentication globally
     required = required or config.oasis.require_authentication
 
     # Resolve user from token
+    user: User | None = None
     if user is None and bearer_token:
         user = _get_user_bearer_token_auth(bearer_token)
     if user is None and upload_token:
@@ -148,7 +159,8 @@ def create_user_dependency(
         return resolve_user(
             request=kwargs.get('request'),
             bearer_token=kwargs.get('bearer_token'),
-            upload_token=kwargs.get('token'),
+            upload_token=kwargs.get('upload_token'),
+            upload_token_query_param=kwargs.get('upload_token_query_param'),
             signature_token=kwargs.get('signature_token'),
             required=required,
         )
@@ -167,11 +179,25 @@ def create_user_dependency(
     if upload_token_auth_allowed:
         parameters.append(
             Parameter(
-                name='token',
+                name='upload_token',
+                annotation=str,
+                default=Header(
+                    None,
+                    alias='Upload-Token',
+                    description='Token for simplified authentication for uploading.',
+                ),
+                kind=Parameter.KEYWORD_ONLY,
+            )
+        )
+        parameters.append(
+            Parameter(
+                name='upload_token_query_param',
                 annotation=str,
                 default=FastApiQuery(
                     None,
-                    description='Token for simplified authentication for uploading.',
+                    alias='token',
+                    description='[DEPRECATED] Legacy upload token query parameter. '
+                    'Use the "Upload-Token" header instead.',
                 ),
                 kind=Parameter.KEYWORD_ONLY,
             )
@@ -239,18 +265,18 @@ def _get_user_upload_token_auth(upload_token: str | None) -> User | None:
     check_api_secret()
 
     try:
-        payload, signature = upload_token.split('.')
+        payload, signature = upload_token.split('.', 1)
         payload_bytes = utils.base64_decode(payload)
         signature_bytes = utils.base64_decode(signature)
 
-        compare = hmac.new(
-            bytes(config.services.api_secret, 'utf-8'),
+        expected = hmac.new(
+            config.services.api_secret.encode('utf-8'),
             msg=payload_bytes,
-            digestmod=hashlib.sha1,
+            digestmod=hashlib.sha256,
         )
 
-        if signature_bytes != compare.digest():
-            return None
+        if not hmac.compare_digest(signature_bytes, expected.digest()):
+            raise ValueError('Invalid HMAC signature')
 
         user_id = str(uuid.UUID(bytes=payload_bytes))
         return cast(datamodel.User, infrastructure.user_management.get_user(user_id))
@@ -425,7 +451,7 @@ async def get_app_token(
     return AppToken(app_token=_generate_simple_token(user.user_id, expires_in))
 
 
-def _generate_simple_token(user_id: str, expires_in: int) -> str:
+def _generate_simple_token(user_id: str, expires_in: float) -> str:
     """
     Generate a simple token: JWT encoded user_id and expiration time,
     signed with the API secret.
@@ -443,7 +469,9 @@ def _generate_upload_token(user: User) -> str:
     check_api_secret()
     payload = uuid.UUID(user.user_id).bytes
     signature = hmac.new(
-        bytes(config.services.api_secret, 'utf-8'), msg=payload, digestmod=hashlib.sha1
+        config.services.api_secret.encode('utf-8'),
+        msg=payload,
+        digestmod=hashlib.sha256,
     )
 
     return f'{utils.base64_encode(payload)}.{utils.base64_encode(signature.digest())}'
