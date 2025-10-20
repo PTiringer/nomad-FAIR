@@ -198,7 +198,7 @@ def test_oasis_auth_middleware_valid_user(
 @pytest.mark.parametrize(
     'token_auth, token_param',
     [
-        ('_get_user_upload_token_auth', 'token'),
+        ('_get_user_upload_token_auth', 'Upload-Token'),
         ('_get_user_signature_token_auth', 'signature_token'),
     ],
 )
@@ -223,10 +223,25 @@ def test_oasis_auth_middleware_non_bearer_token(
         lambda *args, **kwargs: mock_user,
     )
 
-    response = app_middleware_client.get(f'/protected?{token_param}=abc')
+    if token_param == 'Upload-Token':
+        response = app_middleware_client.get(
+            f'/protected', headers={token_param: 'abc'}
+        )
+    else:
+        response = app_middleware_client.get(f'/protected?{token_param}=abc')
 
     assert response.status_code == 200
     assert response.text == 'protected endpoint'
+
+
+def test_oasis_auth_middleware_rejects_legacy_query_upload_token(
+    monkeypatch, app_middleware_client
+):
+    monkeypatch.setattr('nomad.config.oasis.require_authentication', True)
+    response = app_middleware_client.get('/protected?token=abc123')
+
+    assert response.status_code == 400
+    assert 'Passing upload token via query parameter' in response.text
 
 
 # Tests for `/alive`, `/-/health` and static files app (`/docs` and `/gui`)

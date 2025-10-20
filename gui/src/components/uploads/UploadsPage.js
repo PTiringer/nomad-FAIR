@@ -174,11 +174,11 @@ function UploadCommands({uploadCommands}) {
           As an experienced shell and *curl* user, you can modify the commands to
           your liking.
 
-          The given command can be modified. To see progress on large files, use
+          The given command can be modified. To see progress on large files, use (Unix systems only):
           \`\`\`
             ${uploadCommands.upload_progress_command}
           \`\`\`
-          To \`tar\` and upload multiple folders in one command, use
+          To \`tar\` and upload multiple folders in one command, use (Unix systems only):
           \`\`\`
           ${uploadCommands.upload_tar_command}
           \`\`\`

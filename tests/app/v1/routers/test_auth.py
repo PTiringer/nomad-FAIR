@@ -147,7 +147,7 @@ def test_create_user_dependency_auth_methods(
         assert (
             dep(
                 bearer_token='abc' if bearer_token_auth_allowed else None,
-                token='abc' if upload_token_auth_allowed else None,
+                upload_token='abc' if upload_token_auth_allowed else None,
                 signature_token='abc' if signature_token_auth_allowed else None,
             )
             == allowed_user
@@ -156,6 +156,18 @@ def test_create_user_dependency_auth_methods(
         with pytest.raises(HTTPException, match='Authentication required.') as exc:
             dep()
         assert exc.value.status_code == 401
+
+
+def test_create_user_dependency_rejects_query_token():
+    """Ensure that passing upload token via query param is rejected."""
+
+    dep = create_user_dependency(upload_token_auth_allowed=True)
+
+    with pytest.raises(
+        HTTPException, match='Passing upload token via query parameter'
+    ) as excinfo:
+        dep(upload_token_query_param='abc123')
+    assert excinfo.value.status_code == 400
 
 
 def test_create_user_dependency_signature_token_from_cookie(monkeypatch, allowed_user):

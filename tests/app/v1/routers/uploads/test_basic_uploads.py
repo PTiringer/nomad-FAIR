@@ -94,7 +94,7 @@ def perform_post_put_file(
         assert len(file_paths) == 1
         query_args.update(local_path=file_paths[0])
     if token:
-        query_args.update(token=token)
+        headers['Upload-Token'] = token
     url = build_url(url, query_args)
 
     if action == 'POST':
@@ -1254,25 +1254,23 @@ async def test_delete_upload_raw_path(
         upload_id = example_data_upload_id
     user_auth = auth_headers[user]
     # Use either token or bearer token for the post operation (never both)
-    user_auth_action = user_auth
     if use_upload_token:
-        token = upload_tokens[user]
-        user_auth_action = None
+        headers = {'Upload-Token': upload_tokens[user]}
     else:
-        token = None
+        headers = dict(user_auth or {})
+
     if static_upload_id == 'id_processing_w':
         # Ensure file exists (otherwise we get 404, which is not what we want to test)
         upload_files = StagingUploadFiles(upload_id)
         upload_files.add_rawfiles(
             'tests/data/proc/examples_template/1.aux', 'examples_template'
         )
-    query_args = dict(token=token)
 
     async with temporal_worker():
         response = await asyncio.to_thread(
             lambda: client.delete(
-                build_url(f'uploads/{upload_id}/raw/{path}', query_args),
-                headers=user_auth_action,
+                build_url(f'uploads/{upload_id}/raw/{path}', query_args={}),
+                headers=headers,
             )
         )
         assert_response(response, expected_status_code)
