@@ -956,6 +956,9 @@ class GeneralReader:
         group_dict['members'] = [
             LazyUserWrapper(member) for member in group_dict['members']
         ]
+        # add user field next to user_id
+        for member in group_dict['members_info']:
+            member['user'] = LazyUserWrapper(member['user_id'])
 
         return group_dict
 

@@ -2177,14 +2177,14 @@ def test_group_reader(groups_function, user1):
         'general start from group; id: *',
         {
             Token.GROUP: {
-                'GGGGGGGGGGGGGGGGGGGG14': '*',
+                'GGGGGGGGGGGGGGGGGG12m3': '*',
             }
         },
         result={
             'group': {
-                'GGGGGGGGGGGGGGGGGGGG14': {
-                    'group_id': 'GGGGGGGGGGGGGGGGGGGG14',
-                    'group_name': 'Group 14',
+                'GGGGGGGGGGGGGGGGGG12m3': {
+                    'group_id': 'GGGGGGGGGGGGGGGGGG12m3',
+                    'group_name': 'Group 12m3',
                     'owner': {
                         'name': 'Sheldon Cooper',
                         'first_name': 'Sheldon',
@@ -2198,15 +2198,6 @@ def test_group_reader(groups_function, user1):
                     'members': ListWithSortKey(
                         (
                             {
-                                'name': 'Rajesh Koothrappali',
-                                'first_name': 'Rajesh',
-                                'last_name': 'Koothrappali',
-                                'email': 'rajesh.koothrappali@nomad-fairdi.tests.de',
-                                'user_id': '00000000-0000-0000-0000-000000000004',
-                                'username': 'rkoothrappali',
-                                'is_admin': False,
-                            },
-                            {
                                 'name': 'Sheldon Cooper',
                                 'first_name': 'Sheldon',
                                 'last_name': 'Cooper',
@@ -2215,6 +2206,69 @@ def test_group_reader(groups_function, user1):
                                 'username': 'scooper',
                                 'is_admin': False,
                                 'is_oasis_admin': True,
+                            },
+                            {
+                                'name': 'Leonard Hofstadter',
+                                'first_name': 'Leonard',
+                                'last_name': 'Hofstadter',
+                                'email': 'leonard.hofstadter@nomad-fairdi.tests.de',
+                                'user_id': '00000000-0000-0000-0000-000000000002',
+                                'username': 'lhofstadter',
+                                'is_admin': False,
+                            },
+                            {
+                                'name': 'Howard Wolowitz',
+                                'first_name': 'Howard',
+                                'last_name': 'Wolowitz',
+                                'email': 'howard.wolowitz@nomad-fairdi.tests.de',
+                                'user_id': '00000000-0000-0000-0000-000000000003',
+                                'username': 'hwolowitz',
+                                'is_admin': False,
+                            },
+                        ),
+                        sort_key=lambda x: x['user_id'],
+                    ),
+                    'members_info': ListWithSortKey(
+                        (
+                            {
+                                'user_id': '00000000-0000-0000-0000-000000000001',
+                                'user': {
+                                    'name': 'Sheldon Cooper',
+                                    'first_name': 'Sheldon',
+                                    'last_name': 'Cooper',
+                                    'email': 'sheldon.cooper@nomad-coe.eu',
+                                    'user_id': '00000000-0000-0000-0000-000000000001',
+                                    'username': 'scooper',
+                                    'is_admin': False,
+                                    'is_oasis_admin': True,
+                                },
+                                'role': 'owner',
+                            },
+                            {
+                                'user_id': '00000000-0000-0000-0000-000000000002',
+                                'user': {
+                                    'name': 'Leonard Hofstadter',
+                                    'first_name': 'Leonard',
+                                    'last_name': 'Hofstadter',
+                                    'email': 'leonard.hofstadter@nomad-fairdi.tests.de',
+                                    'user_id': '00000000-0000-0000-0000-000000000002',
+                                    'username': 'lhofstadter',
+                                    'is_admin': False,
+                                },
+                                'role': 'maintainer',
+                            },
+                            {
+                                'user_id': '00000000-0000-0000-0000-000000000003',
+                                'user': {
+                                    'name': 'Howard Wolowitz',
+                                    'first_name': 'Howard',
+                                    'last_name': 'Wolowitz',
+                                    'email': 'howard.wolowitz@nomad-fairdi.tests.de',
+                                    'user_id': '00000000-0000-0000-0000-000000000003',
+                                    'username': 'hwolowitz',
+                                    'is_admin': False,
+                                },
+                                'role': 'member',
                             },
                         ),
                         sort_key=lambda x: x['user_id'],
@@ -2266,9 +2320,11 @@ def test_group_reader(groups_function, user1):
                 'GGGGGGGGGGGGGGGGGGGG18': {'group_name': 'Group 18'},
                 'GGGGGGGGGGGGGGGGGGGG19': {'group_name': 'Group 19'},
                 'GGGGGGGGGGGGGGGGGGG123': {'group_name': 'Group 123'},
+                'GGGGGGGGGGGGGGGGGG12m3': {'group_name': 'Group 12m3'},
                 'GGGGGGGGGGGGGGGGGGUniq': {'group_name': 'Group Uniq'},
                 'GGGGGGGGGGGGGGTwin One': {'group_name': 'Group Twin One'},
                 'GGGGGGGGGGGGGGTwin Two': {'group_name': 'Group Twin Two'},
+                'GGGGGGGGGGGGGGdirty234': {'group_name': 'Group Dirty 234'},
                 'GGGGGGGGGOne Two Three': {'group_name': 'Group One Two Three'},
             }
         },
