@@ -19,9 +19,9 @@
 """Methods to help with testing of nomad@FAIRDI."""
 
 import os.path
-import time
 import urllib.parse
 import zipfile
+from collections.abc import Iterable
 from logging import LogRecord
 from typing import Any
 
@@ -203,12 +203,6 @@ def dict_to_params(d):
     return [pytest.param(*item, id=id) for id, item in d.items()]
 
 
-def check_with_retry(condition_func, retries=5, delay0=0.1):
-    """Call function, return early on truthy result. Retry with increasing delays."""
-    for attempt in range(retries):
-        if result := condition_func():
-            return result
-
-        time.sleep(delay0 * (attempt + 1))
-
-    return condition_func()
+def list_without(lst: Iterable, *items: object) -> list:
+    """Return a copy of lst without any of the items."""
+    return [x for x in lst if x not in items]

@@ -21,6 +21,7 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable
 from datetime import datetime
+from enum import Enum
 from types import UnionType
 from typing import (
     Any,
@@ -208,6 +209,9 @@ def _get_response_type(type_hint: Any, ns: ModelNamespace) -> Any:
             # Path = Dict[str, 'Path']
             return type_hint
         return dict[key_type, _get_response_type(value_type, ns)]  # type: ignore
+
+    if origin is None and issubclass(type_hint, Enum):
+        return type_hint
 
     # This is about Optional[T], which is translated to Union[None, T]
     if origin in (Union, UnionType) and len(args) == 2:

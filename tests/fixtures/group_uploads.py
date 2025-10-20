@@ -2,8 +2,8 @@
 Fields:
 - C: coauthors (users)
 - R: reviewers (users)
-- CG: coauthor_groups (agents)
-- RG: reviewer_groups (agents)
+- CG: coauthor_groups (groups)
+- RG: reviewer_groups (groups)
 
 Values:
 - XMN: field X with userM and userN
@@ -33,9 +33,13 @@ def group_upload_molds(
         'CGg1': {'coauthor_groups': ['group1']},
         'CGg2': {'coauthor_groups': ['group2']},
         'CGg123': {'coauthor_groups': ['group123']},
+        'CGg12m3': {'coauthor_groups': ['group12m3']},
+        'CGd234': {'coauthor_groups': ['dirty234']},
         'RGg1': {'reviewer_groups': ['group1']},
         'RGg2': {'reviewer_groups': ['group2']},
         'RGg123': {'reviewer_groups': ['group123']},
+        'RGd234': {'reviewer_groups': ['dirty234']},
+        'RGg12m3': {'reviewer_groups': ['group12m3']},
         'RGall': {'reviewer_groups': ['all']},
         'full_agents': {
             'coauthors': ['user2', 'user4'],
@@ -90,7 +94,18 @@ def create_group_uploads_from_molds(group_upload_molds):
 @pytest.fixture(scope='module')
 def uploads_get_groups(create_group_uploads_from_molds, elastic_module, groups_module):
     """Create and return uploads for testing get uploads with groups."""
-    labels = ('no_group', 'CGg2', 'RGg2', 'CGg123', 'RGg123', 'RGall')
+    labels = (
+        'no_group',
+        'CGg2',
+        'RGg2',
+        'CGg123',
+        'CGg12m3',
+        'CGd234',
+        'RGg123',
+        'RGg12m3',
+        'RGd234',
+        'RGall',
+    )
     yield from create_group_uploads_from_molds(labels)
 
 
@@ -108,7 +123,20 @@ def uploads_agent_write_access(
     groups_module,
 ):
     """Create and return uploads for testing agent write access."""
-    labels = ('C2', 'R2', 'CGg2', 'RGg2', 'RGall', 'full_agents')
+    labels = (
+        'C2',
+        'R2',
+        'CGg2',
+        'RGg2',
+        'CGg123',
+        'RGg123',
+        'CGg12m3',
+        'RGg12m3',
+        'CGd234',
+        'RGd234',
+        'RGall',
+        'full_agents',
+    )
     yield from create_group_uploads_from_molds(labels)
 
 
@@ -129,6 +157,10 @@ def uploads_search_query_groups(
         'RGg2',
         'CGg123',
         'RGg123',
+        'CGg12m3',
+        'RGg12m3',
+        'CGd234',
+        'RGd234',
         'RGall',
         'user2',
     )
