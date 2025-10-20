@@ -3244,8 +3244,8 @@ def test_metainfo_reader(mongo_infra, user1):
                     'definition_id': '849dc023023aefedc3d4a94dc151a28eee81d3ff',
                     'all_quantities': {
                         'TestBatchSample.batch_id': 'metainfo/tests.processing.test_data/section_definitions/0/quantities/0',
-                        'TestBatchSample.comments': 'metainfo/tests.processing.test_data/section_definitions/0/quantities/1',
-                        'TestBatchSample.sample_number': 'metainfo/tests.processing.test_data/section_definitions/0/quantities/2',
+                        'TestBatchSample.sample_number': 'metainfo/tests.processing.test_data/section_definitions/0/quantities/1',
+                        'TestBatchSample.comments': 'metainfo/tests.processing.test_data/section_definitions/0/quantities/2',
                         'TestBatch.batch_id': 'metainfo/tests.processing.test_data/section_definitions/1/quantities/0',
                         'TestBatch.n_samples': 'metainfo/tests.processing.test_data/section_definitions/1/quantities/1',
                         'TestBatch.sample_refs': 'metainfo/tests.processing.test_data/section_definitions/1/quantities/2',
