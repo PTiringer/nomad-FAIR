@@ -141,27 +141,27 @@ async def many_uploads(
     yield
 
 
-@pytest.fixture(scope='module')
-def async_api_v1(monkeysession):
+@pytest.fixture(scope='function')
+def async_api_v1(monkeypatch):
     """
     This fixture provides an HTTP client with AsyncClient that accesses
     the fast api. The patch will redirect all requests to the fast api under test.
     """
     test_client = AsyncClient(app=app)
 
-    monkeysession.setattr(
+    monkeypatch.setattr(
         'nomad.client.archive.ArchiveQuery._fetch_url',
         'http://testserver/api/v1/entries/query',
     )
-    monkeysession.setattr(
+    monkeypatch.setattr(
         'nomad.client.archive.ArchiveQuery._download_url',
         'http://testserver/api/v1/entries/archive/query',
     )
 
-    monkeysession.setattr('httpx.AsyncClient.get', getattr(test_client, 'get'))
-    monkeysession.setattr('httpx.AsyncClient.put', getattr(test_client, 'put'))
-    monkeysession.setattr('httpx.AsyncClient.post', getattr(test_client, 'post'))
-    monkeysession.setattr('httpx.AsyncClient.delete', getattr(test_client, 'delete'))
+    monkeypatch.setattr('httpx.AsyncClient.get', getattr(test_client, 'get'))
+    monkeypatch.setattr('httpx.AsyncClient.put', getattr(test_client, 'put'))
+    monkeypatch.setattr('httpx.AsyncClient.post', getattr(test_client, 'post'))
+    monkeypatch.setattr('httpx.AsyncClient.delete', getattr(test_client, 'delete'))
 
     def mocked_auth_headers(self) -> dict:
         for user in users.values():
@@ -169,7 +169,7 @@ def async_api_v1(monkeysession):
                 return dict(Authorization=f'Bearer {user["user_id"]}')
         return {}
 
-    monkeysession.setattr('nomad.client.api.Auth.headers', mocked_auth_headers)
+    monkeypatch.setattr('nomad.client.api.Auth.headers', mocked_auth_headers)
 
     return test_client
 
