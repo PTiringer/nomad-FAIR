@@ -63,9 +63,8 @@ def action_gpu_worker():
 
 
 @run.command(help='Run the action internal worker.')
-@click.option('--workers', type=int, default=12, help='Number of worker threads.')
-def action_internal_worker(workers: int):
-    run_action_internal_worker(workers=workers)
+def action_internal_worker():
+    run_action_internal_worker()
 
 
 @run.command(help='Run the nomad development worker.')
@@ -94,12 +93,12 @@ def app(with_gui: bool, **kwargs):
     run_app(with_gui=with_gui, **kwargs)
 
 
-def run_action_internal_worker(workers: int = 12):
+def run_action_internal_worker():
     import asyncio
 
     from nomad.actions.workers import internal_worker
 
-    asyncio.run(internal_worker.run_worker(workers=workers))
+    asyncio.run(internal_worker.run_worker())
 
 
 def run_app(
@@ -281,7 +280,7 @@ def run_appworker(
             results.append(executor.submit(*args, **kwargs))
 
         if config.temporal.enabled:
-            _submit(run_action_internal_worker, workers=celery_workers)
+            _submit(run_action_internal_worker)
         else:
             _submit(task_worker, workers=celery_workers)
         _submit(task_app, workers=fastapi_workers, host=app_host, port=app_port)
