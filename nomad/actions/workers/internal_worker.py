@@ -6,9 +6,10 @@ from nomad.actions.client import get_client
 from nomad.actions.workers.util import get_worker
 
 
-async def run_worker(workers: int = 12):
+async def run_worker():
     client = await get_client()
-    with ThreadPoolExecutor(max_workers=workers) as executor:
+    # NOTE: internal processing is not thread safe, avoid increasing the number of workers.
+    with ThreadPoolExecutor(max_workers=1) as executor:
         worker = get_worker(
             client=client,
             task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
