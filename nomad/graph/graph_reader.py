@@ -3405,11 +3405,11 @@ class DefinitionReader(ArchiveLikeReader):
 
         if isinstance(node.archive, Package):
             for section in node.archive.section_definitions:
-                await __visit(section, ('extending_sections', 'base_sections'))
+                await __visit(section, ('base_sections',))
         else:
             await __visit(
                 node.archive,
-                ('extending_sections', 'base_sections', 'sub_sections', 'quantities'),
+                ('base_sections', 'sub_sections', 'quantities'),
             )
 
     @staticmethod
