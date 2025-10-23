@@ -1811,6 +1811,10 @@ class Upload(Proc):
         self._upload_files: UploadFiles = None
         self.archive_context = ServerContext(self)
 
+    def reset_entry_processing_status(self):
+        """Reset the process status of all entries in the upload."""
+        Entry.objects(upload_id=self.upload_id).update(unset__process_status=1)
+
     async def await_workflows(self):
         self.reload()
         while self.process_running:
