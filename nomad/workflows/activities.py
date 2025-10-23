@@ -118,6 +118,7 @@ def match_all_activity(input: UploadProcessingWorkflowInput):
         path_filter=input.path_filter,
         updated_files=input.updated_files.get_files(),
     )
+    upload.reset_entry_processing_status()
 
 
 @activity.defn
