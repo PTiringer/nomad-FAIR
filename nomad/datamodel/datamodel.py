@@ -1152,7 +1152,7 @@ class EntryMetadata(MSection):
                 if searchable_quantity := create_searchable_quantity(
                     property_def,
                     quantity_path,
-                    [None] + sections,  # The root section is ignored ATM
+                    sections,
                     '.'.join([str(x) for x in location]),
                     schema_name,
                 ):

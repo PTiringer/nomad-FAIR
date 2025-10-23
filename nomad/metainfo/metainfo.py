@@ -2221,7 +2221,7 @@ class MSection(metaclass=MObjectMeta):
                 for i_repeated, sub_section in enumerate(
                     self.m_get_sub_sections(property_def)
                 ):
-                    parent_sections: list[MSection] = [sub_section]
+                    parent_sections: list[MSection] = [self]
                     for (
                         sub_sections,
                         definition,

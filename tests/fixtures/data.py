@@ -470,7 +470,7 @@ def example_data_schema_python(
                                 'nomadschemaexample.schema.MyBaseSchemaB',
                             ],
                         },
-                        '-1': {
+                        '2': {
                             'path': 'name',
                             'definitions': [
                                 'nomadschemaexample.schema.MySchema',
@@ -492,7 +492,7 @@ def example_data_schema_python(
                                 'nomadschemaexample.schema.MyBaseSchemaB',
                             ],
                         },
-                        '-1': {
+                        '2': {
                             'path': 'inherited_a',
                             'definitions': [
                                 'nomadschemaexample.schema.MyBaseSchemaA',
@@ -514,7 +514,7 @@ def example_data_schema_python(
                                 'nomadschemaexample.schema.MyBaseSchemaB',
                             ],
                         },
-                        '-1': {
+                        '2': {
                             'path': 'inherited_b',
                             'definitions': [
                                 'nomadschemaexample.schema.MyBaseSchemaB',
