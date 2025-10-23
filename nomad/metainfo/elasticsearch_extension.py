@@ -1167,13 +1167,10 @@ class SearchQuantity:
             )
 
             segments = path.split('.')
-            n_segments = len(segments)
             part_queries = [
                 Q(
                     'term',
-                    **{
-                        f'search_quantities__segments__{i + 1 if i != (n_segments - 1) else -1}.path.keyword': part
-                    },
+                    **{f'search_quantities__segments__{i + 1}.path.keyword': part},
                 )
                 for i, part in enumerate(segments)
             ]
@@ -1703,7 +1700,9 @@ def create_searchable_quantity(
     names = quantity_path.split('.')
     segments = {}
 
-    # Process section definitions (index 0 is reserved for the root and is not populated).
+    # Add segments for section definitions (index 0 is reserved for the root and is not
+    # populated).
+    i_segment = 1
     if sections:
         for i, section in enumerate(sections[1:], start=1):
             segments[str(i)] = {
@@ -1712,8 +1711,10 @@ def create_searchable_quantity(
                     d.qualified_name() for d in find_base_classes(type(section))
                 ],
             }
-    # Add quantity definition as the -1st segment.
-    segments['-1'] = {
+            i_segment += 1
+
+    # Add quantity definition as the last segment.
+    segments[str(i_segment)] = {
         'path': names[-1],
         'definitions': [quantity_m_def.rsplit('.', 1)[0]],
     }
