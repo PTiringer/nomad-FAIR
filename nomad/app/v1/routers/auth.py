@@ -131,7 +131,8 @@ def resolve_user(
     # Validate user against recording
     if user is not None:
         try:
-            assert datamodel.User.get(user.user_id) is not None
+            if datamodel.User.get(user.user_id) is None:
+                raise ValueError('User not found in database')
         except Exception as e:
             logger.error('API usage by unknown user.', exc_info=e)
             raise HTTPException(
