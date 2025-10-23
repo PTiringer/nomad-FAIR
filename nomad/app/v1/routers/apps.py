@@ -30,6 +30,7 @@ from nomad.app.v1.utils import create_responses
 from nomad.config import config
 from nomad.config.models.plugins import AppEntryPoint
 from nomad.config.models.ui import (
+    App,
     Menu,
     MenuItemHistogram,
     MenuItemNestedObject,
@@ -461,9 +462,8 @@ async def get_entry_points():
     return {'data': apps}
 
 
-def _build_app_response(entry_point: AppEntryPoint) -> dict[str, Any]:
+def _build_app_response(app: App) -> dict[str, Any]:
     search_quantities: dict[str, Any] = {}
-    app = entry_point.app
 
     def add_jmespath(name: str, location: str | None = None):
         data = parse_jmespath(name)
@@ -552,7 +552,7 @@ def _build_app_response(entry_point: AppEntryPoint) -> dict[str, Any]:
         add_search(key, 'filters_locked')
 
     return {
-        'app': entry_point.app.model_dump(),
+        'app': app.model_dump(),
         'search_quantities': search_quantities,
     }
 
@@ -579,9 +579,26 @@ async def get_entry_point(app_path: str):
 
     # Check the cache, if not found populate it
     if app_path not in app_cache:
-        app_cache[app_path] = _build_app_response(entry_point)
+        app_cache[app_path] = _build_app_response(entry_point.app)
 
     return app_cache[app_path]
+
+
+@router.post(
+    '/validate',
+    tags=[APITag.DEFAULT],
+    summary='Validate an app setup',
+    response_model=dict[str, Any],
+    response_model_exclude_none=True,
+    responses=create_responses(_bad_search_quantity_parse),
+)
+async def validate(app: App):
+    """Validates the given app configuration and return the validated version together
+    with the search quantities that are used in it.
+    """
+    initialize_search_quantities()
+
+    return _build_app_response(app)
 
 
 @router.post(
