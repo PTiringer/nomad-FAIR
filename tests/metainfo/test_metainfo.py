@@ -1033,16 +1033,6 @@ class TestM1:
             assert exception in str(exc_info.value)
 
     def test_m_traverse(self):
-        expected = [
-            ['quantity'],
-            ['child', 'quantity'],
-            ['child'],
-            ['child_repeated', 0, 'quantity'],
-            ['child_repeated'],
-            ['child_repeated', 1, 'quantity'],
-            ['child_repeated'],
-        ]
-
         class Child(MSection):
             quantity = Quantity(type=int)
 
@@ -1059,8 +1049,22 @@ class TestM1:
             child=Child(quantity=2),
             child_repeated=[ChildRepeated(quantity=3), ChildRepeated(quantity=4)],
         )
-        for i, [_, _, _, path] in enumerate(section.m_traverse()):
-            assert path == expected[i]
+
+        expected = [
+            [[section], ['quantity']],
+            [[section, section.child], ['child', 'quantity']],
+            [[section], ['child']],
+            [[section, section.child_repeated[0]], ['child_repeated', 0, 'quantity']],
+            [[section], ['child_repeated']],
+            [[section, section.child_repeated[1]], ['child_repeated', 1, 'quantity']],
+            [[section], ['child_repeated']],
+        ]
+
+        for i, [sections, _, _, path] in enumerate(
+            section.m_traverse(return_all_sections=True)
+        ):
+            assert sections == expected[i][0]
+            assert path == expected[i][1]
 
 
 @pytest.mark.parametrize('as_dict', [True, False])

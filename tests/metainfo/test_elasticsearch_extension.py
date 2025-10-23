@@ -599,7 +599,7 @@ class ClassD(ClassC):
                 definition='tests.metainfo.test_elasticsearch_extension.ClassA.float_value',
                 path_archive='test',
                 segments={
-                    '-1': {
+                    '1': {
                         'path': 'float_value',
                         'definitions': [
                             'tests.metainfo.test_elasticsearch_extension.ClassA',
@@ -619,7 +619,7 @@ class ClassD(ClassC):
                 definition='tests.metainfo.test_elasticsearch_extension.ClassA.int_value',
                 path_archive='test',
                 segments={
-                    '-1': {
+                    '1': {
                         'path': 'int_value',
                         'definitions': [
                             'tests.metainfo.test_elasticsearch_extension.ClassA',
@@ -639,7 +639,7 @@ class ClassD(ClassC):
                 definition='tests.metainfo.test_elasticsearch_extension.ClassA.str_value',
                 path_archive='test',
                 segments={
-                    '-1': {
+                    '1': {
                         'path': 'str_value',
                         'definitions': [
                             'tests.metainfo.test_elasticsearch_extension.ClassA',
@@ -659,7 +659,7 @@ class ClassD(ClassC):
                 definition='tests.metainfo.test_elasticsearch_extension.ClassA.datetime_value',
                 path_archive='test',
                 segments={
-                    '-1': {
+                    '1': {
                         'path': 'datetime_value',
                         'definitions': [
                             'tests.metainfo.test_elasticsearch_extension.ClassA',
@@ -679,7 +679,7 @@ class ClassD(ClassC):
                 definition='tests.metainfo.test_elasticsearch_extension.ClassA.bool_value',
                 path_archive='test',
                 segments={
-                    '-1': {
+                    '1': {
                         'path': 'bool_value',
                         'definitions': [
                             'tests.metainfo.test_elasticsearch_extension.ClassA',
@@ -705,7 +705,7 @@ class ClassD(ClassC):
                             'tests.metainfo.test_elasticsearch_extension.ClassA',
                         ],
                     },
-                    '-1': {
+                    '2': {
                         'path': 'float_value',
                         'definitions': [
                             'tests.metainfo.test_elasticsearch_extension.ClassA',
@@ -733,7 +733,7 @@ class ClassD(ClassC):
                             'tests.metainfo.test_elasticsearch_extension.ClassB',
                         ],
                     },
-                    '-1': {
+                    '2': {
                         'path': 'multiple_inheritance',
                         'definitions': [
                             'tests.metainfo.test_elasticsearch_extension.ClassB',
@@ -753,7 +753,7 @@ class ClassD(ClassC):
                 definition='tests.metainfo.test_elasticsearch_extension.ClassC.new_value',
                 path_archive='test',
                 segments={
-                    '-1': {
+                    '1': {
                         'path': 'new_value',
                         'definitions': [
                             'tests.metainfo.test_elasticsearch_extension.ClassC',
@@ -782,7 +782,7 @@ class ClassD(ClassC):
                             'tests.metainfo.test_elasticsearch_extension.ClassB',
                         ],
                     },
-                    '-1': {
+                    '2': {
                         'path': 'bool_value',
                         'definitions': [
                             'tests.metainfo.test_elasticsearch_extension.ClassA',
