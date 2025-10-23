@@ -83,17 +83,17 @@ EntryTabs.propTypes = {
 
 export const help = `
 The *overview* tab gives you an insightful overview about the most prominent
-contents found in an entry. You can find more details in the *archive* tab.
+contents found in an entry. You can find more details in the *data* tab.
 
-The *raw data* tab will show you all files that belong to the entry and offers a download
+The *files* tab will show you all files that belong to the entry and offers a download
 on individual, or all files. The files can be selected and downloaded. You can also
 view the contents of some files directly here on this page.
 
-The *archive* tab shows you the parsed data as a tree
+The *data* tab shows you the parsed data as a tree
 data structure. This view is connected to NOMAD's [metainfo](/metainfo), which acts a schema for
 all parsed data.
 
-The *log* tab will show you a log of the entry's processing.
+The *logs* tab will show you a log of the entry's processing.
 `
 
 const EntryPage = React.memo(() => {
