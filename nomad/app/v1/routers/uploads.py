@@ -996,7 +996,7 @@ async def get_upload_rawdir_path(
                 encountered mainfiles."""
         ),
     ),
-    user: User = Depends(create_user_dependency(required=False)),
+    user: User = Depends(create_user_dependency()),
 ):
     """
     For the upload specified by `upload_id`, gets the raw file or directory metadata
@@ -1103,9 +1103,7 @@ async def get_upload_rawdir_path(
 )
 async def get_upload_raw(
     upload_id: str = Path(..., description='The unique id of the upload.'),
-    user: User = Depends(
-        create_user_dependency(required=False, signature_token_auth_allowed=True)
-    ),
+    user: User = Depends(create_user_dependency(signature_token_auth_allowed=True)),
 ):
     """
     NOMAD manages the raw files of published uploads as a .zip file. This endpoint
@@ -1188,9 +1186,7 @@ async def get_upload_raw_path(
                 instead of the actual mime type."""
         ),
     ),
-    user: User = Depends(
-        create_user_dependency(required=False, signature_token_auth_allowed=True)
-    ),
+    user: User = Depends(create_user_dependency(signature_token_auth_allowed=True)),
 ):
     """
     For the upload specified by `upload_id`, gets the raw file or directory content located
@@ -1753,7 +1749,7 @@ async def get_upload_entry_archive_mainfile(
     mainfile_key: str | None = FastApiQuery(
         None, description='The mainfile_key, for accessing child entries.'
     ),
-    user: User = Depends(create_user_dependency(required=False)),
+    user: User = Depends(create_user_dependency()),
 ):
     """
     For the upload specified by `upload_id`, gets the full archive of a single entry that
@@ -1778,7 +1774,7 @@ async def get_upload_entry_archive_mainfile(
 async def get_upload_entry_archive(
     upload_id: str = Path(..., description='The unique id of the upload.'),
     entry_id: str = Path(..., description='The unique entry id.'),
-    user: User = Depends(create_user_dependency(required=False)),
+    user: User = Depends(create_user_dependency()),
 ):
     """
     For the upload specified by `upload_id`, gets the full archive of a single entry that
@@ -2377,7 +2373,7 @@ async def get_upload_bundle(
                 (true by default)."""
         ),
     ),
-    user: User = Depends(create_user_dependency(required=False)),
+    user: User = Depends(create_user_dependency()),
 ):
     """
     Get an *upload bundle* for the specified upload. An upload bundle is a file bundle which
