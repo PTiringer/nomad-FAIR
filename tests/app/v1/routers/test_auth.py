@@ -23,6 +23,7 @@ from fastapi import HTTPException, Request
 
 from nomad.app.v1.models.models import User
 from nomad.app.v1.routers.auth import create_user_dependency
+from nomad.config.models.config import ModeEnum
 
 
 def perform_get_token_test(client, http_method, status_code, username, password):
@@ -220,12 +221,14 @@ def test_create_user_dependency_required(required):
 
 
 @pytest.mark.parametrize('tester', [None, 'tester'])
+@pytest.mark.parametrize('mode', [ModeEnum.PRODUCTION, ModeEnum.DEVELOPMENT])
 def test_create_user_dependency_assume_auth_for_username(
-    tester, allowed_user, monkeypatch
+    tester, mode, allowed_user, monkeypatch
 ):
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth.config.tests.assume_auth_for_username', tester
     )
+    monkeypatch.setattr('nomad.app.v1.routers.auth.config.services.mode', mode)
 
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth.datamodel.User.get',
@@ -238,6 +241,11 @@ def test_create_user_dependency_assume_auth_for_username(
         with pytest.raises(HTTPException, match='Authentication required.') as exc:
             dep()
         assert exc.value.status_code == 401
+
+    elif mode == ModeEnum.PRODUCTION:
+        with pytest.raises(ValueError, match='assume_auth_for_username is test-only'):
+            dep()
+
     else:
         assert dep() == allowed_user
 

@@ -35,6 +35,7 @@ from pydantic import BaseModel
 from nomad import datamodel, infrastructure, utils
 from nomad._auth import check_api_secret
 from nomad.config import config
+from nomad.config.models.config import ModeEnum
 from nomad.utils import get_logger, strip
 
 from ..common import root_path
@@ -101,6 +102,10 @@ def resolve_user(
         user = _get_user_from_signature_token(signature_token, request)
 
     if user is None and config.tests.assume_auth_for_username:
+        if config.services.mode == ModeEnum.PRODUCTION:
+            raise ValueError(
+                'assume_auth_for_username is test-only and not allowed in production mode'
+            )
         user = datamodel.User.get(username=config.tests.assume_auth_for_username)
 
     # Check if token is available
