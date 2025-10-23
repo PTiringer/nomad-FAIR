@@ -9,10 +9,11 @@ from nomad.infrastructure import setup
 
 async def run_worker():
     client = await get_client()
-    with ThreadPoolExecutor(max_workers=12, initializer=setup) as executor:
+    with ThreadPoolExecutor(max_workers=12) as executor:
         worker = get_worker(
             client=client, task_queue=TaskQueue.GPU, activity_executor=executor
         )
+        setup()
         await worker.run()
 
 
