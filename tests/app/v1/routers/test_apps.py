@@ -445,3 +445,47 @@ def test_search_quantity_initialization(client, monkeypatch, no_warn):
         json={'query': {'input': 'a'}, 'pagination': {'page': 1, 'page_size': 10}},
     )
     assert mock.call_count == 0, 'Expected the initialization to not be called'
+
+
+@pytest.mark.parametrize(
+    'app, error, status_code',
+    [
+        pytest.param(
+            {
+                'label': 'Test App',
+                'path': 'test-app',
+                'category': 'test',
+                'description': 'A test application',
+                'columns': [
+                    {'search_quantity': 'results.material.chemical_formula_hill'}
+                ],
+            },
+            None,
+            200,
+            id='valid',
+        ),
+        pytest.param(
+            {
+                'label': 'Test App',
+                'path': 'test-app',
+                'category': 'test',
+                'description': 'A test application',
+                'columns': [{'search_quantity': 'missing'}],
+            },
+            'Could not load the app search quantity "missing" used in the results table column.',
+            422,
+            id='invalid-search-quantity',
+        ),
+    ],
+)
+def test_validate_app(client, no_warn, app, error, status_code):
+    """Test validation of a basic valid app configuration."""
+    resp = client.post(f'{BASE}/validate', json=app)
+    assert resp.status_code == status_code
+    body = resp.json()
+
+    if error:
+        assert error in body.get('detail', '')
+    else:
+        assert 'app' in body
+        assert 'search_quantities' in body
