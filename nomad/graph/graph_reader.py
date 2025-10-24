@@ -485,11 +485,16 @@ async def _populate_result(
         """
         if isinstance(container, dict):
             assert isinstance(k_or_i, str)
-            container.setdefault(k_or_i, value_type())
+            if overwrite_existing_str and isinstance(container.get(k_or_i, None), str):
+                container[k_or_i] = value_type()
+            else:
+                container.setdefault(k_or_i, value_type())
             return container[k_or_i]
 
         assert isinstance(k_or_i, int)
         if container[k_or_i] is None:
+            container[k_or_i] = value_type()
+        elif overwrite_existing_str and isinstance(container[k_or_i], str):
             container[k_or_i] = value_type()
         return container[k_or_i]
 
