@@ -1159,7 +1159,7 @@ class MetainfoParser(MappingParser):
 
             if isinstance(section, SubSection) and not annotation:
                 # search also all inheriting sections
-                for inheriting_section in section_def.all_inheriting_sections:
+                for inheriting_section in section_def.all_inheriting_sections or []:
                     annotation = inheriting_section.m_get_annotations(
                         MAPPING_ANNOTATION_KEY, {}
                     ).get(self.annotation_key)

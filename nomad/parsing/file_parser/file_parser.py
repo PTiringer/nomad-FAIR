@@ -143,7 +143,7 @@ class FileParser(ABC):
             self._mainfile = val.name
             self._mainfile_obj = val
 
-    def open(self, mainfile: str):
+    def open(self, mainfile: str, *args):
         """
         Opens the file with the provided open function or based on the file type.
         """
@@ -161,7 +161,7 @@ class FileParser(ABC):
                 open_file = open
 
         try:
-            return open_file(mainfile)
+            return open_file(mainfile, *args)
         except Exception:
             pass
 
