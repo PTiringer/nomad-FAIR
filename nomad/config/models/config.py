@@ -480,6 +480,9 @@ class Temporal(ConfigBaseModel):
     port: int = 7233
     namespace: str = 'default'
     enabled: bool = True
+    graceful_shutdown_timeout: int = Field(
+        1, description='The graceful shutdown timeout for temporal workers in seconds.'
+    )
 
 
 class Keycloak(ConfigBaseModel):

@@ -1,4 +1,5 @@
 import concurrent.futures
+from datetime import timedelta
 
 from temporalio.client import Client
 from temporalio.worker import Interceptor, SharedStateManager, Worker
@@ -14,6 +15,7 @@ def get_worker(
     interceptors: list[Interceptor] | None = None,
     activity_executor: concurrent.futures.Executor | None = None,
     shared_state_manager: SharedStateManager | None = None,
+    graceful_shutdown_timeout: timedelta = timedelta(),
 ):
     worker = Worker(
         client,
@@ -23,6 +25,7 @@ def get_worker(
         interceptors=interceptors or [],
         activity_executor=activity_executor,
         shared_state_manager=shared_state_manager,
+        graceful_shutdown_timeout=graceful_shutdown_timeout,
     )
 
     return worker
