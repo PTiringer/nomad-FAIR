@@ -87,6 +87,7 @@ temporal:
   host: localhost
   namespace: default
   port: 7233
+  graceful_shutdown_timeout: 1
 fs:
   local_tmp: /tmp
   north_home: .volumes/fs/north/users
