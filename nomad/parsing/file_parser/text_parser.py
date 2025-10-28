@@ -363,7 +363,7 @@ class TextParser(FileParser):
         Memory mapped representation of the file.
         """
         if self._file_handler is None:
-            with self.open(self.mainfile) as f:
+            with self.open(self.mainfile, 'rb') as f:
                 if isinstance(f, io.TextIOWrapper):
                     self._file_handler = mmap.mmap(
                         f.fileno(),
@@ -374,8 +374,18 @@ class TextParser(FileParser):
                     # set the extra chunk loaded before the intended offset to empty
                     self._file_handler[: self._file_pad] = b' ' * self._file_pad
                 else:
-                    self._file_handler = f.read()
+                    self._file_handler = [(0, f.seek(0, 2))]
             self._file_pad = 0
+        return self._file_handler
+
+    @property
+    def file_pointers(self):
+        """
+        List of (start, end) indices of blocks in the file to be parsed.
+        """
+        if self._file_handler is None:
+            with self.open(self.mainfile, 'rb') as f:
+                self._file_handler = [(0, f.seek(0, 2))]
         return self._file_handler
 
     def keys(self):
@@ -415,6 +425,20 @@ class TextParser(FileParser):
                 'Error setting value', data=dict(quantity=quantity.name)
             )
 
+    def _load_block(self) -> bytes | mmap.mmap:
+        """
+        Loads the file block to be parsed.
+        """
+        if not isinstance(self._file_handler, list):
+            return self._file_handler
+
+        with self.open(self.mainfile, 'rb') as f:
+            block = b''
+            for span in self._file_handler:
+                f.seek(span[0] + self._file_offset)
+                block += f.read(span[1] - span[0])
+            return block
+
     def _parse_quantities(self, quantities: list[Quantity]):
         """
         Parse a list of quantities.
@@ -432,7 +456,8 @@ class TextParser(FileParser):
                 self._re_findall = re_findall_b
 
         # map matches to quantities
-        matches = re.findall(re_findall_b, self.file_mmap)
+        block = self._load_block()
+        matches = re.findall(re_findall_b, block)
         current_index = 0
         for quantity in quantities:
             values = []
@@ -478,10 +503,11 @@ class TextParser(FileParser):
         """
         value = []
         units = []
+        block = self._load_block()
         re_matches = (
-            quantity.re_pattern.finditer(self.file_mmap)
+            quantity.re_pattern.finditer(block)
             if quantity.repeats
-            else [quantity.re_pattern.search(self.file_mmap)]
+            else [quantity.re_pattern.search(block)]
         )
         for res in re_matches:
             if res is None:
@@ -492,7 +518,12 @@ class TextParser(FileParser):
                 sub_parser.logger = self.logger
                 if sub_parser.findlazy is None:
                     sub_parser.findlazy = self.findlazy
-                sub_parser._file_handler = b' '.join([g for g in res.groups() if g])
+                start = res.span(1)[0]
+                sub_parser._file_offset = self._file_offset + start
+                sub_parser._file_handler = [
+                    (res.span(n + 1)[0] - start, res.span(n + 1)[1] - start)
+                    for n in range(len(res.groups()))
+                ]
                 value.append(sub_parser if sub_parser.findlazy else sub_parser.parse())
 
             else:
@@ -569,7 +600,6 @@ class TextParser(FileParser):
         if self.findall:
             if isinstance(self._file_handler, mmap.mmap):
                 self._file_handler.close()
-            self._file_handler = b' '
 
         return self
 
@@ -603,7 +633,14 @@ class DataTextParser(TextParser):
             try:
                 data = None
                 if self.mainfile is not None:
-                    data = np.loadtxt(self.mainfile)
+                    data = np.loadtxt(
+                        self.mainfile,
+                        **{
+                            key: val
+                            for key, val in self._kwargs.items()
+                            if key in np.loadtxt.__code__.co_varnames
+                        },
+                    )
                 else:
                     if not self._mainfile_contents and self.mainfile_obj:
                         with self.open_mainfile_obj() as mainfile_obj:
