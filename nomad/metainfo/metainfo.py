@@ -231,9 +231,7 @@ class MProxy:
             if '@' in fragment:
                 # It's a reference to a section definition
                 definition, definition_id = f'{archive_url}#{fragment}'.split('@')
-                return self._effective_context.fetch_section(
-                    definition, definition_id
-                ).m_def
+                return self._effective_context.fetch_section(definition, definition_id)
 
             ref_section = self._effective_context.resolve_archive_url(archive_url)
 
@@ -535,11 +533,13 @@ class Reference:
         return self._check_shape(_convert(value))
 
     def _serialize_impl(self, section, value):
-        return (
-            value.m_path()
-            if (context := section.m_root().m_context) is None
-            else context.create_reference(section, self._definition, value)
-        )
+        if (context := section.m_root().m_context) is None:
+            return value.m_path()
+
+        if reference := context.create_reference(section, self._definition, value):
+            return reference
+
+        return value.qualified_name()
 
     def serialize(self, value, *, section, transform=None):
         def _convert(v, p=None):
@@ -563,7 +563,7 @@ class MSectionReference(Reference):
     !!! FOR INTERNAL USE ONLY !!!
     """
 
-    _pattern = re.compile(r'^\w*(\.\w*)*(@\w{40})?$')
+    _pattern = re.compile(r'^\w*(\.\w*)*(@[a-f0-9]{40})?$')
 
     def __init__(self):
         super().__init__(Section.m_def)
@@ -2111,7 +2111,7 @@ class MSection(metaclass=MObjectMeta):
                     return cls  # cls is not None
 
                 if m_context and (new_def := m_context.fetch_section(m_def, m_def_id)):  # type: ignore
-                    return new_def
+                    return new_def.section_cls
 
             if m_def is None:
                 return cls
@@ -3969,6 +3969,10 @@ class Package(Definition):
         self.upload_id = None
         self.entry_id = None
 
+        # used to indicate if a package is loaded from mongodb
+        # if so skip writing back to mongodb to save some resources
+        self.loaded_from_mongodb = False
+
     @property
     def m_is_custom_package(self) -> bool:
         return self.upload_id is not None and self.entry_id is not None
@@ -3977,16 +3981,18 @@ class Package(Definition):
         super().__init_metainfo__()
 
         # register the package and all its aliases for python packages
-        if self.name and re.match(r'^\w+(\.\w+)*$', self.name):
-            if Package.registry.get(self.name, None) is not self:
-                for alias in self.aliases + [self.name]:
-                    if alias in Package.registry and 'pytest' not in sys.modules:
-                        existing_package = Package.registry[alias]
-                        raise MetainfoError(
-                            f'Package {alias} is already registered for '
-                            f'package {existing_package}.'
-                        )
-                    Package.registry[alias] = self
+        if (
+            not self.m_is_custom_package
+            and self.name
+            and re.match(r'^\w+(\.\w+)*$', self.name)
+            and Package.registry.get(self.name, None) is not self
+        ):
+            for alias in itertools.chain(self.aliases, [self.name]):
+                if alias in Package.registry and 'pytest' not in sys.modules:
+                    raise MetainfoError(
+                        f'Package {alias} is already registered for package {Package.registry[alias]}.'
+                    )
+                Package.registry[alias] = self
 
         # access potential SectionProxies to resolve them
         for content in self.m_all_contents():

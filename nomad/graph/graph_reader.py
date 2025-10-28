@@ -92,6 +92,7 @@ from nomad.metainfo.data_type import JSON, Datatype
 from nomad.metainfo.data_type import Any as AnyType
 from nomad.metainfo.util import MSubSectionList, split_python_definition
 from nomad.mongo.groups import MongoUserGroup, get_mongo_user_group
+from nomad.mongo.package import PackageDefinition
 from nomad.processing import Entry, ProcessStatus, Upload
 
 logger = utils.get_logger(__name__)
@@ -1225,7 +1226,6 @@ class ArchiveLikeReader(GeneralReader):
     An abstract class for `ArchiveReader` and `DefinitionReader`.
     """
 
-    # noinspection PyUnusedLocal
     async def _retrieve_definition(
         self,
         m_def: str | None,
@@ -1247,6 +1247,8 @@ class ArchiveLikeReader(GeneralReader):
         def new_context(_id):
             return ServerContext(
                 get_upload_with_read_access(_id, self.user, include_others=True)
+                if _id
+                else None
             )
 
         async def __resolve_definition_in_archive(
@@ -1282,8 +1284,10 @@ class ArchiveLikeReader(GeneralReader):
             return custom_package.m_resolve_path(_path_stack)
 
         if m_def_id is not None:
-            if new_def := new_context(node.upload_id).fetch_section(m_def, m_def_id):
-                return new_def.m_def
+            if new_def := new_context(node.upload_id if node else None).fetch_section(
+                m_def, m_def_id
+            ):
+                return new_def
 
         if m_def is not None:
             if m_def.startswith(('#/', '/')):
@@ -3548,11 +3552,23 @@ class MetainfoBrowser(DefinitionReader):
 
                 if key in Package.registry:
                     yield key, Package.registry[key], value
+                elif PackageDefinition.has_definition(key):
+                    # looks like a valid existing definition ID
+                    try:
+                        target = await self._retrieve_definition(None, key)
+                        yield target.qualified_name(), target, value
+                    except Exception as e:
+                        self._log(f'Failed to retrieve definition: {e}')
                 elif key.startswith('entry_id:'):
                     try:
                         yield key, await self._retrieve_definition(key), value
                     except Exception as e:
                         self._log(f'Failed to retrieve definition: {e}')
+                else:
+                    self._log(
+                        f'Cannot identify definition format: {key}',
+                        error_type=QueryError.NOTFOUND,
+                    )
 
     async def read(self) -> dict:  # type: ignore # noqa
         with self._prepare_reading() as response:

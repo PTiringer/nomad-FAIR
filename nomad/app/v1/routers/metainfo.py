@@ -80,7 +80,7 @@ class PackageDefinitionResponse(BaseModel):
 async def get_package_definition(
     section_definition_id: str = Path(
         ...,
-        regex=r'^\w{40}$',
+        regex=PackageDefinition.id_pattern,
         description='The section definition id to be used to retrieve package.',
     ),
 ):

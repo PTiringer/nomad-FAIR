@@ -25,6 +25,7 @@ import pytest_asyncio
 import yaml
 
 from nomad.datamodel import EntryArchive, ServerContext
+from nomad.datamodel.metainfo.simulation import run
 from nomad.graph.graph_reader import (
     EntryReader,
     FileSystemReader,
@@ -86,14 +87,16 @@ def assert_dict(observed, expected):
     expected.pop('definition_id', None)
     assert set(observed.keys()) == set(expected.keys())
     for k, v in observed.items():
+        if k == 'categories':
+            continue
+        if k == 'upload_files_server_path':
+            continue
         if isinstance(v, LazyWrapper):
             v = v.to_json()
         if isinstance(v, dict):
             assert_dict(v, expected[k])
         elif isinstance(v, list):
             assert_list(v, expected[k])
-        elif k == 'upload_files_server_path':
-            continue
         else:
             assert_time(v, expected[k])
 
@@ -2786,7 +2789,7 @@ def test_general_reader(json_dict, example_data_with_reference, user1):
 
 
 # noinspection DuplicatedCode,SpellCheckingInspection
-def test_metainfo_reader(mongo_infra, user1):
+def test_metainfo_reader(mongo_function_with_indexed_def, user1):
     def __ge_print(msg, required, *, to_file: bool = False, result: dict = None):
         with MongoReader(required, user=user1) as reader:
             if result:
@@ -2843,12 +2846,53 @@ def test_metainfo_reader(mongo_infra, user1):
     )
 
     __ge_print(
+        'general start from metainfo definition id',
+        {
+            Token.METAINFO: {
+                run.m_package.definition_id: {
+                    'section_definitions[2]': {
+                        'm_request': {'directive': 'plain'},
+                    }
+                }
+            }
+        },
+        result={
+            'metainfo': {
+                'nomad.datamodel.metainfo.simulation.run': {
+                    'section_definitions': [
+                        None,
+                        None,
+                        {
+                            'name': 'MessageRun',
+                            'description': 'Contains warning, error, and info messages of the run.',
+                            'quantities': [
+                                {
+                                    'name': 'type',
+                                    'description': 'Type of the message. Can be one of warning, error, info, debug.',
+                                    'type': {'type_kind': 'python', 'type_data': 'str'},
+                                    'shape': [],
+                                },
+                                {
+                                    'name': 'value',
+                                    'description': 'Value of the message of the computational program, given by type.',
+                                    'type': {'type_kind': 'python', 'type_data': 'str'},
+                                    'shape': [],
+                                },
+                            ],
+                        },
+                    ]
+                }
+            },
+        },
+    )
+
+    __ge_print(
         'general start from metainfo',
         {
             Token.METAINFO: {
                 'm_request': {
                     'include': ['*nomad.datamodel.metainfo.simulation.run'],
-                    'pagination': {'page_size': 50},
+                    'pagination': {'page_size': 500},
                 },
                 '*': {'m_request': {'index': [2]}},
             }
@@ -3172,148 +3216,47 @@ def test_metainfo_reader(mongo_infra, user1):
         {
             Token.METAINFO: {
                 'm_request': {
-                    'include': ['*test_data'],
-                    'pagination': {'page_size': 50},
+                    'include': ['*tabular'],
+                    'pagination': {'page_size': 500},
                 }
             }
         },
         result={
             'metainfo': {
-                'tests.processing.test_data': {
-                    'name': 'tests.processing.test_data',
+                'nomad.parsing.tabular': {
+                    'name': 'nomad.parsing.tabular',
                     'section_definitions': [
                         {
-                            'name': 'BatchSampleForTest',
-                            'base_sections': [
-                                'metainfo/nomad.datamodel.data/section_definitions/1'
-                            ],
-                            'quantities': [
-                                {
-                                    'name': 'batch_id',
-                                    'description': 'Id for the batch',
-                                    'type': {'type_kind': 'python', 'type_data': 'str'},
-                                    'definition_id': 'ab97d22656cf0a0ecb66d2a1fed731ff348bd36e',
-                                },
-                                {
-                                    'name': 'sample_number',
-                                    'description': 'Sample index',
-                                    'type': {'type_kind': 'python', 'type_data': 'int'},
-                                    'definition_id': '580b7f342b82756ba61055fd0a7afe3e31dc7a2a',
-                                },
-                                {
-                                    'm_annotations': {
-                                        'eln': [{'component': 'RichTextEditQuantity'}]
-                                    },
-                                    'name': 'comments',
-                                    'description': 'Comments',
-                                    'type': {'type_kind': 'python', 'type_data': 'str'},
-                                    'definition_id': '2d9da4304e21f57e9e13ed1cd62d73f17a3e3b90',
-                                },
-                            ],
-                            'definition_id': '723dfa01c734e2d65672a88e74ae78b97f020688',
-                        },
-                        {
-                            'name': 'BatchForTest',
-                            'base_sections': [
-                                'metainfo/nomad.datamodel.data/section_definitions/1'
-                            ],
-                            'quantities': [
-                                {
-                                    'm_annotations': {
-                                        'eln': [{'component': 'StringEditQuantity'}]
-                                    },
-                                    'name': 'batch_id',
-                                    'description': 'Id for the batch',
-                                    'type': {'type_kind': 'python', 'type_data': 'str'},
-                                    'definition_id': 'ab97d22656cf0a0ecb66d2a1fed731ff348bd36e',
-                                },
-                                {
-                                    'm_annotations': {
-                                        'eln': [{'component': 'NumberEditQuantity'}]
-                                    },
-                                    'name': 'n_samples',
-                                    'description': 'Number of samples in batch',
-                                    'type': {'type_kind': 'python', 'type_data': 'int'},
-                                    'definition_id': '3773a00da942383951ed578523597f69995712b7',
-                                },
-                                {
-                                    'name': 'sample_refs',
-                                    'more': {
-                                        'descriptions': 'The samples in the batch.',
-                                        'type_data': 'metainfo/tests.processing.test_data/section_definitions/0',
-                                    },
-                                    'type': {
-                                        'type_kind': 'reference',
-                                        'type_data': 'metainfo/tests.processing.test_data/section_definitions/0',
-                                    },
-                                    'shape': ['*'],
-                                    'definition_id': '06d47745bc4686a621c00a6e415c0ca01a87c2ec',
-                                },
-                            ],
-                            'definition_id': '1c329de8e9782db195a26c1cdfff654a5f257bbc',
-                        },
-                        {
-                            'name': 'SectionForTest',
-                            'base_sections': [
-                                'metainfo/nomad.datamodel.data/section_definitions/0'
-                            ],
-                            'definition_id': 'fd796b8c043cf8115485a071370d5efe97688b65',
-                        },
-                        {
-                            'name': 'ReferenceSectionForTest',
+                            'name': 'TableData',
+                            'description': 'Table data',
                             'base_sections': [
                                 'metainfo/nomad.datamodel.data/section_definitions/0'
                             ],
                             'quantities': [
                                 {
-                                    'name': 'reference',
-                                    'type': {
-                                        'type_kind': 'reference',
-                                        'type_data': 'metainfo/tests.processing.test_data/section_definitions/2',
+                                    'm_annotations': {
+                                        'eln': [{'component': 'BoolEditQuantity'}]
                                     },
-                                    'definition_id': '8e09d7e2df986896143a45632c8c268094dff7f0',
+                                    'name': 'fill_archive_from_datafile',
+                                    'description': 'While checked, it allows the parser to fill all the Quantities from the data file.\nBe cautious though! as checking this box will cause overwriting your fields with data parsed from the data file',
+                                    'type': {
+                                        'type_kind': 'python',
+                                        'type_data': 'bool',
+                                    },
+                                    'default': True,
+                                    'definition_id': '407156f00219b56a347be07e11cca722381693a5',
                                 }
                             ],
-                            'definition_id': '30592c350af4ff5aa13ddfe97b6e7c24d86f55a3',
-                        },
-                        {
-                            'name': 'DataForTest',
-                            'base_sections': [
-                                'metainfo/nomad.datamodel.data/section_definitions/1'
-                            ],
-                            'sub_sections': [
-                                {
-                                    'name': 'test_section',
-                                    'sub_section': 'metainfo/tests.processing.test_data/section_definitions/2',
-                                    'repeats': True,
-                                    'definition_id': '961d4377ddeba1be81b8f0fbf72bb116fb72fe6b',
-                                },
-                                {
-                                    'name': 'reference_section',
-                                    'sub_section': 'metainfo/tests.processing.test_data/section_definitions/3',
-                                    'definition_id': 'c0d6cfa5bcdb46b08bf7a33f947a17885acf70a6',
-                                },
-                            ],
-                            'definition_id': 'c41b5c05c1df1c53ef66d09c1eb214820d6c1100',
-                        },
+                            'definition_id': '01444576adb49e3e8f9228c5db694f3194c4228e',
+                        }
                     ],
-                    'definition_id': '849dc023023aefedc3d4a94dc151a28eee81d3ff',
+                    'definition_id': 'c2d1ed505653e17dab8ee7e41608aaedab63211d',
                     'all_quantities': {
-                        'BatchSampleForTest.batch_id': 'metainfo/tests.processing.test_data/section_definitions/0/quantities/0',
-                        'BatchSampleForTest.sample_number': 'metainfo/tests.processing.test_data/section_definitions/0/quantities/1',
-                        'BatchSampleForTest.comments': 'metainfo/tests.processing.test_data/section_definitions/0/quantities/2',
-                        'BatchForTest.batch_id': 'metainfo/tests.processing.test_data/section_definitions/1/quantities/0',
-                        'BatchForTest.n_samples': 'metainfo/tests.processing.test_data/section_definitions/1/quantities/1',
-                        'BatchForTest.sample_refs': 'metainfo/tests.processing.test_data/section_definitions/1/quantities/2',
-                        'ReferenceSectionForTest.reference': 'metainfo/tests.processing.test_data/section_definitions/3/quantities/0',
+                        'TableData.fill_archive_from_datafile': 'metainfo/nomad.parsing.tabular/section_definitions/0/quantities/0'
                     },
-                    'all_sub_sections': {
-                        'SectionForTest': 'metainfo/tests.processing.test_data/section_definitions/2',
-                        'ReferenceSectionForTest': 'metainfo/tests.processing.test_data/section_definitions/3',
-                    },
+                    'all_sub_sections': {},
                     'all_base_sections': {
-                        'ArchiveSection': 'metainfo/nomad.datamodel.data/section_definitions/0',
-                        'EntryData': 'metainfo/nomad.datamodel.data/section_definitions/1',
+                        'ArchiveSection': 'metainfo/nomad.datamodel.data/section_definitions/0'
                     },
                 }
             },

@@ -15,8 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 from nomad.metainfo import MSection, Package
+from nomad.mongo.package import PackageDefinition
 
 m_package = Package(aliases=['nomad.datamodel.test_package'])
 
@@ -45,3 +45,9 @@ def test_resolve_with_alias():
 
 
 m_package.__init_metainfo__()
+
+
+def test_package_mongo(mongo_function_with_indexed_def):
+    for package in Package.registry.values():
+        if not package.name.startswith('tests.'):
+            assert PackageDefinition.has_package(package.definition_id)

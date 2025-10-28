@@ -20,6 +20,7 @@ from nomad.actions import TaskQueue
 from nomad.actions.activities.util import get_nomad_internal_activities
 from nomad.actions.workflows.util import get_nomad_internal_workflows
 from nomad.config import config
+from nomad.infrastructure import index_builtin_packages
 from nomad.workflows import workflows
 
 
@@ -252,6 +253,13 @@ def mongo_module(mongo_infra, mongo_db_name):
 def mongo_function(mongo_infra, mongo_db_name):
     """Provides a cleaned mocked mongo per function."""
     return clear_mongo(mongo_infra, mongo_db_name)
+
+
+@pytest.fixture(scope='function')
+def mongo_function_with_indexed_def(mongo_function):
+    """Provides a cleaned mocked mongo per function."""
+    index_builtin_packages()
+    return mongo_function
 
 
 @pytest.fixture(scope='session')

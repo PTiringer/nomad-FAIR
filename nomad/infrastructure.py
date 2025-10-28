@@ -76,6 +76,7 @@ def setup():
     """
     setup_files()
     setup_mongo()
+    # index_builtin_packages()
     check_mongo()
     setup_elastic()
 
@@ -86,7 +87,7 @@ def setup_files():
             os.makedirs(directory)
 
 
-def setup_mongo(client=False):
+def setup_mongo():
     """Creates connection to mongodb."""
     global mongo_client
     kwargs = dict(
@@ -108,6 +109,20 @@ def setup_mongo(client=False):
     db.get_collection('cache').drop()
 
     return mongo_client
+
+
+def index_builtin_packages():
+    from nomad.datamodel import all_metainfo_packages
+    from nomad.datamodel.context import populate_builtin_packages
+    from nomad.metainfo import Package
+    from nomad.mongo.package import PackageDefinition
+
+    all_metainfo_packages(False)
+
+    populate_builtin_packages()
+
+    for package in Package.registry.values():
+        PackageDefinition.create_new(package, overwrite_existing=False)
 
 
 def check_mongo():
