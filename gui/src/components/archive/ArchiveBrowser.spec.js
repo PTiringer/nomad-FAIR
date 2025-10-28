@@ -18,11 +18,11 @@
 import React from 'react'
 import { range } from 'lodash'
 import { TestAdaptor } from './conftest.spec'
-import { screen, renderNoAPI, render } from '../conftest.spec'
+import {screen, renderNoAPI, render} from '../conftest.spec'
 import { expectPagination } from '../visualization/conftest.spec'
 import { PropertyValuesList, Section } from './ArchiveBrowser'
 import { laneContext } from './Browser'
-import {waitFor} from "@testing-library/dom"
+import {waitFor, within} from "@testing-library/dom"
 import {Metainfo} from './metainfo'
 import {systemMetainfoUrl} from '../../utils'
 
@@ -87,53 +87,69 @@ async function createMetainfo(data, parent, url = systemMetainfoUrl) {
   return await data._metainfo._result
 }
 
-const mockPackage = (properties) => {
-  const stringEditQuantity = (name) => (
+const mockPackage = (properties, sectionDisplay = undefined, quantityDisplay = undefined) => {
+  const stringEditQuantity = (name, display = undefined) => (
     {
       name: name,
       default: name,
+      type: { type_kind: 'python', type_data: 'str' },
       m_annotations: {
         eln: [
           {
             component: "StringEditQuantity"
           }
-        ]
+        ],
+        display: [display]
       },
       m_parent_sub_section: 'quantities'
     }
   )
 
   return {
-  packages: [
-    {
-      name: 'testPackage',
-      section_definitions: [
-        {
-          name: 'TestSection',
-          m_annotations: {
-            eln: [
-              {
-                properties: properties
-              }
+    packages: [
+      {
+        name: 'testPackage',
+        section_definitions: [
+          {
+            name: 'TestSection',
+            m_annotations: {
+              eln: properties && [
+                {
+                  properties: properties
+                }
+              ],
+              display: [sectionDisplay]
+            },
+            quantities: [
+              stringEditQuantity('value1', quantityDisplay?.[0]),
+              stringEditQuantity('value2', quantityDisplay?.[1]),
+              stringEditQuantity('value3', quantityDisplay?.[2])
             ]
-          },
-          quantities: ['value1', 'value2', 'value3'].map(stringEditQuantity)
-        }
-      ]
-    }
-  ]
-}
+          }
+        ]
+      }
+    ]
+  }
 }
 
 test.each([
   [
+    'default',
+    undefined,
+    ['value1', 'value2', 'value3'],
+    [],
+    [true, true, true]
+  ],
+  [
     'visible included',
     {
       visible: {
-        include: ['value2']
+        include: ['value3', 'value2']
       }
     },
-    ['value2']
+    ['value2', 'value3'],
+    ['value1'],
+    [true, true]
   ],
   [
     'visible excluded',
@@ -142,7 +158,9 @@ test.each([
         exclude: ['value2']
       }
     },
-    ['value1', 'value3']
+    ['value1', 'value3'],
+    ['value2'],
+    [true, true]
   ],
   [
     'visible included and excluded',
@@ -152,9 +170,93 @@ test.each([
         exclude: ['value1']
       }
     },
-    ['value3']
+    ['value3'],
+    ['value1', 'value2'],
+    [true]
+  ],
+  [
+    'order',
+    {
+      order: ['value3', 'value2', 'value1']
+    },
+    ['value3', 'value2', 'value1'],
+    [],
+    [true, true, true]
+  ],
+  [
+    'ordered and visible',
+    {
+      visible: {
+        include: ['value1', 'value3']
+      },
+      order: ['value3', 'value1']
+    },
+    ['value3', 'value1'],
+    ['value2'],
+    [true, true]
+  ],
+  [
+    'editable excluded',
+    {
+      editable: {
+        exclude: ['value2']
+      }
+    },
+    ['value1', 'value2', 'value3'],
+    [],
+    [true, false, true]
+  ],
+  [
+    'editable included',
+    {
+      editable: {
+        include: ['value2']
+      }
+    },
+    ['value1', 'value2', 'value3'],
+    [],
+    [false, true, false]
+  ],
+  [
+    'editable included and excluded',
+    {
+      editable: {
+        include: ['value1', 'value3'],
+        exclude: ['value1']
+      }
+    },
+    ['value1', 'value2', 'value3'],
+    [],
+    [false, false, true]
+  ],
+  [
+    'ordered and editable',
+    {
+      editable: {
+        exclude: ['value1', 'value3']
+      },
+      order: ['value3', 'value1']
+    },
+    ['value3', 'value1', 'value2'],
+    [],
+    [false, false, true]
+  ],
+  [
+    'ordered and editable and visible',
+    {
+      editable: {
+        exclude: ['value1', 'value3']
+      },
+      visible: {
+        exclude: ['value2']
+      },
+      order: ['value3', 'value1']
+    },
+    ['value3', 'value1'],
+    ['value2'],
+    [false, false]
   ]
-])('test eln properties: %s', async (name, properties, expected) => {
+])('test eln properties: %s', async (name, properties, orderExpected, hiddenExpected, editableExpected) => {
   const metainfo = await createMetainfo(mockPackage(properties))
   const defsByName = await metainfo.getDefsByName()
   const def = defsByName.TestSection[0]
@@ -171,9 +273,144 @@ test.each([
     </laneContext.Provider>
   )
 
-  const numberFields = screen.getAllByRole('textbox')
-  expect(numberFields).toHaveLength(expected.length)
-  for (const [index, value] of expected.entries()) {
-    await waitFor(() => expect(numberFields[index].value).toEqual(value))
+  const fields = screen.getAllByTestId('visible-quantity')
+  expect(fields).toHaveLength(orderExpected.length)
+
+  // test the order and editability of the visible values
+  for (const [index, value] of orderExpected.entries()) {
+    if (editableExpected[index]) {
+      expect(within(fields[index]).getByText(value)).toBeInTheDocument()
+      expect(within(fields[index]).getByTestId('editable-quantity-editor')).toBeInTheDocument()
+    } else {
+      expect(within(fields[index]).getByTestId(`quantity-${value}`)).toBeInTheDocument()
+      expect(within(fields[index]).queryByTestId('editable-quantity-editor')).not.toBeInTheDocument()
+    }
+  }
+
+  // make sure hidden values are not in the screen
+  for (const value of hiddenExpected.values()) {
+    expect(screen.queryByText(value)).not.toBeInTheDocument()
+  }
+})
+
+test.each([
+  [
+    'default',
+    undefined,
+    undefined,
+    ['value1', 'value2', 'value3'],
+    [],
+    [true, true, true]
+  ],
+  [
+    'order',
+    {
+      order: ['value3', 'value2', 'value1']
+    },
+    undefined,
+    ['value3', 'value2', 'value1'],
+    [],
+    [true, true, true]
+  ],
+  [
+    'visibility',
+    undefined,
+    [
+      {visible: true},
+      {visible: false},
+      undefined
+    ],
+    ['value1', 'value3'],
+    ['value2'],
+    [true, true]
+  ],
+  [
+    'order and visibility',
+    {
+      order: ['value3', 'value1']
+    },
+    [
+      {visible: true},
+      {visible: false},
+      undefined
+    ],
+    ['value3', 'value1'],
+    ['value2'],
+    [true, true]
+  ],
+  [
+    'editability',
+    undefined,
+    [
+      {editable: true},
+      {editable: false},
+      undefined
+    ],
+    ['value1', 'value2', 'value3'],
+    [],
+    [true, false, true]
+  ],
+  [
+    'order and editiblity',
+    {
+      order: ['value3', 'value1']
+    },
+    [
+      {editable: true},
+      {editable: false},
+      undefined
+    ],
+    ['value3', 'value1', 'value2'],
+    [],
+    [true, true, false]
+  ],
+  [
+    'order and editiblity and visibility',
+    {
+      order: ['value3', 'value1']
+    },
+    [
+      {editable: true, visible: false},
+      {editable: false, visible: true},
+      {visible: true}
+    ],
+    ['value3', 'value2'],
+    ['value1'],
+    [true, false]
+  ]
+])('test display annotation: %s', async (name, sectionDisplay, quantityDisplay, orderExpected, hiddenExpected, editableExpected) => {
+  const metainfo = await createMetainfo(mockPackage(undefined, sectionDisplay, quantityDisplay))
+  const defsByName = await metainfo.getDefsByName()
+  const def = defsByName.TestSection[0]
+  const adaptor = new TestAdaptor('', 'Data')
+
+  render(
+    <laneContext.Provider value={{next: {}, adaptor: adaptor}}>
+      <Section
+        section={{}}
+        def={def}
+        sectionIsInEln={true}
+        sectionIsEditable={true}
+      />
+    </laneContext.Provider>
+  )
+
+  const fields = screen.getAllByTestId('visible-quantity')
+  expect(fields).toHaveLength(orderExpected.length)
+
+  // test the order and editability of the visible values
+  for (const [index, value] of orderExpected.entries()) {
+    if (editableExpected[index]) {
+      expect(within(fields[index]).getByText(value)).toBeInTheDocument()
+      expect(within(fields[index]).getByTestId('editable-quantity-editor')).toBeInTheDocument()
+    } else {
+      expect(within(fields[index]).getByTestId(`quantity-${value}`)).toBeInTheDocument()
+      expect(within(fields[index]).queryByTestId('editable-quantity-editor')).not.toBeInTheDocument()
+    }
+  }
+
+  // make sure hidden values are not in the screen
+  for (const value of hiddenExpected.values()) {
+    expect(screen.queryByText(value)).not.toBeInTheDocument()
   }
 })

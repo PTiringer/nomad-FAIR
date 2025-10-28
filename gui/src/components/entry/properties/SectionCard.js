@@ -51,7 +51,7 @@ const useStyles = makeStyles(theme => ({
 
 export const PropertyPreview = React.memo(({quantityDef, section}) => {
   const classes = useStyles()
-  const {entryId, uploadId} = useEntryStore()
+  const {entryId, uploadId} = useEntryStore() || {}
   const maxPreviewLength = 5
   if (!quantityDef.type) {
     return null
