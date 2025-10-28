@@ -54,7 +54,7 @@ class Environment(MSection):
 _all_metainfo_environment = None
 
 
-def all_metainfo_packages():
+def all_metainfo_packages(populate_env: bool = True):
     """
     Returns an Environment with all available Python metainfo packages. This will
     import all plugins, if they are not already imported.
@@ -98,13 +98,17 @@ def all_metainfo_packages():
     # by the package author. Ideally this would not be necessary and we fix the
     # actual package definitions.
     for module_key in sorted(list(sys.modules)):
+        # ignore all ad hoc packages defined in tests
+        # which may be incomplete
+        if module_key.startswith('tests.'):
+            continue
         pkg: Package | None = getattr(sys.modules[module_key], 'm_package', None)
         if pkg is not None and isinstance(pkg, Package):
             if pkg.name not in Package.registry:
                 pkg.__init_metainfo__()
 
     global _all_metainfo_environment
-    if not _all_metainfo_environment:
+    if not _all_metainfo_environment and populate_env:
         _all_metainfo_environment = Environment()
 
         # The registry dictionary will also contain all aliases. To not repeat

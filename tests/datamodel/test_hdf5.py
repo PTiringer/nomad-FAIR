@@ -43,10 +43,6 @@ def test_context():
     return ServerContext(upload=upload)
 
 
-class SectionForTest(EntryData):
-    quantity = Quantity()
-
-
 @pytest.mark.parametrize(
     'quantity_type, value',
     [
@@ -58,9 +54,8 @@ class SectionForTest(EntryData):
     ],
 )
 def test_hdf5(test_context, quantity_type, value):
-    SectionForTest.quantity.type = quantity_type().attach_definition(
-        SectionForTest.quantity
-    )
+    class SectionForTest(EntryData):
+        quantity = Quantity(type=quantity_type)
 
     archive = EntryArchive(
         m_context=test_context,
