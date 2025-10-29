@@ -51,7 +51,7 @@ from nomad.mongo.groups import (
 from nomad.utils import strip
 
 from ..models import User
-from .auth import create_user_dependency
+from .auth import get_current_user
 
 router = APIRouter()
 
@@ -209,7 +209,7 @@ async def get_user_group(group_id: str):
 )
 async def create_user_group(
     user_group_edit: UserGroupEditUnion,
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(get_current_user(required=True)),
 ):
     """Create user group."""
     if isinstance(user_group_edit, UserGroupEditOld):
@@ -233,7 +233,7 @@ async def create_user_group(
 async def update_user_group(
     group_id: str,
     user_group_edit: UserGroupEditUnion,
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(get_current_user(required=True)),
 ):
     """Update user group."""
     mongo_user_group = get_user_group_or_404(group_id)
@@ -264,7 +264,7 @@ async def update_user_group(
     summary='Delete user group.',
 )
 async def delete_user_group(
-    group_id: str, user: User = Depends(create_user_dependency(required=True))
+    group_id: str, user: User = Depends(get_current_user(required=True))
 ):
     """Delete user group."""
     mongo_user_group = get_user_group_or_404(group_id)

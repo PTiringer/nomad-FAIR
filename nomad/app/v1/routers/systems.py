@@ -33,7 +33,7 @@ from nomad.utils import deep_get, query_list_to_dict, strip
 
 from ..models import HTTPExceptionModel, User
 from ..utils import create_responses
-from .auth import create_user_dependency
+from .auth import get_current_user
 from .entries import answer_entry_archive_request
 
 router = APIRouter()
@@ -335,7 +335,7 @@ Here is a brief rundown of the different features each format supports:
 
             """,
     ),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     """
     Build and retrieve a structure file containing an atomistic system stored

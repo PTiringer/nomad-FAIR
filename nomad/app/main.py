@@ -43,7 +43,7 @@ from .static import GuiFiles
 from .static import app as static_files_app
 from .v1.main import app as v1_app
 from .v1.routers import apps as apps_router
-from .v1.routers.auth import resolve_user
+from .v1.routers.auth import _resolve_user
 
 
 class OasisAuthenticationMiddleware(BaseHTTPMiddleware):
@@ -82,7 +82,7 @@ class OasisAuthenticationMiddleware(BaseHTTPMiddleware):
 
         try:
             # Here any token would be allowed
-            _user = resolve_user(
+            _user = _resolve_user(
                 required=True,
                 keycloak_token=bearer_token,
                 request=request,

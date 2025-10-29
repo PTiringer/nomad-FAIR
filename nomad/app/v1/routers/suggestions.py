@@ -28,7 +28,7 @@ from pydantic import BaseModel, Field
 from nomad.metainfo.elasticsearch_extension import entry_index, entry_type
 
 from ..models import User
-from .auth import create_user_dependency
+from .auth import get_current_user
 
 router = APIRouter()
 
@@ -80,7 +80,7 @@ class SuggestionsRequest(BaseModel):
 async def get_suggestions(
     request: Request,
     data: SuggestionsRequest,
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     global suggestable_quantities
     if suggestable_quantities is None:
