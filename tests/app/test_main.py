@@ -131,7 +131,42 @@ def app_middleware_client():
     return TestClient(app())
 
 
-def test_oasis_auth_middleware_invalid_token(app_middleware_client, monkeypatch):
+@pytest.fixture
+def mock_user():
+    user = MagicMock()
+    user.email = 'someone@example.com'
+    return user
+
+
+@pytest.mark.parametrize('token_source', ['header', 'cookie'])
+def test_oasis_auth_middleware_valid_keycloak_token(
+    app_middleware_client, monkeypatch, mock_user, token_source
+):
+    monkeypatch.setattr('nomad.config.oasis.require_authentication', True)
+    monkeypatch.setattr(
+        'nomad.infrastructure.keycloak.tokenauth', lambda token: mock_user
+    )
+    monkeypatch.setattr('nomad.config.oasis.allowed_users', {mock_user.email})
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.datamodel.User.get',
+        lambda *args, **kwargs: mock_user,
+    )
+    if token_source == 'header':
+        response = app_middleware_client.get(
+            '/protected', headers={'Authorization': 'Bearer valid'}
+        )
+    else:  # cookie
+        cookie_val = urllib.parse.quote('Bearer valid')
+        response = app_middleware_client.get(
+            '/protected', cookies={'Authorization': cookie_val}
+        )
+    assert response.status_code == 200
+    assert response.text == 'protected endpoint'
+
+
+def test_oasis_auth_middleware_invalid_keycloak_token(
+    app_middleware_client, monkeypatch
+):
     monkeypatch.setattr('nomad.config.oasis.require_authentication', True)
 
     def mock_tokenauth(token):
@@ -147,11 +182,62 @@ def test_oasis_auth_middleware_invalid_token(app_middleware_client, monkeypatch)
     assert response.text == 'Invalid token'
 
 
-@pytest.fixture
-def mock_user():
-    user = MagicMock()
-    user.email = 'someone@example.com'
-    return user
+@pytest.mark.parametrize(
+    'token_auth, token_param',
+    [
+        ('_get_user_from_upload_token', 'Upload-Token'),
+        ('_get_user_from_simple_token', 'Authorization'),
+    ],
+)
+def test_oasis_auth_middleware_upload_simple_token(
+    token_auth, token_param, app_middleware_client, monkeypatch, mock_user
+):
+    """Test passing auth middleware with upload/simple tokens."""
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.config.oasis.require_authentication', True
+    )
+
+    monkeypatch.setattr(
+        f'nomad.app.v1.routers.auth.{token_auth}',
+        lambda *args, **kwargs: mock_user,
+    )
+
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.config.oasis.allowed_users', {mock_user.email}
+    )
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.datamodel.User.get',
+        lambda *args, **kwargs: mock_user,
+    )
+
+    if token_param == 'Upload-Token':
+        # Upload token in "Upload-Token" header
+        response = app_middleware_client.get(
+            '/protected',
+            headers={token_param: 'abc'},
+        )
+    else:
+        # Need to patch `_get_user_from_keycloak_token` because middleware
+        # cannot differentiate keycloak token from simple token,
+        # and would try simple token in `_get_user_from_keycloak_token`
+        # first as it's enabled by default
+        monkeypatch.setattr(
+            'nomad.app.v1.routers.auth._get_user_from_keycloak_token',
+            lambda *args, **kwargs: None,
+        )
+        monkeypatch.setattr(
+            'nomad.app.v1.routers.auth.jwt.decode',
+            lambda *args, **kwargs: {'user': mock_user.user_id, 'exp': 600},
+        )
+
+        # Simple token as "Authorization: Bearer <token>"
+        response = app_middleware_client.get(
+            '/protected',
+            headers={token_param: 'Bearer abc'},
+        )
+
+    assert response.status_code == 200
+    assert response.text == 'protected endpoint'
 
 
 def test_oasis_auth_middleware_user_not_allowed(
@@ -169,72 +255,7 @@ def test_oasis_auth_middleware_user_not_allowed(
     assert response.text == 'You are not authorized to access this Oasis'
 
 
-@pytest.mark.parametrize('auth_method', ['header', 'cookie'])
-def test_oasis_auth_middleware_valid_user(
-    app_middleware_client, monkeypatch, mock_user, auth_method
-):
-    monkeypatch.setattr('nomad.config.oasis.require_authentication', True)
-    monkeypatch.setattr(
-        'nomad.infrastructure.keycloak.tokenauth', lambda token: mock_user
-    )
-    monkeypatch.setattr('nomad.config.oasis.allowed_users', {mock_user.email})
-    monkeypatch.setattr(
-        'nomad.app.v1.routers.auth.datamodel.User.get',
-        lambda *args, **kwargs: mock_user,
-    )
-    if auth_method == 'header':
-        response = app_middleware_client.get(
-            '/protected', headers={'Authorization': 'Bearer valid'}
-        )
-    else:  # cookie
-        cookie_val = urllib.parse.quote('Bearer valid')
-        response = app_middleware_client.get(
-            '/protected', cookies={'Authorization': cookie_val}
-        )
-    assert response.status_code == 200
-    assert response.text == 'protected endpoint'
-
-
-@pytest.mark.parametrize(
-    'token_auth, token_param',
-    [
-        ('_get_user_from_upload_token', 'Upload-Token'),
-        ('_get_user_from_signature_token', 'signature_token'),
-    ],
-)
-def test_oasis_auth_middleware_non_bearer_token(
-    token_auth, token_param, app_middleware_client, monkeypatch, mock_user
-):
-    """Test passing auth middleware with non-bearer (upload/signature) token."""
-    monkeypatch.setattr(
-        'nomad.app.v1.routers.auth.config.oasis.require_authentication', True
-    )
-    # Patch the non-bearer token auth method to always return the mock user
-    monkeypatch.setattr(
-        f'nomad.app.v1.routers.auth.{token_auth}',
-        lambda *args, **kwargs: mock_user,
-    )
-    monkeypatch.setattr(
-        'nomad.app.v1.routers.auth.config.oasis.allowed_users',
-        {mock_user.email},
-    )
-    monkeypatch.setattr(
-        'nomad.app.v1.routers.auth.datamodel.User.get',
-        lambda *args, **kwargs: mock_user,
-    )
-
-    if token_param == 'Upload-Token':
-        response = app_middleware_client.get(
-            f'/protected', headers={token_param: 'abc'}
-        )
-    else:
-        response = app_middleware_client.get(f'/protected?{token_param}=abc')
-
-    assert response.status_code == 200
-    assert response.text == 'protected endpoint'
-
-
-def test_oasis_auth_middleware_rejects_legacy_query_upload_token(
+def test_oasis_auth_middleware_rejects_legacy_query_token(
     monkeypatch, app_middleware_client
 ):
     monkeypatch.setattr('nomad.config.oasis.require_authentication', True)

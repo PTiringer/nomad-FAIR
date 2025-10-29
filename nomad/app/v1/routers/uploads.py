@@ -1103,7 +1103,7 @@ async def get_upload_rawdir_path(
 )
 async def get_upload_raw(
     upload_id: str = Path(..., description='The unique id of the upload.'),
-    user: User = Depends(create_user_dependency(signature_token_auth_allowed=True)),
+    user: User = Depends(create_user_dependency()),
 ):
     """
     NOMAD manages the raw files of published uploads as a .zip file. This endpoint
@@ -1186,7 +1186,7 @@ async def get_upload_raw_path(
                 instead of the actual mime type."""
         ),
     ),
-    user: User = Depends(create_user_dependency(signature_token_auth_allowed=True)),
+    user: User = Depends(create_user_dependency()),
 ):
     """
     For the upload specified by `upload_id`, gets the raw file or directory content located
@@ -1375,7 +1375,7 @@ async def put_upload_raw_path(
         ),
     ),
     user: User = Depends(
-        create_user_dependency(required=True, upload_token_auth_allowed=True)
+        create_user_dependency(required=True, allow_upload_token=True)
     ),
 ):
     """
@@ -1651,7 +1651,7 @@ async def delete_upload_raw_path(
     upload_id: str = Path(..., description='The unique id of the upload.'),
     path: str = Path(..., description='The path within the upload raw files.'),
     user: User = Depends(
-        create_user_dependency(required=True, upload_token_auth_allowed=True)
+        create_user_dependency(required=True, allow_upload_token=True)
     ),
 ):
     """
@@ -1700,7 +1700,7 @@ async def post_upload_raw_create_dir_path(
     upload_id: str = Path(..., description='The unique id of the upload.'),
     path: str = Path(..., description='The path within the upload raw files.'),
     user: User = Depends(
-        create_user_dependency(required=True, upload_token_auth_allowed=True)
+        create_user_dependency(required=True, allow_upload_token=True)
     ),
 ):
     """
@@ -1851,7 +1851,7 @@ async def post_upload(
         ),
     ),
     user: User = Depends(
-        create_user_dependency(required=True, upload_token_auth_allowed=True)
+        create_user_dependency(required=True, allow_upload_token=True)
     ),
 ):
     """
@@ -2494,7 +2494,7 @@ async def post_upload_bundle(
         ),
     ),
     user: User = Depends(
-        create_user_dependency(required=True, upload_token_auth_allowed=True)
+        create_user_dependency(required=True, allow_upload_token=True)
     ),
 ):
     """

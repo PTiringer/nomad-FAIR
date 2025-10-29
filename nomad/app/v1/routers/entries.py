@@ -909,7 +909,7 @@ async def post_entries_raw_query(
 async def get_entries_raw(
     with_query: WithQuery = Depends(query_parameters),
     files: Files = Depends(files_parameters),
-    user: User = Depends(create_user_dependency(signature_token_auth_allowed=True)),
+    user: User = Depends(create_user_dependency()),
 ):
     return _answer_entries_raw_request(
         owner=with_query.owner if with_query.owner is not None else Owner.public,
@@ -930,7 +930,7 @@ async def export_entries_metadata(
     with_query: WithQuery = Depends(query_parameters),
     content_type: str = Header('application/json'),
     required: MetadataRequired = Depends(metadata_required_parameters),
-    user: User = Depends(create_user_dependency(signature_token_auth_allowed=True)),
+    user: User = Depends(create_user_dependency()),
     page_size: int = QueryParameter(10_000, gt=0),
 ):
     """(**Experimental**) Export metadata entries in a selected format.
@@ -1358,7 +1358,7 @@ async def post_entries_archive_download_query(
 async def get_entries_archive_download(
     with_query: WithQuery = Depends(query_parameters),
     files: Files = Depends(files_parameters),
-    user: User = Depends(create_user_dependency(signature_token_auth_allowed=True)),
+    user: User = Depends(create_user_dependency()),
 ):
     return _answer_entries_archive_download_request(
         owner=with_query.owner if with_query.owner is not None else Owner.public,
@@ -1457,7 +1457,7 @@ async def get_entry_raw(
         ..., description='The unique entry id of the entry to retrieve raw data from.'
     ),
     files: Files = Depends(files_parameters),
-    user: User = Depends(create_user_dependency(signature_token_auth_allowed=True)),
+    user: User = Depends(create_user_dependency()),
 ):
     """
     Streams a .zip file with the raw files from the requested entry.
@@ -1523,7 +1523,7 @@ async def get_entry_raw_file(
                 Attempt to decompress the contents, if the file is .gz or .xz."""
         ),
     ),
-    user: User = Depends(create_user_dependency(signature_token_auth_allowed=True)),
+    user: User = Depends(create_user_dependency()),
 ):
     """
     Streams the contents of an individual file from the requested entry.
@@ -1793,7 +1793,7 @@ async def get_entry_archive_download(
         ...,
         description='The unique entry id of the entry to retrieve archive data from.',
     ),
-    user: User = Depends(create_user_dependency(signature_token_auth_allowed=True)),
+    user: User = Depends(create_user_dependency()),
 ):
     """
     Returns the full archive for the given `entry_id`.
