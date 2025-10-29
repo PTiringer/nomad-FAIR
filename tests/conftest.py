@@ -169,7 +169,7 @@ def no_warn(log_output):
     for record in log_output.entries:
         if (
             record['log_level'] in {'error', 'critical', 'warning'}
-            and record['event'] != 'Failed to decode JWT'
+            and record['event'] != 'Failed to decode simple token'
         ):
             pytest.fail(f'no warning expected, but got {record}')
 

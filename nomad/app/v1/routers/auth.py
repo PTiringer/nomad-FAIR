@@ -19,6 +19,7 @@
 import datetime
 import hashlib
 import hmac
+import urllib
 import uuid
 from collections.abc import Callable
 from enum import Enum
@@ -26,7 +27,6 @@ from inspect import Parameter, Signature
 from typing import Literal, cast
 
 import jwt
-import requests
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi import Query as FastApiQuery
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -36,7 +36,7 @@ from nomad import datamodel, infrastructure, utils
 from nomad._auth import check_api_secret
 from nomad.config import config
 from nomad.config.models.config import ModeEnum
-from nomad.utils import get_logger, strip
+from nomad.utils import get_logger
 
 from ..common import root_path
 from ..models import HTTPExceptionModel, User
@@ -68,15 +68,18 @@ oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl=f'{root_path}/auth/token', auto_error=False
 )
 
+JWT_ALGORITHM = 'HS256'
+HMAC_DIGESTMOD = hashlib.sha256
+
 
 def resolve_user(
     *,
-    request: Request | None = None,
-    bearer_token: str | None = None,
-    upload_token: str | None = None,
-    upload_token_query_param: str | None = None,
-    signature_token: str | None = None,
     required: bool = False,
+    request: Request | None = None,
+    keycloak_token: str | None = None,
+    simple_token: str | None = None,
+    upload_token: str | None = None,
+    upload_token_query_param: str | None = None,  # DEPRECATED: via query parameters
 ) -> User | None:
     # Require upload token via header instead of query parameter
     if upload_token_query_param is not None:
@@ -93,13 +96,24 @@ def resolve_user(
 
     # Resolve user from token
     user: User | None = None
-    if user is None and bearer_token:
-        user = _get_user_from_bearer_token(bearer_token)
+    if user is None and simple_token:
+        try:
+            unverified_payload = jwt.decode(
+                simple_token, options={'verify_signature': False}
+            )
+            # This is used to distinguish simple token from keycloak token:
+            # simple token only has `user/exp` in payload,
+            # while the keycloak has much more (RFC 7519)
+            if unverified_payload.keys() == {'user', 'exp'}:
+                user = _get_user_from_simple_token(simple_token)
+        except jwt.DecodeError as e:  # token could be non-JWT (for testing)
+            logger.error('Failed to decode simple token', exc_info=e)
+
+    if user is None and (keycloak_token or request):
+        user = _get_user_from_keycloak_token(keycloak_token, request=request)
+
     if user is None and upload_token:
         user = _get_user_from_upload_token(upload_token)
-    # `_get_user_signature_token_auth` would also handle token in cookie
-    if user is None and (signature_token or request):
-        user = _get_user_from_signature_token(signature_token, request)
 
     if user is None and config.tests.assume_auth_for_username:
         if config.services.mode == ModeEnum.PRODUCTION:
@@ -108,7 +122,7 @@ def resolve_user(
             )
         user = datamodel.User.get(username=config.tests.assume_auth_for_username)
 
-    # Check if token is available
+    # Check if user is resolved only when required
     if required and user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -149,40 +163,56 @@ def resolve_user(
 
 
 def create_user_dependency(
+    *,
     required: bool = False,
-    bearer_token_auth_allowed: bool = True,
-    upload_token_auth_allowed: bool = False,
-    signature_token_auth_allowed: bool = False,
+    allow_keycloak_token: bool = True,
+    allow_simple_token: bool = True,
+    allow_upload_token: bool = False,
 ) -> Callable:
     """
-    Creates a dependency for getting the authenticated user. The parameters define if
-    the authentication is required or not, and which authentication methods are allowed.
+    Resolve the authenticated user from keycloak/simple/upload tokens.
     """
 
     def user_dependency(**kwargs) -> User | None:
-        # We don't need to check token allowed flags here as
-        # `fastapi` would only inject based on signature
         return resolve_user(
+            required=required,
             request=kwargs.get('request'),
-            bearer_token=kwargs.get('bearer_token'),
+            keycloak_token=kwargs.get('keycloak_token'),
+            simple_token=kwargs.get('simple_token'),
             upload_token=kwargs.get('upload_token'),
             upload_token_query_param=kwargs.get('upload_token_query_param'),
-            signature_token=kwargs.get('signature_token'),
-            required=required,
         )
 
-    # Create the desired function signature (as it depends on which auth options are allowed)
     parameters: list[Parameter] = []
-    if bearer_token_auth_allowed:
+
+    if allow_keycloak_token:
         parameters.append(
             Parameter(
-                name='bearer_token',
+                name='keycloak_token',
                 annotation=str,
                 default=Depends(oauth2_scheme),
                 kind=Parameter.KEYWORD_ONLY,
             )
         )
-    if upload_token_auth_allowed:
+        parameters.append(
+            Parameter(
+                name='request',
+                annotation=Request,  # for getting keycloak token from cookie
+                kind=Parameter.KEYWORD_ONLY,
+            )
+        )
+
+    if allow_simple_token:
+        parameters.append(
+            Parameter(
+                name='simple_token',
+                annotation=str,
+                default=Depends(oauth2_scheme),
+                kind=Parameter.KEYWORD_ONLY,
+            )
+        )
+
+    if allow_upload_token:
         parameters.append(
             Parameter(
                 name='upload_token',
@@ -190,7 +220,7 @@ def create_user_dependency(
                 default=Header(
                     None,
                     alias='Upload-Token',
-                    description='Token for simplified authentication for uploading.',
+                    description='HMAC-signed upload token.',
                 ),
                 kind=Parameter.KEYWORD_ONLY,
             )
@@ -208,47 +238,35 @@ def create_user_dependency(
                 kind=Parameter.KEYWORD_ONLY,
             )
         )
-    if signature_token_auth_allowed:
-        parameters.append(
-            Parameter(
-                name='signature_token',
-                annotation=str,
-                default=FastApiQuery(
-                    None, description='Signature token used to sign download urls.'
-                ),
-                kind=Parameter.KEYWORD_ONLY,
-            )
-        )
-        parameters.append(
-            Parameter(name='request', annotation=Request, kind=Parameter.KEYWORD_ONLY)
-        )
 
     user_dependency.__signature__ = Signature(parameters)  # type: ignore[attr-defined]
     return user_dependency
 
 
-def _get_user_from_bearer_token(bearer_token: str | None) -> User | None:
+def _get_user_from_keycloak_token(
+    keycloak_token: str | None, *, request: Request | None
+) -> User | None:
     """
-    Verifies bearer_token (throwing HTTPException if illegal value provided).
+    Verifies keycloak bearer token (header and cookie).
 
     Returns:
         The corresponding User object,
         or None if no token provided.
     """
-    if bearer_token in {None, 'undefined'}:
+    if keycloak_token is None and request is None:
         return None
 
-    try:
-        unverified_payload = jwt.decode(
-            bearer_token, options={'verify_signature': False}
-        )
-        if unverified_payload.keys() == {'user', 'exp'}:
-            return _get_user_from_simple_token(bearer_token)
-    except jwt.DecodeError as e:  # token could be non-JWT, e.g. for testing
-        logger.error('Failed to decode JWT', exc_info=e)
+    # Get token from cookie if not in header
+    if keycloak_token is None:
+        auth_cookie = request.cookies.get('Authorization')
+        if auth_cookie is None:
+            return None
+
+        auth_cookie = urllib.parse.unquote(auth_cookie)
+        keycloak_token = auth_cookie.removeprefix('Bearer ')
 
     try:
-        return cast(datamodel.User, infrastructure.keycloak.tokenauth(bearer_token))
+        return cast(datamodel.User, infrastructure.keycloak.tokenauth(keycloak_token))
     except infrastructure.KeycloakError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -257,45 +275,7 @@ def _get_user_from_bearer_token(bearer_token: str | None) -> User | None:
         )
 
 
-def _get_user_from_signature_token(
-    signature_token: str | None, request: Request | None
-) -> User | None:
-    """
-    Verifies the signature token (throwing HTTPException if illegal value provided).
-
-    NOTE: it would also handle token in cookie
-
-    Returns:
-        The corresponding User object,
-        or None if no signature_token provided.
-    """
-    if signature_token is not None:
-        return _get_user_from_simple_token(signature_token)
-
-    if request is not None:
-        auth_cookie = request.cookies.get('Authorization')
-        if auth_cookie is not None:
-            try:
-                auth_cookie = requests.utils.unquote(auth_cookie)
-                cookie_bearer_token = auth_cookie.removeprefix('Bearer ')
-                return cast(
-                    datamodel.User,
-                    infrastructure.keycloak.tokenauth(cookie_bearer_token),
-                )
-
-            except infrastructure.KeycloakError as e:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail=str(e),
-                    headers={'WWW-Authenticate': 'Bearer'},
-                )
-            except Exception as e:
-                logger.error('Failed to process token from cookie', exc_info=e)
-
-    return None
-
-
-def _get_user_from_simple_token(token: str | None) -> User | None:
+def _get_user_from_simple_token(simple_token: str | None) -> User | None:
     """
     Verifies a simple token (throwing HTTPException if illegal value provided).
 
@@ -303,13 +283,15 @@ def _get_user_from_simple_token(token: str | None) -> User | None:
         The corresponding user object,
         or None if no token was provided.
     """
-    if token is None:
+    if simple_token is None:
         return None
 
     check_api_secret()
 
     try:
-        decoded = jwt.decode(token, config.services.api_secret, algorithms=['HS256'])
+        decoded = jwt.decode(
+            simple_token, config.services.api_secret, algorithms=[JWT_ALGORITHM]
+        )
         return datamodel.User.get(user_id=decoded['user'])
 
     except KeyError:
@@ -353,7 +335,7 @@ def _get_user_from_upload_token(upload_token: str | None) -> User | None:
         expected = hmac.new(
             config.services.api_secret.encode('utf-8'),
             msg=payload_bytes,
-            digestmod=hashlib.sha256,
+            digestmod=HMAC_DIGESTMOD,
         )
 
         if not hmac.compare_digest(signature_bytes, expected.digest()):
@@ -375,10 +357,7 @@ _bad_credentials_response = (
     status.HTTP_401_UNAUTHORIZED,
     {
         'model': HTTPExceptionModel,
-        'description': strip(
-            """
-        Unauthorized. The provided credentials were not recognized."""
-        ),
+        'description': 'Unauthorized. The provided credentials were not recognized.',
     },
 )
 
@@ -425,7 +404,9 @@ async def get_token(form_data: OAuth2PasswordRequestForm = Depends()) -> Token:
     response_model=SignatureToken,
 )
 async def get_signature_token(
-    user: User | None = Depends(create_user_dependency(required=True)),
+    user: User | None = Depends(
+        create_user_dependency(required=True, allow_simple_token=False)
+    ),
 ) -> SignatureToken:
     """
     Generate a signature token for the authenticated user.
@@ -444,7 +425,9 @@ async def get_signature_token(
 )
 async def get_app_token(
     expires_in: int = FastApiQuery(gt=0, le=config.services.app_token_max_expires_in),
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(
+        create_user_dependency(required=True, allow_simple_token=False)
+    ),
 ) -> AppToken:
     """
     Generate an app token with the requested expiration time for the
@@ -467,7 +450,9 @@ def _generate_simple_token(user_id: str, expires_in: float) -> str:
         seconds=expires_in
     )
     payload = dict(user=user_id, exp=expires_at)
-    return jwt.encode(payload, config.services.api_secret, 'HS256')
+    return jwt.encode(
+        payload=payload, key=config.services.api_secret, algorithm=JWT_ALGORITHM
+    )
 
 
 def _generate_upload_token(user: User) -> str:
@@ -477,7 +462,7 @@ def _generate_upload_token(user: User) -> str:
     signature = hmac.new(
         config.services.api_secret.encode('utf-8'),
         msg=payload,
-        digestmod=hashlib.sha256,
+        digestmod=HMAC_DIGESTMOD,
     )
 
     return f'{utils.base64_encode(payload)}.{utils.base64_encode(signature.digest())}'

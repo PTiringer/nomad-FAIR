@@ -84,11 +84,12 @@ class OasisAuthenticationMiddleware(BaseHTTPMiddleware):
             # Here any token would be allowed
             _user = resolve_user(
                 required=True,
-                bearer_token=bearer_token,
-                upload_token=request.headers.get('Upload-Token'),
-                upload_token_query_param=request.query_params.get('token'),
+                keycloak_token=bearer_token,
                 request=request,
-                signature_token=request.query_params.get('signature_token'),
+                simple_token=bearer_token,
+                upload_token=request.headers.get('Upload-Token'),
+                # Deprecated token via query param (for rejection)
+                upload_token_query_param=request.query_params.get('token'),
             )
         except HTTPException as exc:
             return Response(status_code=exc.status_code, content=exc.detail)

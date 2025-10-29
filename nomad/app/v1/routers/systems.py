@@ -335,7 +335,7 @@ Here is a brief rundown of the different features each format supports:
 
             """,
     ),
-    user: User = Depends(create_user_dependency(signature_token_auth_allowed=True)),
+    user: User = Depends(create_user_dependency()),
 ):
     """
     Build and retrieve a structure file containing an atomistic system stored

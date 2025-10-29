@@ -30,6 +30,7 @@ def assert_user(user, expected_user):
 def test_me(auth_headers, client, app_token_auth):
     response = client.get('users/me', headers=auth_headers['user1'])
     assert response.status_code == 200
+
     response = client.get('users/me', headers=app_token_auth)
     assert response.status_code == 200
 
