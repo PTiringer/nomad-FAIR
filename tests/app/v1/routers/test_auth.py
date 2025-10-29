@@ -22,7 +22,7 @@ import pytest
 from fastapi import HTTPException, Request
 
 from nomad.app.v1.models.models import User
-from nomad.app.v1.routers.auth import create_user_dependency
+from nomad.app.v1.routers.auth import get_current_user
 from nomad.config.models.config import ModeEnum
 
 
@@ -89,7 +89,7 @@ def test_get_app_token_unauthorized(auth_headers, client):
     assert response.status_code == 401
 
 
-# Tests for `create_user_dependency`
+# Tests for `get_current_user`
 
 
 @pytest.fixture
@@ -103,7 +103,7 @@ def allowed_user():
 @pytest.mark.parametrize('_get_user_from_keycloak_token', [True, False])
 @pytest.mark.parametrize('_get_user_from_simple_token', [True, False])
 @pytest.mark.parametrize('_get_user_from_upload_token', [True, False])
-def test_create_user_dependency_auth_methods(
+def test_get_current_user_auth_methods(
     allow_keycloak_token: bool,
     allow_simple_token: bool,
     allow_upload_token: bool,
@@ -135,7 +135,7 @@ def test_create_user_dependency_auth_methods(
         lambda *args, **kwargs: allowed_user,
     )
 
-    dep = create_user_dependency(
+    dep = get_current_user(
         required=True,
         allow_keycloak_token=allow_keycloak_token,
         allow_simple_token=allow_simple_token,
@@ -163,10 +163,10 @@ def test_create_user_dependency_auth_methods(
         assert exc.value.status_code == 401
 
 
-def test_create_user_dependency_rejects_query_token():
+def test_get_current_user_rejects_query_token():
     """Ensure that passing upload token via query param is rejected."""
 
-    dep = create_user_dependency(allow_upload_token=True)
+    dep = get_current_user(allow_upload_token=True)
 
     with pytest.raises(
         HTTPException, match='Passing upload token via query parameter'
@@ -175,7 +175,7 @@ def test_create_user_dependency_rejects_query_token():
     assert excinfo.value.status_code == 400
 
 
-def test_create_user_dependency_keycloak_token_from_cookie(monkeypatch, allowed_user):
+def test_get_current_user_keycloak_token_from_cookie(monkeypatch, allowed_user):
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth.infrastructure.keycloak.tokenauth',
         lambda token: allowed_user,
@@ -185,7 +185,7 @@ def test_create_user_dependency_keycloak_token_from_cookie(monkeypatch, allowed_
         lambda *args, **kwargs: allowed_user,
     )
 
-    dep = create_user_dependency(
+    dep = get_current_user(
         required=True,
         allow_keycloak_token=True,
     )
@@ -210,8 +210,8 @@ def test_create_user_dependency_keycloak_token_from_cookie(monkeypatch, allowed_
 
 
 @pytest.mark.parametrize('required', [True, False])
-def test_create_user_dependency_required(required):
-    dep = create_user_dependency(required=required)
+def test_get_current_user_required(required):
+    dep = get_current_user(required=required)
 
     if required:
         with pytest.raises(HTTPException, match='Authentication required.') as exc:
@@ -222,13 +222,13 @@ def test_create_user_dependency_required(required):
         assert dep() is None
 
 
-def test_create_user_dependency_unknown_user(allowed_user, monkeypatch):
+def test_get_current_user_unknown_user(allowed_user, monkeypatch):
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth._get_user_from_keycloak_token',
         lambda *args, **kwargs: allowed_user,
     )
 
-    dep = create_user_dependency()
+    dep = get_current_user()
     with pytest.raises(HTTPException, match='logged in with an unknown user') as exc:
         dep(keycloak_token='abc')
     assert exc.value.status_code == 403
@@ -236,7 +236,7 @@ def test_create_user_dependency_unknown_user(allowed_user, monkeypatch):
 
 @pytest.mark.parametrize('tester', [None, 'tester'])
 @pytest.mark.parametrize('mode', [ModeEnum.PRODUCTION, ModeEnum.DEVELOPMENT])
-def test_create_user_dependency_assume_auth_for_username(
+def test_get_current_user_assume_auth_for_username(
     tester, mode, allowed_user, monkeypatch
 ):
     monkeypatch.setattr(
@@ -249,7 +249,7 @@ def test_create_user_dependency_assume_auth_for_username(
         lambda *args, **kwargs: allowed_user,
     )
 
-    dep = create_user_dependency(required=True)
+    dep = get_current_user(required=True)
 
     if tester is None:
         with pytest.raises(HTTPException, match='Authentication required.') as exc:
@@ -272,7 +272,7 @@ def test_create_user_dependency_assume_auth_for_username(
         ('allowed', 200, None),
     ],
 )
-def test_create_user_dependency_oasis_allowed_users(
+def test_get_current_user_oasis_allowed_users(
     user,
     status_code: int,
     exc_msg: str,
@@ -296,7 +296,7 @@ def test_create_user_dependency_oasis_allowed_users(
         lambda *args, **kwargs: auth_user,
     )
 
-    dep = create_user_dependency(required=False)
+    dep = get_current_user(required=False)
 
     if status_code != 200:
         with pytest.raises(HTTPException, match=exc_msg) as exc:

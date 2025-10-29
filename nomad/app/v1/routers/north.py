@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from mongoengine.queryset.visitor import Q
 from pydantic import BaseModel
 
-from nomad.app.v1.routers.auth import _generate_simple_token, create_user_dependency
+from nomad.app.v1.routers.auth import _generate_simple_token, get_current_user
 from nomad.config import config
 from nomad.config.models.north import NORTHTool
 from nomad.mongo.groups import MongoUserGroup
@@ -118,7 +118,7 @@ def _get_status(tool: ToolModel, user: User) -> ToolModel:
     response_model_exclude_unset=True,
     response_model_exclude_none=True,
 )
-async def get_tools(user: User = Depends(create_user_dependency())):
+async def get_tools(user: User = Depends(get_current_user())):
     return ToolsResponseModel(
         data=[
             _get_status(ToolModel(name=name, **tool.dict()), user)
@@ -148,7 +148,7 @@ async def tool(name: str) -> ToolModel:
 )
 async def get_tool(
     tool: ToolModel = Depends(tool),
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(get_current_user(required=True)),
     upload_id: str | None = None,
 ):
     if upload_id:
@@ -197,7 +197,7 @@ def _check_uploadid_is_mounted(
 )
 async def start_tool(
     tool: ToolModel = Depends(tool),
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(get_current_user(required=True)),
     upload_id: str | None = None,
 ):
     tool.state = ToolStateEnum.stopped
@@ -372,7 +372,7 @@ async def start_tool(
 )
 async def stop_tool(
     tool: ToolModel = Depends(tool),
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(get_current_user(required=True)),
 ):
     url = f'{config.hub_url()}/api/users/{user.username}/servers/{tool.name}'
     response = requests.delete(url, json={'remove': True}, headers=hub_api_headers)

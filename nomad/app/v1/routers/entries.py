@@ -95,7 +95,7 @@ from ..utils import (
     create_responses,
     log_query,
 )
-from .auth import create_user_dependency
+from .auth import get_current_user
 
 router = APIRouter()
 
@@ -522,7 +522,7 @@ def perform_search(*args, **kwargs):
     response_model_exclude_none=True,
 )
 async def post_entries_metadata_query(
-    request: Request, data: Metadata, user: User = Depends(create_user_dependency())
+    request: Request, data: Metadata, user: User = Depends(get_current_user())
 ):
     """
     Executes a *query* and returns a *page* of the results with *required* result data
@@ -567,7 +567,7 @@ async def get_entries_metadata(
     with_query: WithQuery = Depends(query_parameters),
     pagination: MetadataPagination = Depends(metadata_pagination_parameters),
     required: MetadataRequired = Depends(metadata_required_parameters),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     """
     Executes a *query* and returns a *page* of the results with *required* result data.
@@ -820,7 +820,7 @@ _entries_rawdir_query_docstring = strip(
 async def post_entries_rawdir_query(
     request: Request,
     data: EntriesRawDir,
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     return _answer_entries_rawdir_request(
         owner=data.owner if data.owner is not None else Owner.public,
@@ -846,7 +846,7 @@ async def get_entries_rawdir(
     request: Request,
     with_query: WithQuery = Depends(query_parameters),
     pagination: MetadataPagination = Depends(metadata_pagination_parameters),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     res = _answer_entries_rawdir_request(
         owner=with_query.owner if with_query.owner is not None else Owner.public,
@@ -888,7 +888,7 @@ _entries_raw_query_docstring = strip(
     responses=create_responses(_raw_response, _bad_owner_response_unauthorized),
 )
 async def post_entries_raw_query(
-    data: EntriesRaw, user: User = Depends(create_user_dependency())
+    data: EntriesRaw, user: User = Depends(get_current_user())
 ):
     return _answer_entries_raw_request(
         owner=data.owner if data.owner is not None else Owner.public,
@@ -909,7 +909,7 @@ async def post_entries_raw_query(
 async def get_entries_raw(
     with_query: WithQuery = Depends(query_parameters),
     files: Files = Depends(files_parameters),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     return _answer_entries_raw_request(
         owner=with_query.owner if with_query.owner is not None else Owner.public,
@@ -930,7 +930,7 @@ async def export_entries_metadata(
     with_query: WithQuery = Depends(query_parameters),
     content_type: str = Header('application/json'),
     required: MetadataRequired = Depends(metadata_required_parameters),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
     page_size: int = QueryParameter(10_000, gt=0),
 ):
     """(**Experimental**) Export metadata entries in a selected format.
@@ -1172,7 +1172,7 @@ _entries_archive_docstring = strip(
 async def post_entries_archive_query(
     request: Request,
     data: EntriesArchive,
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     res = await _answer_entries_archive_request(
         request=request,
@@ -1211,7 +1211,7 @@ async def get_entries_archive_query(
     request: Request,
     with_query: WithQuery = Depends(query_parameters),
     pagination: MetadataPagination = Depends(metadata_pagination_parameters),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     return await _answer_entries_archive_request(
         request=request,
@@ -1332,7 +1332,7 @@ _entries_archive_download_docstring = strip(
     ),
 )
 async def post_entries_archive_download_query(
-    data: EntriesArchiveDownload, user: User = Depends(create_user_dependency())
+    data: EntriesArchiveDownload, user: User = Depends(get_current_user())
 ):
     return _answer_entries_archive_download_request(
         owner=data.owner if data.owner is not None else Owner.public,
@@ -1358,7 +1358,7 @@ async def post_entries_archive_download_query(
 async def get_entries_archive_download(
     with_query: WithQuery = Depends(query_parameters),
     files: Files = Depends(files_parameters),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     return _answer_entries_archive_download_request(
         owner=with_query.owner if with_query.owner is not None else Owner.public,
@@ -1383,7 +1383,7 @@ async def get_entry_metadata(
         ..., description='The unique entry id of the entry to retrieve metadata from.'
     ),
     required: MetadataRequired = Depends(metadata_required_parameters),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     """
     Retrives the entry metadata for the given id.
@@ -1419,7 +1419,7 @@ async def get_entry_rawdir(
     entry_id: str = Path(
         ..., description='The unique entry id of the entry to retrieve raw data from.'
     ),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     """
     Returns the file metadata for all input and output files (including auxiliary files)
@@ -1457,7 +1457,7 @@ async def get_entry_raw(
         ..., description='The unique entry id of the entry to retrieve raw data from.'
     ),
     files: Files = Depends(files_parameters),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     """
     Streams a .zip file with the raw files from the requested entry.
@@ -1523,7 +1523,7 @@ async def get_entry_raw_file(
                 Attempt to decompress the contents, if the file is .gz or .xz."""
         ),
     ),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     """
     Streams the contents of an individual file from the requested entry.
@@ -1642,7 +1642,7 @@ async def post_entry_edit(
         ...,
         description='The unique entry id of the entry to edit.',
     ),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     response = perform_search(
         owner=Owner.all_,
@@ -1772,7 +1772,7 @@ async def get_entry_archive(
         ...,
         description='The unique entry id of the entry to retrieve archive data from.',
     ),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     """
     Returns the full archive for the given `entry_id`.
@@ -1793,7 +1793,7 @@ async def get_entry_archive_download(
         ...,
         description='The unique entry id of the entry to retrieve archive data from.',
     ),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     """
     Returns the full archive for the given `entry_id`.
@@ -1815,7 +1815,7 @@ async def get_entry_archive_download(
 )
 async def post_entry_archive_query(
     data: EntryArchiveRequest,
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
     entry_id: str = Path(
         ...,
         description='The unique entry id of the entry to retrieve archive data from.',
@@ -1917,7 +1917,7 @@ _editable_quantities = {
 async def post_entry_metadata_edit(
     response: Response,
     data: EntryMetadataEdit,
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     """
     Performs or validates edit actions on a set of entries that match a given query.
@@ -2113,7 +2113,7 @@ async def post_entry_metadata_edit(
 async def post_entries_edit(
     request: Request,
     data: MetadataEditRequest,
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(get_current_user(required=True)),
 ):
     """
     Updates the metadata of the specified entries.

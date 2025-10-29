@@ -27,7 +27,7 @@ from nomad.utils import strip
 
 from ..models import HTTPExceptionModel, User
 from ..utils import create_responses
-from .auth import create_user_dependency
+from .auth import get_current_user
 
 router = APIRouter()
 
@@ -73,7 +73,7 @@ class Users(BaseModel):
     response_model=User,
 )
 async def read_users_me(
-    current_user: User = Depends(create_user_dependency(required=True)),
+    current_user: User = Depends(get_current_user(required=True)),
 ):
     current_user_dict: dict = current_user.m_to_dict(
         with_out_meta=True, include_derived=True
@@ -188,7 +188,7 @@ async def get_user(user_id: str):
     response_model=User,
 )
 async def invite_user(
-    user: User, current_user: User = Depends(create_user_dependency(required=True))
+    user: User, current_user: User = Depends(get_current_user(required=True))
 ):
     if config.oasis.is_oasis:
         raise HTTPException(

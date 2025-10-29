@@ -31,7 +31,7 @@ from nomad.graph.graph_reader import (
 from nomad.graph.lazy_wrapper import LazyWrapper
 
 from ..models import User
-from .auth import create_user_dependency
+from .auth import get_current_user
 from .entries import EntriesArchive
 
 router = APIRouter()
@@ -80,7 +80,7 @@ def relocate_children(request):
     response_class=GraphJSONResponse,
     include_in_schema=False,
 )
-async def raw_query(query=Body(...), user: User = Depends(create_user_dependency())):
+async def raw_query(query=Body(...), user: User = Depends(get_current_user())):
     relocate_children(query)
     with MongoReader(query, user=user) as reader:
         return GraphJSONResponse(await reader.read())
@@ -105,7 +105,7 @@ async def basic_query(
     #   as of June 2025, it is not working
     # query: GraphRequest = Body(...),
     query=Body(...),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     try:
         query_dict = query
@@ -127,9 +127,7 @@ async def basic_query(
     response_class=GraphJSONResponse,
     include_in_schema=False,
 )
-async def archive_query(
-    data: EntriesArchive, user: User = Depends(create_user_dependency())
-):
+async def archive_query(data: EntriesArchive, user: User = Depends(get_current_user())):
     graph_dict: dict = {Token.SEARCH: {'m_request': {'query': {}}}}
     root_request: dict = graph_dict[Token.SEARCH]['m_request']['query']
 

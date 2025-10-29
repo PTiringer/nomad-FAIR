@@ -46,7 +46,7 @@ from ..models import (
     User,
 )
 from ..utils import create_responses, parameter_dependency_from_model
-from .auth import create_user_dependency
+from .auth import get_current_user
 from .entries import _do_exhaustive_search
 
 router = APIRouter()
@@ -356,7 +356,7 @@ async def get_dataset(
     response_model_exclude_none=True,
 )
 async def post_datasets(
-    create: DatasetCreate, user: User = Depends(create_user_dependency(required=True))
+    create: DatasetCreate, user: User = Depends(get_current_user(required=True))
 ):
     """
     Create a new dataset.
@@ -453,7 +453,7 @@ async def delete_dataset(
     dataset_id: str = Path(
         ..., description='The unique dataset id of the dataset to delete.'
     ),
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(get_current_user(required=True)),
 ):
     """
     Delete an dataset.
@@ -503,7 +503,7 @@ async def assign_doi(
     dataset_id: str = Path(
         ..., description='The unique dataset id of the dataset to delete.'
     ),
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(get_current_user(required=True)),
 ):
     """
     Assign a DOI to a dataset.

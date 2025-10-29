@@ -88,7 +88,7 @@ from ..utils import (
     create_stream_from_string,
     parameter_dependency_from_model,
 )
-from .auth import _generate_upload_token, create_user_dependency
+from .auth import _generate_upload_token, get_current_user
 from .entries import EntryArchiveResponse, answer_entry_archive_request
 
 router = APIRouter()
@@ -741,7 +741,7 @@ and publish your data."""
     response_model_exclude_none=True,
 )
 async def get_command_examples(
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(get_current_user(required=True)),
 ):
     """Get URL and example command for shell based uploads."""
     token = _generate_upload_token(user)
@@ -792,7 +792,7 @@ async def get_uploads(
     pagination: UploadProcDataPagination = Depends(
         upload_proc_data_pagination_parameters
     ),
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(get_current_user(required=True)),
 ):
     """
     Retrieves metadata about all uploads that match the given query criteria.
@@ -847,7 +847,7 @@ async def get_uploads(
 )
 async def get_upload(
     upload_id: str = Path(..., description='The unique id of the upload to retrieve.'),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     """
     Fetches a specific upload by its upload_id.
@@ -877,7 +877,7 @@ async def get_upload_entries(
     pagination: EntryProcDataPagination = Depends(
         entry_proc_data_pagination_parameters
     ),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     """
     Fetches the entries of a specific upload. Pagination is used to browse through the
@@ -951,7 +951,7 @@ async def get_upload_entry(
         ...,
         description='The unique id of the entry, belonging to the specified upload.',
     ),
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(get_current_user(required=True)),
 ):
     """
     Fetches a specific entry for a specific upload.
@@ -996,7 +996,7 @@ async def get_upload_rawdir_path(
                 encountered mainfiles."""
         ),
     ),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     """
     For the upload specified by `upload_id`, gets the raw file or directory metadata
@@ -1103,7 +1103,7 @@ async def get_upload_rawdir_path(
 )
 async def get_upload_raw(
     upload_id: str = Path(..., description='The unique id of the upload.'),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     """
     NOMAD manages the raw files of published uploads as a .zip file. This endpoint
@@ -1186,7 +1186,7 @@ async def get_upload_raw_path(
                 instead of the actual mime type."""
         ),
     ),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     """
     For the upload specified by `upload_id`, gets the raw file or directory content located
@@ -1374,9 +1374,7 @@ async def put_upload_raw_path(
             Automatically decompress uploaded files upon receiving (ZIP or TAR). True by default."""
         ),
     ),
-    user: User = Depends(
-        create_user_dependency(required=True, allow_upload_token=True)
-    ),
+    user: User = Depends(get_current_user(required=True, allow_upload_token=True)),
 ):
     """
     Upload one or more files to the directory specified by `path` in the upload specified by `upload_id`.
@@ -1650,9 +1648,7 @@ async def put_upload_raw_path(
 async def delete_upload_raw_path(
     upload_id: str = Path(..., description='The unique id of the upload.'),
     path: str = Path(..., description='The path within the upload raw files.'),
-    user: User = Depends(
-        create_user_dependency(required=True, allow_upload_token=True)
-    ),
+    user: User = Depends(get_current_user(required=True, allow_upload_token=True)),
 ):
     """
     Delete file or folder located at the specified path in the specified upload. The upload
@@ -1699,9 +1695,7 @@ async def delete_upload_raw_path(
 async def post_upload_raw_create_dir_path(
     upload_id: str = Path(..., description='The unique id of the upload.'),
     path: str = Path(..., description='The path within the upload raw files.'),
-    user: User = Depends(
-        create_user_dependency(required=True, allow_upload_token=True)
-    ),
+    user: User = Depends(get_current_user(required=True, allow_upload_token=True)),
 ):
     """
     Create a new empty directory in the specified upload. The `path` should be the full path
@@ -1749,7 +1743,7 @@ async def get_upload_entry_archive_mainfile(
     mainfile_key: str | None = FastApiQuery(
         None, description='The mainfile_key, for accessing child entries.'
     ),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     """
     For the upload specified by `upload_id`, gets the full archive of a single entry that
@@ -1774,7 +1768,7 @@ async def get_upload_entry_archive_mainfile(
 async def get_upload_entry_archive(
     upload_id: str = Path(..., description='The unique id of the upload.'),
     entry_id: str = Path(..., description='The unique entry id.'),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     """
     For the upload specified by `upload_id`, gets the full archive of a single entry that
@@ -1850,9 +1844,7 @@ async def post_upload(
             Automatically decompress uploaded files upon receiving (ZIP or TAR). True by default."""
         ),
     ),
-    user: User = Depends(
-        create_user_dependency(required=True, allow_upload_token=True)
-    ),
+    user: User = Depends(get_current_user(required=True, allow_upload_token=True)),
 ):
     """
     Creates a new, empty upload and, optionally, uploads one or more files to it. If zip or
@@ -1995,7 +1987,7 @@ async def post_upload_edit(
     request: Request,
     data: MetadataEditRequest,
     upload_id: str = Path(..., description='The unique id of the upload.'),
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(get_current_user(required=True)),
 ):
     """
     Updates the metadata of the specified upload and entries. An optional `query` can be
@@ -2040,7 +2032,7 @@ async def post_upload_edit(
 )
 async def delete_upload(
     upload_id: str = Path(..., description='The unique id of the upload to delete.'),
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(get_current_user(required=True)),
 ):
     """
     Delete an existing upload.
@@ -2110,7 +2102,7 @@ async def post_upload_action_publish(
         ),
         deprecated=True,
     ),
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(get_current_user(required=True)),
 ):
     """
     Publishes an upload. The upload cannot be modified after this point (except for special
@@ -2195,7 +2187,7 @@ async def post_upload_action_publish(
 )
 async def post_upload_action_process(
     upload_id: str = Path(..., description='The unique id of the upload to process.'),
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(get_current_user(required=True)),
 ):
     """
     Processes an upload, i.e. parses the files and updates the NOMAD archive. Only admins
@@ -2228,7 +2220,7 @@ async def post_upload_action_delete_entry_files(
         ...,
         description='The unique id of the upload within which to delete entry files.',
     ),
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(get_current_user(required=True)),
 ):
     """Deletes the files of the entries specified by the provided query."""
 
@@ -2297,7 +2289,7 @@ async def post_upload_action_lift_embargo(
     upload_id: str = Path(
         ..., description='The unique id of the upload to lift the embargo for.'
     ),
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(get_current_user(required=True)),
 ):
     """Lifts the embargo of an upload."""
     upload = _get_upload_with_write_access(
@@ -2373,7 +2365,7 @@ async def get_upload_bundle(
                 (true by default)."""
         ),
     ),
-    user: User = Depends(create_user_dependency()),
+    user: User = Depends(get_current_user()),
 ):
     """
     Get an *upload bundle* for the specified upload. An upload bundle is a file bundle which
@@ -2493,9 +2485,7 @@ async def post_upload_bundle(
                 *(only admins can change this setting)*."""
         ),
     ),
-    user: User = Depends(
-        create_user_dependency(required=True, allow_upload_token=True)
-    ),
+    user: User = Depends(get_current_user(required=True, allow_upload_token=True)),
 ):
     """
     Posts an *upload bundle* to this NOMAD deployment. An upload bundle is a file bundle which
@@ -2606,7 +2596,7 @@ async def transfer_upload_bundle(
                 The unique id of the upload to transfer."""
         ),
     ),
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(get_current_user(required=True)),
 ):
     """
     Start a transfer of an upload to another NOMAD deployment.
@@ -3072,7 +3062,7 @@ def _check_external_deployment_status(deployment_url: str):
 )
 async def stop_upload_processing(
     upload_id: str = Path(..., description='The unique id of the upload.'),
-    user: User = Depends(create_user_dependency(required=True)),
+    user: User = Depends(get_current_user(required=True)),
 ):
     """
     Stops the processing of the specified upload.

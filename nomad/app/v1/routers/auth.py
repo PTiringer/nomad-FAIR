@@ -72,7 +72,7 @@ JWT_ALGORITHM = 'HS256'
 HMAC_DIGESTMOD = hashlib.sha256
 
 
-def resolve_user(
+def _resolve_user(
     *,
     required: bool = False,
     request: Request | None = None,
@@ -162,7 +162,7 @@ def resolve_user(
     return user
 
 
-def create_user_dependency(
+def get_current_user(
     *,
     required: bool = False,
     allow_keycloak_token: bool = True,
@@ -173,8 +173,8 @@ def create_user_dependency(
     Resolve the authenticated user from keycloak/simple/upload tokens.
     """
 
-    def user_dependency(**kwargs) -> User | None:
-        return resolve_user(
+    def current_user(**kwargs) -> User | None:
+        return _resolve_user(
             required=required,
             request=kwargs.get('request'),
             keycloak_token=kwargs.get('keycloak_token'),
@@ -239,8 +239,8 @@ def create_user_dependency(
             )
         )
 
-    user_dependency.__signature__ = Signature(parameters)  # type: ignore[attr-defined]
-    return user_dependency
+    current_user.__signature__ = Signature(parameters)  # type: ignore[attr-defined]
+    return current_user
 
 
 def _get_user_from_keycloak_token(
@@ -404,9 +404,7 @@ async def get_token(form_data: OAuth2PasswordRequestForm = Depends()) -> Token:
     response_model=SignatureToken,
 )
 async def get_signature_token(
-    user: User | None = Depends(
-        create_user_dependency(required=True, allow_simple_token=False)
-    ),
+    user: User = Depends(get_current_user(required=True, allow_simple_token=False)),
 ) -> SignatureToken:
     """
     Generate a signature token for the authenticated user.
@@ -425,9 +423,7 @@ async def get_signature_token(
 )
 async def get_app_token(
     expires_in: int = FastApiQuery(gt=0, le=config.services.app_token_max_expires_in),
-    user: User = Depends(
-        create_user_dependency(required=True, allow_simple_token=False)
-    ),
+    user: User = Depends(get_current_user(required=True, allow_simple_token=False)),
 ) -> AppToken:
     """
     Generate an app token with the requested expiration time for the
