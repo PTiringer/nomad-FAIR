@@ -16,8 +16,6 @@
 # limitations under the License.
 #
 
-from urllib.parse import urlencode
-
 import pytest
 from fastapi import HTTPException, Request
 
@@ -26,25 +24,21 @@ from nomad.app.v1.routers.auth import get_current_user
 from nomad.config.models.config import ModeEnum
 
 
-def perform_get_token_test(client, http_method, status_code, username, password):
-    if http_method == 'post':
-        response = client.post(
-            'auth/token', data=dict(username=username, password=password)
-        )
-    else:
-        response = client.get(
-            f'auth/token?{urlencode(dict(username=username, password=password))}'
-        )
+def perform_get_token_test(client, status_code, username, password):
+    response = client.post(
+        'auth/token',
+        data=dict(username=username, password=password, grant_type='password'),
+    )
 
     assert response.status_code == status_code
 
 
 def test_post_token_success(client, user1):
-    perform_get_token_test(client, 'post', 200, user1.username, 'password')
+    perform_get_token_test(client, 200, user1.username, 'password')
 
 
 def test_post_token_bad_credentials(client):
-    perform_get_token_test(client, 'post', 401, 'bad', 'credentials')
+    perform_get_token_test(client, 401, 'bad', 'credentials')
 
 
 def test_get_signature_token(auth_headers, client):
