@@ -24,12 +24,12 @@ import uuid
 from collections.abc import Callable
 from enum import Enum
 from inspect import Parameter, Signature
-from typing import Literal, cast
+from typing import Annotated, Literal, cast
 
 import jwt
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi import Query as FastApiQuery
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestFormStrict
 from pydantic import BaseModel
 
 from nomad import datamodel, infrastructure, utils
@@ -369,7 +369,9 @@ _bad_credentials_response = (
     responses=create_responses(_bad_credentials_response),
     response_model=Token,
 )
-async def get_token(form_data: OAuth2PasswordRequestForm = Depends()) -> Token:
+async def get_token(
+    form_data: Annotated[OAuth2PasswordRequestFormStrict, Depends()],
+) -> Token:
     """
     This API uses OAuth as an authentication mechanism. This operation allows you to
     retrieve an *access token* by posting username and password as form data.
