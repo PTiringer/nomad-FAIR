@@ -79,6 +79,7 @@ class MongoUserGroup(Document):
     owner = StringField(required=True)
 
     meta = {
+        'strict': False,
         'collection': 'user_group',
         'indexes': [
             'group_name',
