@@ -367,7 +367,6 @@ _bad_credentials_response = (
     tags=[APITag.DEFAULT],
     summary='Get an access token',
     responses=create_responses(_bad_credentials_response),
-    response_model=Token,
 )
 async def get_token(
     form_data: Annotated[OAuth2PasswordRequestFormStrict, Depends()],
@@ -403,10 +402,11 @@ async def get_token(
     '/signature_token',
     tags=[APITag.DEFAULT],
     summary='Get a signature token',
-    response_model=SignatureToken,
 )
 async def get_signature_token(
-    user: User = Depends(get_current_user(required=True, allow_simple_token=False)),
+    user: Annotated[
+        User, Depends(get_current_user(required=True, allow_simple_token=False))
+    ],
 ) -> SignatureToken:
     """
     Generate a signature token for the authenticated user.
@@ -421,11 +421,14 @@ async def get_signature_token(
     '/app_token',
     tags=[APITag.DEFAULT],
     summary='Get an app token',
-    response_model=AppToken,
 )
 async def get_app_token(
-    expires_in: int = FastApiQuery(gt=0, le=config.services.app_token_max_expires_in),
-    user: User = Depends(get_current_user(required=True, allow_simple_token=False)),
+    expires_in: Annotated[
+        int, FastApiQuery(gt=0, le=config.services.app_token_max_expires_in)
+    ],
+    user: Annotated[
+        User, Depends(get_current_user(required=True, allow_simple_token=False))
+    ],
 ) -> AppToken:
     """
     Generate an app token with the requested expiration time for the

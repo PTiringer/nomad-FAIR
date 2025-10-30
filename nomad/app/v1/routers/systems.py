@@ -19,6 +19,7 @@ import sys
 from collections import OrderedDict
 from enum import Enum
 from io import BytesIO, StringIO
+from typing import Annotated
 
 import ase.io
 import numpy as np
@@ -299,15 +300,19 @@ _serialization_error_response = (
     ),
 )
 async def get_entry_raw_file(
-    entry_id: str = Path(
-        ...,
-        description='The unique entry id of the entry to retrieve archive data from.',
-    ),
-    path: str = Query(
-        ...,
-        example='run/0/system/0',
-        description=strip(
-            """
+    user: Annotated[User, Depends(get_current_user())],
+    entry_id: Annotated[
+        str,
+        Path(
+            description='The unique entry id of the entry to retrieve archive data from.'
+        ),
+    ],
+    path: Annotated[
+        str,
+        Query(
+            example='run/0/system/0',
+            description=strip(
+                """
             Path to a NOMAD System inside the archive. The targeted path should
             point to a system in `run.system` or `results.material.topology`.
             The following path types are supported:
@@ -315,27 +320,31 @@ async def get_entry_raw_file(
             - `run/0/system/0`: Path to system in `run.system`
             - `results/material/topology/0`: Path to system in `results.material.topology`
             - `run/0/system/-1`: Negative indices are supported."""
+            ),
         ),
-    ),
-    format: FormatEnum = Query(  # type: ignore
-        default='cif',
-        description=f"""The file format for the system. The following formats are supported:
+    ],
+    format: Annotated[  # type: ignore[valid-type]
+        FormatEnum,
+        Query(
+            description=f"""The file format for the system. The following formats are supported:
 
 {format_description}
 
 Here is a brief rundown of the different features each format supports:
 
-{format_features}""",
-    ),
-    wrap_mode: WrapModeEnum = Query(  # type: ignore
-        default=WrapModeEnum.original,  # type: ignore
-        description=f"""Determines how to handle atomic positions for the requested system. The available options are:
+{format_features}"""
+        ),
+    ] = 'cif',
+    wrap_mode: Annotated[  # type: ignore[valid-type]
+        WrapModeEnum,
+        Query(
+            description=f"""Determines how to handle atomic positions for the requested system. The available options are:
 
 {wrap_mode_description}
 
-            """,
-    ),
-    user: User = Depends(get_current_user()),
+            """
+        ),
+    ] = WrapModeEnum.original,  # type: ignore[attr-defined]
 ):
     """
     Build and retrieve a structure file containing an atomistic system stored

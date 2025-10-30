@@ -18,7 +18,7 @@
 
 import os
 from enum import Enum
-from typing import Any
+from typing import Annotated, Any
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -118,7 +118,7 @@ def _get_status(tool: ToolModel, user: User) -> ToolModel:
     response_model_exclude_unset=True,
     response_model_exclude_none=True,
 )
-async def get_tools(user: User = Depends(get_current_user())):
+async def get_tools(user: Annotated[User, Depends(get_current_user())]):
     return ToolsResponseModel(
         data=[
             _get_status(ToolModel(name=name, **tool.dict()), user)
@@ -147,8 +147,8 @@ async def tool(name: str) -> ToolModel:
     response_model_exclude_none=True,
 )
 async def get_tool(
-    tool: ToolModel = Depends(tool),
-    user: User = Depends(get_current_user(required=True)),
+    tool: Annotated[ToolModel, Depends(tool)],
+    user: Annotated[User, Depends(get_current_user(required=True))],
     upload_id: str | None = None,
 ):
     if upload_id:
@@ -196,8 +196,8 @@ def _check_uploadid_is_mounted(
     response_model_exclude_none=True,
 )
 async def start_tool(
-    tool: ToolModel = Depends(tool),
-    user: User = Depends(get_current_user(required=True)),
+    tool: Annotated[ToolModel, Depends(tool)],
+    user: Annotated[User, Depends(get_current_user(required=True))],
     upload_id: str | None = None,
 ):
     tool.state = ToolStateEnum.stopped
@@ -371,8 +371,8 @@ async def start_tool(
     response_model_exclude_none=True,
 )
 async def stop_tool(
-    tool: ToolModel = Depends(tool),
-    user: User = Depends(get_current_user(required=True)),
+    tool: Annotated[ToolModel, Depends(tool)],
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     url = f'{config.hub_url()}/api/users/{user.username}/servers/{tool.name}'
     response = requests.delete(url, json={'remove': True}, headers=hub_api_headers)

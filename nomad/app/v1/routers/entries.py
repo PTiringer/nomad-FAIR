@@ -23,7 +23,7 @@ import os.path
 from collections.abc import AsyncIterator, Iterator
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, cast
+from typing import Annotated, Any, cast
 
 import orjson
 import yaml
@@ -522,7 +522,7 @@ def perform_search(*args, **kwargs):
     response_model_exclude_none=True,
 )
 async def post_entries_metadata_query(
-    request: Request, data: Metadata, user: User = Depends(get_current_user())
+    request: Request, data: Metadata, user: Annotated[User, Depends(get_current_user())]
 ):
     """
     Executes a *query* and returns a *page* of the results with *required* result data
@@ -564,10 +564,10 @@ async def post_entries_metadata_query(
 )
 async def get_entries_metadata(
     request: Request,
-    with_query: WithQuery = Depends(query_parameters),
-    pagination: MetadataPagination = Depends(metadata_pagination_parameters),
-    required: MetadataRequired = Depends(metadata_required_parameters),
-    user: User = Depends(get_current_user()),
+    with_query: Annotated[WithQuery, Depends(query_parameters)],
+    pagination: Annotated[MetadataPagination, Depends(metadata_pagination_parameters)],
+    required: Annotated[MetadataRequired, Depends(metadata_required_parameters)],
+    user: Annotated[User, Depends(get_current_user())],
 ):
     """
     Executes a *query* and returns a *page* of the results with *required* result data.
@@ -820,7 +820,7 @@ _entries_rawdir_query_docstring = strip(
 async def post_entries_rawdir_query(
     request: Request,
     data: EntriesRawDir,
-    user: User = Depends(get_current_user()),
+    user: Annotated[User, Depends(get_current_user())],
 ):
     return _answer_entries_rawdir_request(
         owner=data.owner if data.owner is not None else Owner.public,
@@ -844,9 +844,9 @@ async def post_entries_rawdir_query(
 )
 async def get_entries_rawdir(
     request: Request,
-    with_query: WithQuery = Depends(query_parameters),
-    pagination: MetadataPagination = Depends(metadata_pagination_parameters),
-    user: User = Depends(get_current_user()),
+    with_query: Annotated[WithQuery, Depends(query_parameters)],
+    pagination: Annotated[MetadataPagination, Depends(metadata_pagination_parameters)],
+    user: Annotated[User, Depends(get_current_user())],
 ):
     res = _answer_entries_rawdir_request(
         owner=with_query.owner if with_query.owner is not None else Owner.public,
@@ -888,7 +888,7 @@ _entries_raw_query_docstring = strip(
     responses=create_responses(_raw_response, _bad_owner_response_unauthorized),
 )
 async def post_entries_raw_query(
-    data: EntriesRaw, user: User = Depends(get_current_user())
+    data: EntriesRaw, user: Annotated[User, Depends(get_current_user())]
 ):
     return _answer_entries_raw_request(
         owner=data.owner if data.owner is not None else Owner.public,
@@ -907,9 +907,9 @@ async def post_entries_raw_query(
     responses=create_responses(_raw_response, _bad_owner_response_unauthorized),
 )
 async def get_entries_raw(
-    with_query: WithQuery = Depends(query_parameters),
-    files: Files = Depends(files_parameters),
-    user: User = Depends(get_current_user()),
+    with_query: Annotated[WithQuery, Depends(query_parameters)],
+    files: Annotated[Files, Depends(files_parameters)],
+    user: Annotated[User, Depends(get_current_user())],
 ):
     return _answer_entries_raw_request(
         owner=with_query.owner if with_query.owner is not None else Owner.public,
@@ -927,11 +927,11 @@ async def get_entries_raw(
     responses=create_responses(_bad_owner_response_unauthorized),
 )
 async def export_entries_metadata(
-    with_query: WithQuery = Depends(query_parameters),
-    content_type: str = Header('application/json'),
-    required: MetadataRequired = Depends(metadata_required_parameters),
-    user: User = Depends(get_current_user()),
-    page_size: int = QueryParameter(10_000, gt=0),
+    with_query: Annotated[WithQuery, Depends(query_parameters)],
+    required: Annotated[MetadataRequired, Depends(metadata_required_parameters)],
+    user: Annotated[User, Depends(get_current_user())],
+    content_type: Annotated[str, Header()] = 'application/json',
+    page_size: Annotated[int, QueryParameter(gt=0)] = 10_000,
 ):
     """(**Experimental**) Export metadata entries in a selected format.
 
@@ -1172,7 +1172,7 @@ _entries_archive_docstring = strip(
 async def post_entries_archive_query(
     request: Request,
     data: EntriesArchive,
-    user: User = Depends(get_current_user()),
+    user: Annotated[User, Depends(get_current_user())],
 ):
     res = await _answer_entries_archive_request(
         request=request,
@@ -1209,9 +1209,9 @@ async def post_entries_archive_query(
 )
 async def get_entries_archive_query(
     request: Request,
-    with_query: WithQuery = Depends(query_parameters),
-    pagination: MetadataPagination = Depends(metadata_pagination_parameters),
-    user: User = Depends(get_current_user()),
+    with_query: Annotated[WithQuery, Depends(query_parameters)],
+    pagination: Annotated[MetadataPagination, Depends(metadata_pagination_parameters)],
+    user: Annotated[User, Depends(get_current_user())],
 ):
     return await _answer_entries_archive_request(
         request=request,
@@ -1332,7 +1332,7 @@ _entries_archive_download_docstring = strip(
     ),
 )
 async def post_entries_archive_download_query(
-    data: EntriesArchiveDownload, user: User = Depends(get_current_user())
+    data: EntriesArchiveDownload, user: Annotated[User, Depends(get_current_user())]
 ):
     return _answer_entries_archive_download_request(
         owner=data.owner if data.owner is not None else Owner.public,
@@ -1356,9 +1356,9 @@ async def post_entries_archive_download_query(
     ),
 )
 async def get_entries_archive_download(
-    with_query: WithQuery = Depends(query_parameters),
-    files: Files = Depends(files_parameters),
-    user: User = Depends(get_current_user()),
+    with_query: Annotated[WithQuery, Depends(query_parameters)],
+    files: Annotated[Files, Depends(files_parameters)],
+    user: Annotated[User, Depends(get_current_user())],
 ):
     return _answer_entries_archive_download_request(
         owner=with_query.owner if with_query.owner is not None else Owner.public,
@@ -1379,11 +1379,12 @@ async def get_entries_archive_download(
     response_model_exclude_none=True,
 )
 async def get_entry_metadata(
-    entry_id: str = Path(
-        ..., description='The unique entry id of the entry to retrieve metadata from.'
-    ),
-    required: MetadataRequired = Depends(metadata_required_parameters),
-    user: User = Depends(get_current_user()),
+    entry_id: Annotated[
+        str,
+        Path(description='The unique entry id of the entry to retrieve metadata from.'),
+    ],
+    required: Annotated[MetadataRequired, Depends(metadata_required_parameters)],
+    user: Annotated[User, Depends(get_current_user())],
 ):
     """
     Retrives the entry metadata for the given id.
@@ -1416,10 +1417,11 @@ async def get_entry_metadata(
     response_model_exclude_none=True,
 )
 async def get_entry_rawdir(
-    entry_id: str = Path(
-        ..., description='The unique entry id of the entry to retrieve raw data from.'
-    ),
-    user: User = Depends(get_current_user()),
+    entry_id: Annotated[
+        str,
+        Path(description='The unique entry id of the entry to retrieve raw data from.'),
+    ],
+    user: Annotated[User, Depends(get_current_user())],
 ):
     """
     Returns the file metadata for all input and output files (including auxiliary files)
@@ -1453,11 +1455,12 @@ async def get_entry_rawdir(
     responses=create_responses(_bad_id_response, _raw_response),
 )
 async def get_entry_raw(
-    entry_id: str = Path(
-        ..., description='The unique entry id of the entry to retrieve raw data from.'
-    ),
-    files: Files = Depends(files_parameters),
-    user: User = Depends(get_current_user()),
+    entry_id: Annotated[
+        str,
+        Path(description='The unique entry id of the entry to retrieve raw data from.'),
+    ],
+    files: Annotated[Files, Depends(files_parameters)],
+    user: Annotated[User, Depends(get_current_user())],
 ):
     """
     Streams a .zip file with the raw files from the requested entry.
@@ -1491,39 +1494,48 @@ async def get_entry_raw(
     ),
 )
 async def get_entry_raw_file(
-    entry_id: str = Path(
-        ..., description='The unique entry id of the entry to retrieve raw data from.'
-    ),
-    path: str = Path(
-        ...,
-        description="A relative path to a file based on the directory of the entry's mainfile.",
-    ),
-    offset: int | None = QueryParameter(
-        0,
-        ge=0,
-        description=strip(
-            """
+    user: Annotated[User, Depends(get_current_user())],
+    entry_id: Annotated[
+        str,
+        Path(description='The unique entry id of the entry to retrieve raw data from.'),
+    ],
+    path: Annotated[
+        str,
+        Path(
+            description="A relative path to a file based on the directory of the entry's mainfile."
+        ),
+    ],
+    offset: Annotated[
+        int | None,
+        QueryParameter(
+            ge=0,
+            description=strip(
+                """
                 Integer offset that marks the start of the contents to retrieve. Default
                 is the start of the file."""
+            ),
         ),
-    ),
-    length: int | None = QueryParameter(
-        -1,
-        ge=-1,
-        description=strip(
-            """
+    ] = 0,
+    length: Annotated[
+        int | None,
+        QueryParameter(
+            ge=-1,
+            description=strip(
+                """
                 The amounts of contents in bytes to stream. By default, the remainder of
                 the file is streamed."""
+            ),
         ),
-    ),
-    decompress: bool | None = QueryParameter(
-        False,
-        description=strip(
-            """
+    ] = -1,
+    decompress: Annotated[
+        bool | None,
+        QueryParameter(
+            description=strip(
+                """
                 Attempt to decompress the contents, if the file is .gz or .xz."""
+            )
         ),
-    ),
-    user: User = Depends(get_current_user()),
+    ] = False,
 ):
     """
     Streams the contents of an individual file from the requested entry.
@@ -1638,11 +1650,10 @@ def answer_entry_archive_request(
 )
 async def post_entry_edit(
     data: EntryEdit,
-    entry_id: str = Path(
-        ...,
-        description='The unique entry id of the entry to edit.',
-    ),
-    user: User = Depends(get_current_user()),
+    entry_id: Annotated[
+        str, Path(description='The unique entry id of the entry to edit.')
+    ],
+    user: Annotated[User, Depends(get_current_user())],
 ):
     response = perform_search(
         owner=Owner.all_,
@@ -1768,11 +1779,13 @@ async def post_entry_edit(
     responses=create_responses(_bad_id_response),
 )
 async def get_entry_archive(
-    entry_id: str = Path(
-        ...,
-        description='The unique entry id of the entry to retrieve archive data from.',
-    ),
-    user: User = Depends(get_current_user()),
+    entry_id: Annotated[
+        str,
+        Path(
+            description='The unique entry id of the entry to retrieve archive data from.'
+        ),
+    ],
+    user: Annotated[User, Depends(get_current_user())],
 ):
     """
     Returns the full archive for the given `entry_id`.
@@ -1789,11 +1802,13 @@ async def get_entry_archive(
     responses=create_responses(_bad_id_response, _archive_download_response),
 )
 async def get_entry_archive_download(
-    entry_id: str = Path(
-        ...,
-        description='The unique entry id of the entry to retrieve archive data from.',
-    ),
-    user: User = Depends(get_current_user()),
+    entry_id: Annotated[
+        str,
+        Path(
+            description='The unique entry id of the entry to retrieve archive data from.'
+        ),
+    ],
+    user: Annotated[User, Depends(get_current_user())],
 ):
     """
     Returns the full archive for the given `entry_id`.
@@ -1815,11 +1830,13 @@ async def get_entry_archive_download(
 )
 async def post_entry_archive_query(
     data: EntryArchiveRequest,
-    user: User = Depends(get_current_user()),
-    entry_id: str = Path(
-        ...,
-        description='The unique entry id of the entry to retrieve archive data from.',
-    ),
+    user: Annotated[User, Depends(get_current_user())],
+    entry_id: Annotated[
+        str,
+        Path(
+            description='The unique entry id of the entry to retrieve archive data from.'
+        ),
+    ],
 ):
     """
     Returns a partial archive for the given `entry_id` based on the `required` specified
@@ -1917,7 +1934,7 @@ _editable_quantities = {
 async def post_entry_metadata_edit(
     response: Response,
     data: EntryMetadataEdit,
-    user: User = Depends(get_current_user()),
+    user: Annotated[User, Depends(get_current_user())],
 ):
     """
     Performs or validates edit actions on a set of entries that match a given query.
@@ -2113,7 +2130,7 @@ async def post_entry_metadata_edit(
 async def post_entries_edit(
     request: Request,
     data: MetadataEditRequest,
-    user: User = Depends(get_current_user(required=True)),
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """
     Updates the metadata of the specified entries.

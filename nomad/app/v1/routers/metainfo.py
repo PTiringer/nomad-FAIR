@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 from enum import Enum
+from typing import Annotated
 
 from fastapi import APIRouter, Path, status
 from pydantic import BaseModel, Field
@@ -78,11 +79,13 @@ class PackageDefinitionResponse(BaseModel):
     response_model_exclude_none=True,
 )
 async def get_package_definition(
-    section_definition_id: str = Path(
-        ...,
-        regex=PackageDefinition.id_pattern,
-        description='The section definition id to be used to retrieve package.',
-    ),
+    section_definition_id: Annotated[
+        str,
+        Path(
+            regex=PackageDefinition.id_pattern,
+            description='The section definition id to be used to retrieve package.',
+        ),
+    ],
 ):
     """
     Retrieve the package that contains the target section.
