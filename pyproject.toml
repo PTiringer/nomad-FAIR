@@ -115,6 +115,7 @@ indent-width = 4
 select = [
     "E", # pycodestyle
     "F401", # remove unused import
+    "FAST", # FastAPI
     "I001", # sort imports
     "PL", # pylint
     "UP", # pyupgrade

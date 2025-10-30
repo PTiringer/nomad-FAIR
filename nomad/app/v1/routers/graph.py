@@ -17,6 +17,7 @@
 #
 
 from enum import Enum
+from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.responses import ORJSONResponse
@@ -80,7 +81,9 @@ def relocate_children(request):
     response_class=GraphJSONResponse,
     include_in_schema=False,
 )
-async def raw_query(query=Body(...), user: User = Depends(get_current_user())):
+async def raw_query(
+    user: Annotated[User, Depends(get_current_user())], query=Body(...)
+):
     relocate_children(query)
     with MongoReader(query, user=user) as reader:
         return GraphJSONResponse(await reader.read())
@@ -101,11 +104,11 @@ async def raw_query(query=Body(...), user: User = Depends(get_current_user())):
     response_model_exclude_none=True,
 )
 async def basic_query(
+    user: Annotated[User, Depends(get_current_user())],
     # todo: may need to re-enable validation
     #   as of June 2025, it is not working
     # query: GraphRequest = Body(...),
     query=Body(...),
-    user: User = Depends(get_current_user()),
 ):
     try:
         query_dict = query
@@ -127,7 +130,9 @@ async def basic_query(
     response_class=GraphJSONResponse,
     include_in_schema=False,
 )
-async def archive_query(data: EntriesArchive, user: User = Depends(get_current_user())):
+async def archive_query(
+    data: EntriesArchive, user: Annotated[User, Depends(get_current_user())]
+):
     graph_dict: dict = {Token.SEARCH: {'m_request': {'query': {}}}}
     root_request: dict = graph_dict[Token.SEARCH]['m_request']['query']
 

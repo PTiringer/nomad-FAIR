@@ -18,6 +18,7 @@
 
 from collections import defaultdict
 from enum import Enum
+from typing import Annotated
 
 from elasticsearch.exceptions import RequestError
 from elasticsearch_dsl import Search
@@ -80,7 +81,7 @@ class SuggestionsRequest(BaseModel):
 async def get_suggestions(
     request: Request,
     data: SuggestionsRequest,
-    user: User = Depends(get_current_user()),
+    user: Annotated[User, Depends(get_current_user())],
 ):
     global suggestable_quantities
     if suggestable_quantities is None:

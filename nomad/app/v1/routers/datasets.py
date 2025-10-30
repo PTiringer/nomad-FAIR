@@ -19,7 +19,7 @@
 import re
 from datetime import datetime, timezone
 from enum import Enum
-from typing import cast
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
 from fastapi import Query as FastApiQuery
@@ -280,13 +280,13 @@ class DatasetCreate(BaseModel):  # type: ignore
 )
 async def get_datasets(
     request: Request,
-    dataset_id: str = FastApiQuery(None),
-    dataset_name: str = FastApiQuery(None),
-    user_id: list[str] = FastApiQuery(None),
-    dataset_type: str = FastApiQuery(None),
-    doi: str = FastApiQuery(None),
-    prefix: str = FastApiQuery(None),
-    pagination: DatasetPagination = Depends(dataset_pagination_parameters),
+    pagination: Annotated[DatasetPagination, Depends(dataset_pagination_parameters)],
+    dataset_id: Annotated[str, FastApiQuery()] = None,
+    dataset_name: Annotated[str, FastApiQuery()] = None,
+    user_id: Annotated[list[str], FastApiQuery()] = None,
+    dataset_type: Annotated[str, FastApiQuery()] = None,
+    doi: Annotated[str, FastApiQuery()] = None,
+    prefix: Annotated[str, FastApiQuery()] = None,
 ):
     """
     Retrieves all datasets that match the given criteria.
@@ -327,9 +327,9 @@ async def get_datasets(
     response_model_exclude_none=True,
 )
 async def get_dataset(
-    dataset_id: str = Path(
-        ..., description='The unique dataset id of the dataset to retrieve.'
-    ),
+    dataset_id: Annotated[
+        str, Path(description='The unique dataset id of the dataset to retrieve.')
+    ],
 ):
     """
     Retrieves the dataset with the given id.
@@ -356,7 +356,8 @@ async def get_dataset(
     response_model_exclude_none=True,
 )
 async def post_datasets(
-    create: DatasetCreate, user: User = Depends(get_current_user(required=True))
+    create: DatasetCreate,
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """
     Create a new dataset.
@@ -450,10 +451,10 @@ async def post_datasets(
     response_model_exclude_none=True,
 )
 async def delete_dataset(
-    dataset_id: str = Path(
-        ..., description='The unique dataset id of the dataset to delete.'
-    ),
-    user: User = Depends(get_current_user(required=True)),
+    dataset_id: Annotated[
+        str, Path(description='The unique dataset id of the dataset to delete.')
+    ],
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """
     Delete an dataset.
@@ -500,10 +501,10 @@ async def delete_dataset(
     response_model_exclude_none=True,
 )
 async def assign_doi(
-    dataset_id: str = Path(
-        ..., description='The unique dataset id of the dataset to delete.'
-    ),
-    user: User = Depends(get_current_user(required=True)),
+    dataset_id: Annotated[
+        str, Path(description='The unique dataset id of the dataset to delete.')
+    ],
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """
     Assign a DOI to a dataset.

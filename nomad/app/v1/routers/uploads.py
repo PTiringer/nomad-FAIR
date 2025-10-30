@@ -22,7 +22,7 @@ import tarfile
 import zipfile
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, cast
+from typing import Annotated, Any, cast
 from urllib.parse import unquote, urlparse
 
 import requests
@@ -741,7 +741,7 @@ and publish your data."""
     response_model_exclude_none=True,
 )
 async def get_command_examples(
-    user: User = Depends(get_current_user(required=True)),
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """Get URL and example command for shell based uploads."""
     token = _generate_upload_token(user)
@@ -780,19 +780,21 @@ async def get_command_examples(
 )
 async def get_uploads(
     request: Request,
-    roles: list[UploadRole] = FastApiQuery(
-        None,
-        description='Only return uploads where the user has one of the given roles.',
-    ),
-    include_all: bool = FastApiQuery(
-        False,
-        description='Include uploads that are shared with all users.',
-    ),
-    query: UploadProcDataQuery = Depends(upload_proc_data_query_parameters),
-    pagination: UploadProcDataPagination = Depends(
-        upload_proc_data_pagination_parameters
-    ),
-    user: User = Depends(get_current_user(required=True)),
+    query: Annotated[UploadProcDataQuery, Depends(upload_proc_data_query_parameters)],
+    pagination: Annotated[
+        UploadProcDataPagination, Depends(upload_proc_data_pagination_parameters)
+    ],
+    user: Annotated[User, Depends(get_current_user(required=True))],
+    roles: Annotated[
+        list[UploadRole],
+        FastApiQuery(
+            description='Only return uploads where the user has one of the given roles.'
+        ),
+    ] = None,
+    include_all: Annotated[
+        bool,
+        FastApiQuery(description='Include uploads that are shared with all users.'),
+    ] = False,
 ):
     """
     Retrieves metadata about all uploads that match the given query criteria.
@@ -846,8 +848,10 @@ async def get_uploads(
     response_model_exclude_none=True,
 )
 async def get_upload(
-    upload_id: str = Path(..., description='The unique id of the upload to retrieve.'),
-    user: User = Depends(get_current_user()),
+    upload_id: Annotated[
+        str, Path(description='The unique id of the upload to retrieve.')
+    ],
+    user: Annotated[User, Depends(get_current_user())],
 ):
     """
     Fetches a specific upload by its upload_id.
@@ -871,13 +875,13 @@ async def get_upload(
 )
 async def get_upload_entries(
     request: Request,
-    upload_id: str = Path(
-        ..., description='The unique id of the upload to retrieve entries for.'
-    ),
-    pagination: EntryProcDataPagination = Depends(
-        entry_proc_data_pagination_parameters
-    ),
-    user: User = Depends(get_current_user()),
+    upload_id: Annotated[
+        str, Path(description='The unique id of the upload to retrieve entries for.')
+    ],
+    pagination: Annotated[
+        EntryProcDataPagination, Depends(entry_proc_data_pagination_parameters)
+    ],
+    user: Annotated[User, Depends(get_current_user())],
 ):
     """
     Fetches the entries of a specific upload. Pagination is used to browse through the
@@ -946,12 +950,14 @@ async def get_upload_entries(
     response_model_exclude_none=True,
 )
 async def get_upload_entry(
-    upload_id: str = Path(..., description='The unique id of the upload.'),
-    entry_id: str = Path(
-        ...,
-        description='The unique id of the entry, belonging to the specified upload.',
-    ),
-    user: User = Depends(get_current_user(required=True)),
+    upload_id: Annotated[str, Path(description='The unique id of the upload.')],
+    entry_id: Annotated[
+        str,
+        Path(
+            description='The unique id of the entry, belonging to the specified upload.'
+        ),
+    ],
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """
     Fetches a specific entry for a specific upload.
@@ -985,18 +991,20 @@ async def get_upload_entry(
 )
 async def get_upload_rawdir_path(
     request: Request,
-    upload_id: str = Path(..., description='The unique id of the upload.'),
-    path: str = Path(..., description='The path within the upload raw files.'),
-    pagination: RawDirPagination = Depends(rawdir_pagination_parameters),
-    include_entry_info: bool = FastApiQuery(
-        False,
-        description=strip(
-            """
+    upload_id: Annotated[str, Path(description='The unique id of the upload.')],
+    path: Annotated[str, Path(description='The path within the upload raw files.')],
+    pagination: Annotated[RawDirPagination, Depends(rawdir_pagination_parameters)],
+    user: Annotated[User, Depends(get_current_user())],
+    include_entry_info: Annotated[
+        bool,
+        FastApiQuery(
+            description=strip(
+                """
                 If the fields `entry_id` and `parser_name` should be populated for all
                 encountered mainfiles."""
+            )
         ),
-    ),
-    user: User = Depends(get_current_user()),
+    ] = False,
 ):
     """
     For the upload specified by `upload_id`, gets the raw file or directory metadata
@@ -1102,8 +1110,8 @@ async def get_upload_rawdir_path(
     response_model_exclude_none=True,
 )
 async def get_upload_raw(
-    upload_id: str = Path(..., description='The unique id of the upload.'),
-    user: User = Depends(get_current_user()),
+    upload_id: Annotated[str, Path(description='The unique id of the upload.')],
+    user: Annotated[User, Depends(get_current_user())],
 ):
     """
     NOMAD manages the raw files of published uploads as a .zip file. This endpoint
@@ -1148,45 +1156,53 @@ async def get_upload_raw(
     response_model_exclude_none=True,
 )
 async def get_upload_raw_path(
-    upload_id: str = Path(..., description='The unique id of the upload.'),
-    path: str = Path(..., description='The path within the upload raw files.'),
-    files_params: Files = Depends(files_parameters),
-    offset: int | None = FastApiQuery(
-        0,
-        description=strip(
-            """
+    upload_id: Annotated[str, Path(description='The unique id of the upload.')],
+    path: Annotated[str, Path(description='The path within the upload raw files.')],
+    files_params: Annotated[Files, Depends(files_parameters)],
+    user: Annotated[User, Depends(get_current_user())],
+    offset: Annotated[
+        int | None,
+        FastApiQuery(
+            description=strip(
+                """
                 When dowloading individual files with `compress = false`, this can be
                 used to seek to a specified position within the file in question. Default
                 is 0, i.e. the start of the file."""
+            )
         ),
-    ),
-    length: int | None = FastApiQuery(
-        -1,
-        description=strip(
-            """
+    ] = 0,
+    length: Annotated[
+        int | None,
+        FastApiQuery(
+            description=strip(
+                """
                 When dowloading individual files with `compress = false`, this can be
                 used to specify the number of bytes to read. By default, the value is -1,
                 which means that the remainder of the file is streamed."""
+            )
         ),
-    ),
-    decompress: bool = FastApiQuery(
-        False,
-        description=strip(
-            """
+    ] = -1,
+    decompress: Annotated[
+        bool,
+        FastApiQuery(
+            description=strip(
+                """
                 Set if compressed files should be decompressed before streaming the
                 content (that is: if there are compressed files *within* the raw files).
                 Note, only some compression formats are supported."""
+            )
         ),
-    ),
-    ignore_mime_type: bool = FastApiQuery(
-        False,
-        description=strip(
-            """
+    ] = False,
+    ignore_mime_type: Annotated[
+        bool,
+        FastApiQuery(
+            description=strip(
+                """
                 Sets the mime type specified in the response headers to `application/octet-stream`
                 instead of the actual mime type."""
+            )
         ),
-    ),
-    user: User = Depends(get_current_user()),
+    ] = False,
 ):
     """
     For the upload specified by `upload_id`, gets the raw file or directory content located
@@ -1322,59 +1338,76 @@ async def get_upload_raw_path(
 )
 async def put_upload_raw_path(
     request: Request,
-    upload_id: str = Path(..., description='The unique id of the upload.'),
-    path: str = Path(..., description='The path within the upload raw files.'),
-    file: list[UploadFile] = File(None),
-    local_path: str = FastApiQuery(
-        None,
-        description=strip("""Internal/Admin use only."""),
-    ),
-    file_name: str = FastApiQuery(
-        None,
-        description=strip("""Specifies the name of the file, when using method 2."""),
-    ),
-    overwrite_if_exists: bool = FastApiQuery(
-        True,
-        description=strip(
-            """If set to True (default), overwrites the file if it already exists."""
+    upload_id: Annotated[str, Path(description='The unique id of the upload.')],
+    path: Annotated[str, Path(description='The path within the upload raw files.')],
+    user: Annotated[
+        User, Depends(get_current_user(required=True, allow_upload_token=True))
+    ],
+    file: Annotated[list[UploadFile], File()] = None,
+    local_path: Annotated[
+        str, FastApiQuery(description=strip("""Internal/Admin use only."""))
+    ] = None,
+    file_name: Annotated[
+        str,
+        FastApiQuery(
+            description=strip(
+                """Specifies the name of the file, when using method 2."""
+            )
         ),
-    ),
-    copy_or_move: str = FastApiQuery(
-        None,
-        description=strip(
-            """If moving or copying a file within the same upload, specify which operation to do: move or copy"""
+    ] = None,
+    overwrite_if_exists: Annotated[
+        bool,
+        FastApiQuery(
+            description=strip(
+                """If set to True (default), overwrites the file if it already exists."""
+            )
         ),
-    ),
-    copy_or_move_source_path: str = FastApiQuery(
-        None,
-        description=strip(
-            """If moving or copying a file within the same upload, specify the path to the source file."""
+    ] = True,
+    copy_or_move: Annotated[
+        str,
+        FastApiQuery(
+            description=strip(
+                """If moving or copying a file within the same upload, specify which operation to do: move or copy"""
+            )
         ),
-    ),
-    wait_for_processing: bool = FastApiQuery(
-        False,
-        description=strip(
-            """Waits for the processing to complete and return information about the outcome in the response (**USE WITH CARE**)."""
+    ] = None,
+    copy_or_move_source_path: Annotated[
+        str,
+        FastApiQuery(
+            description=strip(
+                """If moving or copying a file within the same upload, specify the path to the source file."""
+            )
         ),
-    ),
-    include_archive: bool = FastApiQuery(
-        False,
-        description=strip(
-            """If the archive data should be included in the response when using `wait_for_processing` (**USE WITH CARE**)."""
+    ] = None,
+    wait_for_processing: Annotated[
+        bool,
+        FastApiQuery(
+            description=strip(
+                """Waits for the processing to complete and return information about the outcome in the response (**USE WITH CARE**)."""
+            )
         ),
-    ),
-    entry_hash: str = FastApiQuery(
-        None,
-        description=strip("""The hash code of the not modified entry."""),
-    ),
-    auto_decompress: bool = FastApiQuery(
-        True,
-        description=strip(
-            """
+    ] = False,
+    include_archive: Annotated[
+        bool,
+        FastApiQuery(
+            description=strip(
+                """If the archive data should be included in the response when using `wait_for_processing` (**USE WITH CARE**)."""
+            )
+        ),
+    ] = False,
+    entry_hash: Annotated[
+        str,
+        FastApiQuery(description=strip("""The hash code of the not modified entry.""")),
+    ] = None,
+    auto_decompress: Annotated[
+        bool,
+        FastApiQuery(
+            description=strip(
+                """
             Automatically decompress uploaded files upon receiving (ZIP or TAR). True by default."""
+            )
         ),
-    ),
-    user: User = Depends(get_current_user(required=True, allow_upload_token=True)),
+    ] = True,
 ):
     """
     Upload one or more files to the directory specified by `path` in the upload specified by `upload_id`.
@@ -1646,9 +1679,11 @@ async def put_upload_raw_path(
     response_model_exclude_none=True,
 )
 async def delete_upload_raw_path(
-    upload_id: str = Path(..., description='The unique id of the upload.'),
-    path: str = Path(..., description='The path within the upload raw files.'),
-    user: User = Depends(get_current_user(required=True, allow_upload_token=True)),
+    upload_id: Annotated[str, Path(description='The unique id of the upload.')],
+    path: Annotated[str, Path(description='The path within the upload raw files.')],
+    user: Annotated[
+        User, Depends(get_current_user(required=True, allow_upload_token=True))
+    ],
 ):
     """
     Delete file or folder located at the specified path in the specified upload. The upload
@@ -1693,9 +1728,11 @@ async def delete_upload_raw_path(
     response_model_exclude_none=True,
 )
 async def post_upload_raw_create_dir_path(
-    upload_id: str = Path(..., description='The unique id of the upload.'),
-    path: str = Path(..., description='The path within the upload raw files.'),
-    user: User = Depends(get_current_user(required=True, allow_upload_token=True)),
+    upload_id: Annotated[str, Path(description='The unique id of the upload.')],
+    path: Annotated[str, Path(description='The path within the upload raw files.')],
+    user: Annotated[
+        User, Depends(get_current_user(required=True, allow_upload_token=True))
+    ],
 ):
     """
     Create a new empty directory in the specified upload. The `path` should be the full path
@@ -1736,14 +1773,15 @@ async def post_upload_raw_create_dir_path(
     responses=create_responses(_upload_or_path_not_found, _not_authorized_to_upload),
 )
 async def get_upload_entry_archive_mainfile(
-    upload_id: str = Path(..., description='The unique id of the upload.'),
-    mainfile: str = Path(
-        ..., description="The mainfile path within the upload's raw files."
-    ),
-    mainfile_key: str | None = FastApiQuery(
-        None, description='The mainfile_key, for accessing child entries.'
-    ),
-    user: User = Depends(get_current_user()),
+    user: Annotated[User, Depends(get_current_user())],
+    upload_id: Annotated[str, Path(description='The unique id of the upload.')],
+    mainfile: Annotated[
+        str, Path(description="The mainfile path within the upload's raw files.")
+    ],
+    mainfile_key: Annotated[
+        str | None,
+        FastApiQuery(description='The mainfile_key, for accessing child entries.'),
+    ] = None,
 ):
     """
     For the upload specified by `upload_id`, gets the full archive of a single entry that
@@ -1766,9 +1804,9 @@ async def get_upload_entry_archive_mainfile(
     responses=create_responses(_upload_or_path_not_found, _not_authorized_to_upload),
 )
 async def get_upload_entry_archive(
-    upload_id: str = Path(..., description='The unique id of the upload.'),
-    entry_id: str = Path(..., description='The unique entry id.'),
-    user: User = Depends(get_current_user()),
+    upload_id: Annotated[str, Path(description='The unique id of the upload.')],
+    entry_id: Annotated[str, Path(description='The unique entry id.')],
+    user: Annotated[User, Depends(get_current_user())],
 ):
     """
     For the upload specified by `upload_id`, gets the full archive of a single entry that
@@ -1791,60 +1829,76 @@ async def get_upload_entry_archive(
 )
 async def post_upload(
     request: Request,
-    file: list[UploadFile] = File(None),
-    local_path: str = FastApiQuery(
-        None,
-        description=strip(
-            """
+    user: Annotated[
+        User, Depends(get_current_user(required=True, allow_upload_token=True))
+    ],
+    file: Annotated[list[UploadFile], File()] = None,
+    local_path: Annotated[
+        str,
+        FastApiQuery(
+            description=strip(
+                """
             Internal/Admin use only."""
+            )
         ),
-    ),
-    example_upload_id: str | None = FastApiQuery(
-        None,
-        description=strip(
-            """
+    ] = None,
+    example_upload_id: Annotated[
+        str | None,
+        FastApiQuery(
+            description=strip(
+                """
             If provided, instantiates a new upload from the given example upload
             entry point id. You may use this parameter in combination with other
             file sources.
             """
+            )
         ),
-    ),
-    file_name: str = FastApiQuery(
-        None,
-        description=strip(
-            """
+    ] = None,
+    file_name: Annotated[
+        str,
+        FastApiQuery(
+            description=strip(
+                """
             Specifies the name of the file, when using method 2."""
+            )
         ),
-    ),
-    upload_name: str | None = FastApiQuery(
-        None,
-        description=strip(
-            """
+    ] = None,
+    upload_name: Annotated[
+        str | None,
+        FastApiQuery(
+            description=strip(
+                """
             A human readable name for the upload."""
+            )
         ),
-    ),
-    embargo_length: int = FastApiQuery(
-        0,
-        description=strip(
-            """
+    ] = None,
+    embargo_length: Annotated[
+        int,
+        FastApiQuery(
+            description=strip(
+                """
             The requested embargo length, in months, if any (0-36)."""
+            )
         ),
-    ),
-    publish_directly: bool = FastApiQuery(
-        None,
-        description=strip(
-            """
+    ] = 0,
+    publish_directly: Annotated[
+        bool,
+        FastApiQuery(
+            description=strip(
+                """
             If the upload should be published directly. False by default."""
+            )
         ),
-    ),
-    auto_decompress: bool = FastApiQuery(
-        True,
-        description=strip(
-            """
+    ] = None,
+    auto_decompress: Annotated[
+        bool,
+        FastApiQuery(
+            description=strip(
+                """
             Automatically decompress uploaded files upon receiving (ZIP or TAR). True by default."""
+            )
         ),
-    ),
-    user: User = Depends(get_current_user(required=True, allow_upload_token=True)),
+    ] = True,
 ):
     """
     Creates a new, empty upload and, optionally, uploads one or more files to it. If zip or
@@ -1986,8 +2040,8 @@ async def post_upload(
 async def post_upload_edit(
     request: Request,
     data: MetadataEditRequest,
-    upload_id: str = Path(..., description='The unique id of the upload.'),
-    user: User = Depends(get_current_user(required=True)),
+    upload_id: Annotated[str, Path(description='The unique id of the upload.')],
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """
     Updates the metadata of the specified upload and entries. An optional `query` can be
@@ -2031,8 +2085,10 @@ async def post_upload_edit(
     response_model_exclude_none=True,
 )
 async def delete_upload(
-    upload_id: str = Path(..., description='The unique id of the upload to delete.'),
-    user: User = Depends(get_current_user(required=True)),
+    upload_id: Annotated[
+        str, Path(description='The unique id of the upload to delete.')
+    ],
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """
     Delete an existing upload.
@@ -2077,32 +2133,38 @@ async def delete_upload(
     response_model_exclude_none=True,
 )
 async def post_upload_action_publish(
-    upload_id: str = Path(
-        ...,
-        description=strip(
-            """
+    user: Annotated[User, Depends(get_current_user(required=True))],
+    upload_id: Annotated[
+        str,
+        Path(
+            description=strip(
+                """
                 The unique id of the upload to publish."""
+            )
         ),
-    ),
-    embargo_length: int = FastApiQuery(
-        None,
-        description=strip(
-            """
+    ],
+    embargo_length: Annotated[
+        int,
+        FastApiQuery(
+            description=strip(
+                """
                 If provided, updates the embargo length of the upload. The value should
                 be between 0 and 36 months. 0 means no embargo."""
+            )
         ),
-    ),
-    to_central_nomad: bool = FastApiQuery(
-        False,
-        description=strip(
-            """
+    ] = None,
+    to_central_nomad: Annotated[
+        bool,
+        FastApiQuery(
+            description=strip(
+                """
             DEPRECATED
             To publish to an external oasis or to the central nomad you can use the new entpoint /uploads/{upload_id}/action/transfer.
                 """
+            ),
+            deprecated=True,
         ),
-        deprecated=True,
-    ),
-    user: User = Depends(get_current_user(required=True)),
+    ] = False,
 ):
     """
     Publishes an upload. The upload cannot be modified after this point (except for special
@@ -2186,8 +2248,10 @@ async def post_upload_action_publish(
     response_model_exclude_none=True,
 )
 async def post_upload_action_process(
-    upload_id: str = Path(..., description='The unique id of the upload to process.'),
-    user: User = Depends(get_current_user(required=True)),
+    upload_id: Annotated[
+        str, Path(description='The unique id of the upload to process.')
+    ],
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """
     Processes an upload, i.e. parses the files and updates the NOMAD archive. Only admins
@@ -2216,11 +2280,13 @@ async def post_upload_action_process(
 )
 async def post_upload_action_delete_entry_files(
     data: DeleteEntryFilesRequest,
-    upload_id: str = Path(
-        ...,
-        description='The unique id of the upload within which to delete entry files.',
-    ),
-    user: User = Depends(get_current_user(required=True)),
+    upload_id: Annotated[
+        str,
+        Path(
+            description='The unique id of the upload within which to delete entry files.'
+        ),
+    ],
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """Deletes the files of the entries specified by the provided query."""
 
@@ -2286,10 +2352,10 @@ async def post_upload_action_delete_entry_files(
     response_model_exclude_none=True,
 )
 async def post_upload_action_lift_embargo(
-    upload_id: str = Path(
-        ..., description='The unique id of the upload to lift the embargo for.'
-    ),
-    user: User = Depends(get_current_user(required=True)),
+    upload_id: Annotated[
+        str, Path(description='The unique id of the upload to lift the embargo for.')
+    ],
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """Lifts the embargo of an upload."""
     upload = _get_upload_with_write_access(
@@ -2341,31 +2407,37 @@ async def post_upload_action_lift_embargo(
     response_model_exclude_none=True,
 )
 async def get_upload_bundle(
-    upload_id: str = Path(..., description='The unique id of the upload.'),
-    include_raw_files: bool | None = FastApiQuery(
-        True,
-        description=strip(
-            """
+    user: Annotated[User, Depends(get_current_user())],
+    upload_id: Annotated[str, Path(description='The unique id of the upload.')],
+    include_raw_files: Annotated[
+        bool | None,
+        FastApiQuery(
+            description=strip(
+                """
                 If raw files should be included in the bundle (true by default)."""
+            )
         ),
-    ),
-    include_archive_files: bool | None = FastApiQuery(
-        True,
-        description=strip(
-            """
+    ] = True,
+    include_archive_files: Annotated[
+        bool | None,
+        FastApiQuery(
+            description=strip(
+                """
                 If archive files (i.e. parsed entries data) should be included in the bundle
                 (true by default)."""
+            )
         ),
-    ),
-    include_datasets: bool | None = FastApiQuery(
-        True,
-        description=strip(
-            """
+    ] = True,
+    include_datasets: Annotated[
+        bool | None,
+        FastApiQuery(
+            description=strip(
+                """
                 If datasets references to this upload should be included in the bundle
                 (true by default)."""
+            )
         ),
-    ),
-    user: User = Depends(get_current_user()),
+    ] = True,
 ):
     """
     Get an *upload bundle* for the specified upload. An upload bundle is a file bundle which
@@ -2411,81 +2483,101 @@ async def get_upload_bundle(
 )
 async def post_upload_bundle(
     request: Request,
-    file: list[UploadFile] = File(None),
-    local_path: str = FastApiQuery(
-        None,
-        description=strip(
-            """
+    user: Annotated[
+        User, Depends(get_current_user(required=True, allow_upload_token=True))
+    ],
+    file: Annotated[list[UploadFile], File()] = None,
+    local_path: Annotated[
+        str,
+        FastApiQuery(
+            description=strip(
+                """
             Internal/Admin use only."""
+            )
         ),
-    ),
-    embargo_length: int | None = FastApiQuery(
-        None,
-        description=strip(
-            """
+    ] = None,
+    embargo_length: Annotated[
+        int | None,
+        FastApiQuery(
+            description=strip(
+                """
                 Specifies the embargo length in months to set on the upload. If omitted,
                 the value specified in the bundle will be used. A value of 0 means no
                 embargo."""
+            )
         ),
-    ),
-    include_raw_files: bool | None = FastApiQuery(
-        None,
-        description=strip(
-            """
+    ] = None,
+    include_raw_files: Annotated[
+        bool | None,
+        FastApiQuery(
+            description=strip(
+                """
                 If raw files should be imported from the bundle
                 *(only admins can change this setting)*."""
+            )
         ),
-    ),
-    include_archive_files: bool | None = FastApiQuery(
-        None,
-        description=strip(
-            """
+    ] = None,
+    include_archive_files: Annotated[
+        bool | None,
+        FastApiQuery(
+            description=strip(
+                """
                 If archive files (i.e. parsed entries data) should be imported from the bundle
                 *(only admins can change this setting)*."""
+            )
         ),
-    ),
-    include_datasets: bool | None = FastApiQuery(
-        None,
-        description=strip(
-            """
+    ] = None,
+    include_datasets: Annotated[
+        bool | None,
+        FastApiQuery(
+            description=strip(
+                """
                 If dataset references to this upload should be imported from the bundle
                 *(only admins can change this setting)*."""
+            )
         ),
-    ),
-    include_bundle_info: bool | None = FastApiQuery(
-        None,
-        description=strip(
-            """
+    ] = None,
+    include_bundle_info: Annotated[
+        bool | None,
+        FastApiQuery(
+            description=strip(
+                """
                 If the bundle_info.json file should be kept
                 *(only admins can change this setting)*."""
+            )
         ),
-    ),
-    keep_original_timestamps: bool | None = FastApiQuery(
-        None,
-        description=strip(
-            """
+    ] = None,
+    keep_original_timestamps: Annotated[
+        bool | None,
+        FastApiQuery(
+            description=strip(
+                """
                 If all original timestamps, including `upload_create_time`, `entry_create_time`
                 and `publish_time`, should be kept
                 *(only admins can change this setting)*."""
+            )
         ),
-    ),
-    set_from_oasis: bool | None = FastApiQuery(
-        None,
-        description=strip(
-            """
+    ] = None,
+    set_from_oasis: Annotated[
+        bool | None,
+        FastApiQuery(
+            description=strip(
+                """
                 If the `from_oasis` flag and `oasis_deployment_url` should be set
                 *(only admins can change this setting)*."""
+            )
         ),
-    ),
-    trigger_processing: bool | None = FastApiQuery(
-        None,
-        description=strip(
-            """
+    ] = None,
+    trigger_processing: Annotated[
+        bool | None,
+        FastApiQuery(
+            description=strip(
+                """
                 If processing should be triggered after the bundle has been imported
                 *(only admins can change this setting)*."""
+            )
         ),
-    ),
-    user: User = Depends(get_current_user(required=True, allow_upload_token=True)),
+    ] = None,
 ):
     """
     Posts an *upload bundle* to this NOMAD deployment. An upload bundle is a file bundle which
@@ -2589,14 +2681,16 @@ async def post_upload_bundle(
 )
 async def transfer_upload_bundle(
     transfer_options: TransferBundleRequest,
-    upload_id: str = Path(
-        ...,
-        description=strip(
-            """
+    upload_id: Annotated[
+        str,
+        Path(
+            description=strip(
+                """
                 The unique id of the upload to transfer."""
+            )
         ),
-    ),
-    user: User = Depends(get_current_user(required=True)),
+    ],
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """
     Start a transfer of an upload to another NOMAD deployment.
@@ -3061,8 +3155,8 @@ def _check_external_deployment_status(deployment_url: str):
     response_model_exclude_none=True,
 )
 async def stop_upload_processing(
-    upload_id: str = Path(..., description='The unique id of the upload.'),
-    user: User = Depends(get_current_user(required=True)),
+    upload_id: Annotated[str, Path(description='The unique id of the upload.')],
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """
     Stops the processing of the specified upload.

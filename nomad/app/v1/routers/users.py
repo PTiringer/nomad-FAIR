@@ -17,6 +17,7 @@
 #
 
 from enum import Enum
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic.main import BaseModel
@@ -73,7 +74,7 @@ class Users(BaseModel):
     response_model=User,
 )
 async def read_users_me(
-    current_user: User = Depends(get_current_user(required=True)),
+    current_user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     current_user_dict: dict = current_user.m_to_dict(
         with_out_meta=True, include_derived=True
@@ -95,38 +96,46 @@ async def read_users_me(
     response_model=Users,
 )
 async def get_users(
-    prefix: str | None = Query(
-        None,
-        description=strip(
-            """
+    prefix: Annotated[
+        str | None,
+        Query(
+            description=strip(
+                """
             Search the user with the given prefix.
         """
+            )
         ),
-    ),
-    user_id: list[str] | None = Query(
-        None,
-        description=strip(
-            """
+    ] = None,
+    user_id: Annotated[
+        list[str] | None,
+        Query(
+            description=strip(
+                """
             To get the user(s) by their user_id(s).
         """
+            )
         ),
-    ),
-    username: list[str] | None = Query(
-        None,
-        description=strip(
-            """
+    ] = None,
+    username: Annotated[
+        list[str] | None,
+        Query(
+            description=strip(
+                """
             To get the user(s) by their username(s).
         """
+            )
         ),
-    ),
-    email: list[str] | None = Query(
-        None,
-        description=strip(
-            """
+    ] = None,
+    email: Annotated[
+        list[str] | None,
+        Query(
+            description=strip(
+                """
             To get the user(s) by their email(s).
         """
+            )
         ),
-    ),
+    ] = None,
 ):
     users: list[User] = []
     for key, values in dict(user_id=user_id, username=username, email=email).items():
@@ -188,7 +197,7 @@ async def get_user(user_id: str):
     response_model=User,
 )
 async def invite_user(
-    user: User, current_user: User = Depends(get_current_user(required=True))
+    user: User, current_user: Annotated[User, Depends(get_current_user(required=True))]
 ):
     if config.oasis.is_oasis:
         raise HTTPException(

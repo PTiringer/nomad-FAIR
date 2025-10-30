@@ -18,6 +18,7 @@
 
 from collections.abc import Iterable
 from enum import Enum
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
@@ -106,7 +107,7 @@ def validate_members_info(
         validate_members_info_util(members_info, owner_id)
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=[{'loc': ['body'], 'msg': str(e)}],
         ) from e
 
@@ -170,8 +171,10 @@ def check_user_may_delete_user_group(user: User, user_group: UserGroup):
 )
 async def get_user_groups(
     request: Request,
-    query: UserGroupQuery = Depends(user_group_query_parameters),
-    pagination: UserGroupPagination = Depends(user_group_pagination_parameters),
+    query: Annotated[UserGroupQuery, Depends(user_group_query_parameters)],
+    pagination: Annotated[
+        UserGroupPagination, Depends(user_group_pagination_parameters)
+    ],
 ):
     """Get data about user groups."""
     db_groups = MongoUserGroup.get_by_query(query)
@@ -209,7 +212,7 @@ async def get_user_group(group_id: str):
 )
 async def create_user_group(
     user_group_edit: UserGroupEditUnion,
-    user: User = Depends(get_current_user(required=True)),
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """Create user group."""
     if isinstance(user_group_edit, UserGroupEditOld):
@@ -233,7 +236,7 @@ async def create_user_group(
 async def update_user_group(
     group_id: str,
     user_group_edit: UserGroupEditUnion,
-    user: User = Depends(get_current_user(required=True)),
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """Update user group."""
     mongo_user_group = get_user_group_or_404(group_id)
@@ -264,7 +267,7 @@ async def update_user_group(
     summary='Delete user group.',
 )
 async def delete_user_group(
-    group_id: str, user: User = Depends(get_current_user(required=True))
+    group_id: str, user: Annotated[User, Depends(get_current_user(required=True))]
 ):
     """Delete user group."""
     mongo_user_group = get_user_group_or_404(group_id)
