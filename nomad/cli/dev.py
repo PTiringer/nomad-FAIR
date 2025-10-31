@@ -130,8 +130,8 @@ def api_model(model):
             generate_response_model,
         )
 
-        sys.modules['nomad.app.v1.models.graph.utils'].ref_prefix = '#/definitions'
-        sys.modules['nomad.app.v1.models.graph.utils'].graph_model_export = True
+        sys.modules['nomad.app.v1.models.graph.utils'].ref_prefix = '#/definitions'  # type: ignore
+        sys.modules['nomad.app.v1.models.graph.utils'].graph_model_export = True  # type: ignore
 
         if model == 'nomad.app.v1.models.graph.GraphRequest':
             model = generate_request_model(Graph)
@@ -174,9 +174,7 @@ def gui_artifacts():
 
 
 def _generate_metainfo(all_metainfo_packages):
-    return all_metainfo_packages.m_to_dict(
-        with_meta=True, with_def_id=config.process.write_definition_id_to_archive
-    )
+    return all_metainfo_packages.m_to_dict(with_meta=True, with_def_id=True)
 
 
 @dev.command(help='Generates a JSON with all metainfo.')
@@ -297,12 +295,21 @@ def get_gui_config() -> str:
         return d
 
     # We save a single list of enabled entry points
-    plugins = _sort_dict(config.plugins.dict(exclude_unset=True))
-    entry_points = [
-        entry_point.dict_safe()
-        for entry_point in config.plugins.entry_points.filtered_values()
-    ]
-    plugins['entry_points'] = entry_points
+    plugins = (
+        _sort_dict(config.plugins.model_dump(exclude_unset=True))
+        if config.plugins is not None
+        else {}
+    )
+    entry_points = (
+        [
+            entry_point.dict_safe()
+            for entry_point in config.plugins.entry_points.filtered_values()
+        ]
+        if config.plugins is not None
+        else []
+    )
+    if config.plugins is not None:
+        plugins['entry_points'] = entry_points
 
     data = {
         'appBase': config.ui.app_base,
@@ -316,14 +323,15 @@ def get_gui_config() -> str:
         else None,
         'oasis': config.oasis.is_oasis,
         'version': config.meta.beta if config.meta.beta else {},
-        'globalLoginRequired': config.oasis.allowed_users is not None,
+        'globalLoginRequired': config.oasis.allowed_users is not None
+        or config.oasis.require_authentication,
         'servicesUploadLimit': config.services.upload_limit,
         'appTokenMaxExpiresIn': config.services.app_token_max_expires_in,
         'uploadMembersGroupSearchEnabled': config.services.upload_members_group_search_enabled,
         'ui': config.ui.dict(exclude_none=True) if config.ui else {},
         'plugins': plugins,
         'dataciteEnabled': config.datacite.enabled,
-        'resourcesEnabled': config.resources.enabled,
+        'temporalProcessingEnabled': config.temporal.enabled,
         'termsOfServiceURL': config.oasis.terms_of_service_url,
         'footerLinks': [link.dict() for link in config.meta.footer_links],
         'description': config.meta.description,
@@ -420,14 +428,16 @@ def update_parser_readmes(parser):
         else:
             # replace header for the single parser with that for a group of parsers
             parser_header_re = r'(\nThis is a NOMAD parser[\s\S]+?Archive format\.\n)'
-            parser_header = re.search(parser_header_re, contents).group(1)
+            match = re.search(parser_header_re, contents)
+            parser_header = match.group(1) if match is not None else ''
             group_header = 'This is a collection of the NOMAD parsers for the following $codeName$ codes:\n\n$parserList$'
             contents = re.sub(parser_header_re, group_header, contents)
             # remove individual parser specs
             parser_specs_re = (
                 r'(For \$codeLabel\$ please provide[\s\S]+?\$tableOfFiles\$)\n\n'
             )
-            parser_specs = re.search(parser_specs_re, contents).group(1)
+            match = re.search(parser_specs_re, contents)
+            parser_specs = match.group(1) if match is not None else ''
             contents = re.sub(parser_specs_re, '', contents)
             metadata = dict(
                 gitPath=f'{project_name}-parsers',
@@ -531,13 +541,17 @@ def _generate_units_json() -> tuple[Any, Any]:
         unit_label = unit_long_name.replace('_', ' ')
         unit_label = unit_label[0].upper() + unit_label[1:]
 
-        return {
+        unit_data = {
             'name': unit_long_name,
-            'dimension': dimension[1:-1],
             'label': unit_label,
             'abbreviation': unit_abbreviation,
             'aliases': aliases[unit_long_name],
         }
+
+        if dimension is not None:
+            unit_data['dimension'] = dimension.replace('[', '').replace(']', '')
+
+        return unit_data
 
     # For some reason, the method ureg.get_compatible_units is not returning all
     # options (https://github.com/hgrecco/pint/issues/610). This is a workaround
@@ -545,11 +559,25 @@ def _generate_units_json() -> tuple[Any, Any]:
     dimension_def_name_map = {
         str(ureg.get_dimensionality(key)): key for key in ureg._dimensions
     }
+    # We need to explicitly add dimenionless unit into the map as Pint does not consider
+    # it to be a dimension
+    dimension_def_name_map['dimensionless'] = '[dimensionless]'
 
     # Define a function to check for an SI prefix
     si_prefixes = [
         value['name'] for value in prefixes.values() if len(str(value['name'])) > 2
     ]
+
+    # Load the constants to filter them out
+    constant_names = set()
+    with open(
+        os.path.join(os.path.dirname(__file__), '../units/constants_en.txt')
+    ) as fin:
+        for line in fin:
+            line = line.strip()
+            if line and not line.startswith('#'):
+                first_word = line.split()[0]
+                constant_names.add(first_word)
 
     def is_prefix_only(unit_base_name):
         unit = ureg.parse_units(unit_base_name)
@@ -582,6 +610,9 @@ def _generate_units_json() -> tuple[Any, Any]:
         # Filter out delta units
         if unit_base_name.startswith('delta_'):
             continue
+        # Filter out constants
+        if unit_base_name in constant_names:
+            continue
         try:
             unit = getattr(ureg, unit_str)
         except UndefinedUnitError:
@@ -589,9 +620,9 @@ def _generate_units_json() -> tuple[Any, Any]:
         if not isinstance(unit, Unit):
             continue
         if hasattr(unit, 'dimensionality'):
-            dimension_name = dimension_def_name_map.get(str(unit.dimensionality))  # type: ignore[attr-defined]
-            if dimension_name:
-                unit_list.append(get_unit_data(unit_str, dimension_name))
+            dimensionality = str(unit.dimensionality)  # type: ignore[attr-defined]
+            dimension_name = dimension_def_name_map.get(dimensionality)
+            unit_list.append(get_unit_data(unit_str, dimension_name))
 
     # Add kilogram as SI base unit
     unit_list.append(
@@ -604,7 +635,6 @@ def _generate_units_json() -> tuple[Any, Any]:
     )
 
     # Add the unit definition and offset that come from the Pint setup.
-    dimensionless_units = []
     units = []
     for value in unit_list:
         i_unit = value['name']
@@ -636,28 +666,35 @@ def _generate_units_json() -> tuple[Any, Any]:
             value['definition'] = str(a).replace('**', '^')
             value['offset'] = b / a.magnitude
 
-        if value['dimension'] == '' and not value.get('definition'):
-            dimensionless_units.append(value)
-        else:
-            units.append(value)
+        units.append(value)
 
     # Pint does not contain a separate definition for the dimensionless unit, but contains
-    # definitions for aliases of the dimensionless unit. In the JS version we instead have
-    # an explicit dimensionless unit and add aliases to it.
+    # definitions for the named dimensionless unit. In the JS version we need to add an
+    # explicit dimensionless unit.
     units.append(
         {
             'name': 'dimensionless',
             'dimension': 'dimensionless',
             'label': 'Dimensionless',
             'abbreviation': '',
-            'aliases': [value['name'] for value in dimensionless_units],
         }
     )
 
-    # Reorder unit list so that base dimensions come first. Units are registered
-    # in the list order and base units need to be registered before derived
-    # ones.
+    # Reorder unit list. The order needs to be as follows for Math.js to work properly:
+    # 1) Base units that do not have 'definition' (e.g. mass)
+    # 2) Units with 'dimension' and 'definition' (e.g. force)
+    # 3) Units without 'dimension', but with 'definition' (e.g. steradian)
     units.sort(key=lambda x: x.get('name'))
-    units.sort(key=lambda x: 0 if x.get('definition') is None else 1)
+
+    def sort_units(x):
+        definition = x.get('definition')
+        dimension = x.get('dimension')
+        if definition is None and dimension is not None:
+            return 0
+        if definition is not None and dimension is None:
+            return 2
+        return 1
+
+    units.sort(key=sort_units)
 
     return units, prefixes

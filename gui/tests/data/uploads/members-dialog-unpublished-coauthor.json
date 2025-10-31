@@ -2,7 +2,7 @@
   "9efcb5c38a525a0d1b33c9740d2fec4f": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/dft_upload/entries?page_size=5&page=1&order=asc&order_by=process_status",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/uploads/dft_upload/entries?page_size=5&page=1&order=asc&order_by=process_status",
         "method": "GET",
         "body": "",
         "headers": {
@@ -20,8 +20,8 @@
             "order": "asc",
             "page": 1,
             "total": 1,
-            "page_url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/dft_upload/entries?page_size=5&page=1&order=asc&order_by=process_status",
-            "first_page_url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/dft_upload/entries?page_size=5&order=asc&order_by=process_status"
+            "page_url": "http://localhost:8000/nomad-oasis/api/v1/uploads/dft_upload/entries?page_size=5&page=1&order=asc&order_by=process_status",
+            "first_page_url": "http://localhost:8000/nomad-oasis/api/v1/uploads/dft_upload/entries?page_size=5&order=asc&order_by=process_status"
           },
           "processing_successful": 1,
           "processing_failed": 0,
@@ -273,7 +273,7 @@
     },
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/dft_upload/entries?page_size=5&page=1&order=asc&order_by=process_status",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/uploads/dft_upload/entries?page_size=5&page=1&order=asc&order_by=process_status",
         "method": "GET",
         "body": "",
         "headers": {
@@ -291,8 +291,8 @@
             "order": "asc",
             "page": 1,
             "total": 1,
-            "page_url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/dft_upload/entries?page_size=5&page=1&order=asc&order_by=process_status",
-            "first_page_url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/dft_upload/entries?page_size=5&order=asc&order_by=process_status"
+            "page_url": "http://localhost:8000/nomad-oasis/api/v1/uploads/dft_upload/entries?page_size=5&page=1&order=asc&order_by=process_status",
+            "first_page_url": "http://localhost:8000/nomad-oasis/api/v1/uploads/dft_upload/entries?page_size=5&order=asc&order_by=process_status"
           },
           "processing_successful": 1,
           "processing_failed": 0,
@@ -546,7 +546,7 @@
   "3de8ec822562c2f98f7ab51cf22ae7b6": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/users?user_id=68878af7-6845-46c0-b2c1-250d4d8eb470&user_id=a03af8b6-3aa7-428a-b3b1-4a6317e576b6&user_id=54cb1f64-f84e-4815-9ade-440ce0b5430f",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/users?user_id=68878af7-6845-46c0-b2c1-250d4d8eb470&user_id=a03af8b6-3aa7-428a-b3b1-4a6317e576b6&user_id=54cb1f64-f84e-4815-9ade-440ce0b5430f",
         "method": "GET",
         "body": "",
         "headers": {
@@ -607,7 +607,7 @@
   "b35a2ae09b138474f32adf96920ebb84": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/datasets/?page_size=1000&page=1&user_id=a03af8b6-3aa7-428a-b3b1-4a6317e576b6",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/datasets/?page_size=1000&page=1&user_id=a03af8b6-3aa7-428a-b3b1-4a6317e576b6",
         "method": "GET",
         "body": "",
         "headers": {
@@ -624,8 +624,8 @@
             "order": "asc",
             "page": 1,
             "total": 0,
-            "page_url": "http://localhost:8000/fairdi/nomad/latest/api/v1/datasets/?page_size=1000&page=1&user_id=a03af8b6-3aa7-428a-b3b1-4a6317e576b6",
-            "first_page_url": "http://localhost:8000/fairdi/nomad/latest/api/v1/datasets/?page_size=1000&user_id=a03af8b6-3aa7-428a-b3b1-4a6317e576b6"
+            "page_url": "http://localhost:8000/nomad-oasis/api/v1/datasets/?page_size=1000&page=1&user_id=a03af8b6-3aa7-428a-b3b1-4a6317e576b6",
+            "first_page_url": "http://localhost:8000/nomad-oasis/api/v1/datasets/?page_size=1000&user_id=a03af8b6-3aa7-428a-b3b1-4a6317e576b6"
           },
           "data": []
         },
@@ -641,7 +641,7 @@
   "82d17176ee69d18778e33cc33362abe1": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/dft_upload/rawdir/?page_size=500&include_entry_info=true",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/uploads/dft_upload/rawdir/?page_size=500&include_entry_info=true",
         "method": "GET",
         "body": "",
         "headers": {
@@ -693,8 +693,8 @@
             "order": "asc",
             "page": 1,
             "total": 5,
-            "page_url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/dft_upload/rawdir/?page_size=500&include_entry_info=true",
-            "first_page_url": "http://localhost:8000/fairdi/nomad/latest/api/v1/uploads/dft_upload/rawdir/?page_size=500&include_entry_info=true"
+            "page_url": "http://localhost:8000/nomad-oasis/api/v1/uploads/dft_upload/rawdir/?page_size=500&include_entry_info=true",
+            "first_page_url": "http://localhost:8000/nomad-oasis/api/v1/uploads/dft_upload/rawdir/?page_size=500&include_entry_info=true"
           }
         },
         "headers": {

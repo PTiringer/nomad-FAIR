@@ -80,8 +80,6 @@ export default function About() {
       DCAT Datasets or all NOMAD entries as a DCAT Catalog.
 
       - [DCAT API dashboard](${appBase}/dcat/)
-      ${resourcesEnabled ? resourcesSection : ""
-      }
     `}</Markdown>
   </div>
 }

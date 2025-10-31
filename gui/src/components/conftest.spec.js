@@ -618,7 +618,10 @@ function hashRequest(req) {
   const params = req.url.searchParams
   params.sort()
 
-  const url = req.url.toString()
+  let url = req.url.toString()
+  // Patch the base path such that hash wouldn't change
+  url = url.replace('/nomad-oasis/', '/fairdi/nomad/latest/')
+
   const method = req.method
   const body = req.body
   return crypto

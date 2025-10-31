@@ -19,7 +19,6 @@
 import traceback
 
 from fastapi import FastAPI, Request, status
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, ORJSONResponse, RedirectResponse
 from pyinstrument import Profiler
 from starlette.middleware import Middleware
@@ -32,6 +31,7 @@ from nomad.config import config
 
 from .common import root_path
 from .routers import (
+    actions,
     apps,
     auth,
     datasets,
@@ -87,16 +87,8 @@ app = FastAPI(
     ),
     default_response_class=ORJSONResponse,
     middleware=[
-        Middleware(  # type: ignore
-            CORSMiddleware,  # type: ignore
-            allow_origins=['*'],
-            allow_credentials=True,
-            allow_methods=['*'],
-            allow_headers=['*'],
-            expose_headers=['Content-Disposition'],
-        ),
-        Middleware(LoggingMiddleware),  # type: ignore
-        Middleware(BaseHTTPMiddleware, dispatch=profile_request),  # type: ignore
+        Middleware(LoggingMiddleware),
+        Middleware(BaseHTTPMiddleware, dispatch=profile_request),
     ],
 )
 
@@ -125,8 +117,9 @@ async def unicorn_exception_handler(request: Request, e: Exception):
     )
 
 
+app.include_router(actions.router, prefix='/actions')
 app.include_router(auth.router, prefix='/auth')
-app.include_router(apps.router, prefix='/apps')  # type: ignore
+app.include_router(apps.router, prefix='/apps')
 app.include_router(datasets.router, prefix='/datasets')
 app.include_router(entries.router, prefix='/entries')
 app.include_router(federation.router, prefix='/federation')

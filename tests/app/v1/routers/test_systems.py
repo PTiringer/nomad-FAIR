@@ -240,12 +240,12 @@ ENDMDL
 data_CH
 _chemical_formula_structural       CH
 _chemical_formula_sum              "C1 H1"
-_cell_length_a       5
-_cell_length_b       5
-_cell_length_c       5
-_cell_angle_alpha    90
-_cell_angle_beta     90
-_cell_angle_gamma    90
+_cell_length_a       5.0
+_cell_length_b       5.0
+_cell_length_c       5.0
+_cell_angle_alpha    90.0
+_cell_angle_beta     90.0
+_cell_angle_gamma    90.0
 
 _space_group_name_H-M_alt    "P 1"
 _space_group_IT_number       1
@@ -262,8 +262,8 @@ loop_
   _atom_site_fract_y
   _atom_site_fract_z
   _atom_site_occupancy
-  C   C1        1.0  0.00000  0.00000  0.00000  1.0000
-  H   H1        1.0  0.20000  0.20000  0.20000  1.0000
+  C   C1        1.0  0.0  0.0  0.0  1.0000
+  H   H1        1.0  0.2  0.2  0.2  1.0000
 """,
             'CH.cif',
             id='cif',
@@ -292,8 +292,10 @@ def test_formats_with_cell(
     )
     assert_response(response, 200)
     assert_browser_download_headers(response, format_info['mime_type'], filename)
+
     content = response.content.decode('utf-8')
     assert_contents(content, content_expected)
+
     atoms = ase_atoms(content, format)
     assert_atoms(
         atoms,
@@ -331,8 +333,8 @@ loop_
   _atom_site_Cartn_y
   _atom_site_Cartn_z
   _atom_site_occupancy
-  N   N1        1.0  0.00000  0.00000  0.00000  1.0000
-  O   O1        1.0  1.00000  1.00000  1.00000  1.0000
+  N   N1        1.0  0.0  0.0  0.0  1.0000
+  O   O1        1.0  1.0  1.0  1.0  1.0000
 """,
             'NO.cif',
             id='cif',

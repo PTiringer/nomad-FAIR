@@ -19,8 +19,17 @@
 import logging
 import os
 import warnings
+from enum import Enum
 from importlib.metadata import version
 from typing import Any
+
+_DEFAULT_API_KEY = 'default-api-secret-that-is-long-enough'
+
+
+class ModeEnum(str, Enum):
+    PRODUCTION = 'production'
+    DEVELOPMENT = 'development'
+
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -75,15 +84,22 @@ class Services(ConfigBaseModel):
     """,
     )
     api_base_path: str = Field(
-        '/fairdi/nomad/latest',
+        '/nomad-oasis',
         description="""
         The base path prefix for the NOMAD app and api.
     """,
     )
     api_secret: str = Field(
-        'defaultApiSecret',
+        _DEFAULT_API_KEY,
+        min_length=32,
         description="""
         A secret that is used to issue download and other tokens.
+    """,
+    )
+    mode: ModeEnum = Field(
+        ModeEnum.PRODUCTION,
+        description="""
+        The mode to run NOMAD in, defaults to production mode. Affects the security features and you should only run NOMAD in development mode if the instance is not publicly available.
     """,
     )
     api_timeout: int = Field(
@@ -218,8 +234,8 @@ class Services(ConfigBaseModel):
         self,
         ssl: bool = True,
         api: str = 'api',
-        api_host: str = None,
-        api_port: int = None,
+        api_host: str | None = None,
+        api_port: int | None = None,
     ):
         """
         Returns the url of the current running nomad API. This is for server-side use.
@@ -259,11 +275,11 @@ class Meta(ConfigBaseModel):
     deployment: str = Field(
         'devel', description='Human-friendly name of this nomad deployment.'
     )
-    deployment_url: str = Field(
+    deployment_url: str | None = Field(
         None,
         description="The NOMAD deployment's url. If not explicitly set, will default to the (api url) read from the configuration.",
     )
-    label: str = Field(
+    label: str | None = Field(
         None,
         description="""
         An additional log-stash data key-value pair added to all logs. Can be used
@@ -348,6 +364,12 @@ class Oasis(ConfigBaseModel):
         '',
         description="""
         The URL of the terms of service.
+    """,
+    )
+    require_authentication: bool = Field(
+        False,
+        description="""
+        If True, authentication is required to access sensitive API endpoints.
     """,
     )
 
@@ -457,8 +479,10 @@ class Temporal(ConfigBaseModel):
     host: str = 'localhost'
     port: int = 7233
     namespace: str = 'default'
-    enabled: bool = False
-    secret: str = 'secret-key'
+    enabled: bool = True
+    graceful_shutdown_timeout: int = Field(
+        1, description='The graceful shutdown timeout for temporal workers in seconds.'
+    )
 
 
 class Keycloak(ConfigBaseModel):
@@ -551,7 +575,7 @@ class Logtransfer(ConfigBaseModel):
 
 class Tests(ConfigBaseModel):
     default_timeout: int = 60
-    assume_auth_for_username: str = Field(
+    assume_auth_for_username: str | None = Field(
         None,
         description=(
             'Will assume that all API calls with no authentication have authentication for '
@@ -685,29 +709,11 @@ class Normalize(ConfigBaseModel):
         return values
 
 
-class Resources(ConfigBaseModel):
-    enabled: bool = False
-    db_name: str = 'nomad_v1_resources'
-    max_time_in_mongo: float = Field(
-        60 * 60 * 24 * 365.0,
-        description='Maximum time a resource is stored in mongodb before being updated.',
-    )
-    download_retries: int = Field(
-        2, description='Number of retries when downloading resources.'
-    )
-    download_retry_delay: int = Field(
-        10, description='Delay between retries in seconds.'
-    )
-    max_connections: int = Field(
-        10, description='Maximum simultaneous connections used to download resources.'
-    )
-
-
 class Client(ConfigBaseModel):
-    user: str = None
-    password: str = None
+    user: str | None = None
+    password: str | None = None
     access_token: str = None
-    url: str = 'http://nomad-lab.eu/prod/v1/api'
+    url: str = 'https://nomad-lab.eu/prod/v1/api'
 
 
 class DataCite(ConfigBaseModel):
@@ -723,10 +729,7 @@ class GitLab(ConfigBaseModel):
 
 
 class Process(ConfigBaseModel):
-    store_package_definition_in_mongo: bool = False
-    add_definition_id_to_reference: bool = False
-    write_definition_id_to_archive: bool = False
-    index_materials: bool = True
+    index_materials: bool = False
     reuse_parser: bool = True
     metadata_file_name: str = 'nomad'
     metadata_file_extensions: tuple[str, ...] = ('json', 'yaml', 'yml')
@@ -742,6 +745,12 @@ class Process(ConfigBaseModel):
     """,
     )
     rfc3161_skip_published: bool = False
+    exclude_potcar: bool = Field(
+        True,
+        description="""
+        True will exclude original VASP POTCAR file from upload.
+        """,
+    )
 
 
 class Reprocess(ConfigBaseModel):
@@ -765,8 +774,8 @@ class RFC3161Timestamp(ConfigBaseModel):
         'sha256',
         description='Hash algorithm used by the rfc3161ng timestamping server.',
     )
-    username: str = None
-    password: str = None
+    username: str | None = None
+    password: str | None = None
 
 
 class BundleExportSettings(ConfigBaseModel):
@@ -969,7 +978,6 @@ class Config(ConfigBaseModel):
     tests: Tests = Tests()
     mail: Mail = Mail()
     normalize: Normalize = Normalize()
-    resources: Resources = Resources()
     client: Client = Client()
     datacite: DataCite = DataCite()
     gitlab: GitLab = GitLab()
@@ -986,8 +994,8 @@ class Config(ConfigBaseModel):
         self,
         ssl: bool = True,
         api: str = 'api',
-        api_host: str = None,
-        api_port: int = None,
+        api_host: str | None = None,
+        api_port: int | None = None,
     ):
         """
         Returns the url of the current running nomad API. This is for server-side use.
@@ -995,7 +1003,7 @@ class Config(ConfigBaseModel):
         """
         return self.services.api_url(ssl, api, api_host, api_port)
 
-    def gui_url(self, page: str = None):
+    def gui_url(self, page: str | None = None):
         base = self.api_url(True)[:-3]
         if base.endswith('/'):
             base = base[:-1]
@@ -1120,7 +1128,7 @@ class Config(ConfigBaseModel):
                 config_override['id'] = key
                 config_instance = entry_point.load()
                 package_metadata = entry_point.dist.metadata
-                url_list = package_metadata.get_all('Project-URL')
+                url_list = package_metadata.get_all('Project-URL')  # type: ignore
                 url_dict = {}
                 for url in url_list or []:
                     name, value = url.split(',')
@@ -1128,7 +1136,7 @@ class Config(ConfigBaseModel):
                 if package_name not in plugin_packages:
                     plugin_package = PluginPackage(
                         name=package_name,
-                        description=package_metadata.get('Summary'),
+                        description=package_metadata.get('Summary'),  # type: ignore
                         version=entry_point.dist.version,
                         homepage=url_dict.get('homepage'),
                         documentation=url_dict.get('documentation'),

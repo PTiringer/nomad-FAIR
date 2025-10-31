@@ -7,36 +7,39 @@ from datetime import timedelta
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
+from temporalio.exceptions import ActivityError
 
-WORKFLOW_TIMEOUT = timedelta(hours=4)
+WORKFLOW_TIMEOUT = timedelta(hours=2)
 
 with workflow.unsafe.imports_passed_through():
     from nomad.workflows.activities import (
-        add_workflow_id_activity,
         cleanup_activity,
+        cleanup_workflow_tmp_dir_activity,
         delete_upload_entries_activity,
         delete_upload_files_activity,
         delete_upload_record_activity,
         delete_upload_search_activity,
         edit_upload_metadata_activity,
+        get_entry_batch_from_file,
         import_bundle_activity,
         match_all_activity,
         next_level_entries,
         parser_min_level,
         process_entry_activity,
-        process_entry_failure_activity,
-        process_entry_success,
         process_upload_failure_activity,
         process_upload_success,
         publish_externally_activity,
         publish_upload_activity,
         remove_workflow_id_activity,
         setup_example_upload_activity,
+        setup_upload_for_workflow_process,
         update_files_activity,
     )
     from nomad.workflows.shared_objects import (
         DeleteUploadWorkflowInput,
         EditUploadMetadataWorkflowInput,
+        EntriesToBeProcessedResult,
+        EntryBatchFromFileInput,
         ImportBundleWorkflowInput,
         ProcessEntryActivityInput,
         ProcessExampleUploadWorkflowInput,
@@ -88,73 +91,99 @@ class ProcessEntryWorkflow:
         retry_policy = RetryPolicy(
             maximum_attempts=3,
         )
+        # Process the entry
+        result = await workflow.execute_activity(
+            process_entry_activity,
+            input,
+            schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+            retry_policy=retry_policy,
+        )
 
-        try:
-            # Process the entry
-            result = await workflow.execute_activity(
-                process_entry_activity,
-                input,
-                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-                retry_policy=retry_policy,
-            )
-
-            # Mark entry as successful
-            await workflow.execute_activity(
-                process_entry_success,
-                input,
-                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-                retry_policy=retry_policy,
-            )
-
-            return result
-
-        except Exception as e:
-            # Set entry to failure status
-            await workflow.execute_activity(
-                process_entry_failure_activity,
-                input,
-                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-                retry_policy=retry_policy,
-            )
-            raise e
+        return result
 
 
 @workflow.defn
 class BatchProcessEntriesWorkflow:
+    """
+    Handles processing of entry batches.
+
+    Architecture:
+    - Processes batches sequentially to prevent task queue overload
+    - Within each batch, processes up to 1000 entries concurrently
+    - Handles both file-based storage (large datasets) and in-memory storage (small datasets)
+
+    Note: 1000 is the limit set by Temporal for max number of child workflows.
+    """
+
     @workflow.run
-    async def run(self, entries_to_be_processed: list[ProcessEntryActivityInput]):
+    async def run(self, next_level_entries_result: EntriesToBeProcessedResult):
         retry_policy = RetryPolicy(
             maximum_attempts=3,
         )
-        if len(entries_to_be_processed) > 1000:
-            entry_batches = generate_batches(entries_to_be_processed)
-            # Recursively call BatchProcessEntriesWorkflow for each batch
-            await asyncio.gather(
-                *[
-                    workflow.execute_child_workflow(
-                        BatchProcessEntriesWorkflow.run,
-                        batch,
-                        id=f'{workflow.info().workflow_id}-batch-{i}',
-                        retry_policy=retry_policy,
-                    )
-                    for i, batch in enumerate(entry_batches)
-                ]
-            )
-        else:
-            # Process entries directly when <= 1000
-            tasks = [
-                workflow.execute_child_workflow(
-                    ProcessEntryWorkflow.run,
-                    data,
-                    id=data.workflow_id,
+
+        # Handle file-based entry storage (used for very large uploads)
+        # Entries are stored in batch files to avoid memory constraints
+        if entry_batch_directory := next_level_entries_result.directory:
+            # Process each file-based batch sequentially to prevent overwhelming the task queue
+            # Each batch will internally process up to 1000 entries concurrently
+            for batch_id in range(next_level_entries_result.total_batches):
+                # Load entries from the batch file
+                entries_to_be_processed = await workflow.execute_activity(
+                    get_entry_batch_from_file,
+                    EntryBatchFromFileInput(
+                        upload_id=next_level_entries_result.upload_id,
+                        batch_dir_path=entry_batch_directory,
+                        batch_id=batch_id,
+                    ),
+                    schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                    retry_policy=retry_policy,
+                )
+
+                # Recursively process this batch (which may further subdivide if >1000 entries)
+                await workflow.execute_child_workflow(
+                    BatchProcessEntriesWorkflow.run,
+                    EntriesToBeProcessedResult(
+                        entries=entries_to_be_processed,
+                        upload_id=next_level_entries_result.upload_id,
+                    ),
+                    id=f'{workflow.info().workflow_id}-file-batch-{batch_id}',
                     parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
                     retry_policy=retry_policy,
                 )
-                for data in entries_to_be_processed
-            ]
-            # Use return_exceptions=True to allow individual child workflows to fail
-            # without stopping the entire batch or failing the parent workflow
-            await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Handle in-memory entry processing (from small uploads or loaded file batches)
+        elif entries_to_be_processed := next_level_entries_result.entries:
+            # Two-tier processing strategy based on batch size:
+            # 1. Large batches (>1000): Split into smaller batches and process sequentially
+            # 2. Small batches (≤1000): Process all entries concurrently
+            if len(entries_to_be_processed) > 1000:
+                entry_batches = generate_batches(entries_to_be_processed)
+                # Each sub-batch will be processed with up to 1000 concurrent entries
+                for i, batch in enumerate(entry_batches):
+                    await workflow.execute_child_workflow(
+                        BatchProcessEntriesWorkflow.run,
+                        EntriesToBeProcessedResult(
+                            entries=batch,
+                            upload_id=next_level_entries_result.upload_id,
+                        ),
+                        id=f'{workflow.info().workflow_id}-batch-{i}',
+                        retry_policy=retry_policy,
+                    )
+            else:
+                # Process entries directly when <= 1000
+                tasks = [
+                    workflow.execute_child_workflow(
+                        ProcessEntryWorkflow.run,
+                        data,
+                        id=data.workflow_id,
+                        parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
+                        retry_policy=retry_policy,
+                    )
+                    for data in entries_to_be_processed
+                ]
+                # Use return_exceptions=True to allow individual child workflows to fail
+                # without stopping the entire batch or failing the parent workflow
+                await asyncio.gather(*tasks, return_exceptions=True)
 
 
 @workflow.defn
@@ -166,13 +195,14 @@ class ProcessUploadWorkflow:
         )
         workflow_info = workflow.info()
         upload_workflow_input = UploadWorkflowIdInput(
-            upload_id=input.upload_id, workflow_id=workflow_info.workflow_id
+            upload_id=input.upload_id,
+            workflow_id=workflow_info.workflow_id,
+            process_name='_process_upload',
         )
-
         try:
             # Step 0: Add workflow id to upload
             await workflow.execute_activity(
-                add_workflow_id_activity,
+                setup_upload_for_workflow_process,
                 upload_workflow_input,
                 schedule_to_close_timeout=WORKFLOW_TIMEOUT,
                 retry_policy=retry_policy,
@@ -197,6 +227,7 @@ class ProcessUploadWorkflow:
                 updated_files=updated_files,
                 min_level=parser_min_level,
                 workflow_id=input.workflow_id,
+                workflow_tmp_dir=input.workflow_tmp_dir,
             )
             await workflow.execute_activity(
                 match_all_activity,
@@ -207,45 +238,26 @@ class ProcessUploadWorkflow:
 
             # Step 3: Parse next level
             while True:  # Outer loop: Continue until no more parser levels to process
-                parse_all_input.batch_id = 0
-                while True:  # Inner loop: Process all batches for the current parser level and current batch
-                    next_level_entries_result = await workflow.execute_activity(
-                        next_level_entries,
-                        parse_all_input,
-                        schedule_to_close_timeout=WORKFLOW_TIMEOUT,
-                        retry_policy=retry_policy,
-                    )
+                next_level_entries_result = await workflow.execute_activity(
+                    next_level_entries,
+                    parse_all_input,
+                    schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                    retry_policy=retry_policy,
+                )
 
-                    # If None returned: no entries exist for this parser level at all
-                    # then we're done with all parser levels.
-                    # This breaks the inner loop and the outer loop
-                    if not next_level_entries_result:
-                        break
-
-                    entries_to_be_processed = (
-                        next_level_entries_result.entries_to_be_processed
-                    )
-
-                    # If empty array returned: no more batches for this parser level
-                    # This breaks the inner loop and moves to next parser level
-                    if not entries_to_be_processed:
-                        break
-
-                    # Step 4: Start the batch processing workflow for this batch
-                    await workflow.execute_child_workflow(
-                        BatchProcessEntriesWorkflow.run,
-                        entries_to_be_processed,
-                        id=f'{workflow_info.workflow_id}-{parse_all_input.min_level}-batch-processor',
-                        parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
-                        retry_policy=retry_policy,
-                    )
-
-                    parse_all_input.batch_id += 1
-
-                # If no entries existed for this parser level (None returned)
-                # then we're done with all parser levels - break outer loop
+                # If None returned: no entries exist for this parser level at all
+                # then we're done with all parser levels.
                 if not next_level_entries_result:
                     break
+
+                # Delegate all batch processing complexity to BatchProcessEntriesWorkflow
+                await workflow.execute_child_workflow(
+                    BatchProcessEntriesWorkflow.run,
+                    next_level_entries_result,
+                    id=f'{workflow_info.workflow_id}-{parse_all_input.min_level}-batch-processor',
+                    parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
+                    retry_policy=retry_policy,
+                )
 
                 next_parser_level = (
                     next_level_entries_result.next_parser_level
@@ -272,6 +284,11 @@ class ProcessUploadWorkflow:
         except Exception as e:
             # Set upload to failure status
             upload_workflow_input.failure_message = 'Process upload failed'
+            if isinstance(e, ActivityError):
+                upload_workflow_input.error_details = str(e.cause)
+            else:
+                upload_workflow_input.error_details = str(e)
+
             await workflow.execute_activity(
                 process_upload_failure_activity,
                 upload_workflow_input,
@@ -285,6 +302,12 @@ class ProcessUploadWorkflow:
             await workflow.execute_activity(
                 remove_workflow_id_activity,
                 upload_workflow_input,
+                schedule_to_close_timeout=WORKFLOW_TIMEOUT,
+                retry_policy=retry_policy,
+            )
+            await workflow.execute_activity(
+                cleanup_workflow_tmp_dir_activity,
+                input.workflow_tmp_dir,
                 schedule_to_close_timeout=WORKFLOW_TIMEOUT,
                 retry_policy=retry_policy,
             )
@@ -308,6 +331,7 @@ class ProcessExampleUploadWorkflow:
             file_operations=input.file_operations,
             publish_directly_after_processing=input.publish_directly,
             workflow_id=current_workflow_id,
+            workflow_tmp_dir=input.workflow_tmp_dir,
         )
 
         await workflow.execute_child_workflow(
@@ -327,13 +351,15 @@ class EditUploadMetadataWorkflow:
         )
         workflow_info = workflow.info()
         upload_workflow_input = UploadWorkflowIdInput(
-            upload_id=input.upload_id, workflow_id=workflow_info.workflow_id
+            upload_id=input.upload_id,
+            workflow_id=workflow_info.workflow_id,
+            process_name='_edit_upload_metadata',
         )
 
         try:
             # Add workflow id to upload
             await workflow.execute_activity(
-                add_workflow_id_activity,
+                setup_upload_for_workflow_process,
                 upload_workflow_input,
                 schedule_to_close_timeout=WORKFLOW_TIMEOUT,
                 retry_policy=retry_policy,
@@ -357,6 +383,11 @@ class EditUploadMetadataWorkflow:
         except Exception as e:
             # Set upload to failure status
             upload_workflow_input.failure_message = 'Edit metadata failed'
+            if isinstance(e, ActivityError):
+                upload_workflow_input.error_details = str(e.cause)
+            else:
+                upload_workflow_input.error_details = str(e)
+
             await workflow.execute_activity(
                 process_upload_failure_activity,
                 upload_workflow_input,
@@ -384,13 +415,15 @@ class ImportBundleWorkflow:
         )
         workflow_info = workflow.info()
         upload_workflow_input = UploadWorkflowIdInput(
-            upload_id=input.upload_id, workflow_id=workflow_info.workflow_id
+            upload_id=input.upload_id,
+            workflow_id=workflow_info.workflow_id,
+            process_name='_import_bundle',
         )
 
         try:
             # Add workflow id to upload
             await workflow.execute_activity(
-                add_workflow_id_activity,
+                setup_upload_for_workflow_process,
                 upload_workflow_input,
                 schedule_to_close_timeout=WORKFLOW_TIMEOUT,
                 retry_policy=retry_policy,
@@ -414,6 +447,11 @@ class ImportBundleWorkflow:
         except Exception as e:
             # Set upload to failure status
             upload_workflow_input.failure_message = 'Import bundle failed'
+            if isinstance(e, ActivityError):
+                upload_workflow_input.error_details = str(e.cause)
+            else:
+                upload_workflow_input.error_details = str(e)
+
             await workflow.execute_activity(
                 process_upload_failure_activity,
                 upload_workflow_input,
@@ -441,13 +479,15 @@ class PublishUploadWorkflow:
         )
         workflow_info = workflow.info()
         upload_workflow_input = UploadWorkflowIdInput(
-            upload_id=input.upload_id, workflow_id=workflow_info.workflow_id
+            upload_id=input.upload_id,
+            workflow_id=workflow_info.workflow_id,
+            process_name='_publish_upload',
         )
 
         try:
             # Add workflow id to upload
             await workflow.execute_activity(
-                add_workflow_id_activity,
+                setup_upload_for_workflow_process,
                 upload_workflow_input,
                 schedule_to_close_timeout=WORKFLOW_TIMEOUT,
                 retry_policy=retry_policy,
@@ -472,6 +512,11 @@ class PublishUploadWorkflow:
         except Exception as e:
             # Set upload to failure status
             upload_workflow_input.failure_message = 'Publish upload failed'
+            if isinstance(e, ActivityError):
+                upload_workflow_input.error_details = str(e.cause)
+            else:
+                upload_workflow_input.error_details = str(e)
+
             await workflow.execute_activity(
                 process_upload_failure_activity,
                 upload_workflow_input,
@@ -499,13 +544,15 @@ class PublishExternallyWorkflow:
         )
         workflow_info = workflow.info()
         upload_workflow_input = UploadWorkflowIdInput(
-            upload_id=input.upload_id, workflow_id=workflow_info.workflow_id
+            upload_id=input.upload_id,
+            workflow_id=workflow_info.workflow_id,
+            process_name='_publish_externally',
         )
 
         try:
             # Add workflow id to upload
             await workflow.execute_activity(
-                add_workflow_id_activity,
+                setup_upload_for_workflow_process,
                 upload_workflow_input,
                 schedule_to_close_timeout=WORKFLOW_TIMEOUT,
                 retry_policy=retry_policy,
@@ -530,6 +577,11 @@ class PublishExternallyWorkflow:
         except Exception as e:
             # Set upload to failure status
             upload_workflow_input.failure_message = 'Publish externally failed'
+            if isinstance(e, ActivityError):
+                upload_workflow_input.error_details = str(e.cause)
+            else:
+                upload_workflow_input.error_details = str(e)
+
             await workflow.execute_activity(
                 process_upload_failure_activity,
                 upload_workflow_input,

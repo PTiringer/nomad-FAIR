@@ -5,7 +5,7 @@ Demonstrates how to use requests for a simple query and archive access.
 import requests
 import json
 
-base_url = 'http://nomad-lab.eu/prod/v1/api/v1'
+base_url = 'https://nomad-lab.eu/prod/v1/api/v1'
 
 response = requests.post(
     f'{base_url}/entries/query',

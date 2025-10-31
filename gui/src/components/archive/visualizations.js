@@ -116,8 +116,22 @@ export function Matrix({values, shape, invert, type}) {
 
   const columnWidth = useRef(92)
   const rowHeight = 24
-  const rowCount = invert ? values.length : shape.length > 1 ? values[0].length : 1
-  const columnCount = invert ? shape.length > 1 ? values[0].length : 1 : values.length
+
+  let rowCount, columnCount, valueAccessor
+  if (invert) {
+    rowCount = values.length
+    columnCount = (shape.length > 1 ? values[0].length : 1)
+    valueAccessor = shape.length > 1
+      ? ({rowIndex, columnIndex}) => values[columnIndex][rowIndex]
+      : ({rowIndex}) => values[rowIndex]
+  } else {
+    rowCount = (shape.length > 1 ? values[0].length : 1)
+    columnCount = values.length
+    valueAccessor = shape.length > 1
+      ? ({rowIndex, columnIndex}) => values[rowIndex][columnIndex]
+      : ({columnIndex}) => values[columnIndex]
+  }
+
   const height = Math.min(300, (rowCount - 1) * rowHeight + 24)
 
   useLayoutEffect(() => {
@@ -128,11 +142,6 @@ export function Matrix({values, shape, invert, type}) {
     }
     columnWidth.current = Math.max(92, (rootRef.current.clientWidth - 4) / columnCount)
   })
-
-  let value = shape.length > 1 ? ({rowIndex, columnIndex}) => values[columnIndex][rowIndex] : ({columnIndex}) => values[columnIndex]
-  if (invert) {
-    value = shape.length > 1 ? ({rowIndex, columnIndex}) => values[rowIndex][columnIndex] : ({rowIndex}) => values[rowIndex]
-  }
 
   return <React.Fragment>
     <div ref={rootRef} className={classes.root}>
@@ -148,7 +157,7 @@ export function Matrix({values, shape, invert, type}) {
               rowHeight={rowHeight}
               width={width}
             >
-              {({style, ...props}) => <Number style={{whiteSpace: 'nowrap', ...style}} value={value(props)} />}
+              {({style, ...props}) => <Number style={{whiteSpace: 'nowrap', ...style}} value={valueAccessor(props)} />}
             </Grid>
           )}
         </AutoSizer>

@@ -17,7 +17,7 @@
 #
 
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import cast
 
@@ -28,8 +28,8 @@ from pydantic import BaseModel, Field, field_validator
 from nomad import datamodel, processing, utils
 from nomad.config import config
 from nomad.datamodel import Dataset as DatasetDefinitionCls
-from nomad.doi import DOI, DOIException
 from nomad.metainfo.elasticsearch_extension import entry_type
+from nomad.mongo.doi import DOI, DOIException
 from nomad.search import search, update_by_query
 from nomad.utils import create_uuid, strip
 
@@ -70,8 +70,8 @@ _bad_id_response = (
     },
 )
 
-_bad_user_response = (
-    status.HTTP_401_UNAUTHORIZED,
+_forbidden_user_response = (
+    status.HTTP_403_FORBIDDEN,
     {
         'model': HTTPExceptionModel,
         'description': strip(
@@ -249,7 +249,7 @@ dataset_pagination_parameters = parameter_dependency_from_model(
 
 
 class DatasetsResponse(BaseModel):
-    pagination: PaginationResponse = Field(None)
+    pagination: PaginationResponse | None = Field(None)
     data: list[Dataset] = Field(None)  # type: ignore
 
 
@@ -362,7 +362,7 @@ async def post_datasets(
     Create a new dataset.
     """
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     dataset_type = (
         create.dataset_type if create.dataset_type is not None else DatasetType.owned
     )
@@ -392,7 +392,7 @@ async def post_datasets(
     # TODO this should be part of a new edit API
     if dataset_type != DatasetType.owned:
         if create.query is not None:
-            dataset.query = create.dict()['query']
+            dataset.query = create.model_dump()['query']
         dataset.entrys = create.entries
         empty = True
     else:
@@ -444,7 +444,7 @@ async def post_datasets(
     summary='Delete a dataset',
     response_model=DatasetResponse,
     responses=create_responses(
-        _bad_id_response, _dataset_is_fixed_response, _bad_user_response
+        _bad_id_response, _dataset_is_fixed_response, _forbidden_user_response
     ),
     response_model_exclude_unset=True,
     response_model_exclude_none=True,
@@ -473,8 +473,8 @@ async def delete_dataset(
 
     if dataset.user_id != user.user_id:
         raise HTTPException(
-            status_code=_bad_user_response[0],
-            detail=_bad_user_response[1]['description'],
+            status_code=_forbidden_user_response[0],
+            detail=_forbidden_user_response[1]['description'],
         )
 
     # delete dataset from entries in mongo and elastic
@@ -493,7 +493,7 @@ async def delete_dataset(
         _bad_id_response,
         _dataset_is_fixed_response,
         _dataset_has_unpublished_contents,
-        _bad_user_response,
+        _forbidden_user_response,
         _dataset_is_empty,
     ),
     response_model_exclude_unset=True,
@@ -516,7 +516,7 @@ async def assign_doi(
         )
 
     if dataset.doi is not None:
-        doi = DOI.objects(doi=dataset.doi).first()
+        doi = DOI.objects(doi=dataset.doi).first()  # type: ignore
         if type(doi) is DOI and not (doi.state == 'findable'):
             _delete_dataset(user=user, dataset_id=dataset_id, dataset=dataset)
             raise HTTPException(
@@ -530,8 +530,8 @@ async def assign_doi(
 
     if dataset.user_id != user.user_id:
         raise HTTPException(
-            status_code=_bad_user_response[0],
-            detail=_bad_user_response[1]['description'],
+            status_code=_forbidden_user_response[0],
+            detail=_forbidden_user_response[1]['description'],
         )
 
     response = search(

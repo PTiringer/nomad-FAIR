@@ -47,6 +47,7 @@ import UploadStatusIcon from './UploadStatusIcon'
 import { formatTimestamp } from '../../utils'
 import { SupportedCodes, UploadDocumentation } from './UploadOverview'
 import { defaultFilterData } from '../search/FilterRegistry'
+import Ellipsis from '../visualization/Ellipsis'
 
 export const help = `
 NOMAD allows you to upload data. After upload, NOMAD will process your data: it will
@@ -349,7 +350,20 @@ export function UploadsPage() {
         key: 'upload_id',
         render: upload => <Quantity quantity={'upload_id'} noLabel noWrap withClipboard data={upload}/>
       },
-      {key: 'last_status_message', label: 'Status'},
+      {
+      key: 'last_status_message',
+      label: 'Status',
+      render: upload => {
+        const msg = upload?.last_status_message ?? ''
+        return (
+            <div style={{ display: 'flex', minWidth: 0, maxWidth: '200px' }}>
+              <Ellipsis tooltip={msg} style={{ flex: 1, minWidth: 0 }}>
+                {msg}
+              </Ellipsis>
+            </div>
+        )
+      }
+    },
       {key: 'entries', render: upload => upload.entries, align: 'center'},
       {key: 'published', render: upload => <UploadStatusIcon data={upload} user={user} />, align: 'center'}
     ]

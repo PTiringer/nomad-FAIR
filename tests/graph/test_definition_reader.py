@@ -81,9 +81,19 @@ def assert_list(l1, l2):
 
 
 def assert_dict(d1, d2):
-    assert set(d1.keys()) == set(d2.keys())
-    for k, v in d1.items():
-        if isinstance(v, dict):
+    # we do not check if the definition_id/m_def_id is exactly the same
+    # as the slightest change made here and there will result in a different ID
+    # only check the existence to make maintenance easier
+    d1_keys = set(d1.keys())
+    if 'm_def_id' in d1_keys:
+        assert 'm_def' in d1
+        d1_keys.remove('m_def_id')
+    assert d1_keys == set(d2.keys())
+    for k in d1_keys:
+        v = d1[k]
+        if k == 'definition_id':
+            assert k in d2
+        elif isinstance(v, dict):
             assert_dict(v, d2[k])
         elif isinstance(v, list):
             assert_list(v, d2[k])
@@ -111,27 +121,31 @@ def assert_dict(d1, d2):
                                 'quantities': [
                                     {
                                         'name': 'base',
+                                        'shape': [],
                                         'type': {
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/1',
                                         },
-                                        'shape': [],
+                                        'definition_id': '2e90eaff57224868b2d8a7b5a1ef4f51f661aefb',
                                     },
                                     {
                                         'name': 'derived',
+                                        'shape': [],
                                         'type': {
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/2',
                                         },
-                                        'shape': [],
+                                        'definition_id': 'bce3fd28f47edfedf21980b553bbd68163b84212',
                                     },
                                 ],
                                 'sub_sections': [
                                     {
                                         'name': 'derived_section',
                                         'sub_section': f'{prefix}/2',
+                                        'definition_id': 'ad5b9321c87668f404d99bdc95976f21cab69562',
                                     }
                                 ],
+                                'definition_id': 'b7675bcdc8a25f171961a8e3b85ece9e59c6e999',
                             },
                         ]
                     }
@@ -166,8 +180,10 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '77711c525a6b448c7b38cbce02762eff0fa36666',
                                     }
                                 ],
+                                'definition_id': '8bef900fa8dea0f11add4be8437ec9cbfd9bb8ba',
                             },
                             {
                                 'name': 'Base',
@@ -178,6 +194,7 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '5c3ae225c80c8ef5f36dfd337501d2e5c23508a0',
                                     },
                                     {
                                         'name': 'n_points',
@@ -185,8 +202,10 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': 'b08da41772eab4e57065765121cfc141d2a49126',
                                     },
                                 ],
+                                'definition_id': '5352e53e25027a0b6324b361f30da1e792e9da3e',
                             },
                             {
                                 'name': 'Derived',
@@ -199,6 +218,7 @@ def assert_dict(d1, d2):
                                             'type_data': 'float64',
                                         },
                                         'shape': ['*'],
+                                        'definition_id': 'bab4bd7bdcf8d0b60efb07b96a5b5ba0d04ec988',
                                     },
                                     {
                                         'name': 'inner',
@@ -206,8 +226,10 @@ def assert_dict(d1, d2):
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/0',
                                         },
+                                        'definition_id': '0a47949c2cd1b6b3601ce666cac56a0ec0a6a880',
                                     },
                                 ],
+                                'definition_id': 'a4de7f66022fbd10d50487c4307f6ed63293c846',
                             },
                             {
                                 'name': 'Holder',
@@ -219,6 +241,7 @@ def assert_dict(d1, d2):
                                             'type_data': f'{prefix}/1',
                                         },
                                         'shape': [],
+                                        'definition_id': '04b93bbd2da8be697eb5c484f8230aea209ed1d4',
                                     },
                                     {
                                         'name': 'derived',
@@ -227,9 +250,11 @@ def assert_dict(d1, d2):
                                             'type_data': f'{prefix}/2',
                                         },
                                         'shape': [],
+                                        'definition_id': 'c4de385974d762fc23abe941324d06d3ebd32908',
                                     },
                                 ],
                                 'sub_sections': [f'{prefix}/2'],
+                                'definition_id': '818648b3b9e4add00bff9a3729dd79a1fb753f67',
                             },
                         ]
                     }
@@ -256,6 +281,7 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '5c3ae225c80c8ef5f36dfd337501d2e5c23508a0',
                                     },
                                     {
                                         'name': 'n_points',
@@ -263,8 +289,10 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': 'b08da41772eab4e57065765121cfc141d2a49126',
                                     },
                                 ],
+                                'definition_id': '5352e53e25027a0b6324b361f30da1e792e9da3e',
                             },
                             {
                                 'name': 'Derived',
@@ -277,6 +305,7 @@ def assert_dict(d1, d2):
                                             'type_data': 'float64',
                                         },
                                         'shape': ['*'],
+                                        'definition_id': 'bab4bd7bdcf8d0b60efb07b96a5b5ba0d04ec988',
                                     },
                                     {
                                         'name': 'inner',
@@ -284,8 +313,10 @@ def assert_dict(d1, d2):
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/0',
                                         },
+                                        'definition_id': '0a47949c2cd1b6b3601ce666cac56a0ec0a6a880',
                                     },
                                 ],
+                                'definition_id': 'a4de7f66022fbd10d50487c4307f6ed63293c846',
                             },
                             {
                                 'name': 'Holder',
@@ -297,6 +328,7 @@ def assert_dict(d1, d2):
                                             'type_data': f'{prefix}/1',
                                         },
                                         'shape': [],
+                                        'definition_id': '04b93bbd2da8be697eb5c484f8230aea209ed1d4',
                                     },
                                     {
                                         'name': 'derived',
@@ -305,9 +337,11 @@ def assert_dict(d1, d2):
                                             'type_data': f'{prefix}/2',
                                         },
                                         'shape': [],
+                                        'definition_id': 'c4de385974d762fc23abe941324d06d3ebd32908',
                                     },
                                 ],
                                 'sub_sections': [f'{prefix}/2'],
+                                'definition_id': '818648b3b9e4add00bff9a3729dd79a1fb753f67',
                             },
                         ]
                     }
@@ -334,9 +368,7 @@ def assert_dict(d1, d2):
                                     'base': f'{prefix}/3/quantities/0',
                                     'derived': f'{prefix}/3/quantities/1',
                                 },
-                                'inherited_sections': [
-                                    'metainfo/tests.graph.test_definition_reader/section_definitions/3'
-                                ],
+                                'inherited_sections': [f'{prefix}/3'],
                                 'all_base_sections': [],
                             },
                         ]
@@ -362,8 +394,10 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '77711c525a6b448c7b38cbce02762eff0fa36666',
                                     }
                                 ],
+                                'definition_id': '8bef900fa8dea0f11add4be8437ec9cbfd9bb8ba',
                             },
                             {
                                 'name': 'Base',
@@ -374,6 +408,7 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '5c3ae225c80c8ef5f36dfd337501d2e5c23508a0',
                                     },
                                     {
                                         'name': 'n_points',
@@ -381,8 +416,10 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': 'b08da41772eab4e57065765121cfc141d2a49126',
                                     },
                                 ],
+                                'definition_id': '5352e53e25027a0b6324b361f30da1e792e9da3e',
                             },
                             {
                                 'name': 'Derived',
@@ -395,6 +432,7 @@ def assert_dict(d1, d2):
                                             'type_data': 'float64',
                                         },
                                         'shape': ['*'],
+                                        'definition_id': 'bab4bd7bdcf8d0b60efb07b96a5b5ba0d04ec988',
                                     },
                                     {
                                         'name': 'inner',
@@ -402,8 +440,10 @@ def assert_dict(d1, d2):
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/0',
                                         },
+                                        'definition_id': '0a47949c2cd1b6b3601ce666cac56a0ec0a6a880',
                                     },
                                 ],
+                                'definition_id': 'a4de7f66022fbd10d50487c4307f6ed63293c846',
                             },
                             {
                                 'all_quantities': {
@@ -418,6 +458,7 @@ def assert_dict(d1, d2):
                                             'type_data': f'{prefix}/1',
                                         },
                                         'shape': [],
+                                        'definition_id': '04b93bbd2da8be697eb5c484f8230aea209ed1d4',
                                     },
                                     {
                                         'name': 'derived',
@@ -426,6 +467,7 @@ def assert_dict(d1, d2):
                                             'type_data': f'{prefix}/2',
                                         },
                                         'shape': [],
+                                        'definition_id': 'c4de385974d762fc23abe941324d06d3ebd32908',
                                     },
                                 ],
                             },
@@ -452,6 +494,7 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '5c3ae225c80c8ef5f36dfd337501d2e5c23508a0',
                                     },
                                     {
                                         'name': 'n_points',
@@ -459,8 +502,10 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': 'b08da41772eab4e57065765121cfc141d2a49126',
                                     },
                                 ],
+                                'definition_id': '5352e53e25027a0b6324b361f30da1e792e9da3e',
                             },
                             {
                                 'name': 'Derived',
@@ -473,6 +518,7 @@ def assert_dict(d1, d2):
                                             'type_data': 'float64',
                                         },
                                         'shape': ['*'],
+                                        'definition_id': 'bab4bd7bdcf8d0b60efb07b96a5b5ba0d04ec988',
                                     },
                                     {
                                         'name': 'inner',
@@ -480,8 +526,10 @@ def assert_dict(d1, d2):
                                             'type_kind': 'reference',
                                             'type_data': f'{prefix}/0',
                                         },
+                                        'definition_id': '0a47949c2cd1b6b3601ce666cac56a0ec0a6a880',
                                     },
                                 ],
+                                'definition_id': 'a4de7f66022fbd10d50487c4307f6ed63293c846',
                             },
                             {
                                 'all_quantities': {
@@ -496,6 +544,7 @@ def assert_dict(d1, d2):
                                             'type_data': f'{prefix}/1',
                                         },
                                         'shape': [],
+                                        'definition_id': '04b93bbd2da8be697eb5c484f8230aea209ed1d4',
                                     },
                                     {
                                         'name': 'derived',
@@ -504,6 +553,7 @@ def assert_dict(d1, d2):
                                             'type_data': f'{prefix}/2',
                                         },
                                         'shape': [],
+                                        'definition_id': 'c4de385974d762fc23abe941324d06d3ebd32908',
                                     },
                                 ],
                             },
@@ -523,7 +573,7 @@ def assert_dict(d1, d2):
                 },
             },
             {
-                'm_def': 'metainfo/tests.graph.test_definition_reader/section_definitions/3',
+                'm_def': f'{prefix}/3',
                 'metainfo': {
                     'tests.graph.test_definition_reader': {
                         'section_definitions': [
@@ -536,8 +586,10 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '77711c525a6b448c7b38cbce02762eff0fa36666',
                                     }
                                 ],
+                                'definition_id': '8bef900fa8dea0f11add4be8437ec9cbfd9bb8ba',
                             },
                             {
                                 'name': 'Base',
@@ -548,6 +600,7 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': '5c3ae225c80c8ef5f36dfd337501d2e5c23508a0',
                                     },
                                     {
                                         'name': 'n_points',
@@ -555,14 +608,14 @@ def assert_dict(d1, d2):
                                             'type_kind': 'numpy',
                                             'type_data': 'int32',
                                         },
+                                        'definition_id': 'b08da41772eab4e57065765121cfc141d2a49126',
                                     },
                                 ],
+                                'definition_id': '5352e53e25027a0b6324b361f30da1e792e9da3e',
                             },
                             {
                                 'name': 'Derived',
-                                'base_sections': [
-                                    'metainfo/tests.graph.test_definition_reader/section_definitions/1'
-                                ],
+                                'base_sections': [f'{prefix}/1'],
                                 'quantities': [
                                     {
                                         'name': 'weights',
@@ -571,21 +624,20 @@ def assert_dict(d1, d2):
                                             'type_data': 'float64',
                                         },
                                         'shape': ['*'],
+                                        'definition_id': 'bab4bd7bdcf8d0b60efb07b96a5b5ba0d04ec988',
                                     },
                                     {
                                         'name': 'inner',
                                         'type': {
                                             'type_kind': 'reference',
-                                            'type_data': 'metainfo/tests.graph.test_definition_reader/section_definitions/0',
+                                            'type_data': f'{prefix}/0',
                                         },
+                                        'definition_id': '0a47949c2cd1b6b3601ce666cac56a0ec0a6a880',
                                     },
                                 ],
+                                'definition_id': 'a4de7f66022fbd10d50487c4307f6ed63293c846',
                             },
-                            {
-                                'all_sub_sections': {
-                                    'derived_section': 'metainfo/tests.graph.test_definition_reader/section_definitions/2'
-                                }
-                            },
+                            {'all_sub_sections': {'derived_section': f'{prefix}/2'}},
                         ]
                     }
                 },

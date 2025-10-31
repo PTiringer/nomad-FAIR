@@ -7,7 +7,7 @@ Group fixtures:
 
 import pytest
 
-from nomad.groups import create_mongo_user_group
+from nomad.mongo.groups import create_mongo_user_group
 from tests.utils import fake_group_uuid, fake_user_uuid, generate_convert_label
 
 

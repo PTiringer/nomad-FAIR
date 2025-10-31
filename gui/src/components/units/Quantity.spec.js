@@ -39,6 +39,18 @@ test('conversion works both ways for each compatible unit', async () => {
 })
 
 test.each([
+  ['dimensionless', 'dimensionless', 1],
+  ['percent', 'percent', 100],
+  ['permille', 'permille', 1000],
+  ['ppm', 'ppm', 1000000]
+]
+)('test conversion between ratios: %s', async (name, unit, value) => {
+  const a = new Quantity(1, 'dimensionless')
+  const b = a.to(unit)
+  expect(b.value()).toBe(value)
+})
+
+test.each([
   ['same unit', 'kelvin', 'kelvin', 1, 1],
   ['temperature celsius', 'kelvin', 'celsius', 1, -272.15],
   ['temperature fahrenheit', 'kelvin', 'fahrenheit', 1, -457.87],

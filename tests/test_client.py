@@ -15,14 +15,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+import asyncio
+import contextlib
 import json
 import os
 
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient
 from pydantic import ValidationError
 
 from nomad.app.main import app
+from nomad.client.api import APIError, Auth
 from nomad.client.archive import ArchiveQuery
 from nomad.datamodel import EntryArchive, User
 from nomad.datamodel.metainfo import SCHEMA_IMPORT_ERROR, runschema
@@ -33,6 +37,72 @@ from tests.fixtures.users import users
 from tests.processing import test_data as test_processing
 
 # TODO: more tests
+
+
+def test_headers_empty_if_no_token():
+    auth = Auth(user=None, password=None)
+    auth._token = None
+    assert auth.headers() == {}
+
+
+def test_headers_with_token():
+    auth = Auth(user='u', password='p')
+    auth._token = {'access_token': 'abc'}
+    assert auth.headers() == {'Authorization': 'Bearer abc'}
+
+
+def test_get_access_token_from_api_success(monkeypatch):
+    class FakeResponse:
+        status_code = 200
+
+        def json(self):
+            return {'access_token': 'tok123'}
+
+    monkeypatch.setattr(
+        'nomad.client.api.requests.post', lambda *a, **k: FakeResponse()
+    )
+
+    auth = Auth(user='u', password='p', from_api=True)
+    auth._token = None
+    auth.get_access_token_from_api()
+    assert auth._token['access_token'] == 'tok123'
+
+
+def test_get_access_token_from_api_failure(monkeypatch):
+    class FakeResponse:
+        status_code = 401
+
+        def json(self):
+            return {'detail': 'bad creds', 'code': 401}
+
+    monkeypatch.setattr(
+        'nomad.client.api.requests.post', lambda *a, **k: FakeResponse()
+    )
+
+    auth = Auth(user='u', password='p', from_api=True)
+    auth._token = None
+    with pytest.raises(APIError) as e:
+        auth.get_access_token_from_api()
+    assert 'bad creds' in str(e.value)
+
+
+@pytest.fixture(autouse=True)
+def quiet_archivequery_in_ci(monkeypatch):
+    """Silence print and progress bar in CI."""
+    if os.getenv('CI') == 'true':
+        monkeypatch.setattr('builtins.print', lambda *a, **k: None)
+
+        @contextlib.contextmanager
+        def dummy_progressbar(*args, **kwargs):
+            class DummyBar:
+                def __getattr__(self, name):
+                    return lambda *a, **k: None
+
+            yield DummyBar()
+
+        from nomad.client import archive
+
+        monkeypatch.setattr(archive, 'progressbar', dummy_progressbar)
 
 
 def assert_results(
@@ -55,18 +125,20 @@ def assert_results(
                 current = sub_sections[0]
 
 
-@pytest.fixture(scope='function')
-def many_uploads(non_empty_uploaded: tuple[str, str], user1: User, proc_infra):
+@pytest_asyncio.fixture(scope='function')
+async def many_uploads(
+    non_empty_uploaded: tuple[str, str], user1: User, temporal_worker
+):
     _, upload_file = non_empty_uploaded
-    for index in range(0, 4):
-        upload = test_processing.run_processing(
-            (f'test_upload_{index}', upload_file), user1
-        )
-        upload.publish_upload()  # pylint: disable=no-member
-        try:
-            upload.block_until_complete(interval=0.01)
-        except Exception:
-            pass
+    async with temporal_worker() as client:
+        for index in range(0, 4):
+            upload = await asyncio.to_thread(
+                test_processing.run_processing,
+                (f'test_upload_{index}', upload_file),
+                user1,
+            )
+            await upload._start_publish_upload_workflow()
+    yield
 
 
 @pytest.fixture(scope='module')
@@ -102,7 +174,8 @@ def async_api_v1(monkeysession):
     return test_client
 
 
-def test_async_query_basic(async_api_v1, published_wo_user_metadata):
+@pytest.mark.asyncio
+async def test_async_query_basic(async_api_v1, published_wo_user_metadata):
     async_query = ArchiveQuery()
 
     assert_results(async_query.download())
@@ -114,6 +187,7 @@ def test_async_query_basic(async_api_v1, published_wo_user_metadata):
     assert_results(async_query.download())
 
 
+@pytest.mark.asyncio
 @pytest.mark.skipif(runschema is None, reason=SCHEMA_IMPORT_ERROR)
 @pytest.mark.parametrize(
     'q_required,sub_sections',
@@ -123,7 +197,7 @@ def test_async_query_basic(async_api_v1, published_wo_user_metadata):
         ({'run[0]': {'system': '*'}}, [EntryArchive.run, runschema.run.Run.system]),
     ],
 )
-def test_async_query_required(
+async def test_async_query_required(
     async_api_v1, published_wo_user_metadata, q_required, sub_sections
 ):
     async_query = ArchiveQuery(required=q_required)
@@ -131,7 +205,8 @@ def test_async_query_required(
     assert_results(async_query.download(), sub_section_defs=sub_sections)
 
 
-def test_async_query_auth(async_api_v1, published, user2, user1):
+@pytest.mark.asyncio
+async def test_async_query_auth(async_api_v1, published, user2, user1):
     async_query = ArchiveQuery(username=user2.username, password='password')
 
     assert_results(async_query.download(), total=0)
@@ -141,7 +216,8 @@ def test_async_query_auth(async_api_v1, published, user2, user1):
     assert_results(async_query.download(), total=1)
 
 
-def test_async_query_parallel(async_api_v1, many_uploads, monkeypatch):
+@pytest.mark.asyncio
+async def test_async_query_parallel(async_api_v1, many_uploads, monkeypatch):
     async_query = ArchiveQuery(required=dict(run='*'))
 
     assert_results(async_query.download(), total=4)

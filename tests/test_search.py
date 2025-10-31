@@ -36,13 +36,18 @@ from nomad.metainfo.elasticsearch_extension import (
     dtype_separator,
     entry_index,
     entry_type,
-    material_index,
     schema_separator,
 )
 from nomad.metainfo.metainfo import Datetime, Quantity
 from nomad.metainfo.util import MEnum
 from nomad.search import AuthenticationRequiredError as ARE
-from nomad.search import quantity_values, refresh, search, update_by_query
+from nomad.search import (
+    PermissionDeniedError,
+    quantity_values,
+    refresh,
+    search,
+    update_by_query,
+)
 from nomad.utils import deep_get
 from nomad.utils.exampledata import ExampleData
 from tests.variables import python_schema_name, yaml_schema_name
@@ -233,7 +238,6 @@ def example_eln_data(elastic_function, user1):
 
 
 def test_index(indices, example_data):
-    assert material_index.get(id='test_material_id') is not None
     assert entry_index.get(id='test_entry_id_0') is not None
 
 
@@ -312,7 +316,7 @@ class TestsWithGroups:
         'owner, user, exc_or_total',
         [
             pytest.param('admin', None, ARE, id='admin-none'),
-            pytest.param('admin', 'user1', ARE, id='admin-user1'),
+            pytest.param('admin', 'user1', PermissionDeniedError, id='admin-user1'),
             pytest.param('admin', 'user0', 11, id='admin-user0'),
             pytest.param('user', None, ARE, id='user-none'),
             pytest.param('user', 'user1', 10, id='user-user1'),
@@ -466,10 +470,45 @@ def test_quantity_values(indices, example_data):
         ),
     ],
 )
-def test_search_quantities(indices, example_eln_data, api_query, total):
+def test_search_quantity_data_types(indices, example_eln_data, api_query, total):
     """Tests that search queries targeting search_quantities work for different data types."""
     results = search(owner='all', query=WithQuery(query=api_query).query)
     assert results.pagination.total == total  # pylint: disable=no-member
+
+
+@pytest.mark.parametrize(
+    'api_query',
+    [
+        pytest.param(
+            {f'data.name{schema_separator}{python_schema_name}': 'test1'},
+            id='own-quantity',
+        ),
+        pytest.param(
+            {
+                f'data.inherited_a{schema_separator}nomadschemaexample.schema.MyBaseSchemaA': 'test1'
+            },
+            id='inherited-quantity',
+        ),
+        pytest.param(
+            {
+                f'data.inherited_b{schema_separator}nomadschemaexample.schema.MyBaseSchemaB': 'test1'
+            },
+            id='multiple-inheritance',
+        ),
+    ],
+)
+@pytest.mark.parametrize('schema_type', ['python'])
+def test_search_quantities_inheritance(
+    indices, plugin_schema, api_query, schema_type, request
+):
+    """Tests that queries that target inherited definitions work as expected. TODO:
+    Currently only quantities in the data section are registered with inheritance taken
+    into account, and there is no syntax for targeting anything else besides this data
+    section.
+    """
+    get_schema_fixture(schema_type, request)
+    results = search(owner='all', query=WithQuery(query=api_query).query)
+    assert results.pagination.total == 1  # pylint: disable=no-member
 
 
 @pytest.mark.parametrize(

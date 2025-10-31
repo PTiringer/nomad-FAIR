@@ -21,9 +21,8 @@ from typing import cast
 
 import pytest
 
-from nomad.datamodel import AuthorReference, UserReference
+from nomad.datamodel import AuthorReference, Context, UserReference
 from nomad.metainfo import (
-    Context,
     File,
     MetainfoReferenceError,
     MProxy,
@@ -141,7 +140,6 @@ def test_section_proxy(example_data):
     example_data.referencing.section_reference = MProxy(
         'doesnotexist',
         m_proxy_section=example_data.referencing,
-        m_proxy_type=Referencing.section_reference.type,
     )
     with pytest.raises(MetainfoReferenceError):
         example_data.referencing.section_reference.str_quantity
@@ -149,7 +147,6 @@ def test_section_proxy(example_data):
     example_data.referencing.section_reference = MProxy(
         '/referenced',
         m_proxy_section=example_data.referencing,
-        m_proxy_type=Referencing.section_reference.type,
     )
 
     assert_data(example_data)
@@ -160,13 +157,11 @@ def test_quantity_proxy(example_data):
         example_data.referencing.quantity_reference = MProxy(
             'doesnotexist',
             m_proxy_section=example_data.referencing,
-            m_proxy_type=Referencing.section_reference.type,
         )
 
     example_data.referencing.quantity_reference = MProxy(
         '/referenced',
         m_proxy_section=example_data.referencing,
-        m_proxy_type=Referencing.section_reference.type,
     )
     assert example_data.referencing.quantity_reference == 'test_value'
 
@@ -289,6 +284,9 @@ def test_section_reference_deserialize(ref):
 )
 def test_reference_urls(example_data, url, value):
     class MyContext(Context):
+        def normalize_reference(self, source: MSection, url: str) -> str:
+            return url
+
         def resolve_archive_url(self, url):
             if url == '../upload/archive/my_entry_id':
                 return example_data
@@ -392,6 +390,12 @@ def test_parse_with_references(mainfile):
         )
     )[0]
     normalize_all(entry_archive)
+
+    # hack to set entry_id and upload_id for testing
+    # they shall be properly set during normal processing
+    package = entry_archive.data.m_def.m_parent
+    package.entry_id = 'my_entry_id'
+    package.upload_id = 'my_upload_id'
 
     m_def = entry_archive.m_to_dict()['data']['m_def']
     assert '#/definitions/' in m_def

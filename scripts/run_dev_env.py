@@ -1,3 +1,4 @@
+import os
 import sys
 
 from nomad.cli.admin.run import run_appworker
@@ -19,5 +20,7 @@ if __name__ == '__main__':
             host = arg.split('=')[1]
         if '--port' in arg:
             port = arg.split('=')[1]
+
+    os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     run_appworker(dev=True, app_host=host, app_port=port)

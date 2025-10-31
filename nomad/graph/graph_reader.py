@@ -78,22 +78,21 @@ from nomad.graph.model import (
     RequestConfig,
     ResolveType,
 )
-from nomad.groups import MongoUserGroup, get_mongo_user_group
 from nomad.metainfo import (
     Definition,
+    MSectionReference,
     Package,
     Quantity,
     QuantityReference,
     Reference,
     Section,
-    SectionReference,
     SubSection,
 )
 from nomad.metainfo.data_type import JSON, Datatype
 from nomad.metainfo.data_type import Any as AnyType
 from nomad.metainfo.util import MSubSectionList, split_python_definition
+from nomad.mongo.groups import MongoUserGroup, get_mongo_user_group
 from nomad.processing import Entry, ProcessStatus, Upload
-from nomad.utils import timer
 
 logger = utils.get_logger(__name__)
 
@@ -110,6 +109,7 @@ class Token:
     """
 
     DEF = 'm_def'
+    DEFID = 'm_def_id'
     RAW = 'files'
     ARCHIVE = 'archive'
     ENTRY = 'entry'
@@ -222,7 +222,7 @@ class GraphNode:
         """
         return dataclasses.replace(self, **kwargs)
 
-    def generate_reference(self, path: list = None) -> str:
+    def generate_reference(self, path: list | None = None) -> str:
         """
         Generate a reference string using a given path or the current path.
         """
@@ -252,6 +252,8 @@ class GraphNode:
             raise ArchiveError(f'Circular reference detected: {reference_url}.')
 
         try:
+            if self.archive_root is None:
+                raise ArchiveError(f'Archive root is None for {reference}.')
             target = await _goto_path(self.archive_root, path_stack)
         except (KeyError, IndexError):
             raise ArchiveError(f'Archive {self.entry_id} does not contain {reference}.')
@@ -283,7 +285,7 @@ class GraphNode:
         if kind == 'raw':
             # it is a path to raw file
             # get the corresponding entry id
-            other_entry: Entry = Entry.objects(
+            other_entry: Entry = Entry.objects(  # type: ignore
                 upload_id=other_upload_id, mainfile=id_or_file
             ).first()
             if not other_entry:
@@ -307,6 +309,10 @@ class GraphNode:
 
         # get the archive
         other_archive_root = self.reader.load_archive(other_upload_id, other_entry_id)
+        if other_archive_root is None:
+            raise ArchiveError(
+                f'Could not load archive for {other_upload_id}/{other_entry_id}.'
+            )
 
         try:
             # now go to the target path
@@ -370,7 +376,7 @@ async def _if_exists(target_root: dict, path_stack: list) -> bool:
 
 
 @functools.lru_cache(maxsize=1024)
-def _convert_ref_to_path(ref: str, upload_id: str = None) -> list:
+def _convert_ref_to_path(ref: str, upload_id: str | None = None) -> list:
     # test module name
     if '.' in (stripped_ref := ref.strip('.')) or re.compile(r'^\w*(\.\w*)*$').match(
         ref.split('/section_definitions')[0]
@@ -410,11 +416,11 @@ def _convert_ref_to_path(ref: str, upload_id: str = None) -> list:
 
 
 @functools.lru_cache(maxsize=1024)
-def _convert_ref_to_path_string(ref: str, upload_id: str = None) -> str:
+def _convert_ref_to_path_string(ref: str, upload_id: str | None = None) -> str:
     return '/'.join(_convert_ref_to_path(ref, upload_id))
 
 
-def _to_response_config(config: RequestConfig, exclude: list = None, **kwargs):
+def _to_response_config(config: RequestConfig, exclude: list | None = None, **kwargs):
     response_config = config.model_dump(exclude_unset=True, exclude_none=True)
 
     for item in ('include', 'exclude'):
@@ -572,8 +578,8 @@ def _normalise_required(
     required,
     config: RequestConfig,
     *,
-    key: str = None,
-    reader_type: type[GeneralReader] = None,
+    key: str | None = None,
+    reader_type: type[GeneralReader] | None = None,
 ):
     """
     Normalise the required dictionary.
@@ -800,8 +806,8 @@ class GeneralReader:
         *,
         user=None,
         init: bool = True,
-        config: RequestConfig = None,
-        global_root: dict = None,
+        config: RequestConfig | None = None,
+        global_root: dict | None = None,
     ):
         """
         Supports two modes of initialisation:
@@ -1042,7 +1048,7 @@ class GeneralReader:
             return entry_id
 
         def _retrieve():
-            return Entry.objects(entry_id=entry_id).first()
+            return Entry.objects(entry_id=entry_id).first()  # type: ignore
 
         return self._overwrite_entry(await asyncio.to_thread(_retrieve))
 
@@ -1196,7 +1202,7 @@ __lock_pool = Lock()
 __package_pool = TTLCache(maxsize=128, ttl=300)
 
 
-def _fetch_package(key: str) -> Package:
+def _fetch_package(key: str) -> Package | None:
     with __lock_pool:
         return __package_pool.get(key, None)
 
@@ -1225,27 +1231,33 @@ class ArchiveLikeReader(GeneralReader):
         In this case, we initialise a new `Package` object and resolve the path.
         It could also be a reference to another entry in another upload.
         In this case, we need to load the archive.
+        If m_def_id is given, try to load it from mongodb.
 
         todo: more flexible definition retrieval, accounting for definition id, mismatches, etc.
         """
 
+        def new_context(_id):
+            return ServerContext(
+                get_upload_with_read_access(_id, self.user, include_others=True)
+            )
+
         async def __resolve_definition_in_archive(
             _root,
             _path_stack: list,
-            _upload_id: str = None,
-            _entry_id: str = None,
+            _upload_id: str | None = None,
+            _entry_id: str | None = None,
         ):
+            """
+            This path is no longer used when m_def_id is written to the archive.
+            For which the custom definitions will be directly loaded from the database.
+            """
             cache_key: str = f'{_upload_id}:{_entry_id}'
 
             custom_package: Package | None = _fetch_package(cache_key)
             if custom_package is None:
                 custom_package = Package.m_from_dict(
                     await async_to_json(await goto_child(_root, 'definitions')),
-                    m_context=ServerContext(
-                        get_upload_with_read_access(
-                            _upload_id, self.user, include_others=True
-                        )
-                    ),
+                    m_context=new_context(_upload_id),
                 )
                 # package loaded in this way does not have an attached archive
                 # we manually set the upload_id and entry_id so that
@@ -1254,11 +1266,16 @@ class ArchiveLikeReader(GeneralReader):
                 custom_package.upload_id = _upload_id
                 custom_package.init_metainfo()
                 if (
-                    upload := Upload.objects(upload_id=_upload_id).first()
+                    upload := Upload.objects(upload_id=_upload_id).first()  # type: ignore
                 ) is not None and upload.published:
+                    # only cache published data that will not be changed
                     _cache_package(cache_key, custom_package)
 
             return custom_package.m_resolve_path(_path_stack)
+
+        if m_def_id is not None:
+            if new_def := new_context(node.upload_id).fetch_section(m_def, m_def_id):
+                return new_def.m_def
 
         if m_def is not None:
             if m_def.startswith(('#/', '/')):
@@ -1274,7 +1291,7 @@ class ArchiveLikeReader(GeneralReader):
             if m_def.startswith('entry_id:'):
                 tokens = m_def[9:].split('.')
                 entry_id = tokens.pop(0)
-                entry_record = Entry.objects(entry_id=entry_id).first()
+                entry_record = Entry.objects(entry_id=entry_id).first()  # type: ignore
                 upload_id = entry_record.upload_id
                 if (
                     cached_package := _fetch_package(f'{upload_id}:{entry_id}')
@@ -1285,13 +1302,9 @@ class ArchiveLikeReader(GeneralReader):
                     archive, tokens, upload_id, entry_id
                 )
 
-        # further consider when only m_def_id is given, etc.
-
-        # this is not likely to be reached
-        # it does not work anyway
-        proxy = SectionReference().normalize(m_def)
-        proxy.m_proxy_context = ServerContext(
-            get_upload_with_read_access(node.upload_id, self.user, include_others=True)
+        # use the conventional approach
+        proxy = MSectionReference().normalize(
+            m_def, context=new_context(node.upload_id)
         )
         return proxy.section_cls.m_def
 
@@ -1299,11 +1312,11 @@ class ArchiveLikeReader(GeneralReader):
 class MongoReader(GeneralReader):
     @functools.cached_property
     def entries(self):
-        return Entry.objects(upload_id__in=[v.upload_id for v in self.uploads])
+        return Entry.objects(upload_id__in=[v.upload_id for v in self.uploads])  # type: ignore
 
     @functools.cached_property
     def uploads(self):
-        return Upload.objects(
+        return Upload.objects(  # type: ignore
             Q(main_author=self.auth_user_id)
             | Q(reviewers=self.auth_user_id)
             | Q(coauthors=self.auth_user_id)
@@ -1626,14 +1639,7 @@ class MongoReader(GeneralReader):
                 reader_cls: type[GeneralReader], *args, read_list=False
             ):
                 try:
-                    with (
-                        reader_cls(value, **offload_pack) as reader,
-                        timer(
-                            logger,
-                            '/'.join(node.current_path + [key]),
-                            reader_type=reader_cls.__name__,
-                        ),
-                    ):
+                    with reader_cls(value, **offload_pack) as reader:
                         await _populate_result(
                             node.result_root,
                             node.current_path + [key],
@@ -1869,20 +1875,13 @@ class MongoReader(GeneralReader):
         ):
             offload_reader = __M_SEARCHABLE__[node.current_path[-2]]
             try:
-                with (
-                    offload_reader(
-                        config,
-                        user=self.user,
-                        init=False,
-                        config=config,
-                        global_root=self.global_root,
-                    ) as reader,
-                    timer(
-                        logger,
-                        '/'.join(node.current_path),
-                        reader_type=offload_reader.__name__,
-                    ),
-                ):
+                with offload_reader(
+                    config,
+                    user=self.user,
+                    init=False,
+                    config=config,
+                    global_root=self.global_root,
+                ) as reader:
                     await _populate_result(
                         node.result_root,
                         node.current_path,
@@ -1959,7 +1958,7 @@ class UploadReader(MongoReader):
 
     @functools.cached_property
     def entries(self):
-        return Entry.objects(upload_id=self.target_upload_id)
+        return Entry.objects(upload_id=self.target_upload_id)  # type: ignore
 
     # noinspection PyMethodOverriding
     async def read(self, upload_id: str) -> dict:  # type: ignore
@@ -2010,11 +2009,11 @@ class DatasetReader(MongoReader):
 
     @functools.cached_property
     def entries(self):
-        return Entry.objects(datasets=self.target_dataset_id)
+        return Entry.objects(datasets=self.target_dataset_id)  # type: ignore
 
     @functools.cached_property
     def uploads(self):
-        return Upload.objects(
+        return Upload.objects(  # type: ignore
             upload_id__in=list({v['upload_id'] for v in self.entries})
         )
 
@@ -2150,7 +2149,7 @@ class UserReader(MongoReader):
 
     @functools.cached_property
     def entries(self):
-        return Entry.objects(upload_id__in=[v.upload_id for v in self.uploads])
+        return Entry.objects(upload_id__in=[v.upload_id for v in self.uploads])  # type: ignore
 
     @functools.cached_property
     def uploads(self):
@@ -2167,7 +2166,7 @@ class UserReader(MongoReader):
                 | Q(coauthors=self.auth_user_id)
             )
 
-        return Upload.objects(mongo_query)
+        return Upload.objects(mongo_query)  # type: ignore
 
     @functools.cached_property
     def datasets(self):
@@ -2285,7 +2284,7 @@ class FileSystemReader(GeneralReader):
         super().__init__(*args, **kwargs)
         self._root_path: list = []
 
-    async def read(self, upload_id: str, path: str = None) -> dict:
+    async def read(self, upload_id: str, path: str | None = None) -> dict:
         self._root_path = [v for v in path.split('/') if v] if path else []
 
         with self._prepare_reading() as response:
@@ -2420,7 +2419,7 @@ class FileSystemReader(GeneralReader):
         else:
             start = 0
             pagination = dict(page=1, page_size=10, order='asc')
-        end: int = start + pagination['page_size']
+        end: int = int(start) + int(pagination.get('page_size', 10))
 
         folders: list = []
         files: list = []
@@ -2497,7 +2496,7 @@ class FileSystemReader(GeneralReader):
     async def _offload(
         self, upload_id: str, main_file: str, required, parent_config: RequestConfig
     ) -> dict:
-        if entry := Entry.objects(upload_id=upload_id, mainfile=main_file).first():
+        if entry := Entry.objects(upload_id=upload_id, mainfile=main_file).first():  # type: ignore  # type: ignore
             with EntryReader(
                 required,
                 user=self.user,
@@ -2647,12 +2646,22 @@ class ArchiveReader(ArchiveLikeReader):
 
         # update node definition if required
         node = await self._check_definition(node, current_config)
-        # in case of a reference, resolve it implicitly
-        node = await self._check_reference(node, current_config, implicit_resolve=True)
+        try:
+            # in case of a reference, resolve it implicitly
+            node = await self._check_reference(
+                node, current_config, implicit_resolve=True
+            )
+        except ValueError as e:
+            self._log(str(e), error_type=QueryError.ARCHIVEERROR)
+            return
 
         # walk through the required fields
         for key, value in required.items():
             if key == GeneralReader.__CONFIG__:
+                continue
+
+            if key == Token.DEFID:
+                # ignore definition ID
                 continue
 
             if key == Token.DEF:
@@ -2661,20 +2670,13 @@ class ArchiveReader(ArchiveLikeReader):
                         f'Only support "m_def" token on sections, try defining "m_def" request on the parent.'
                     )
                     continue
-                with (
-                    DefinitionReader(
-                        value,
-                        user=self.user,
-                        init=False,
-                        config=current_config,
-                        global_root=self.global_root,
-                    ) as reader,
-                    timer(
-                        logger,
-                        '/'.join(node.current_path + [Token.DEF]),
-                        reader_type='DefinitionReader',
-                    ),
-                ):
+                with DefinitionReader(
+                    value,
+                    user=self.user,
+                    init=False,
+                    config=current_config,
+                    global_root=self.global_root,
+                ) as reader:
                     await _populate_result(
                         node.result_root,
                         node.current_path + [Token.DEF],
@@ -2830,10 +2832,14 @@ class ArchiveReader(ArchiveLikeReader):
 
         # no matter if to resolve, it is always necessary to replace the definition with potential custom definition
         node = await self._check_definition(node, config)
-        # if it needs to resolve, it is necessary to check references
-        node = await self._check_reference(
-            node, config, implicit_resolve=omit_keys is not None
-        )
+        try:
+            # if it needs to resolve, it is necessary to check references
+            node = await self._check_reference(
+                node, config, implicit_resolve=omit_keys is not None
+            )
+        except ValueError as e:
+            self._log(str(e), error_type=QueryError.ARCHIVEERROR)
+            return
 
         if not isinstance(node.archive, GenericDict):  # type: ignore
             # primitive type data is always included
@@ -2876,7 +2882,7 @@ class ArchiveReader(ArchiveLikeReader):
             return
 
         for key in node.archive.keys():
-            if key == Token.DEF:
+            if key in (Token.DEF, Token.DEFID):
                 continue
 
             if config.if_include(key) and (
@@ -2941,20 +2947,13 @@ class ArchiveReader(ArchiveLikeReader):
                 definition = node.definition
                 if isinstance(definition, SubSection):
                     definition = definition.sub_section.m_resolved()
-                with (
-                    DefinitionReader(
-                        RequestConfig(directive=DirectiveType.plain),
-                        user=self.user,
-                        init=False,
-                        config=config,
-                        global_root=self.global_root,
-                    ) as reader,
-                    timer(
-                        logger,
-                        '/'.join(node.current_path + [Token.DEF]),
-                        reader_type='DefinitionReader',
-                    ),
-                ):
+                with DefinitionReader(
+                    RequestConfig(directive=DirectiveType.plain),
+                    user=self.user,
+                    init=False,
+                    config=config,
+                    global_root=self.global_root,
+                ) as reader:
                     await _populate_result(
                         node.result_root,
                         node.current_path + [Token.DEF],
@@ -2971,20 +2970,13 @@ class ArchiveReader(ArchiveLikeReader):
             return node
 
         if config.include_definition is not DefinitionType.none:
-            with (
-                DefinitionReader(
-                    RequestConfig(directive=DirectiveType.plain),
-                    user=self.user,
-                    init=False,
-                    config=config,
-                    global_root=self.global_root,
-                ) as reader,
-                timer(
-                    logger,
-                    '/'.join(node.current_path + [Token.DEF]),
-                    reader_type='DefinitionReader',
-                ),
-            ):
+            with DefinitionReader(
+                RequestConfig(directive=DirectiveType.plain),
+                user=self.user,
+                init=False,
+                config=config,
+                global_root=self.global_root,
+            ) as reader:
                 await _populate_result(
                     node.result_root,
                     node.current_path + [Token.DEF],
@@ -3014,7 +3006,10 @@ class ArchiveReader(ArchiveLikeReader):
         if not implicit_resolve and config.directive is not DirectiveType.resolved:
             return node
 
-        assert isinstance(node.archive, str), 'A reference string is expected.'
+        if not isinstance(node.archive, str):
+            raise ValueError(
+                f'A reference string is expected at {"/".join(node.current_path)}.'
+            )
 
         # maximum resolve depth reached, do not resolve further
         if config.resolve_depth and len(node.visited_path) == config.resolve_depth:
@@ -3065,6 +3060,7 @@ class DefinitionReader(ArchiveLikeReader):
     async def read(self, archive: Definition) -> dict:
         with self._prepare_reading() as response:
             response[Token.DEF] = {}
+            response[Token.DEFID] = archive.definition_id
 
             await self._walk(
                 GraphNode(
@@ -3270,7 +3266,7 @@ class DefinitionReader(ArchiveLikeReader):
             elif (
                 isinstance(s, Section)
                 and isinstance(v, str)
-                and isinstance(q.type, SectionReference)
+                and isinstance(q.type, MSectionReference)
             ):
                 v = __convert(s.m_resolve(p))
 
@@ -3312,7 +3308,9 @@ class DefinitionReader(ArchiveLikeReader):
             await _populate_result(
                 node.result_root,
                 node.current_path,
-                node.archive.m_to_dict(with_out_meta=True, transform=__override_path),
+                node.archive.m_to_dict(
+                    with_out_meta=True, with_def_id=True, transform=__override_path
+                ),
                 # the target location may contain a reference string already
                 # the string was added during switching root
                 # we allow it to be overwritten here

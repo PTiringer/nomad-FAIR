@@ -3,30 +3,37 @@ import {useMemo} from "react"
 import {Unit} from "./Unit"
 import {useUnitContext} from "./UnitContext"
 import {getFieldProps} from "../editQuantity/StringEditQuantity"
+import { DType, getDatatype } from "../../utils"
 
 /**
- * Used to retrieve the unit to use for displaying a quantity.
+ * Used to retrieve the unit to use for displaying a quantity. Primarily uses the display
+ * unit annotations, defaults to returning a display unit according to the currently set
+ * unit system. If the quantity is not of a numeric type, returns undefined.
  *
  * @param {*} quantityDef Definition for the quantity
+ * @param {*} returnExplicit Whether to return an object containing the display unit and a
+ * boolean indicating whether this display unit was explicitly set
  * @returns {Unit} The unit to use for displaying the quantity.
  */
-export function useDisplayUnit(quantityDef) {
+export function useDisplayUnit(quantityDef, returnExplicit = false) {
   const {units} = useUnitContext()
   const {raiseError} = useErrors()
-  const defaultUnit = useMemo(() => quantityDef.unit && new Unit(quantityDef.unit), [quantityDef])
-  const dimension = defaultUnit && defaultUnit.dimension(false)
   const {defaultDisplayUnit: deprecatedDefaultDisplayUnit} = getFieldProps(quantityDef)
   const defaultDisplayUnit = quantityDef?.m_annotations?.display?.[0]?.unit || deprecatedDefaultDisplayUnit
 
+  // Get the storage unit if present
+  const defaultUnit = useMemo(() => {
+    const dtype = getDatatype(quantityDef)
+    return (dtype === DType.Int || dtype === DType.Float)
+      ? new Unit(quantityDef.unit || 'dimensionless')
+      : undefined
+  }, [quantityDef])
+
+  // Get the display unit. Primarily uses the display unit annotation, but falls back to
+  // the global unit system if not present.
   const displayUnitObj = useMemo(() => {
-    if (!dimension) return
+    if (!defaultUnit) return undefined
     let defaultDisplayUnitObj
-
-    // TODO: If we enable the new 'Schema' scope in the unit context, we should
-    // prioritize those values there. But for now we just read unit info from
-    // the schema.
-
-    // If a default display unit has been defined, use it instead
     if (defaultDisplayUnit) {
       try {
         defaultDisplayUnitObj = new Unit(defaultDisplayUnit)
@@ -36,13 +43,13 @@ export function useDisplayUnit(quantityDef) {
       if (defaultDisplayUnitObj.dimension(true) !== defaultUnit.dimension(true)) {
         raiseError(`The provided defaultDisplayUnit for ${quantityDef.name} has incorrect dimensionality for this field.`)
       }
-    // Use the global unit system defined in the schema
     } else {
       defaultDisplayUnitObj = new Unit(defaultUnit).toSystem(units)
     }
 
     return defaultDisplayUnitObj
-  }, [defaultDisplayUnit, defaultUnit, dimension, quantityDef, raiseError, units])
+  }, [defaultDisplayUnit, defaultUnit, quantityDef, raiseError, units])
 
+  if (returnExplicit) return {displayUnit: displayUnitObj, explicit: !!defaultDisplayUnit}
   return displayUnitObj
 }

@@ -21,11 +21,13 @@ from __future__ import annotations
 import json
 import os.path
 import re
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
 import requests
+from cachetools import LRUCache
 from ruamel import yaml
 
 from nomad import utils
@@ -33,7 +35,6 @@ from nomad.config import config
 from nomad.datamodel import EntryArchive
 from nomad.datamodel.datamodel import EntryMetadata
 from nomad.datamodel.util import parse_path
-from nomad.metainfo import Context as MetainfoContext
 from nomad.metainfo import MetainfoReferenceError, MSection, Package, Quantity
 
 
@@ -51,12 +52,16 @@ def _opener_and_dumper(file_name: str) -> tuple:
     return loader, dumper
 
 
-class Context(MetainfoContext):
+# use to cache packages that are retrieved from MongoDB
+_mongo_package_cache = LRUCache(1024)
+
+
+class Context:
     """
     The nomad implementation of a metainfo context.
     """
 
-    def __init__(self, installation_url: str = None):
+    def __init__(self, installation_url: str | None = None):
         # take installation_url and ensure it has no trailing slash
         if installation_url is None:
             self.installation_url = config.api_url(api='api/v1')
@@ -75,8 +80,19 @@ class Context(MetainfoContext):
         self.urls: dict[MSection, str] = {}
 
     @property
+    def child_archives(self):
+        return []
+
+    @property
     def upload_id(self):
         return None
+
+    def warning(self, event, **kwargs):
+        """
+        Used to log (or otherwise handle) warning that are issued, e.g. while serialization,
+        reference resolution, etc.
+        """
+        pass
 
     @staticmethod
     def _get_ids(root: MSection, required: bool = True) -> tuple:
@@ -103,25 +119,31 @@ class Context(MetainfoContext):
         value: MSection,
         global_reference: bool = False,
     ) -> str:
+        """
+        Returns a reference for the given target section (value) based on the given context.
+        Allows subclasses to build references across resources, if necessary.
+
+        Arguments:
+            section: The containing section.
+            quantity_def: The definition of the quantity.
+            value: The reference value.
+            global_reference: A boolean flag that forces references with upload_ids.
+                Should be used if the reference needs to be used outside the context
+                of the own upload.
+
+        Raises: MetainfoReferenceError
+        """
         fragment = value.m_path()
         target_root: MSection = value.m_root()
 
+        # need to consider packages that are initialised via loading PART of the archive, or via mongo
+        # in that case, `_get_ids` will fail as there is no attached archive
+        # meanwhile, the reference shall be located under `definitions` in the original archive
+        # we distinguish between the two cases by checking if the target_root is a package
+        if isinstance(target_root, Package) and target_root.m_is_custom_package:
+            return f'../uploads/{target_root.upload_id}/archive/{target_root.entry_id}#definitions/{fragment}'
+
         if global_reference:
-            # need to consider packages that are initialised via loading PART of the archive, or via mongo
-            # in that case, `_get_ids` will fail as there is no attached archive
-            # meanwhile, the reference shall be located under `definitions` in the original archive
-            # we distinguish between the two cases by checking if the target_root is a package
-            if (
-                isinstance(target_root, Package)
-                and target_root.upload_id
-                and target_root.entry_id
-            ):
-                upload_id, entry_id = target_root.upload_id, target_root.entry_id
-
-                return (
-                    f'../uploads/{upload_id}/archive/{entry_id}#definitions/{fragment}'
-                )
-
             upload_id, entry_id = self._get_ids(target_root, required=True)
 
             return f'../uploads/{upload_id}/archive/{entry_id}#{fragment}'
@@ -164,32 +186,57 @@ class Context(MetainfoContext):
 
     def normalize_reference(self, source: MSection, url: str) -> str:
         """
-        Replace mainfile references with entry-based references.
+        Rewrites the url into a normalized form. E.g., it replaces `..` with absolute paths,
+        or replaces mainfiles with ids, etc.
+
+        Arguments:
+            source: The source section or root section of the source of the reference.
+            url: The reference to normalize.
+
+        Raises: MetainfoReferenceError
         """
+        if source is None:
+            return url
+
         url_parts = urlsplit(url)
         fragment = self._normalize_fragment(url_parts.fragment)
         path = url_parts.path
-        match = re.search(r'/archive/mainfile/(.*)$', path)
-        if not match:
-            return urlunsplit(url_parts[0:4] + (fragment,))
 
-        mainfile = match.group(1)
-        upload_id = self.upload_id
-        if upload_id is None:
-            root_section: MSection = source.m_root()
-            upload_id = root_section.metadata.upload_id
-        assert upload_id is not None, 'Only archives with upload_id can be referenced'
-        entry_id = utils.generate_entry_id(upload_id, mainfile)
-        path = path.replace(f'/archive/mainfile/{mainfile}', f'/archive/{entry_id}')
-        return urlunsplit(
-            (
-                url_parts.scheme,
-                url_parts.netloc,
-                path,
-                url_parts.query,
-                fragment,
+        if (upload_id := self.upload_id) is None:
+            upload_id = getattr(
+                getattr(source.m_root(), 'metadata', {}), 'upload_id', None
             )
-        )
+
+        if match := re.search(r'/archive/mainfile/(.*)$', path):
+            assert upload_id, 'Only archives with upload_id can be referenced'
+            mainfile = match.group(1)
+            return urlunsplit(
+                (
+                    url_parts.scheme,
+                    url_parts.netloc,
+                    path.replace(
+                        f'/archive/mainfile/{mainfile}',
+                        f'/archive/{utils.generate_entry_id(upload_id, mainfile)}',
+                    ),
+                    url_parts.query,
+                    fragment,
+                )
+            )
+
+        if '/upload/raw' in path:
+            return urlunsplit(
+                (
+                    url_parts.scheme,
+                    url_parts.netloc,
+                    path.replace('/upload/raw', f'/upload/{upload_id}/raw')
+                    if upload_id
+                    else path,
+                    url_parts.query,
+                    fragment,
+                )
+            )
+
+        return urlunsplit(url_parts[:4] + (fragment,))
 
     def load_archive(
         self, entry_id: str, upload_id: str, installation_url: str
@@ -197,8 +244,11 @@ class Context(MetainfoContext):
         """Loads the archive for the given identification."""
         raise NotImplementedError()
 
+    def resolve_archive(self, *args, **kwargs):
+        return self.resolve_archive_url(*args, **kwargs)
+
     def load_raw_file(
-        self, path: str, upload_id: str, installation_url: str, url: str = None
+        self, path: str, upload_id: str, installation_url: str, url: str | None = None
     ) -> MSection:
         """Loads a raw file based on the given upload and path. Interpret as metainfo data."""
         raise NotImplementedError()
@@ -210,6 +260,10 @@ class Context(MetainfoContext):
     def raw_path(self) -> str:
         """The path to the uploads raw files directory."""
         return os.path.curdir
+
+    def raw_file(self, path: str, *args, **kwargs):
+        """Open a raw file for reading or writing."""
+        raise NotImplementedError
 
     def process_updated_raw_file(self, path, allow_modify=False):
         """
@@ -275,6 +329,89 @@ class Context(MetainfoContext):
         self.archives[url] = archive
         self.urls[archive] = url
 
+    def get_reference(self, mainfile: str) -> str:
+        """
+        Get the reference for the given file name.
+        """
+        raise NotImplementedError
+
+    def get_relative_path(self, mainfile: str) -> str:
+        """
+        Get the relative path for the given file name.
+        """
+        raise NotImplementedError
+
+    def fetch_package(self, def_ref: str, def_id: str) -> dict:
+        raise NotImplementedError()
+
+    def fetch_section(self, def_ref: str, def_id: str):
+        try:
+            mongo_package = self.fetch_package(def_ref, def_id)
+        except Exception:  # noqa
+            return None
+
+        snapshot_package_id = mongo_package['snapshot_package_id']
+
+        pkg: Package
+        if snapshot_package_id in _mongo_package_cache:
+            pkg = _mongo_package_cache[snapshot_package_id]
+        else:
+            pkg = Package.m_from_dict(mongo_package['data'], m_context=self)
+            pkg.upload_id = mongo_package.get('upload_id', None)
+            pkg.entry_id = mongo_package.get('entry_id', None)
+
+            pkg.init_metainfo()
+            pkg.snapshot_id = snapshot_package_id
+            for snapshot, section in zip(
+                mongo_package['snapshot_section_ids'], pkg.section_definitions
+            ):
+                section.snapshot_id = snapshot
+
+            _mongo_package_cache[snapshot_package_id] = pkg
+
+        for section in pkg.section_definitions:
+            if section.snapshot_id == def_id:
+                return section.section_cls
+
+        return None
+
+    @contextmanager
+    def update_entry(
+        self,
+        mainfile: str,
+        *,
+        write: bool = False,
+        process: bool = False,
+        **kwargs,
+    ) -> Iterator[dict]:
+        """
+        Open the target file and send it to the updater function.
+        The updater function shall return the updated file content.
+        The updated file will be stored and processed if needed.
+
+        WARNING:
+            If `process=True`, the updated file will be processed immediately.
+            Please be aware of the fact that this method may be called during the processing of
+            the parent/main file.
+            This means if there are any data dependencies, there is a risk of infinite loops,
+            racing conditions and/or other unexpected behavior.
+            You must carefully design the logic to mitigate these risks.
+
+        To use this function, you shall use the with-statement as follows:
+
+        ```python
+        with context.update_entry('mainfile.json',**kwargs) as content:
+            # do something with content
+        ```
+
+        Parameters:
+            mainfile: The relative path (from upload root) to the file to update.
+            write: Whether to write the updated file back to the storage.
+                If False, no processing will be triggered whatsoever.
+            process: Whether to trigger processing of the updated file.
+        """
+        raise NotImplementedError
+
 
 class ServerContext(Context):
     def __init__(self, upload=None):
@@ -324,7 +461,7 @@ class ServerContext(Context):
                 )
             from nomad.processing import Entry
 
-            if entry := Entry.objects(entry_id=entry_id).first():
+            if entry := Entry.objects(entry_id=entry_id).first():  # type: ignore
                 return self.load_raw_file(entry.mainfile, upload_id, installation_url)
             raise MetainfoReferenceError(f'Could not load {entry_id}.')
 
@@ -337,7 +474,7 @@ class ServerContext(Context):
         return EntryArchive.m_from_dict(archive_dict, m_context=context)
 
     def load_raw_file(
-        self, path: str, upload_id: str, installation_url: str, url: str = None
+        self, path: str, upload_id: str, installation_url: str, url: str | None = None
     ) -> EntryArchive:
         upload_files = self._get_upload_files(upload_id, installation_url)
 
@@ -377,23 +514,28 @@ class ServerContext(Context):
     def process_updated_raw_file(self, path, allow_modify=False):
         self.upload.process_updated_raw_file(path, allow_modify)
 
-    def retrieve_package_by_section_definition_id(
-        self, definition_reference: str, definition_id: str
-    ) -> dict:
-        if '://' not in definition_reference:
+    def fetch_package(self, def_ref: str, def_id: str) -> dict:
+        if '://' not in def_ref:
             # not a valid url, may be just a plain python name or reference name
             # use information on the current server
-            from nomad.app.v1.routers.metainfo import (
-                get_package_by_section_definition_id,
-            )
+            from nomad.mongo.package import PackageDefinition
 
-            return get_package_by_section_definition_id(definition_id)
+            mong_package = PackageDefinition.get_by(def_id)
+
+            return {
+                'entry_id': mong_package['entry_id'],
+                'upload_id': mong_package['upload_id'],
+                'snapshot_package_id': mong_package['snapshot_package_id'],
+                'snapshot_section_id': def_id,
+                'snapshot_section_ids': mong_package['snapshot_section_ids'],
+                'data': mong_package['package_definition'],
+            }
 
         try:
-            url_parts = urlsplit(definition_reference)
+            url_parts = urlsplit(def_ref)
         except ValueError:
             raise MetainfoReferenceError(
-                f'cannot retrieve section {definition_id} from {definition_reference}'
+                f'Cannot retrieve section {def_id} from {def_ref}.'
             )
 
         # appears to be a valid url
@@ -409,7 +551,7 @@ class ServerContext(Context):
                     url_parts.scheme,
                     url_parts.netloc,
                     url_parts.path,
-                    f'metainfo/{definition_id}',
+                    f'metainfo/{def_id}',
                     '',
                 )
             )
@@ -417,15 +559,10 @@ class ServerContext(Context):
 
         if response.status_code >= 400:
             raise MetainfoReferenceError(
-                f'cannot retrieve section {definition_id} from {definition_reference}'
+                f'Cannot retrieve section {def_id} from {def_ref}.'
             )
 
-        return response.json()['data']
-
-    def hdf5_path(self, section: MSection):
-        _, entry_id = self._get_ids(section.m_root(), required=True)
-
-        return self.upload_files.archive_hdf5_location(entry_id)
+        return response.json()
 
     @contextmanager
     def update_entry(
@@ -459,6 +596,15 @@ class ServerContext(Context):
         if process:
             self.upload.process_updated_raw_file(mainfile, True)
 
+    def get_reference(self, mainfile: str) -> str:
+        from nomad.utils import hash
+
+        entry_id = hash(self.upload_id, mainfile)
+        return f'../uploads/{self.upload_id}/archive/{entry_id}'
+
+    def get_relative_path(self, mainfile):
+        return mainfile.split('/raw/', 1)[1]
+
 
 class ServerLocalContext(Context):
     def __init__(self, mainfile_dir):
@@ -489,13 +635,13 @@ class ClientContext(Context):
 
     def __init__(
         self,
-        installation_url: str = None,
+        installation_url: str | None = None,
         *,
-        local_dir: str = None,
-        upload_id: str = None,
-        username: str = None,
-        password: str = None,
-        recursive_kwargs: dict = None,
+        local_dir: str | None = None,
+        upload_id: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+        recursive_kwargs: dict | None = None,
         auth=None,
     ):
         super().__init__(
@@ -553,7 +699,7 @@ class ClientContext(Context):
         )
 
     def load_raw_file(
-        self, path: str, upload_id: str, installation_url: str, url: str = None
+        self, path: str, upload_id: str, installation_url: str, url: str | None = None
     ) -> MSection:
         # TODO currently upload_id might be None
         if upload_id is None:
@@ -594,38 +740,36 @@ class ClientContext(Context):
         except AssertionError:
             return f'<unavailable url>/#{value.m_path()}'
 
-    def retrieve_package_by_section_definition_id(
-        self, definition_reference: str, definition_id: str
-    ) -> dict:
-        if definition_reference.startswith('http'):
+    def fetch_package(self, def_ref: str, def_id: str) -> dict:
+        if def_ref.startswith('http'):
             try:
-                url_parts = urlsplit(definition_reference)
+                url_parts = urlsplit(def_ref)
                 # it appears to be a valid remote url
                 # we assume the netloc is the installation_url
                 url = urlunsplit(
                     (
                         url_parts.scheme,
                         url_parts.netloc,
-                        f'api/v1/metainfo/{definition_id}',
+                        f'api/v1/metainfo/{def_id}',
                         '',
                         '',
                     )
                 )
             except ValueError:
                 # falls back to default installation_url
-                url = f'{self.installation_url}/metainfo/{definition_id}'
+                url = f'{self.installation_url}/metainfo/{def_id}'
         else:
             # falls back to default installation_url
-            url = f'{self.installation_url}/metainfo/{definition_id}'
+            url = f'{self.installation_url}/metainfo/{def_id}'
 
         response = requests.get(url)
 
         if response.status_code >= 400:
             raise MetainfoReferenceError(
-                f'cannot retrieve section {definition_id} from {definition_reference}'
+                f'Cannot retrieve section {def_id} from {def_ref}.'
             )
 
-        return response.json()['data']
+        return response.json()
 
     @contextmanager
     def update_entry(
@@ -666,3 +810,11 @@ class ClientContext(Context):
                     file_path.absolute().as_posix(), **(self._recursive_kwargs | kwargs)
                 )
             )
+
+    def get_reference(self, mainfile: str) -> str:
+        # TODO: use self.local_dir
+        return mainfile.split('/')[-1]
+
+    def get_relative_path(self, mainfile):
+        # TODO: use self.local_dir
+        return mainfile.split('/')[-1]

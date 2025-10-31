@@ -98,7 +98,7 @@ def pre_spawn(spawner):
                     f'Enabling nvidia driver with driver info:\n{version_info}.'
                 )
                 extra_host_config['device_requests'] = [
-                    docker.types.DeviceRequest(
+                    docker.types.DeviceRequest(  # type: ignore
                         count=-1,
                         capabilities=[['gpu']],
                     ),

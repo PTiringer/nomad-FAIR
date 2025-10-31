@@ -20,7 +20,7 @@ import PropTypes from 'prop-types'
 import { useResizeDetector } from 'react-resize-detector'
 import { isNil, isEmpty, cloneDeep } from 'lodash'
 import { useHistory } from 'react-router-dom'
-import { makeStyles, useTheme } from '@material-ui/core/styles'
+import { makeStyles } from '@material-ui/core/styles'
 import {
   Typography,
   Box,
@@ -41,11 +41,13 @@ import { Actions, Action } from '../Actions'
 import Plotly from 'plotly.js-dist-min'
 import clsx from 'clsx'
 import { mergeObjects } from '../../utils'
+import {getPlotlyTemplate} from "./template"
 
 /**
  * Component that produces a highly customized Plotly.js graph. We are using the
  * vanilla JS Plotly library to achieve the most customizability.
  */
+const SPACING = 8
 const useStyles = makeStyles((theme) => {
   return {
     root: {
@@ -128,7 +130,6 @@ const Plot = React.memo(forwardRef(({
   'data-testid': testID
 }, canvas) => {
   const [float, setFloat] = useState(false)
-  const theme = useTheme()
   const firstRender = useRef(true)
   const [ratio, setRatio] = useState(1)
   const [canvasNode, setCanvasNode] = useState()
@@ -200,105 +201,29 @@ const Plot = React.memo(forwardRef(({
   // Set the final layout. It is a combination of a default layout, the layout
   // set by the user and some properties of the curretly used layout.
   const finalLayout = useMemo(() => {
-    const withTitle = layout?.title?.text || layout?.template?.title?.text || layout?.annotations?.some(item => item?.text)
+    const withTitle =
+      layout?.title?.text ||
+      layout?.template?.title?.text ||
+      layout?.annotations?.some((item) => item?.text)
     const defaultLayout = {
-      dragmode: 'pan',
-      hovermode: false,
-      showlegend: false,
-      autosize: false,
-      template: 'plotly_white',
-      // There is extra space reserved for the top and bottom margins so that
-      // automargin does not make the plot jump around too much.
+      template: getPlotlyTemplate(),
       margin: {
-        l: theme.spacing(4),
-        r: theme.spacing(1.5),
-        t: theme.spacing(withTitle ? 5 : 1),
-        b: theme.spacing(6)
-      },
-      title: {
-        font: {
-          family: theme.typography.fontFamily
-        },
-        yanchor: 'middle'
-      },
-      legend: {
-        bgcolor: 'rgba(255, 255, 255, 0.9)',
-        font: {
-          family: theme.typography.fontFamily,
-          size: 14
-        }
-      },
-      xaxis: {
-        automargin: false,
-        autorange: true,
-        linecolor: '#333',
-        linewidth: 1,
-        mirror: true,
-        ticks: 'outside',
-        showline: true,
-        fixedrange: true,
-        title: {
-          standoff: 10,
-          font: {
-            family: theme.typography.fontFamily,
-            size: 16,
-            color: '#333'
-          },
-          tickfont: {
-            family: theme.typography.fontFamily,
-            size: 14,
-            color: '#333'
-          }
-        }
-      },
-      yaxis: {
-        automargin: true,
-        autorange: true,
-        linecolor: '#333',
-        linewidth: 1,
-        mirror: true,
-        ticks: 'outside',
-        showline: true,
-        title: {
-          standoff: 10,
-          font: {
-            family: theme.typography.fontFamily,
-            size: 16,
-            color: '#333'
-          }
-        },
-        tickfont: {
-          family: 'Titillium Web,sans-serif',
-          size: 14,
-          color: '#333'
-        }
-      },
-      yaxis2: {
-        automargin: true,
-        autorange: true,
-        linecolor: '#333',
-        linewidth: 1,
-        mirror: true,
-        ticks: 'outside',
-        showline: true,
-        title: {
-          standoff: 8,
-          font: {
-            family: 'Titillium Web,sans-serif',
-            size: 16,
-            color: '#333'
-          }
-        },
-        tickfont: {
-          family: 'Titillium Web,sans-serif',
-          size: 14,
-          color: '#333'
-        }
+        l: 4 * SPACING,
+        r: 1.5 * SPACING,
+        t: (withTitle ? 5 : 1) * SPACING,
+        b: 6 * SPACING
       }
     }
-    const newLayout = mergeObjects(layout, defaultLayout)
-    return newLayout
-  }, [layout, theme])
+    // The template stored in the data is ignored: it might still be saved for old
+    // archives, but new archives don't even store it anymore.
+    let cleanLayout = layout
+    if (layout) {
+      cleanLayout = cloneDeep(layout)
+      delete cleanLayout.template
+    }
+
+    return mergeObjects(cleanLayout, defaultLayout)
+  }, [layout])
 
   // Set the final config
   const finalConfig = useMemo(() => {

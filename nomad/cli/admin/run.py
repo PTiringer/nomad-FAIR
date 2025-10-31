@@ -25,8 +25,18 @@ from .admin import admin
 
 
 @admin.group(help='Run a nomad service locally (outside docker).')
-def run():
-    pass
+@click.option(
+    '-f',
+    '--config-file',
+    type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+    multiple=True,
+    help='Specify one or more NOMAD config yaml files. Can be repeated. Later files overwrite earlier ones.',
+)
+def run(config_file: tuple[str, ...]):
+    if config_file:
+        from nomad.config import load_and_set_config
+
+        load_and_set_config(files=list(config_file))
 
 
 @run.command(help='Run the jupyter hub.')
@@ -34,10 +44,28 @@ def hub():
     run_hub()
 
 
-@run.command(help='Run the orchestrator internal worker.')
-@click.option('--workers', type=int, default=12, help='Number of worker threads.')
-def orchestrator_internal_worker(workers: int):
-    run_temporal_worker(workers=workers)
+@run.command(help='Run the action cpu worker.')
+def action_cpu_worker():
+    import asyncio
+
+    from nomad.actions.workers import cpu
+
+    asyncio.run(cpu.run_worker())
+
+
+@run.command(help='Run the action gpu worker.')
+def action_gpu_worker():
+    import asyncio
+
+    from nomad.actions.workers import gpu
+
+    asyncio.run(gpu.run_worker())
+
+
+@run.command(help='Run the action internal worker.')
+@click.option('--workers', type=int, default=1, help='Number of worker.')
+def action_internal_worker(workers: int):
+    run_action_internal_worker(workers=workers)
 
 
 @run.command(help='Run the nomad development worker.')
@@ -66,10 +94,10 @@ def app(with_gui: bool, **kwargs):
     run_app(with_gui=with_gui, **kwargs)
 
 
-def run_temporal_worker(workers: int = 12):
+def run_action_internal_worker(workers: int = 1):
     import asyncio
 
-    from nomad.orchestrator.workers import internal_worker
+    from nomad.actions.workers import internal_worker
 
     asyncio.run(internal_worker.run_worker(workers=workers))
 
@@ -78,9 +106,9 @@ def run_app(
     *,
     with_gui: bool = False,
     gunicorn: bool = False,
-    host: str = None,
-    log_config: str = None,
-    port: int = None,
+    host: str | None = None,
+    log_config: str | None = None,
+    port: int | None = None,
     **kwargs,
 ):
     config.meta.service = 'app'
@@ -124,7 +152,7 @@ def run_app(
                 with open(source_file) as f:
                     file_data = f.read()
                 file_data = file_data.replace(
-                    '/fairdi/nomad/latest', config.services.api_base_path
+                    '/nomad-oasis', config.services.api_base_path
                 )
                 with open(source_file, 'w') as f:
                     f.write(file_data)
@@ -234,10 +262,10 @@ def task_worker(**kwargs):
 
 def run_appworker(
     *,
-    app_host: str = None,
-    app_port: int = None,
-    fastapi_workers: int = None,
-    celery_workers: int = None,
+    app_host: str | None = None,
+    app_port: int | None = None,
+    fastapi_workers: int | None = None,
+    celery_workers: int | None = None,
     dev: bool = False,
 ):
     from concurrent import futures as concurrent_futures
@@ -253,7 +281,7 @@ def run_appworker(
             results.append(executor.submit(*args, **kwargs))
 
         if config.temporal.enabled:
-            _submit(run_temporal_worker, workers=celery_workers)
+            _submit(run_action_internal_worker, workers=celery_workers)
         else:
             _submit(task_worker, workers=celery_workers)
         _submit(task_app, workers=fastapi_workers, host=app_host, port=app_port)

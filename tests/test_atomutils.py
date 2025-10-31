@@ -86,21 +86,45 @@ def test_formula(formula, format, expected_formula):
 
 
 @pytest.mark.parametrize(
-    'formula, expected_fractions',
+    'formula, expected_atomic_fractions, expected_mass_fractions',
     [
-        pytest.param('C1H4', {'C': 1 / 5, 'H': 4 / 5}, id='integer coefficients'),
+        pytest.param(
+            'C1H4',
+            {'C': 1 / 5, 'H': 4 / 5},
+            {'C': 0.74868193531416, 'H': 0.25131806468583995},
+            id='integer coefficients',
+        ),
         pytest.param(
             'CsPbBr0.9I2.1',
             {'Cs': 0.2, 'Pb': 0.2, 'Br': 0.18, 'I': 0.42},
+            {
+                'Cs': 0.1958759619200085,
+                'Pb': 0.3053712148720797,
+                'I': 0.3927666098979466,
+                'Br': 0.10598621330996522,
+            },
             id='non-integer coefficients',
         ),
         pytest.param(
-            'HOH', {'H': 2 / 3, 'O': 1 / 3}, id='multiple element occurrences'
+            'HOH',
+            {'H': 2 / 3, 'O': 1 / 3},
+            {'H': 0.11189834407236525, 'O': 0.8881016559276348},
+            id='multiple element occurrences',
+        ),
+        pytest.param(
+            'TiX4', {'Ti': 0.2, 'X': 0.8}, {'Ti': None, 'X': None}, id='unknown species'
         ),
     ],
 )
-def test_formula_atomic_fraction(formula, expected_fractions):
-    assert Formula(formula).atomic_fractions() == expected_fractions
+def test_formula_fractions(formula, expected_atomic_fractions, expected_mass_fractions):
+    formula_obj = Formula(formula)
+    assert formula_obj.atomic_fractions() == expected_atomic_fractions
+    mass_fractions = formula_obj.mass_fractions()
+    assert set(mass_fractions) == set(expected_mass_fractions)
+    for element in expected_mass_fractions:
+        assert mass_fractions[element] == pytest.approx(
+            expected_mass_fractions[element]
+        )
 
 
 @pytest.mark.parametrize(

@@ -88,7 +88,9 @@ COPY tests/states/archives/dft.json  /app/tests/states/archives/dft.json
 
 # Copy and build the application itself
 COPY gui .
-RUN echo "REACT_APP_BACKEND_URL=/fairdi/nomad/latest" > .env
+RUN echo "REACT_APP_BACKEND_URL=/nomad-oasis" > .env
+
+# ================================================================================
 
 # ================================================================================
 

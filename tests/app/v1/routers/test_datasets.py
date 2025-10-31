@@ -347,7 +347,7 @@ def test_post_datasets(
     [
         pytest.param('dataset_listed', 'user1', 200, id='plain'),
         pytest.param('dataset_listed', None, 401, id='no-user'),
-        pytest.param('dataset_listed', 'user2', 401, id='wrong-user'),
+        pytest.param('dataset_listed', 'user2', 403, id='wrong-user'),
         pytest.param('DOESNOTEXIST', 'user1', 404, id='does-not-exist'),
         pytest.param('dataset_doi', 'user1', 400, id='with-doi'),
     ],
@@ -368,7 +368,7 @@ def test_delete_dataset(auth_headers, client, data, dataset_id, user, status_cod
     [
         pytest.param('dataset_1', 'user1', 200, id='plain'),
         pytest.param('dataset_1', None, 401, id='no-user'),
-        pytest.param('dataset_1', 'user2', 401, id='wrong-user'),
+        pytest.param('dataset_1', 'user2', 403, id='wrong-user'),
         pytest.param('dataset_doi', 'user1', 400, id='with-doi'),
         pytest.param('unpublished', 'user1', 400, id='unpublished'),
         pytest.param('empty', 'user1', 400, id='empty'),

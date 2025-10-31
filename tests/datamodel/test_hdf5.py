@@ -43,7 +43,7 @@ def test_context():
     return ServerContext(upload=upload)
 
 
-class TestSection(EntryData):
+class SectionForTest(EntryData):
     quantity = Quantity()
 
 
@@ -58,12 +58,14 @@ class TestSection(EntryData):
     ],
 )
 def test_hdf5(test_context, quantity_type, value):
-    TestSection.quantity.type = quantity_type().attach_definition(TestSection.quantity)
+    SectionForTest.quantity.type = quantity_type().attach_definition(
+        SectionForTest.quantity
+    )
 
     archive = EntryArchive(
         m_context=test_context,
         metadata=EntryMetadata(entry_id='test_entry', upload_id='test_upload'),
-        data=TestSection(),
+        data=SectionForTest(),
     )
     if isinstance(value, str) and value.startswith('raw.h5'):
         HDF5Reference.write_dataset(archive, np.ones(5), value)

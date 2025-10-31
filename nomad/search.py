@@ -42,6 +42,7 @@ import elasticsearch.helpers
 from elasticsearch.exceptions import RequestError, TransportError
 from elasticsearch_dsl import A, Q, Search
 from elasticsearch_dsl.query import Query as EsQuery
+from fastapi import status
 from pydantic import ValidationError
 
 from nomad import datamodel, infrastructure, utils
@@ -77,7 +78,6 @@ from nomad.app.v1.models.models import (
 )
 from nomad.config import config
 from nomad.datamodel import AuthorReference, EntryArchive, EntryMetadata, UserReference
-from nomad.groups import MongoUserGroup
 from nomad.metainfo import Datetime, Package, Quantity
 from nomad.metainfo.elasticsearch_extension import (
     DocumentType,
@@ -96,6 +96,7 @@ from nomad.metainfo.elasticsearch_extension import (
     update_materials,
     yaml_prefix,
 )
+from nomad.mongo.groups import MongoUserGroup
 from nomad.utils.pydantic import CustomErrorWrapper
 
 _metainfo_initialized = False
@@ -114,10 +115,10 @@ class AggType(str, Enum):
 
 def update_by_query(
     update_script: str,
-    query: Any = None,
-    owner: str = None,
-    user_id: str = None,
-    index: str = None,
+    query: Any | None = None,
+    owner: str | None = None,
+    user_id: str | None = None,
+    index: str | None = None,
     refresh: bool = False,
     **kwargs,
 ):
@@ -165,8 +166,8 @@ def update_by_query(
 
 def delete_by_query(
     query: dict,
-    owner: str = None,
-    user_id: str = None,
+    owner: str | None = None,
+    user_id: str | None = None,
     update_materials: bool = False,
     refresh: bool = False,
 ):
@@ -254,20 +255,20 @@ def index_materials(entries: EntryArchive | list[EntryArchive], **kwargs):
 
 
 # TODO this depends on how we merge section metadata
-def publish(entries: Iterable[EntryMetadata], index: str = None) -> int:
+def publish(entries: Iterable[EntryMetadata], index: str | None = None) -> int:
     """
     Publishes the given entries based on their entry metadata. Sets publishes to true,
     and updates most user provided metadata with a partial update. Returns the number
     of failed updates.
     """
     return update_metadata(
-        entries, index=index, published=True, update_materials=True, refresh=True
+        entries, index=index, published=True, update_materials=False, refresh=True
     )
 
 
 def update_metadata(
     entries: Iterable[EntryMetadata],
-    index: str = None,
+    index: str | None = None,
     update_materials: bool = False,
     refresh: bool = False,
     **kwargs,
@@ -320,7 +321,9 @@ def delete_upload(upload_id: str, refresh: bool = False, **kwargs):
         _refresh()
 
 
-def delete_entry(entry_id: str, index: str = None, refresh: bool = False, **kwargs):
+def delete_entry(
+    entry_id: str, index: str | None = None, refresh: bool = False, **kwargs
+):
     """
     Deletes the given entry.
     """
@@ -335,7 +338,15 @@ class SearchError(Exception):
 
 
 class AuthenticationRequiredError(Exception):
-    pass
+    """Raised when an operation requires authentication but not provided."""
+
+    status_code = status.HTTP_401_UNAUTHORIZED
+
+
+class PermissionDeniedError(Exception):
+    """Raised when the user is authenticated but does not have access rights."""
+
+    status_code = status.HTTP_403_FORBIDDEN
 
 
 _entry_metadata_defaults = {
@@ -427,6 +438,7 @@ def _es_to_api_pagination(
     next_page_after_value = None
     if (
         0 < len(es_response.hits) < es_response.hits.total.value
+        and pagination.page_size is not None
         and len(es_response.hits) >= pagination.page_size
     ):
         last = es_response.hits[-1]
@@ -441,7 +453,7 @@ def _es_to_api_pagination(
 
     # For dynamic YAML quantities the field name is normalized to not include
     # the data type
-    request_pagination = pagination.dict()
+    request_pagination = pagination.model_dump()
     if order_quantity.dynamic:
         request_pagination['order_by'] = order_quantity.qualified_name
 
@@ -538,8 +550,8 @@ def _es_to_entry_dict(
 
 
 def _owner_es_query(
-    owner: str,
-    user_id: str = None,
+    owner: str | None,
+    user_id: str | None = None,
     doc_type: DocumentType = entry_type,
 ):
     def query(query_type='term', **kwargs):
@@ -563,42 +575,38 @@ def _owner_es_query(
 
         return q
 
+    if owner in {'shared', 'user', 'staging', 'admin'}:
+        if user_id is None:
+            raise AuthenticationRequiredError(f'Authentication required for {owner=}.')
+
+        if owner == 'admin' and not datamodel.User.get(user_id=user_id).is_admin:
+            raise PermissionDeniedError('This can only be used by the admin user.')
+
     if owner == 'all':
         q = query(published=True)
         q |= viewers_query(user_id, force_groups=True)
+
     elif owner == 'public':
         q = query(published=True) & query(with_embargo=False)
+
     elif owner == 'visible':
         q = query(published=True) & query(with_embargo=False)
         q |= viewers_query(user_id, force_groups=True)
+
     elif owner == 'shared':
-        if user_id is None:
-            raise AuthenticationRequiredError(
-                'Authentication required for owner value shared.'
-            )
         q = viewers_query(user_id)
+
     elif owner == 'user':
-        if user_id is None:
-            raise AuthenticationRequiredError(
-                'Authentication required for owner value user.'
-            )
         q = query(main_author__user_id=user_id)
+
     elif owner == 'staging':
-        if user_id is None:
-            raise AuthenticationRequiredError(
-                'Authentication required for owner value user'
-            )
         q = query(published=False) & viewers_query(user_id)
-    elif owner == 'admin':
-        if user_id is None or not datamodel.User.get(user_id=user_id).is_admin:
-            raise AuthenticationRequiredError(
-                'This can only be used by the admin user.'
-            )
+
+    elif owner in {'admin', None}:
         q = None
-    elif owner is None:
-        q = None
+
     else:
-        raise KeyError('Unsupported owner value')
+        raise KeyError(f'Unsupported {owner=}')
 
     if q is not None:
         return q
@@ -637,7 +645,9 @@ def get_definition(path):
 
 
 def validate_quantity(
-    quantity_name: str, doc_type: DocumentType = None, loc: list[str] = None
+    quantity_name: str,
+    doc_type: DocumentType | None = None,
+    loc: list[str] | None = None,
 ) -> SearchQuantity:
     """
     Validates the given quantity name against the given document type.
@@ -694,7 +704,7 @@ def validate_quantity(
 
 
 def normalize_api_query(
-    query: Query, doc_type: DocumentType, prefix: str = None
+    query: Query, doc_type: DocumentType, prefix: str | None = None
 ) -> Query:
     """
     Normalizes the given query. Should be applied before _api_to_es_query, which
@@ -852,7 +862,10 @@ def remove_quantity_from_query(query: Query, quantity: str, prefix=None):
 
 
 def _api_to_es_query(
-    query: Query, doc_type: DocumentType, owner_query: EsQuery, prefix: str = None
+    query: Query,
+    doc_type: DocumentType,
+    owner_query: EsQuery,
+    prefix: str | None = None,
 ) -> EsQuery:
     """
     Creates an ES query based on the API's query model. This needs to be a normalized
@@ -966,7 +979,7 @@ def _api_to_es_query(
 
 
 def validate_pagination(
-    pagination: Pagination, doc_type: DocumentType, loc: list[str] = None
+    pagination: Pagination, doc_type: DocumentType, loc: list[str] | None = None
 ):
     order_quantity = None
     if pagination.order_by is not None:
@@ -1003,7 +1016,7 @@ def validate_pagination(
 
 
 def _api_to_es_sort(
-    pagination: Pagination, doc_type: DocumentType, loc: list[str] = None
+    pagination: Pagination, doc_type: DocumentType, loc: list[str] | None = None
 ) -> tuple[dict[str, Any], SearchQuantity, str]:
     """
     Creates an ES sort based on the API's pagination model.
@@ -1223,7 +1236,11 @@ def _api_to_es_aggregation(
             )
             es_agg = es_aggs.bucket(agg_name, terms)
 
-        if agg.entries is not None and agg.entries.size > 0:
+        if (
+            agg.entries is not None
+            and agg.entries.size is not None
+            and agg.entries.size > 0
+        ):
             kwargs: dict[str, Any] = {}
             if agg.entries.required is not None:
                 if agg.entries.required.include is not None:
@@ -1286,7 +1303,7 @@ def _api_to_es_aggregation(
         if agg.offset is not None:
             params['offset'] = agg.offset
         if agg.extended_bounds is not None:
-            params['extended_bounds'] = agg.extended_bounds.dict()
+            params['extended_bounds'] = agg.extended_bounds.model_dump()
         es_agg = es_aggs.bucket(
             agg_name,
             A(
@@ -1346,7 +1363,7 @@ def _es_to_api_aggregation(
     the given aggregation.
     """
     es_aggs = es_response.aggs
-    aggregation_dict = agg.dict(by_alias=True)
+    aggregation_dict = agg.model_dump(by_alias=True)
     filtered_agg_name = f'agg:{name}:filtered'
     if filtered_agg_name in es_response.aggs:
         es_aggs = es_aggs[f'agg:{name}:filtered']
@@ -1567,7 +1584,7 @@ def _buckets_to_interval(
     owner: str = 'public',
     query: Query | EsQuery = None,
     aggregations: dict[str, Aggregation] = {},
-    user_id: str = None,
+    user_id: str | None = None,
     index: Index = entry_index,
 ) -> tuple[dict[str, Aggregation], dict[str, HistogramAggregation], dict[str, float]]:
     """Converts any histogram aggregations with the number of buckets into a
@@ -1675,10 +1692,10 @@ def _buckets_to_interval(
 def search(
     owner: str = 'public',
     query: Query | EsQuery = None,
-    pagination: MetadataPagination = None,
-    required: MetadataRequired = None,
+    pagination: MetadataPagination | None = None,
+    required: MetadataRequired | None = None,
     aggregations: dict[str, Aggregation] = {},
-    user_id: str = None,
+    user_id: str | None = None,
     index: Index = entry_index,
 ) -> MetadataResponse:
     # If histogram aggregations only provide the number of buckets, we need to
@@ -1743,7 +1760,10 @@ def search(
     if pagination.page_offset:
         search = search.extra(**{'from': pagination.page_offset})
     elif pagination.page:
-        search = search.extra(**{'from': (pagination.page - 1) * pagination.page_size})
+        if pagination.page is not None and pagination.page_size is not None:
+            search = search.extra(
+                **{'from': (pagination.page - 1) * pagination.page_size}
+            )
     elif page_after_value:
         search = search.extra(search_after=page_after_value.rsplit(':', 1))
 
@@ -1874,9 +1894,9 @@ def search_iterator(
     owner: str = 'public',
     query: Query | EsQuery = None,
     order_by: str = 'entry_id',
-    required: MetadataRequired = None,
+    required: MetadataRequired | None = None,
     aggregations: dict[str, Aggregation] = {},
-    user_id: str = None,
+    user_id: str | None = None,
     index: Index = entry_index,
 ) -> Iterator[dict[str, Any]]:
     """

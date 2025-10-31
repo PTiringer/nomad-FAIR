@@ -314,9 +314,6 @@ export function entryType(entry) {
     if (!parser) {
       return null
     }
-    if (parser === 'parsers/eels') {
-      return 'EELS DB entry'
-    }
     const program = parserLabels[parser]
     if (!program) {
       return null
@@ -827,7 +824,8 @@ export function pluralize(word, count, inclusive, format = true, prefix) {
     'normalizer': 'normalizers',
     'app': 'apps',
     'package': 'packages',
-    'api': 'apis'
+    'api': 'apis',
+    'action': 'actions'
   }
   const words = word.trim().split(" ")
   let lastWord = words[words.length - 1]
@@ -1111,6 +1109,8 @@ export function parseNomadUrl(url) {
       // There is more. Expect "raw" or "archive"
       if (restParts[0] === 'raw') {
         rawPath = restParts.slice(1).map(decodeURIComponent).join('/')
+      } else if (restParts[1] === 'raw') {
+        rawPath = restParts.slice(2).map(decodeURIComponent).join('/')
       } else if (restParts[0] === 'archive' && !entryId) {
         if (restParts.length === 1) throw new Error(prefix + '"archive" must be followed by entry id or "mainfile"')
         if (restParts[1] === 'mainfile') {
@@ -1692,12 +1692,15 @@ export function parseJMESPath(input) {
         for (const childExtra of childExtras) {
           extras = [...extras, ...childExtra]
         }
-      // In filter projections we save the filter field in extras
+      // In filter projections we save each filter field in extras. Note that there can be
+      // multiple conditions
       } else if (type === 'FilterProjection') {
         for (const childField of childFields.slice(0, 2)) {
           field = [...field, ...childField]
         }
-        extras = [...extras, [...childFields[0], ...childFields[2]]]
+        for (const childExtra of childFields[2]) {
+          extras = [...extras, [...childFields[0], childExtra]]
+        }
       // In *_by we save the referenced variable in extras
       } else if (type === 'Function' && name === 'min_by') {
         field = [...field, ...childFields[0]]
@@ -1722,7 +1725,9 @@ export function parseJMESPath(input) {
 
   const [field, extrasList] = recurseAST(ast)
   const quantity = field.join('.') + schema
-  const extras = extrasList.map(x => x.join('.') + schema)
+  const extrasSet = new Set(extrasList.map(x => x.join('.') + schema))
+  extrasSet.delete(quantity) // Remove quantity if present
+  const extras = [...extrasSet] // Convert back to array
 
   return {quantity, extras, path, schema, error}
 }

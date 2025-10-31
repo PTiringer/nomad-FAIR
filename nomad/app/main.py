@@ -21,29 +21,39 @@ import json
 import re
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Response, status
+from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.exception_handlers import (
     http_exception_handler as default_http_exception_handler,
 )
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi_cache import FastAPICache
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from temporalio.client import Client
 
-from nomad import infrastructure
+from nomad._auth import check_api_secret
+from nomad.actions.client import get_client
 from nomad.config import config
 from nomad.config.models.plugins import APIEntryPoint
-from nomad.orchestrator.client import get_client
+from nomad.mongo.cache import MongoBackend
+from nomad.utils.structlogging import get_logger
 
 from .static import GuiFiles
 from .static import app as static_files_app
 from .v1.main import app as v1_app
+from .v1.routers import apps as apps_router
+from .v1.routers.auth import resolve_user
 
 
 class OasisAuthenticationMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, whitelist: set[str] | None = None) -> None:
+    def __init__(
+        self,
+        app,
+        whitelist: set[str] | None = None,
+    ) -> None:
         """
-        Middleware to enforce authentication on protected endpoints.
+        Middleware to enforce authentication on protected routes.
 
         Args:
             app: The ASGI application.
@@ -54,25 +64,44 @@ class OasisAuthenticationMiddleware(BaseHTTPMiddleware):
         self.whitelist_patterns = [re.compile(pat) for pat in (whitelist or [])]
 
     async def dispatch(self, request, call_next):
-        path = request.url.path
-        if any(pat.search(path) for pat in self.whitelist_patterns):
+        # Skip if global auth is off or route is whitelisted
+        router_path = request.url.path.removeprefix(
+            f'{config.services.api_base_path}/api/v1'
+        )
+        if not config.oasis.require_authentication or any(
+            pat.search(router_path) for pat in self.whitelist_patterns
+        ):
             return await call_next(request)
 
-        if 'Authorization' not in request.headers:
-            return Response(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                content='You have to authenticate to use this Oasis endpoint.',
-            )
+        # Extract tokens (dependency injection isn’t available now)
+        bearer_token = None
+        if 'Authorization' in request.headers:
+            parts = request.headers['Authorization'].split()
+            if len(parts) == 2 and parts[0].lower() == 'bearer':
+                bearer_token = parts[1]
 
-        token = request.headers['Authorization'].split(' ')[1]
-        user, _ = infrastructure.keycloak.tokenauth(token)
-        if user is None or user.email not in config.oasis.allowed_users:
-            return Response(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                content='You are not authorized to access this Oasis endpoint.',
+        try:
+            # Here any token would be allowed
+            # NOTE: cannot handle `form_data` as the stream would be consumed
+            _user = resolve_user(
+                bearer_token=bearer_token,
+                upload_token=request.query_params.get('token'),
+                request=request,
+                signature_token=request.query_params.get('signature_token'),
+                required=True,
             )
+        except HTTPException as exc:
+            return Response(status_code=exc.status_code, content=exc.detail)
 
         return await call_next(request)
+
+
+OASIS_AUTH_WHITELIST: dict[str, set[str]] = {
+    'v1_app': {'^/auth', '^/info$', '^/extensions/', '^/openapi.json$'},
+    'optimade_app': {'/extensions', '/info', '^/versions$'},
+    'dcat_app': {'^/extensions/docs', '^/openapi.json$'},
+    'h5grove_app': {'^/docs', '^/redoc$', '^/openapi.json$'},
+}
 
 
 @asynccontextmanager
@@ -107,13 +136,23 @@ async def lifespan(app: FastAPI):
 
     infrastructure.setup()
 
+    FastAPICache.init(backend=MongoBackend())
+
+    # By this point all of the schemas packages from plugins are loaded.
+    apps_router.initialize_search_quantities()
+
+    # Validate API secret
+    check_api_secret()
+
     if config.temporal.enabled:
         try:
             app.state.temporal_client = await get_client()
             yield
         except Exception as e:
-            print(f'Failed to connect to temporal {e}')
-            pass
+            logger = get_logger(__name__)
+
+            logger.error(f'Failed to connect to temporal', exc_info=e)
+            raise
     else:
         yield
 
@@ -138,31 +177,46 @@ async def health():
 
 
 app.mount(f'{app_base}/api/v1', v1_app)
+v1_app.add_middleware(
+    OasisAuthenticationMiddleware,
+    whitelist=OASIS_AUTH_WHITELIST['v1_app'],
+)
+v1_app.add_middleware(
+    CORSMiddleware,  # CORS has to be the first to act on request
+    allow_origins=['*'],
+    allow_credentials=True,
+    allow_methods=['*'],
+    allow_headers=['*'],
+    expose_headers=['Content-Disposition'],
+)
 
 if config.services.optimade_enabled:
     from .optimade import optimade_app
 
     app.mount(f'{app_base}/optimade', optimade_app)
-    if config.oasis.allowed_users is not None:
-        optimade_app.add_middleware(
-            OasisAuthenticationMiddleware,
-            whitelist={'/extensions', '/info', '^/versions$'},
-        )
+
+    optimade_app.add_middleware(
+        OasisAuthenticationMiddleware,
+        whitelist=OASIS_AUTH_WHITELIST['optimade_app'],
+    )
 
 if config.services.dcat_enabled:
     from .dcat.main import app as dcat_app
 
     app.mount(f'{app_base}/dcat', dcat_app)
+    dcat_app.add_middleware(
+        OasisAuthenticationMiddleware,
+        whitelist=OASIS_AUTH_WHITELIST['dcat_app'],
+    )
 
 if config.services.h5grove_enabled:
     from .h5grove_app import app as h5grove_app
 
     app.mount(f'{app_base}/h5grove', h5grove_app)
-
-if config.resources.enabled:
-    from .resources.main import app as resources_app
-
-    app.mount(f'{app_base}/resources', resources_app)
+    h5grove_app.add_middleware(
+        OasisAuthenticationMiddleware,
+        whitelist=OASIS_AUTH_WHITELIST['h5grove_app'],
+    )
 
 # Add API plugins
 for entry_point in config.plugins.entry_points.filtered_values():
@@ -179,7 +233,7 @@ app.mount(app_base, static_files_app)
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request, exc):
-    if exc.status_code != 404:
+    if exc.status_code != status.HTTP_404_NOT_FOUND:
         return await default_http_exception_handler(request, exc)
 
     try:
@@ -189,14 +243,14 @@ async def http_exception_handler(request, exc):
 
     if accept is not None and 'html' in accept:
         return HTMLResponse(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             content=f"""
         <html>
             <head><title>{config.meta.name}</title></head>
             <body>
                 <h1>NOMAD app</h1>
                 <h2>info</h2>
-                {'<br/>'.join(f'{key}: {value}' for key, value in config.meta.dict().items())}
+                {'<br/>'.join(f'{key}: {value}' for key, value in config.meta.model_dump().items())}
                 <h2>apis</h2>
                 <a href="{app_base}/api/v1/extensions/docs">NOMAD API v1</a><br/>
                 <a href="{app_base}/optimade/v1/extensions/docs">Optimade API</a><br/>
@@ -207,7 +261,7 @@ async def http_exception_handler(request, exc):
         )
 
     return JSONResponse(
-        status_code=404,
+        status_code=status.HTTP_404_NOT_FOUND,
         content={
             'detail': 'Not found',
             'info': {

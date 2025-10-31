@@ -837,6 +837,8 @@ class File(NonPrimitive):
             raise TypeError('Files need to be given as URL strings.')
 
         section = kwargs.get('section')
+        if section is None:
+            raise ValueError('Cannot normalize File without section.')
 
         if (context := section.m_root().m_context) is not None:
             return context.normalize_reference(section, value)

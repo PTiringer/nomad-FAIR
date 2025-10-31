@@ -23,6 +23,7 @@ from urllib.parse import urlencode
 
 import pytest
 from devtools import debug
+from fastapi import status
 
 from nomad.datamodel import results
 from nomad.utils import deep_get
@@ -279,28 +280,33 @@ def get_query_test_parameters(
 def owner_test_parameters():
     return [
         # (owner, user, status_code, total_entries, total_mainfiles, total_materials)
+        # Test missing authentication
         pytest.param('user', None, 401, -1, -1, -1, id='user-wo-auth'),
         pytest.param('staging', None, 401, -1, -1, -1, id='staging-wo-auth'),
         pytest.param('visible', None, 200, 23, 23, 6, id='visible-wo-auth'),
         pytest.param('admin', None, 401, -1, -1, -1, id='admin-wo-auth'),
         pytest.param('shared', None, 401, -1, -1, -1, id='shared-wo-auth'),
         pytest.param('public', None, 200, 23, 23, 6, id='public-wo-auth'),
+        # Test accessing as `user1`
         pytest.param('user', 'user1', 200, 32, 30, 13, id='user-user1'),
         pytest.param('staging', 'user1', 200, 6, 4, 4, id='staging-user1'),
         pytest.param('visible', 'user1', 200, 32, 30, 13, id='visible-user1'),
-        pytest.param('admin', 'user1', 401, -1, -1, -1, id='admin-user1'),
+        pytest.param('admin', 'user1', 403, -1, -1, -1, id='admin-user1'),
         pytest.param('shared', 'user1', 200, 32, 30, 13, id='shared-user1'),
         pytest.param('public', 'user1', 200, 23, 23, 6, id='public-user1'),
+        # Test accessing as `user2`
         pytest.param('user', 'user2', 200, 0, 0, 0, id='user-user2'),
         pytest.param('staging', 'user2', 200, 2, 2, 2, id='staging-user2'),
         pytest.param('visible', 'user2', 200, 27, 27, 10, id='visible-user2'),
         pytest.param('shared', 'user2', 200, 4, 4, 4, id='shared-user2'),
         pytest.param('public', 'user2', 200, 23, 23, 6, id='public-user2'),
-        pytest.param('all', None, 200, 26, 26, 9, id='metadata-all-wo-auth'),
-        pytest.param('all', 'user1', 200, 32, 30, 13, id='metadata-all-user1'),
-        pytest.param('all', 'user2', 200, 28, 28, 11, id='metadata-all-user2'),
-        pytest.param('admin', 'user0', 200, 32, 30, 13, id='admin-user0'),
+        # Test owner as `all`
+        pytest.param('all', 'user1', 403, 32, 30, 13, id='metadata-all-user1'),
+        pytest.param('all', 'user2', 403, 28, 28, 11, id='metadata-all-user2'),
         pytest.param('all', 'invalid', 401, -1, -1, -1, id='bad-credentials'),
+        pytest.param('all', None, 403, 26, 26, 9, id='metadata-all-wo-auth'),
+        # Test accessing as `user0` (admin)
+        pytest.param('admin', 'user0', 200, 32, 30, 13, id='admin-user0'),
     ]
 
 
@@ -1153,20 +1159,31 @@ def aggregation_exclude_from_search_test_parameters(
     ]
 
 
-def assert_response(response, status_code=None):
+def assert_response(response, status_code: int | None = None) -> None:
     """General assertions for status_code and error messages"""
-    if status_code and response.status_code != status_code:
+    if status_code is None:
+        return
+
+    actual: int = response.status_code
+
+    if actual != status_code:
         try:
             debug(response.json())
         except Exception:
             pass
 
-    if status_code is not None:
-        if response.status_code != status_code and response.status_code == 422:
-            print(response.json()['detail'])
-        assert response.status_code == status_code
+        if actual == status.HTTP_422_UNPROCESSABLE_ENTITY:
+            pytest.fail(
+                f'Expected {status_code}, but got 422 Unprocessable Entity.\n'
+                f'Detail: {response.json()["detail"]}'
+            )
+        else:
+            pytest.fail(
+                f'Expected {status_code}, but got {actual}.\n'
+                f'Response JSON: {response.json()}'
+            )
 
-    if status_code == 422:
+    if status_code == status.HTTP_422_UNPROCESSABLE_ENTITY:
         response_json = response.json()
         details = response_json['detail']
         assert len(details) > 0
@@ -1470,6 +1487,11 @@ def perform_metadata_test(
     http_method='get',
     **kwargs,
 ):
+    # Currently operations with `owner=all` would be allowed for
+    # `entries/materials` endpoints only, others would reject with status code 403
+    if status_code == 403 and owner == 'all':
+        status_code = 200
+
     if http_method == 'get':
         params = {}
         if owner is not None:

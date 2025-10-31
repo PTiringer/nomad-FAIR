@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 
+from enum import Enum
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
@@ -26,6 +27,7 @@ from nomad import utils
 from nomad.metainfo.elasticsearch_extension import material_index, material_type
 from nomad.search import (
     AuthenticationRequiredError,
+    PermissionDeniedError,
     QueryValidationError,
     SearchError,
     search,
@@ -49,6 +51,11 @@ from ..utils import create_responses
 from .auth import create_user_dependency
 
 router = APIRouter()
+
+
+class APITag(str, Enum):
+    DEFAULT = 'materials'
+
 
 logger = utils.get_logger(__name__)
 
@@ -79,8 +86,8 @@ _bad_id_response = (
 
 
 class MaterialMetadataResponse(BaseModel):
-    material_id: str = Field(None)
-    required: MetadataRequired = Field(None)
+    material_id: str | None = Field(None)
+    required: MetadataRequired | None = Field(None)
     data: Any = Field(
         None, description=strip("""The material metadata as dictionary.""")
     )
@@ -94,6 +101,8 @@ def perform_search(*args, **kwargs) -> MetadataResponse:
         return search_response
     except QueryValidationError as e:
         raise RequestValidationError(errors=e.errors)
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     except AuthenticationRequiredError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
     except SearchError as e:
@@ -105,7 +114,7 @@ def perform_search(*args, **kwargs) -> MetadataResponse:
 
 @router.post(
     '/query',
-    tags=['materials'],
+    tags=[APITag.DEFAULT],
     summary='Search materials and retrieve their metadata',
     response_model=MetadataResponse,
     responses=create_responses(_bad_owner_response),
@@ -144,7 +153,7 @@ async def post_entries_metadata_query(
 
 @router.get(
     '',
-    tags=['materials'],
+    tags=[APITag.DEFAULT],
     summary='Search materials and retrieve their metadata',
     response_model=MetadataResponse,
     responses=create_responses(_bad_owner_response),
@@ -183,7 +192,7 @@ async def get_entries_metadata(
 
 @router.get(
     '/{material_id}',
-    tags=['materials'],
+    tags=[APITag.DEFAULT],
     summary='Get the metadata of a material by its id',
     response_model=MaterialMetadataResponse,
     responses=create_responses(_bad_id_response),

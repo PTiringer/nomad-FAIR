@@ -264,8 +264,8 @@ class TextParser(FileParser):
 
     def __init__(
         self,
-        mainfile: str = None,
-        quantities: list[Quantity] = None,
+        mainfile: str | None = None,
+        quantities: list[Quantity] | None = None,
         logger=None,
         **kwargs,
     ):

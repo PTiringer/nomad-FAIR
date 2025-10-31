@@ -17,6 +17,7 @@
 import fnmatch
 import re
 from enum import Enum
+from threading import Lock
 from typing import Any
 
 import jmespath
@@ -40,7 +41,12 @@ from nomad.config.models.ui import (
     WidgetTerms,
 )
 from nomad.datamodel import EntryArchive
-from nomad.metainfo.elasticsearch_extension import Elasticsearch, entry_type
+from nomad.metainfo.elasticsearch_extension import (
+    Elasticsearch,
+    dtype_separator,
+    entry_type,
+    schema_separator,
+)
 
 # Compile the regex once at module load time.
 SCHEMA_REGEX = re.compile(r'#[a-zA-Z0-9_.#]+')
@@ -72,6 +78,19 @@ app_cache: dict[str, dict[str, Any]] = {}
 app_search_quantity_cache: dict[str, list['SearchQuantity']] = {}
 all_search_quantities: dict[str, 'SearchQuantity'] = {}
 
+_init_lock = Lock()
+_initialized = False
+
+
+class DataType(Enum):
+    INT = 'int'
+    FLOAT = 'float'
+    TIMESTAMP = 'timestamp'
+    STRING = 'string'
+    ENUM = 'enum'
+    BOOLEAN = 'boolean'
+    UNKNOWN = 'unknown'
+
 
 class SearchQuantity(BaseModel):
     quantity: str = Field(description='Name of the search quantity.')
@@ -83,9 +102,11 @@ class SearchQuantity(BaseModel):
     description: str | None = Field(
         None, description='Description of the search quantity.'
     )
-    dtype: str | None = Field(None, description='Type of the search quantity.')
+    dtype: DataType | None = Field(None, description='Type of the search quantity.')
     unit: str | None = Field(None, description='Unit of the search quantity.')
-    shape: str | None = Field(None, description='Shape of the search quantity.')
+    shape: str | list[str] | None = Field(
+        None, description='Shape of the search quantity.'
+    )
     aliases: list[str] | None = Field(
         None, description='Aliases for the search quantity.'
     )
@@ -124,16 +145,6 @@ class SearchQuantityRequest(BaseModel):
     pagination: Pagination = Field(description='Controls the pagination of the values.')
 
 
-class DataType(Enum):
-    INT = 'int'
-    FLOAT = 'float'
-    TIMESTAMP = 'timestamp'
-    STRING = 'string'
-    ENUM = 'enum'
-    BOOLEAN = 'boolean'
-    UNKNOWN = 'unknown'
-
-
 def get_datatype(type_obj) -> DataType:
     """
     Converts a metainfo data type object to a simplified string representation.
@@ -170,6 +181,31 @@ def get_datatype(type_obj) -> DataType:
         return DataType.UNKNOWN
 
 
+def parse_quantity_name(full_name: str) -> dict[str, str | None]:
+    """
+    Used to split a quantity name into path, schema and dtype.
+    """
+    if not full_name:
+        return {}
+
+    parts = full_name.split(schema_separator, 1)
+    if len(parts) == 2:
+        path, schema = parts
+    else:
+        path, schema = full_name, None
+
+    if schema:
+        dtype_parts = schema.split(dtype_separator, 1)
+        if len(dtype_parts) == 2:
+            schema_new, dtype = dtype_parts
+        else:
+            schema_new, dtype = schema, None
+    else:
+        schema_new, dtype = None, None
+
+    return {'path': path, 'schema': schema_new, 'dtype': dtype}
+
+
 def parse_jmespath(input: str) -> dict[str, Any]:
     """
     Parses a JMESPath expression and extracts the targeted quantity along with additional details.
@@ -192,39 +228,69 @@ def parse_jmespath(input: str) -> dict[str, Any]:
             'schema': '',
         }
 
-    def recurse_ast(node):
-        type_ = node.get('type')
-        name = node.get('name')
-        children = node.get('children', [])
-        field, extras = [], []
-        if children:
-            child_fields, child_extras = [], []
-            for child in children:
-                cf, ce = recurse_ast(child)
-                child_fields.append(cf)
-                child_extras.append(ce)
-            if type_ == 'filter_projection':
-                for cf in child_fields[:2]:
-                    field.extend(cf)
-                extras.append(child_fields[0] + child_fields[2])
-            elif type_ == 'function' and name == 'min_by':
-                field.extend(child_fields[0])
-                extras.append(child_fields[0] + child_fields[1])
-            else:
-                for cf in child_fields:
-                    field.extend(cf)
-                for ce in child_extras:
-                    extras.extend(ce)
-        elif type_ == 'field':
-            return [node['value']], extras
-        return field, extras
+    def traverse(node):
+        # Scalar nodes do not affect paths
+        if not isinstance(node, dict):
+            return [], []
 
-    field, extras_list = recurse_ast(ast)
-    quantity = '.'.join(field) + schema
-    extras = ['.'.join(x) + schema for x in extras_list]
+        # Fields extend the main path
+        if node['type'] == 'field':
+            return [node['value']], []
+
+        # Recursively traverse child nodes to gather their paths
+        children = node.get('children', [])
+        node_type = node.get('type')
+        node_value = node.get('value')
+        child_path_lists = []
+        child_aux_path_list = []
+        main_path_list = []
+        aux_paths = []
+        for child in children:
+            child_path_list, child_aux_paths = traverse(child)
+            child_path_lists.append(child_path_list)
+            child_aux_path_list.append(child_aux_paths)
+        # In map functions we save expression reference in the reverse order
+        if node_type == 'function_expression' and node_value == 'map':
+            child_path_lists.reverse()
+            for child_path in child_path_lists:
+                main_path_list.extend(child_path)
+        # In filter projections we save each filter field in extras. Note that there can
+        # be multiple conditions
+        elif node_type == 'filter_projection':
+            for child_path in child_path_lists[0:2]:
+                main_path_list.extend(child_path)
+            for path in child_path_lists[2]:
+                aux_path = []
+                aux_path.extend(child_path_lists[0])
+                aux_path.append(path)
+                aux_paths.append(aux_path)
+        # In *_by we save the referenced variable as an auxiliary path
+        elif node_type == 'function_expression' and node_value in {'min_by', 'max_by'}:
+            main_path_list.extend(child_path_lists[0])
+            aux_path = []
+            aux_path.extend(child_path_lists[0])
+            aux_path.extend(child_path_lists[1])
+            aux_paths.append(aux_path)
+        #  For other types we simply extend definitions and extras in the order they are
+        #  defined in
+        else:
+            for child_path in child_path_lists:
+                main_path_list.extend(child_path)
+            for child_aux_path in child_aux_path_list:
+                aux_paths.extend(child_aux_path)
+
+        return main_path_list, aux_paths
+
+    main_path_list, aux_path_list = traverse(ast)
+    quantity = '.'.join(main_path_list) + schema
+    extras = set(['.'.join(x) + schema for x in aux_path_list])
+    if quantity in extras:
+        extras.remove(quantity)
+    extras_list = list(extras)
+
     return {
         'quantity': quantity,
-        'extras': extras,
+        'extras': extras_list,
         'path': path,
         'schema': schema,
         'error': None,
@@ -328,19 +394,37 @@ def match_search_quantities(
     return filtered
 
 
-def _lazy_build_search_quantities():
-    """Lazy-Populate entry point cache and all_search_quantities."""
-    # entry points
+def initialize_search_quantities():
+    """
+    Race-safe initialization for the all search quantities; global and app-specific. This
+    should be called only after all of the plugin have been loaded in order to have all of
+    the search quantities available.
+    """
+    global _initialized
+    if _initialized:
+        return
+    with _init_lock:
+        if _initialized:
+            return
+        _initialize_search_quantities()
+        _initialized = True
+
+
+def _initialize_search_quantities():
+    """This is an internal function that does the heavy operations and makes it easier to
+    test that the initialization works as expected.
+    """
+    # Entry points
     for entry_point in config.plugins.entry_points.filtered_values():
         if isinstance(entry_point, AppEntryPoint):
             app_entry_points_cache[entry_point.app.path] = entry_point
-    # base quantities
+    # Base quantities
     all_search_quantities.clear()
     for key, value in entry_type.quantities.items():
         if not value.annotation.suggestion:
             all_search_quantities[key] = get_search_quantity(value, key)
 
-    # section quantities
+    # Section quantities
     def _get_sections(m_def, prefix=None, repeats=False):
         for sub in m_def.all_sub_sections.values():
             name = f'{prefix}.{sub.name}' if prefix else sub.name
@@ -350,12 +434,12 @@ def _lazy_build_search_quantities():
 
     _get_sections(EntryArchive.results.sub_section, 'results')
 
-
-# without this, the dictionary will be built once at import time—before the Elasticsearch extension had
-# finished registering all of its entry_type.quantities, so it remained partially filled
-def _ensure_initialized():
-    if not all_search_quantities:
-        _lazy_build_search_quantities()
+    # Pre-build per-app filtered search quantities
+    for app_path, ep in app_entry_points_cache.items():
+        if app_path not in app_search_quantity_cache:
+            app_search_quantity_cache[app_path] = prefilter_search_quantities(
+                all_search_quantities, app_path
+            )
 
 
 @router.get(
@@ -367,61 +451,51 @@ def _ensure_initialized():
 )
 async def get_entry_points():
     """Entry point for getting information about all apps"""
-    _ensure_initialized()
+    initialize_search_quantities()
+
     apps = []
     for id, ep in app_entry_points_cache.items():
-        app = ep.app.dict()
+        app = ep.app.model_dump()
         app['id'] = id
         apps.append(app)
     return {'data': apps}
 
 
-@router.get(
-    '/entry-points/{app_path}',
-    tags=[APITag.DEFAULT],
-    summary='Get a specific app',
-    response_model=dict[str, Any],
-    response_model_exclude_none=True,
-    responses=create_responses(_bad_app_not_found, _bad_search_quantity_parse),
-)
-async def get_entry_point(app_path: str):
-    """Entry point for getting information about a specific app"""
-    _ensure_initialized()
-    if app_path in app_cache:
-        return app_cache[app_path]
-    entry_point = app_entry_points_cache.get(app_path)
-    if entry_point is None:
-        raise HTTPException(
-            status_code=404, detail=f'Could not find an app with the path "{app_path}".'
-        )
+def _build_app_response(entry_point: AppEntryPoint) -> dict[str, Any]:
     search_quantities: dict[str, Any] = {}
     app = entry_point.app
 
-    def add_jmespath(name: str, location: str = None):
+    def add_jmespath(name: str, location: str | None = None):
         data = parse_jmespath(name)
         if data['error']:
             raise HTTPException(
-                status_code=422,
-                detail=f'Could not parse the search quantity "{name}" defined in {location}.',
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f'Could not parse the app search quantity "{name}" used in {location}. Please verify that any JMESPath expressions are valid. Error: {data["error"]}',
             )
         for q in [data['quantity']] + data['extras']:
             add_search(q, location)
 
-    def add_search(name: str, location: str = None):
+    def add_search(name: str, location: str | None = None):
         if name in search_quantities:
             return
+
+        # Search quantities with an explicit dtype are not validated
+        parsed = parse_quantity_name(name)
+        if parsed['dtype']:
+            return
+
         sq = all_search_quantities.get(name)
         if sq is None:
             raise HTTPException(
-                status_code=422,
-                detail=f'Could not load the search quantity "{name}" defined in {location}.',
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f'Could not load the app search quantity "{name}" used in {location}. Please check for typos and ensure that the corresponding schema package is installed and contains the requested definition. Note that currently only scalar quantities can be used in the apps, and data from e.g. lists or matrices cannot be accessed.',
             )
-        search_quantities[name] = sq.dict()
+        search_quantities[name] = sq.model_dump()
 
-    # columns
+    # Columns
     for column in app.columns or []:
-        add_jmespath(column.search_quantity, 'the results table as a column')
-    # widgets
+        add_jmespath(column.search_quantity, 'the results table column')
+    # Widgets
     if app.dashboard and app.dashboard.widgets:
         for widget in app.dashboard.widgets:
             if isinstance(widget, (WidgetPeriodicTable | WidgetTerms)):
@@ -453,7 +527,7 @@ async def get_entry_point(app_path: str):
                         'the marker color of a scatter plot widget',
                     )
 
-    # menus
+    # Menus
     def load_menu(menu: Menu | MenuItemNestedObject):
         for item in menu.items or []:
             if isinstance(item, Menu):
@@ -473,13 +547,41 @@ async def get_entry_point(app_path: str):
 
     if app.menu:
         load_menu(app.menu)
-    # filters_locked
+    # Filters_locked
     for key in (app.filters_locked or {}).keys():
         add_search(key, 'filters_locked')
 
-    response = {'app': entry_point.app.dict(), 'search_quantities': search_quantities}
-    app_cache[app_path] = response
-    return response
+    return {
+        'app': entry_point.app.model_dump(),
+        'search_quantities': search_quantities,
+    }
+
+
+@router.get(
+    '/entry-points/{app_path}',
+    tags=[APITag.DEFAULT],
+    summary='Get a specific app',
+    response_model=dict[str, Any],
+    response_model_exclude_none=True,
+    responses=create_responses(_bad_app_not_found, _bad_search_quantity_parse),
+)
+async def get_entry_point(app_path: str):
+    """Entry point for getting information about a specific app"""
+    initialize_search_quantities()
+
+    # Check that the entry points exists
+    entry_point = app_entry_points_cache.get(app_path)
+    if entry_point is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f'Could not find an app with the path "{app_path}".',
+        )
+
+    # Check the cache, if not found populate it
+    if app_path not in app_cache:
+        app_cache[app_path] = _build_app_response(entry_point)
+
+    return app_cache[app_path]
 
 
 @router.post(
@@ -492,11 +594,12 @@ async def get_entry_point(app_path: str):
 )
 async def get_entry_point_search_quantities(data: SearchQuantityRequest):
     """Entry point for suggestions for search quantities"""
-    _ensure_initialized()
+    initialize_search_quantities()
+
     if data.app_path:
         if data.app_path not in app_entry_points_cache:
             raise HTTPException(
-                status_code=404,
+                status_code=status.HTTP_404_NOT_FOUND,
                 detail=f'Could not find an app with the path "{data.app_path}".',
             )
         sqs = app_search_quantity_cache.get(data.app_path)
@@ -506,5 +609,6 @@ async def get_entry_point_search_quantities(data: SearchQuantityRequest):
     else:
         sqs = list(all_search_quantities.values())
     matched = match_search_quantities(sqs, data.query)
-    page, size = data.pagination.page, data.pagination.page_size
+    page = data.pagination.page or 1
+    size = data.pagination.page_size or 10
     return matched[(page - 1) * size : page * size]

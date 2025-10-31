@@ -79,6 +79,7 @@ dimensions = [
     'power',
     'pressure',
     'charge',
+    'solid_angle',
     'resistance',
     'conductance',
     'inductance',
@@ -144,6 +145,7 @@ class UnitSystem(ConfigBaseModel):
             'power': 'W',
             'pressure': 'Pa',
             'charge': 'C',
+            'solid_angle': 'sr',
             'resistance': 'Ω',
             'conductance': 'S',
             'inductance': 'H',
@@ -2132,14 +2134,16 @@ class ExampleUploads(OptionsBase):
 class UI(ConfigBaseModel):
     """Used to customize the user interface."""
 
-    app_base: str = Field(None, description='This is automatically set.')
-    north_base: str = Field(None, description='This is automatically set.')
-    theme: Theme = Field(None, description='Controls the site theme and identity.')
-    unit_systems: UnitSystems = Field(
+    app_base: str | None = Field(None, description='This is automatically set.')
+    north_base: str | None = Field(None, description='This is automatically set.')
+    theme: Theme | None = Field(
+        None, description='Controls the site theme and identity.'
+    )
+    unit_systems: UnitSystems | None = Field(
         None, description='Controls the available unit systems.'
     )
-    entry: Entry = Field(None, description='Controls the entry visualization.')
-    apps: Apps = Field(
+    entry: Entry | None = Field(None, description='Controls the entry visualization.')
+    apps: Apps | None = Field(
         None,
         deprecated='The "ui.apps" field is deprecated. You should define apps either via plugins or in "plugins.entry_points.options".',
     )

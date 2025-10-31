@@ -27,7 +27,7 @@ from collections.abc import Iterator
 from types import FunctionType
 from typing import Any
 
-from fastapi import HTTPException, Query, Request, status  # noqa: F401
+from fastapi import HTTPException, Query, status  # noqa: F401
 from pydantic import BaseModel, ValidationError  # noqa: F401
 
 from nomad.files import StreamedFile, UploadFiles, create_zipstream
@@ -71,7 +71,7 @@ def parameter_dependency_from_model(
             errors = e.errors()
             for error in errors:
                 error['loc'] = ['query'] + list(error['loc'])
-            raise HTTPException(422, detail=errors)
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=errors)
 
     """.format(
             name,
@@ -102,7 +102,7 @@ class DownloadItem(BaseModel):
 
 async def create_download_stream_zipped(
     download_items: DownloadItem | Iterator[DownloadItem],
-    upload_files: UploadFiles = None,
+    upload_files: UploadFiles | None = None,
     re_pattern: Any = None,
     recursive: bool = False,
     create_manifest_file: bool = False,
@@ -138,6 +138,9 @@ async def create_download_stream_zipped(
                 if not upload_files:
                     # Open the requested upload.
                     upload_files = UploadFiles.get(download_item.upload_id)
+
+                if upload_files is None:  # Added check
+                    continue  # Skip if upload_files is None
 
                 all_filtered = True
                 files_found = False

@@ -260,7 +260,7 @@ def _query_uploads(
     if entries_mongo_query:
         entries_mongo_query_q = Q(**json.loads(entries_mongo_query))
 
-    entries_query_uploads: set[str] = None
+    entries_query_uploads: set[str] | None = None
 
     if entries_es_query is not None:
         entries_es_query_dict = json.loads(entries_es_query)
@@ -282,6 +282,7 @@ def _query_uploads(
         entries_query_uploads = {
             cast(str, bucket.value)
             for bucket in results.aggregations['uploads'].terms.data
+            if results.aggregations['uploads'].terms.data is not None
         }  # pylint: disable=no-member
 
     if outdated:
@@ -300,11 +301,11 @@ def _query_uploads(
         # and not the entry collection. This ensures that we will also catch uploads that
         # do not have an entry.
         mongo_entry_based_uploads = set(
-            proc.Upload.objects().distinct(field='upload_id')
+            proc.Upload.objects().distinct(field='upload_id')  # type: ignore
         )
     else:
         mongo_entry_based_uploads = set(
-            proc.Entry.objects(entries_mongo_query_q).distinct(field='upload_id')
+            proc.Entry.objects(entries_mongo_query_q).distinct(field='upload_id')  # type: ignore
         )
 
     if entries_query_uploads is not None:
@@ -345,7 +346,7 @@ def _query_uploads(
     if uploads is not None:
         final_query &= Q(upload_id__in=list(uploads))
 
-    return final_query, proc.Upload.objects(final_query)
+    return final_query, proc.Upload.objects(final_query)  # type: ignore
 
 
 @uploads.command(help='List selected uploads')
@@ -406,15 +407,16 @@ def export(ctx, uploads, required, output: str):
         upload_id = upload.upload_id
         upload_files = UploadFiles.get(upload_id)
         upload_count += 1
-        entry_ids = list(entry.entry_id for entry in Entry.objects(upload_id=upload_id))
+        entry_ids = list(entry.entry_id for entry in Entry.objects(upload_id=upload_id))  # type: ignore
         entry_count = 0
         for entry_id in entry_ids:
             entry_count += 1
             total_count += 1
             try:
-                archive = upload_files.read_archive(entry_id)
-                archive_data = required_reader.read(archive, entry_id, upload_id)
-                write(entry_id, archive_data)
+                if upload_files is not None:  # Added check
+                    archive = upload_files.read_archive(entry_id)
+                    archive_data = required_reader.read(archive, entry_id, upload_id)
+                    write(entry_id, archive_data)
             except ArchiveQueryError as e:
                 logger.error('could not read archive', exc_info=e, entry_id=entry_id)
             except KeyError as e:
@@ -425,7 +427,8 @@ def export(ctx, uploads, required, output: str):
                     f'{upload_count:5}/{len(uploads)} {entry_count:5}/{len(entry_ids)} {total_count:5} {(get_rss() - start_time)} {upload_id}'
                 )
 
-        upload_files.close()
+        if upload_files is not None:  # Added check
+            upload_files.close()
 
     output_file.close()
 
@@ -640,7 +643,7 @@ def delete_upload(
     # delete elastic
     if not skip_es:
         search.delete_upload(
-            upload_id=upload.upload_id, update_materials=True, refresh=True
+            upload_id=upload.upload_id, update_materials=False, refresh=True
         )
 
     # delete files
@@ -659,7 +662,7 @@ def delete_upload(
 
     # delete mongo
     if not skip_mongo:
-        proc.Entry.objects(upload_id=upload.upload_id).delete()
+        proc.Entry.objects(upload_id=upload.upload_id).delete()  # type: ignore
         upload.delete()
 
 
@@ -838,9 +841,9 @@ def stop(ctx, uploads, entries: bool, kill: bool, no_celery: bool):
     running_query = query & mongoengine.Q(
         process_status__in=proc.ProcessStatus.STATUSES_PROCESSING
     )
-    stop_all(proc.Entry.objects(running_query))
+    stop_all(proc.Entry.objects(running_query))  # type: ignore
     if not entries:
-        stop_all(proc.Upload.objects(running_query))
+        stop_all(proc.Upload.objects(running_query))  # type: ignore
 
 
 @uploads.command(
@@ -995,7 +998,7 @@ def integrity(
 
         upload_files = StagingUploadFiles(upload.upload_id)  # type: ignore
 
-        entries = Entry.objects(upload_id=upload.upload_id)
+        entries = Entry.objects(upload_id=upload.upload_id)  # type: ignore
         if not check_all_entries:
             entries = [entries.first()]
 
@@ -1082,7 +1085,7 @@ def integrity(
 
         upload_files = StagingUploadFiles(upload.upload_id)  # type: ignore
 
-        entries = Entry.objects(upload_id=upload.upload_id)
+        entries = Entry.objects(upload_id=upload.upload_id)  # type: ignore
         if not check_all_entries:
             entries = [entries.first()]
 
@@ -1118,7 +1121,7 @@ def integrity(
 
         upload_files = StagingUploadFiles(upload.upload_id)  # type: ignore
 
-        entries = Entry.objects(upload_id=upload.upload_id)
+        entries = Entry.objects(upload_id=upload.upload_id)  # type: ignore
         if not check_all_entries:
             entries = [entries.first()]
 
@@ -1211,7 +1214,7 @@ def export_bundle(
             # Invalid setting provided
             print(e)
             print('\nAvailable settings and their configured default values:')
-            for k, v in default_export_settings.dict().items():
+            for k, v in default_export_settings.model_dump().items():
                 print(f'    {k:<40}: {v}')
             return -1
     else:
@@ -1360,7 +1363,7 @@ def import_bundle(
             if BundleImporter.looks_like_a_bundle(bundle_path):
                 count += 1
                 print(f'Importing bundle: {bundle_path}')
-                bundle_importer: BundleImporter = None
+                bundle_importer: BundleImporter | None = None
                 try:
                     bundle_importer = BundleImporter(
                         None, import_settings, embargo_length

@@ -154,12 +154,12 @@ class DisplayAnnotation(BaseModel):
 
 class QuantityDisplayAnnotation(DisplayAnnotation):
     """
-    This annotations control how quantities are displayed in the GUI.  Use the
+    This annotations control how quantities are displayed in the GUI. Use the
     key `display` to add this annotation. For example in Python:
 
     ```python
     class Example(EntryData):
-        sample_id = Quantity(type=str, a_display={'visible': False})
+        sample_weight = Quantity(type=float, unit='g', a_display={'unit': 'kg'})
     ```
 
     or in YAML:
@@ -167,11 +167,12 @@ class QuantityDisplayAnnotation(DisplayAnnotation):
     definitions:
       Example:
         quantities:
-          sample_id:
-            type: str
+          sample_weight:
+            type: float
+            unit: g
             m_annotations:
               display:
-                visible: false
+                unit: kg
     ```
     """
 
@@ -276,7 +277,7 @@ class ELNAnnotation(AnnotationModel):
     [here](https://nomad-lab.eu/prod/v1/staging/gui/dev/editQuantity).
     """
 
-    component: ELNComponentEnum = Field(
+    component: ELNComponentEnum | None = Field(
         None,
         description="""
         The form field component that is used to make the annotated quantity editable.
@@ -301,7 +302,7 @@ class ELNAnnotation(AnnotationModel):
     """,
     )
 
-    label: str = Field(
+    label: str | None = Field(
         None,
         description="""
         [Deprecated] ELN label annotation has been deprecated and it is advised to
@@ -311,10 +312,38 @@ class ELNAnnotation(AnnotationModel):
     """,
     )
 
-    props: dict[str, Any] = Field(
+    props: dict[str, Any] | None = Field(
         None,
         description="""
         A dictionary with additional props that are passed to the edit component.
+
+        Examples:
+
+        ```yaml
+        description:
+          type: str
+          m_annotations:
+            eln:
+              component: RichTextEditQuantity
+              props:
+                height: 200
+        time:
+          type: Datetime
+          m_annotations:
+            eln:
+              component: DateTimeEditQuantity
+              props:
+                format: "yyyy-MM-dd HH:mm:ss"
+                views: ["hours", "minutes", "seconds"]
+        search:
+          type: Query
+          m_annotations:
+            eln:
+              component: QueryEditQuantity
+              props:
+                maxData: 30
+                storeInArchive: true
+        ```
     """,
     )
 
@@ -327,7 +356,7 @@ class ELNAnnotation(AnnotationModel):
         ELN form field default value will be stored, even if not changed.
     """,
     )
-    defaultDisplayUnit: str = Field(
+    defaultDisplayUnit: str | None = Field(
         None,
         description="""
         This attribute is deprecated, use the `unit` attribute of `display`
@@ -339,7 +368,7 @@ class ELNAnnotation(AnnotationModel):
         deprecated=True,
     )
 
-    minValue: int | float = Field(
+    minValue: int | float | None = Field(
         None,
         description="""
         Allows to specify a minimum value for quantity annotations with number type.
@@ -348,7 +377,7 @@ class ELNAnnotation(AnnotationModel):
     """,
     )
 
-    maxValue: int | float = Field(
+    maxValue: int | float | None = Field(
         None,
         description="""
         Allows to specify a maximum value for quantity annotations with number type.
@@ -357,7 +386,7 @@ class ELNAnnotation(AnnotationModel):
     """,
     )
 
-    showSectionLabel: bool = Field(
+    showSectionLabel: bool | None = Field(
         None,
         description="""
             To customize the ReferenceEditQuantity behaviour. If true the section label will be shown
@@ -365,7 +394,7 @@ class ELNAnnotation(AnnotationModel):
         """,
     )
 
-    hide: list[str] = Field(
+    hide: list[str] | None = Field(
         None,
         description="""
         This attribute is deprecated. Use `visible` attribute of `display` annotation instead.
@@ -376,14 +405,14 @@ class ELNAnnotation(AnnotationModel):
         deprecated=True,
     )
 
-    overview: bool = Field(
+    overview: bool | None = Field(
         None,
         description="""
         Shows the annotation section on the entry's overview page. Can only be used on
         section annotations.""",
     )
 
-    lane_width: str | int = Field(
+    lane_width: str | int | None = Field(
         None,
         description="""
         Value to overwrite the css width of the lane used to render the annotation
@@ -391,7 +420,7 @@ class ELNAnnotation(AnnotationModel):
     """,
     )
 
-    properties: SectionProperties = Field(
+    properties: SectionProperties | None = Field(
         None,
         description="""
         The value to customize the quantities and sub sections of the annotation section.
@@ -541,7 +570,7 @@ class BrowserAnnotation(AnnotationModel):
     ```
     """
 
-    adaptor: BrowserAdaptors = Field(
+    adaptor: BrowserAdaptors | None = Field(
         None,
         description="""
       Allows to change the *Adaptor* implementation that is used to render the
@@ -551,7 +580,7 @@ class BrowserAnnotation(AnnotationModel):
       actions, like file preview.
     """,
     )
-    render_value: BrowserRenderValues = Field(
+    render_value: BrowserRenderValues | None = Field(
         None,
         description="""
       Allows to change the *Component* used to render the value of the quantity.
@@ -569,10 +598,12 @@ class TabularMode(str, Enum):
 
 
 class TabularParsingOptions(BaseModel):
-    skiprows: list[int] | int = Field(None, description='Number of rows to skip')
-    sep: str = Field(None, description='Character identifier of a separator')
-    comment: str = Field(None, description='Character identifier of a commented line')
-    separator: str = Field(None, description='Alias for `sep`')
+    skiprows: list[int] | int | None = Field(None, description='Number of rows to skip')
+    sep: str | None = Field(None, description='Character identifier of a separator')
+    comment: str | None = Field(
+        None, description='Character identifier of a commented line'
+    )
+    separator: str | None = Field(None, description='Alias for `sep`')
 
 
 class TabularFileModeEnum(str, Enum):
@@ -608,7 +639,7 @@ class TabularMappingOptions(BaseModel):
         holds the path to the `.csv` or excel file.<br/>
     """,
     )
-    file_mode: TabularFileModeEnum = Field(
+    file_mode: TabularFileModeEnum | None = Field(
         None,
         description="""
     This controls the behaviour of the parser towards working physical files in file system.
@@ -620,7 +651,7 @@ class TabularMappingOptions(BaseModel):
     `multiple_new_entries`: Creating many new entries and processing the data into these new NOMAD entries.<br/>
     """,
     )
-    sections: list[str] = Field(
+    sections: list[str] | None = Field(
         None,
         description="""
     A `list` of paths to the (sub)sections where the tabular quantities are to be filled from the data
@@ -674,17 +705,23 @@ class PlotlyExpressTraceAnnotation(BaseModel):
     Allows to plot figures using plotly Express.
     """
 
-    method: str = Field(None, description='Plotly express plot method')
-    layout: dict = Field(None, description='Plotly layout')
+    method: str | None = Field(None, description='Plotly express plot method')
+    layout: dict | None = Field(None, description='Plotly layout')
 
-    x: list[float] | list[str] | str = Field(None, description='Plotly express x')
-    y: list[float] | list[str] | str = Field(None, description='Plotly express y')
-    z: list[float] | list[str] | str = Field(None, description='Plotly express z')
-    color: list[float] | list[str] | str = Field(
+    x: list[float] | list[str] | str | None = Field(
+        None, description='Plotly express x'
+    )
+    y: list[float] | list[str] | str | None = Field(
+        None, description='Plotly express y'
+    )
+    z: list[float] | list[str] | str | None = Field(
+        None, description='Plotly express z'
+    )
+    color: list[float] | list[str] | str | None = Field(
         None, description='Plotly express color'
     )
-    symbol: str = Field(None, description='Plotly express symbol')
-    title: str = Field(None, description='Plotly express title')
+    symbol: str | None = Field(None, description='Plotly express symbol')
+    title: str | None = Field(None, description='Plotly express title')
 
 
 class PlotlyExpressAnnotation(PlotlyExpressTraceAnnotation):
@@ -720,7 +757,7 @@ class PlotlyExpressAnnotation(PlotlyExpressTraceAnnotation):
     ```
     """
 
-    label: str = Field(None, description='Figure label')
+    label: str | None = Field(None, description='Figure label')
     traces: list[PlotlyExpressTraceAnnotation] = Field(
         [],
         description="""
@@ -751,10 +788,10 @@ class PlotlyGraphObjectAnnotation(BaseModel):
     ```
     """
 
-    label: str = Field(None, description='Figure label')
-    data: dict = Field(None, description='Plotly data')
-    layout: dict = Field(None, description='Plotly layout')
-    config: dict = Field(None, description='Plotly config')
+    label: str | None = Field(None, description='Figure label')
+    data: dict | None = Field(None, description='Plotly data')
+    layout: dict | None = Field(None, description='Plotly layout')
+    config: dict | None = Field(None, description='Plotly config')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -809,9 +846,9 @@ class PlotlySubplotsAnnotation(BaseModel):
     ```
     """
 
-    label: str = Field(None, description='Figure label')
-    layout: dict = Field(None, description='Plotly layout')
-    parameters: dict = Field(
+    label: str | None = Field(None, description='Figure label')
+    layout: dict | None = Field(None, description='Plotly layout')
+    parameters: dict | None = Field(
         None,
         description="""
         plotly.subplots.make_subplots parameters i.e. rows, cols, shared_xaxes, shared_xaxes, horizontal_spacing , ...
@@ -832,7 +869,7 @@ class TabularAnnotation(AnnotationModel):
     in conjunction with `tabular_parser`.
     """
 
-    name: str = Field(
+    name: str | None = Field(
         None,
         description="""
         The column name that should be mapped to the annotation quantity. Has to be
@@ -842,7 +879,7 @@ class TabularAnnotation(AnnotationModel):
         quantity that a column should be mapped to.
     """,
     )
-    unit: str = Field(
+    unit: str | None = Field(
         None,
         description="""
         The unit of the value in the file. Has to be compatible with the annotated quantity's
@@ -856,13 +893,13 @@ class TabularAnnotation(AnnotationModel):
 class HDF5Annotation(AnnotationModel):
     """ """
 
-    path: str = Field(
+    path: str | None = Field(
         None,
         description="""
         The path from the root of the h5 file to the target dataset.
     """,
     )
-    unit: str = Field(
+    unit: str | None = Field(
         None,
         description="""
             The unit of the value in the file. Has to be compatible with the annotated quantity's
@@ -922,7 +959,7 @@ class PlotAnnotation(AnnotationModel):
             **kwargs,
         )
 
-    label: str = Field(
+    label: str | None = Field(
         None, description='Is passed to plotly to define the label of the plot.'
     )
     x: list[str] | str = Field(
@@ -942,21 +979,21 @@ class PlotAnnotation(AnnotationModel):
         sections are indexed between two `/`s with an integer or a slice `start:stop`.
     """,
     )
-    lines: list[dict] = Field(
+    lines: list[dict] | None = Field(
         None,
         description="""
         A list of dicts passed as `traces` to plotly to configure the lines of the plot.
         See [https://plotly.com/javascript/reference/scatter/](https://plotly.com/javascript/reference/scatter/) for details.
     """,
     )
-    layout: dict = Field(
+    layout: dict | None = Field(
         None,
         description="""
         A dict passed as `layout` to plotly to configure the plot layout.
         See [https://plotly.com/javascript/reference/layout/](https://plotly.com/javascript/reference/layout/) for details.
     """,
     )
-    config: dict = Field(
+    config: dict | None = Field(
         None,
         description="""
         A dict passed as `config` to plotly to configure the plot functionality.
@@ -1039,13 +1076,13 @@ class Rule(BaseModel):
         """
         overridden_rule = self.copy()
         # Update non-empty fields from the referenced rule, excluding 'use_rule' to prevent circular references
-        for field_name, field_value in referenced_rule.dict().items():
+        for field_name, field_value in referenced_rule.model_dump().items():
             if field_value and field_name != 'use_rule':
                 setattr(overridden_rule, field_name, field_value)
         return overridden_rule
 
 
-Rule.update_forward_refs()
+Rule.model_rebuild()
 
 
 class Rules(BaseModel):
@@ -1068,43 +1105,43 @@ class H5WebAnnotation(AnnotationModel):
     of the annotation fields.
     """
 
-    axes: str | list[str] = Field(
+    axes: str | list[str] | None = Field(
         None,
         description="""
         Names of the HDF5Dataset quantities to plot on the independent axes.
         """,
     )
-    signal: str = Field(
+    signal: str | None = Field(
         None,
         description="""
         Name of the HDF5Dataset quantity to plot on the dependent axis.
         """,
     )
-    long_name: str = Field(
+    long_name: str | None = Field(
         None,
         description="""
         Label for the hdf5 dataset. Note: this attribute will overwrite also the unit.
         """,
     )
-    auxiliary_signals: list[str] = Field(
+    auxiliary_signals: list[str] | None = Field(
         None,
         description="""
         Additional datasets to include in plot as signal.
         """,
     )
-    title: str = Field(
+    title: str | None = Field(
         None,
         description="""
         Title of the plot
         """,
     )
-    errors: str = Field(
+    errors: str | None = Field(
         None,
         description="""
         Name of the HDF5Dataset quantity to plot as error bars.
         """,
     )
-    indices: int | list[int] = Field(
+    indices: int | list[int] | None = Field(
         None,
         description="""
         Indices of the HDF5Dataset to include in plot.
@@ -1178,16 +1215,18 @@ class Mapper(BaseModel):
         """ or Tuple of name of transformer function and list of paths to be resolved"""
         """ as argument to the function.""",
     )
-    remove: bool = Field(None, description="""Removes data from source.""")
-    cache: bool = Field(None, description="""Store value.""")
+    remove: bool | None = Field(None, description="""Removes data from source.""")
+    cache: bool | None = Field(None, description="""Store value.""")
     path_parser: str = Field(
         'jmespath', description="""Name of the parser for paths."""
     )
-    unit: str = Field(None, description="""Pint unit to be applied to value.""")
-    indices: str = Field(
-        None, description="""Name of function to evaluate indices to include in data"""
+    unit: str | None = Field(None, description="""Pint unit to be applied to value.""")
+    indices: str | list[int] | None = Field(
+        None,
+        description="""Name of function to evaluate indices or the list of"""
+        """ indices to include in data""",
     )
-    search: str = Field(None, description="""Path to search on value.""")
+    search: str | None = Field(None, description="""Path to search on value.""")
 
 
 class MappingAnnotation(AnnotationModel):

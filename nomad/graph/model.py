@@ -45,28 +45,28 @@ from nomad.app.v1.routers.uploads import (
 
 
 class DatasetQuery(BaseModel):
-    dataset_id: str = Field(None)
-    dataset_name: str = Field(None)
-    user_id: list[str] = Field(None)
-    dataset_type: str = Field(None)
-    doi: str = Field(None)
-    prefix: str = Field(None)
+    dataset_id: str | None = Field(None)
+    dataset_name: str | None = Field(None)
+    user_id: list[str] | None = Field(None)
+    dataset_type: str | None = Field(None)
+    doi: str | None = Field(None)
+    prefix: str | None = Field(None)
 
 
 class EntryQuery(BaseModel):
-    mainfile: list[str] = Field(
+    mainfile: list[str] | None = Field(
         None,
         description="""
     Provide a list of regex patterns to match the mainfile. Case sensitive.
     """,
     )
-    parser_name: list[str] = Field(
+    parser_name: list[str] | None = Field(
         None,
         description="""
     Provide a list of regex patterns to match the parser names. Case sensitive.
     """,
     )
-    references: list[str] = Field(
+    references: list[str] | None = Field(
         None,
         description="""
     Provide a list of regex patterns to match the references. Case sensitive.
@@ -190,7 +190,7 @@ class RequestConfig(BaseModel):
         Only one of `include` and `exclude` can be set.
         """,
     )
-    depth: int = Field(
+    depth: int | None = Field(
         None,
         ge=0,
         description="""
@@ -199,7 +199,7 @@ class RequestConfig(BaseModel):
         This option does not apply to primitive quantities, which are always retrieved.
         """,
     )
-    resolve_depth: int = Field(
+    resolve_depth: int | None = Field(
         None,
         ge=0,
         description="""
@@ -207,7 +207,7 @@ class RequestConfig(BaseModel):
         If `None`, the depth is unlimited.
         """,
     )
-    resolve_type: ResolveType = Field(
+    resolve_type: ResolveType | None = Field(
         None,
         description="""
         Indicate how the current data should be interpreted.
@@ -217,14 +217,14 @@ class RequestConfig(BaseModel):
         The original data will be left as it is if the assigned resolve type cannot find additional information.
         """,
     )
-    max_list_size: int = Field(
+    max_list_size: int | None = Field(
         None,
         ge=0,
         description="""
         Indicate the size limit of lists. If assigned, lists longer than this limit will be ignored.
         """,
     )
-    max_dict_size: int = Field(
+    max_dict_size: int | None = Field(
         None,
         ge=0,
         description="""

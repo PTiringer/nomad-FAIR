@@ -34,6 +34,7 @@ import smtplib
 import warnings
 from datetime import datetime
 from email.mime.text import MIMEText
+from typing import TYPE_CHECKING, Any
 
 import jwt
 import unidecode
@@ -51,6 +52,9 @@ from nomad.config import config
 # the metainfo with parser specific definitions, before the metainfo might be used.
 from nomad.parsing import parsers  # noqa: F401
 from nomad.utils.structlogging import get_logger
+
+if TYPE_CHECKING:
+    from nomad.datamodel import User
 
 warnings.filterwarnings('ignore')
 
@@ -98,6 +102,11 @@ def setup_mongo(client=False):
         mongo_client = connect(**kwargs)
 
     logger.info('setup mongo connection')
+
+    # drop cache at startup
+    db = mongo_client.get_database(config.mongo.db_name)
+    db.get_collection('cache').drop()
+
     return mongo_client
 
 
@@ -105,7 +114,16 @@ def check_mongo():
     db = mongo_client.get_database(config.mongo.db_name)
     names = set(db.list_collection_names())
 
-    expected_names = {'upload', 'user_group', 'entry', 'dataset', 'archive'}
+    # 'cache' is also known but should have been removed by setup
+    expected_names = {
+        'action_document',
+        'archive',
+        'dataset',
+        'entry',
+        'package_definition',
+        'upload',
+        'user_group',
+    }
     if not expected_names.issuperset(names):
         logger.warning(
             f'Expected MongoDB collections: {sorted(expected_names)}; '
@@ -155,12 +173,12 @@ class Keycloak:
     configuration
     """
 
-    def __init__(self):
-        self.__oidc_client = None
-        self.__public_keys = None
+    def __init__(self) -> None:
+        self.__oidc_client: KeycloakOpenID | None = None
+        self.__public_keys: dict | None = None
 
     @property
-    def _oidc_client(self):
+    def _oidc_client(self) -> KeycloakOpenID:
         if self.__oidc_client is None:
             self.__oidc_client = KeycloakOpenID(
                 server_url=config.keycloak.server_url,
@@ -172,14 +190,14 @@ class Keycloak:
         return self.__oidc_client
 
     @property
-    def _public_keys(self):
+    def _public_keys(self) -> dict:
         if self.__public_keys is None:
             try:
                 jwks = self._oidc_client.certs()
                 self.__public_keys = {}
                 for jwk in jwks['keys']:
                     kid = jwk['kid']
-                    self.__public_keys[kid] = jwt.algorithms.RSAAlgorithm.from_jwk(
+                    self.__public_keys[kid] = jwt.algorithms.RSAAlgorithm.from_jwk(  # type: ignore[index]
                         json.dumps(jwk)
                     )
             except Exception as e:
@@ -188,7 +206,7 @@ class Keycloak:
 
         return self.__public_keys
 
-    def refresh_token(self, access_token: str, refresh_token: str, **kwargs) -> str:
+    def refresh_token(self, access_token: str, refresh_token: str, **kwargs) -> dict:
         return self._oidc_client.refresh_token(refresh_token)
 
     def basicauth(self, username: str, password: str) -> str:
@@ -239,12 +257,15 @@ class Keycloak:
                 'Could not validate credentials. The given token is invalid.'
             )
 
-    def tokenauth(self, access_token: str) -> object:
+    def tokenauth(self, access_token: str) -> 'User':
         """
         Authenticates the given access_token
 
         Returns:
             The user
+
+        Raises:
+            KeycloakError: if payload is invalid.
         """
         try:
             payload = self.decode_access_token(access_token)
@@ -278,7 +299,7 @@ keycloak = Keycloak()
 
 
 class UserManagement:
-    def add_user(self, user, bcrypt_password=None, invite=False):
+    def add_user(self, user, bcrypt_password=None, invite: bool = False):
         """
         Adds the given :class:`nomad.datamodel.User` instance to the configured keycloak
         realm using the keycloak admin API.
@@ -288,7 +309,12 @@ class UserManagement:
     def search_user(self, query: str):
         raise NotImplementedError()
 
-    def get_user(self, user_id: str = None, username: str = None, email: str = None):
+    def get_user(
+        self,
+        user_id: str | None = None,
+        username: str | None = None,
+        email: str | None = None,
+    ):
         """
         Retrives all available information about a user from the local keycloak admin
         interface or the central NOMAD installation. This can be used to retrieve
@@ -299,7 +325,7 @@ class UserManagement:
 
 
 class OasisUserManagement(UserManagement):
-    def __init__(self, users_api_url: str = None):
+    def __init__(self, users_api_url: str | None = None):
         if users_api_url:
             self._users_api_url = users_api_url
         else:
@@ -328,7 +354,12 @@ class OasisUserManagement(UserManagement):
 
         return list(self.__user_from_api_user(user) for user in response.json()['data'])
 
-    def get_user(self, user_id: str = None, username: str = None, email: str = None):
+    def get_user(
+        self,
+        user_id: str | None = None,
+        username: str | None = None,
+        email: str | None = None,
+    ) -> 'User | None':
         import requests
 
         kwargs = {}
@@ -353,10 +384,10 @@ class OasisUserManagement(UserManagement):
 
 
 class KeycloakUserManagement(UserManagement):
-    def __init__(self):
-        self.__admin_client = None
+    def __init__(self) -> None:
+        self.__admin_client: KeycloakAdmin | None = None
 
-    def __create_username(self, user):
+    def __create_username(self, user: 'User') -> None:
         if user.first_name is not None and user.last_name is not None:
             user.username = f'{user.first_name[:1]}{user.last_name}'
         elif user.last_name is not None:
@@ -375,7 +406,20 @@ class KeycloakUserManagement(UserManagement):
         except KeyError:
             pass
 
-    def add_user(self, user, bcrypt_password=None, invite=False):
+    def add_user(
+        self,
+        user: 'User | dict[str, Any]',
+        bcrypt_password: str | None = None,
+        invite: bool = False,
+    ) -> str | None:
+        """
+        Add a user to Keycloak and NOMAD's internal database.
+
+        Returns:
+            str | None:
+                - A string with an error message if user creation fails
+                - None if the user was created successfully.
+        """
         from nomad import datamodel
 
         if not isinstance(user, datamodel.User):
@@ -463,7 +507,7 @@ class KeycloakUserManagement(UserManagement):
 
         return None
 
-    def __user_from_keycloak_user(self, keycloak_user):
+    def __user_from_keycloak_user(self, keycloak_user: dict[str, Any]) -> 'User':
         from nomad import datamodel
 
         kwargs = {
@@ -482,12 +526,13 @@ class KeycloakUserManagement(UserManagement):
             **kwargs,
         )
 
-    def search_user(self, query: str):
-        kwargs = {}
+    def search_user(self, query: str) -> list['User']:
+        kwargs: dict[str, Any] = {}
         if query is not None:
             kwargs['query'] = dict(search=query, max=1000)
         else:
             kwargs['query'] = dict(max=1000)
+
         try:
             keycloak_results = self._admin_client.get_users(**kwargs)
         except Exception as e:
@@ -499,7 +544,12 @@ class KeycloakUserManagement(UserManagement):
             for keycloak_user in keycloak_results
         ]
 
-    def get_user(self, user_id: str = None, username: str = None, email: str = None):
+    def get_user(
+        self,
+        user_id: str | None = None,
+        username: str | None = None,
+        email: str | None = None,
+    ) -> 'User':
         if username is not None and user_id is None:
             with utils.lnr(logger, 'Could not use keycloak admin client'):
                 user_id = self._admin_client.get_user_id(username)
@@ -517,7 +567,8 @@ class KeycloakUserManagement(UserManagement):
             if user_id is None:
                 raise KeyError(f'User with email {email} does not exist')
 
-        assert user_id is not None, 'Could not determine user from given kwargs'
+        if user_id is None:
+            raise KeycloakError('Could not determine user from given kwargs')
 
         try:
             keycloak_user = self._admin_client.get_user(user_id)
@@ -526,13 +577,13 @@ class KeycloakUserManagement(UserManagement):
             if str(getattr(e, 'response_code', 404)) == '404':
                 raise KeyError('User does not exist')
 
-            logger.error('Could not retrieve user from keycloak', exc_info=e)
+            # logger.error('Could not retrieve user from keycloak', exc_info=e)
             raise e
 
         return self.__user_from_keycloak_user(keycloak_user)
 
     @property
-    def _admin_client(self):
+    def _admin_client(self) -> KeycloakAdmin:
         if (
             True
         ):  # TODO (self.__admin_client is None:), client becomes unusable after 60s
@@ -543,22 +594,21 @@ class KeycloakUserManagement(UserManagement):
                 realm_name=config.keycloak.realm_name,
                 verify=True,
             )
-            self.__admin_client.realm_name = config.keycloak.realm_name
+            self.__admin_client.realm_name = config.keycloak.realm_name  # type: ignore[attr-defined]
 
         return self.__admin_client
 
 
-user_management: UserManagement
 if config.oasis.uses_central_user_management:
-    user_management = OasisUserManagement()
+    user_management: UserManagement = OasisUserManagement()
 else:
     user_management = KeycloakUserManagement()
 
 
-def reset(remove: bool):
+def reset(remove: bool) -> None:
     """
     Resets the databases mongo, elastic/entries, and all files. Be careful.
-    In contrast to :func:`remove`, it will only remove the contents of dbs and indicies.
+    In contrast to :func:`remove`, it will only remove the contents of dbs and indices.
     This function just attempts to remove everything, there is no exception handling
     or any warranty it will succeed.
 
@@ -612,13 +662,13 @@ def reset(remove: bool):
         logger.error('exception deleting files', exc_info=e)
 
 
-def send_mail(name: str, email: str, message: str, subject: str):
+def send_mail(name: str, email: str, message: str, subject: str) -> None:
     """Used to programmatically send mails.
 
     Args:
         name: The email recipient name.
         email: The email recipient address.
-        messsage: The email body.
+        message: The email body.
         subject: The subject line.
     """
     if not config.mail.enabled:

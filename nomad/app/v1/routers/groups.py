@@ -30,7 +30,11 @@ from nomad.app.v1.models.groups import (
 from nomad.app.v1.models.pagination import PaginationResponse
 from nomad.app.v1.utils import parameter_dependency_from_model
 from nomad.datamodel import User as UserDataModel
-from nomad.groups import MongoUserGroup, create_mongo_user_group, get_mongo_user_group
+from nomad.mongo.groups import (
+    MongoUserGroup,
+    create_mongo_user_group,
+    get_mongo_user_group,
+)
 from nomad.utils import strip
 
 from ..models import User
@@ -82,7 +86,7 @@ def check_user_may_edit_user_group(user: User, user_group: MongoUserGroup):
         return
 
     raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
+        status_code=status.HTTP_403_FORBIDDEN,
         detail=strip(
             f"Not authorized to edit user group '{user_group.group_id}'."
             ' Only group owners and admins are allowed to edit a group.'
@@ -111,7 +115,7 @@ async def get_user_groups(
 
     start = pagination.get_simple_index()
     end = start + pagination.page_size
-    data = [UserGroup.from_orm(group) for group in db_groups[start:end]]
+    data = [UserGroup.model_validate(group) for group in db_groups[start:end]]
     return {'pagination': pagination_response, 'data': data}
 
 
@@ -140,7 +144,7 @@ async def create_user_group(
     user: User = Depends(create_user_dependency(required=True)),
 ):
     """Create user group."""
-    user_group_dict = user_group_edit.dict(exclude_none=True)
+    user_group_dict = user_group_edit.model_dump(exclude_none=True)
     members = user_group_dict.get('members')
     if members is not None:
         check_user_ids(members)
@@ -165,7 +169,7 @@ async def update_user_group(
     user_group = get_user_group_or_404(group_id)
     check_user_may_edit_user_group(user, user_group)
 
-    user_group_dict = user_group_edit.dict(exclude_none=True)
+    user_group_dict = user_group_edit.model_dump(exclude_none=True)
     members = user_group_dict.get('members')
     if members is not None:
         check_user_ids(members)

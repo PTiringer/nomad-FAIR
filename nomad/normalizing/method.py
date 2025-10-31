@@ -401,7 +401,7 @@ class MethodNormalizer:  # TODO: add normalizer for atom_parameters.label
                 if not k_mesh.sampling_method:
                     try:  # TODO double-check
                         _, k_grid_offset = get_monkhorst_pack_size_and_offset(
-                            k_mesh.points
+                            k_mesh.points.real
                         )
                         if not k_grid_offset.all():
                             k_mesh.sampling_method = 'Monkhorst-Pack'
@@ -512,18 +512,18 @@ class ElectronicMethod(ABC):
     def __init__(
         self,
         logger,
-        entry_archive: EntryArchive = None,
+        entry_archive: EntryArchive | None = None,
         methods: list[ArchiveSection] = [None],
-        repr_method: ArchiveSection = None,
-        repr_system: MSection = None,
-        method: Method = None,
+        repr_method: ArchiveSection | None = None,
+        repr_system: MSection | None = None,
+        method: Method | None = None,
         method_def: dict = {},
         method_name: str = config.services.unavailable_value,
         settings_basis_set: RestrictedDict = RestrictedDict(
             mandatory_keys=[None], optional_keys=[None], forbidden_values=[None]
         ),
         functional_long_name: str = '',
-        xs_method: ArchiveSection = None,
+        xs_method: ArchiveSection | None = None,
     ) -> None:
         self._logger = logger
         self._entry_archive = entry_archive
@@ -1121,6 +1121,8 @@ class BasisSetFHIAims(MethodNormalizerBasisSet):
                 result.append(cls._values_to_dict(v, level=level + 1))
         elif isinstance(data, (np.ndarray)):
             result = data.tolist()
+        elif isinstance(data, (MSection)):
+            result = data.m_to_dict()
         else:
             result = data
         return result

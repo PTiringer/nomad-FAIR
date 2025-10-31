@@ -50,7 +50,7 @@ def _create_dataset_url(doi: str) -> str:
     return f'{config.gui_url()}/dataset/doi/{doi}'
 
 
-def edit_doi_url(doi: str, url: str = None):
+def edit_doi_url(doi: str, url: str | None = None):
     """Changes the URL of an already findable DOI."""
     if url is None:
         url = _create_dataset_url(doi)
@@ -92,7 +92,7 @@ def edit_doi_url(doi: str, url: str = None):
         )
 
 
-def _xml(parent, element: str, value: str = None):
+def _xml(parent, element: str, value: str | None = None):
     path = element.split('/')
     el = parent
     for segment in path:
@@ -124,7 +124,7 @@ class DOI(Document):
         # to create new DOIs based on a counter per day until we find a non existing DOI.
         # This might be bad if many DOIs per day are to be expected.
         counter = 1
-        create_time = datetime.datetime.utcnow()
+        create_time = datetime.datetime.now(datetime.timezone.utc)
 
         while True:
             doi_str = f'{config.datacite.prefix}/NOMAD/{create_time.strftime("%Y.%m.%d")}-{counter}'

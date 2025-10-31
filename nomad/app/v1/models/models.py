@@ -23,12 +23,13 @@ from collections.abc import Mapping
 from enum import Enum
 from typing import Annotated, Any
 
-from fastapi import Body, HTTPException, Request
+from fastapi import Body, HTTPException, Request, status
 from fastapi import Query as FastApiQuery
 from pydantic import (  # noqa: F401
     BaseModel,
     ConfigDict,
     Field,
+    HttpUrl,
     StrictBool,
     StrictFloat,
     StrictInt,
@@ -41,6 +42,7 @@ from pydantic_core import PydanticCustomError
 
 from nomad import datamodel, metainfo  # noqa: F401
 from nomad.app.v1.utils import parameter_dependency_from_model
+from nomad.config import config
 from nomad.metainfo.elasticsearch_extension import (
     DocumentType,
     material_entry_type,
@@ -261,7 +263,6 @@ class Criteria(BaseModel):
 
 class Empty(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    pass
 
 
 Query = And | Or | Not | Nested | Criteria | Empty | Mapping[str, CriteriaValue]
@@ -471,7 +472,7 @@ class QueryParameters:
             fragments = parameter.split('__')
             if len(fragments) == 1 or len(fragments) > 3:
                 raise HTTPException(
-                    422,
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=[
                         {
                             'loc': ['query', 'q'],
@@ -488,7 +489,7 @@ class QueryParameters:
                     doc_type = material_entry_type
                 else:
                     raise HTTPException(
-                        422,
+                        status.HTTP_422_UNPROCESSABLE_ENTITY,
                         detail=[
                             {
                                 'loc': ['query', parameter],
@@ -499,7 +500,7 @@ class QueryParameters:
 
             if quantity_name not in doc_type.quantities:
                 raise HTTPException(
-                    422,
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=[
                         {
                             'loc': ['query', parameter],
@@ -550,7 +551,7 @@ class QueryParameters:
             elif op in ops:
                 if len(values) > 1:
                     raise HTTPException(
-                        status_code=422,
+                        status.HTTP_422_UNPROCESSABLE_ENTITY,
                         detail=[
                             {
                                 'loc': ['query', key],
@@ -561,7 +562,7 @@ class QueryParameters:
                 query[quantity_name] = ops[op](**{op: values[0]})
             else:
                 raise HTTPException(
-                    422,
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=[
                         {'loc': ['query', key], 'msg': f'operator {op} is unknown'}
                     ],
@@ -573,7 +574,7 @@ class QueryParameters:
                 query.update(**json.loads(json_query))
             except Exception:
                 raise HTTPException(
-                    422,
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=[{'loc': ['json_query'], 'msg': 'cannot parse json_query'}],
                 )
 
@@ -1454,4 +1455,29 @@ class MetadataResponse(Metadata):
         description=strip(
             """The elasticsearch query that was used to retrieve the results."""
         ),
+    )
+
+
+def _get_target_deployment_url():
+    return config.oasis.central_nomad_deployment_url
+
+
+class TransferBundleRequest(BaseModel):
+    target_deployment_url: str = Field(
+        default_factory=_get_target_deployment_url,  # Factory has better behavior for testing
+        description='If not provided, the transfer will target the central nomad deployment. The url must end with /api',
+        examples=['https://nomad-lab.eu/prod/v1/api'],
+    )
+    auth_token: str = Field(
+        ...,
+        description='Token used to authenticate the upload transfer in the target deployment. You can use the /auth/token API endpoint in the target depoyment to retrieve the token. Provide the plain token, do not include the "Bearer"',
+        examples=['eyJhbGciOiJSUzI1NiIsInR5cCI...'],
+    )
+    embargo_length: int | None = Field(
+        None,
+        description="""
+                If provided, updates the embargo length of the upload. The value should
+                be between 0 and 36 months. 0 means no embargo.""",
+        ge=0,
+        le=36,
     )

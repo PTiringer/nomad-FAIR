@@ -1,8 +1,11 @@
+import asyncio
 import math
 import os
+import uuid
 from datetime import datetime, timezone
 
 import pytest
+import pytest_asyncio
 
 from nomad import bundles, datamodel, processing, utils
 from nomad.archive import read_archive, to_json, write_archive
@@ -11,7 +14,9 @@ from nomad.datamodel import EntryArchive, OptimadeEntry, User
 from nomad.datamodel.datamodel import SearchableQuantity
 from nomad.metainfo.elasticsearch_extension import schema_separator
 from nomad.processing import ProcessStatus
+from nomad.processing.data import Upload
 from nomad.utils.exampledata import ExampleData
+from tests.fixtures.infrastructure import TemporalWorkerContext
 from tests.normalizing.conftest import run_normalize
 from tests.parsing import test_parsing
 from tests.processing import test_data as test_processing
@@ -83,14 +88,6 @@ def parsed(example_mainfile: tuple[str, str]) -> EntryArchive:
 
 
 @pytest.fixture(scope='session')
-def parsed_ems() -> EntryArchive:
-    """Provides a parsed experiment in the form of a EntryArchive."""
-    return test_parsing.run_singular_parser(
-        'parsers/eels', 'tests/data/parsers/eels.json'
-    )
-
-
-@pytest.fixture(scope='session')
 def normalized(parsed: EntryArchive) -> EntryArchive:
     """Provides a normalized entry in the form of a EntryArchive."""
     return run_normalize(parsed)
@@ -103,6 +100,7 @@ def uploaded(example_upload: str, raw_files_function) -> tuple[str, str]:
     Clears files after test.
     """
     example_upload_id = os.path.basename(example_upload).replace('.zip', '')
+    example_upload_id += f'_{uuid.uuid4().hex[:8]}'
     return example_upload_id, example_upload
 
 
@@ -111,6 +109,7 @@ def non_empty_uploaded(
     non_empty_example_upload: str, raw_files_function
 ) -> tuple[str, str]:
     example_upload_id = os.path.basename(non_empty_example_upload).replace('.zip', '')
+    example_upload_id += f'_{uuid.uuid4().hex[:8]}'
     return example_upload_id, non_empty_example_upload
 
 
@@ -203,32 +202,38 @@ def oasis_publishable_upload(
     return non_empty_processed.upload_id, suffix
 
 
-@pytest.mark.timeout(config.tests.default_timeout)
-@pytest.fixture(scope='function')
-def processed(
-    uploaded: tuple[str, str], user1: User, proc_infra, mails
+@pytest_asyncio.fixture(scope='function')
+async def processed(
+    uploaded: tuple[str, str], user1: User, temporal_worker, mails
 ) -> processing.Upload:
     """
     Provides a processed upload. Upload was uploaded with user1.
     """
-    return test_processing.run_processing(uploaded, user1)
+    async with temporal_worker():
+        result = await asyncio.to_thread(
+            lambda: test_processing.run_processing(uploaded, user1)
+        )
+        return result
 
 
-@pytest.mark.timeout(config.tests.default_timeout)
-@pytest.fixture(scope='function')
-def processeds(
-    non_empty_example_upload: str, user1: User, proc_infra
+@pytest_asyncio.fixture(scope='function')
+async def processeds(
+    non_empty_example_upload: str, user1: User, temporal_worker
 ) -> list[processing.Upload]:
-    result: list[processing.Upload] = []
-    for i in range(2):
-        upload_id = (
-            f'{os.path.basename(non_empty_example_upload).replace(".zip", "")}_{i}'
-        )
-        result.append(
-            test_processing.run_processing((upload_id, non_empty_example_upload), user1)
-        )
+    results: list[processing.Upload] = []
+    async with temporal_worker():
+        for i in range(2):
+            upload_id = (
+                f'{os.path.basename(non_empty_example_upload).replace(".zip", "")}_{i}'
+            )
+            result = await asyncio.to_thread(
+                lambda: test_processing.run_processing(
+                    (upload_id, non_empty_example_upload), user1
+                )
+            )
+            results.append(result)
 
-    return result
+    return results
 
 
 @pytest.mark.timeout(config.tests.default_timeout)
@@ -242,39 +247,71 @@ def non_empty_processed(
     return test_processing.run_processing(non_empty_uploaded, user1)
 
 
-@pytest.mark.timeout(config.tests.default_timeout)
-@pytest.fixture(scope='function')
-def published(
-    non_empty_processed: processing.Upload, internal_example_user_metadata
-) -> processing.Upload:
-    """
-    Provides a processed published upload. Upload was uploaded with user1 and is embargoed.
-    """
-    set_upload_entry_metadata(non_empty_processed, internal_example_user_metadata)
-    non_empty_processed.publish_upload(embargo_length=12)
-    try:
-        non_empty_processed.block_until_complete(interval=0.01)
-    except Exception:
-        pass
-
-    return non_empty_processed
-
-
-@pytest.mark.timeout(config.tests.default_timeout)
-@pytest.fixture(scope='function')
-def published_wo_user_metadata(
-    non_empty_processed: processing.Upload,
+@pytest_asyncio.fixture(scope='function')
+async def non_empty_processed_with_temporal(
+    non_empty_uploaded: tuple[str, str],
+    user1: User,
+    temporal_worker: TemporalWorkerContext,
 ) -> processing.Upload:
     """
     Provides a processed upload. Upload was uploaded with user1.
     """
-    non_empty_processed.publish_upload()
-    try:
-        non_empty_processed.block_until_complete(interval=0.01)
-    except Exception:
-        pass
+    uploaded_id, uploaded_path = non_empty_uploaded
+    upload = Upload.create(upload_id=uploaded_id, main_author=user1)
+    upload.save()
+    assert upload.process_status == ProcessStatus.READY
+    assert upload.last_status_message is None
+    async with temporal_worker() as _:
+        handle = await upload._start_process_upload_workflow(
+            file_operations=[
+                dict(
+                    op='ADD',
+                    path=uploaded_path,
+                    target_dir='',
+                    temporary=False,
+                )
+            ]
+        )
+        await handle.result()
 
-    return non_empty_processed
+    upload.reload()
+    return upload
+
+
+@pytest_asyncio.fixture(scope='function')
+async def published(
+    non_empty_processed_with_temporal: processing.Upload,
+    internal_example_user_metadata,
+    temporal_worker: TemporalWorkerContext,
+) -> processing.Upload:
+    """
+    Provides a processed published upload. Upload was uploaded with user1 and is embargoed.
+    """
+    set_upload_entry_metadata(
+        non_empty_processed_with_temporal, internal_example_user_metadata
+    )
+    async with temporal_worker():
+        await asyncio.to_thread(
+            non_empty_processed_with_temporal.publish_upload, embargo_length=12
+        )
+        await non_empty_processed_with_temporal.await_workflows()
+
+    return non_empty_processed_with_temporal
+
+
+@pytest_asyncio.fixture(scope='function')
+async def published_wo_user_metadata(
+    non_empty_processed_with_temporal: processing.Upload,
+    temporal_worker: TemporalWorkerContext,
+) -> processing.Upload:
+    """
+    Provides a processed upload. Upload was uploaded with user1.
+    """
+    async with temporal_worker() as _:
+        await asyncio.to_thread(non_empty_processed_with_temporal.publish_upload)
+        await non_empty_processed_with_temporal.await_workflows()
+
+    return non_empty_processed_with_temporal
 
 
 @pytest.fixture(scope='module')
@@ -424,6 +461,66 @@ def example_data_schema_python(
                     definition='nomadschemaexample.schema.MySchema.name',
                     path_archive='data.name',
                     str_value=f'test{i}',
+                    segments={
+                        '1': {
+                            'path': 'data',
+                            'definitions': [
+                                'nomadschemaexample.schema.MySchema',
+                                'nomadschemaexample.schema.MyBaseSchemaA',
+                                'nomadschemaexample.schema.MyBaseSchemaB',
+                            ],
+                        },
+                        '2': {
+                            'path': 'name',
+                            'definitions': [
+                                'nomadschemaexample.schema.MySchema',
+                            ],
+                        },
+                    },
+                ),
+                SearchableQuantity(
+                    id=f'data.inherited_a{schema_separator}{python_schema_name}',
+                    definition='nomadschemaexample.schema.MyBaseSchemaA.inherited_a',
+                    path_archive='data.inherited_a',
+                    str_value=f'test{i}',
+                    segments={
+                        '1': {
+                            'path': 'data',
+                            'definitions': [
+                                'nomadschemaexample.schema.MySchema',
+                                'nomadschemaexample.schema.MyBaseSchemaA',
+                                'nomadschemaexample.schema.MyBaseSchemaB',
+                            ],
+                        },
+                        '2': {
+                            'path': 'inherited_a',
+                            'definitions': [
+                                'nomadschemaexample.schema.MyBaseSchemaA',
+                            ],
+                        },
+                    },
+                ),
+                SearchableQuantity(
+                    id=f'data.inherited_b{schema_separator}{python_schema_name}',
+                    definition='nomadschemaexample.schema.MyBaseSchemaA.inherited_b',
+                    path_archive='data.inherited_b',
+                    str_value=f'test{i}',
+                    segments={
+                        '1': {
+                            'path': 'data',
+                            'definitions': [
+                                'nomadschemaexample.schema.MySchema',
+                                'nomadschemaexample.schema.MyBaseSchemaA',
+                                'nomadschemaexample.schema.MyBaseSchemaB',
+                            ],
+                        },
+                        '2': {
+                            'path': 'inherited_b',
+                            'definitions': [
+                                'nomadschemaexample.schema.MyBaseSchemaB',
+                            ],
+                        },
+                    },
                 ),
                 SearchableQuantity(
                     id=f'data.valid{schema_separator}{python_schema_name}',
@@ -488,7 +585,7 @@ def example_data_schema_yaml(
     normalized,
 ):
     """
-    Contains entries that store data using a python schema.
+    Contains entries that store data using a YAML schema.
     """
     data = ExampleData(main_author=user1)
     upload_id = 'id_plugin_schema_published'
@@ -560,7 +657,7 @@ def example_data_schema_yaml(
 
 
 @pytest.fixture(scope='function')
-def example_data_writeable(mongo_function, user1, normalized):
+def example_data_writeable(mongo_function, user1, normalized, elastic_function):
     data = ExampleData(main_author=user1)
 
     # one upload with one entry, published
@@ -606,7 +703,7 @@ def example_datasets(mongo_function, user1, user2):
     )
     datasets = []
     for dataset_name, user, doi in dataset_specs:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         dataset = datamodel.Dataset(
             dataset_id=utils.create_uuid(),
             dataset_name=dataset_name,

@@ -24,7 +24,7 @@ import socket
 import zlib
 from enum import Enum
 
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, status
 from fastapi.routing import APIRouter
 
 from nomad import utils
@@ -50,7 +50,7 @@ async def logs(request: Request):
 
     if content_encoding is not None and content_encoding not in ['gzip']:
         raise HTTPException(
-            status_code=422,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"\"'Content-Encoding': '{content_encoding}'\" not supported",
         )
 
@@ -60,7 +60,7 @@ async def logs(request: Request):
     # it is still enough to protect against accidental/malicious large log transfers
     if len(content) > config.logtransfer.transfer_capacity * 2:
         raise HTTPException(
-            status_code=413,
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail=f'log size too large, max size is {config.logtransfer.transfer_capacity}',
         )
 
@@ -70,7 +70,7 @@ async def logs(request: Request):
 
     elif content_encoding is None:
         raise HTTPException(
-            status_code=422,
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f'unsupported content type, content starts with {str(content[:5])}',
         )
 
@@ -82,7 +82,8 @@ async def logs(request: Request):
 
             traceback.print_exc()
             raise HTTPException(
-                status_code=422, detail='decompressing gzip request failed'
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail='decompressing gzip request failed',
             )
 
     # read IP address from header (typically set by nginx)
@@ -124,10 +125,9 @@ async def logs(request: Request):
             if len(log) > 2 and log.endswith(b'}'):
                 # augment IP address to end of log
                 log = log[:-1] + f', "ip_address": "{ip_address}"}}\n'.encode()
-                # print(f'forward log to central logstash={log}')
-                logstash_socket.send(
-                    log
-                )  # TODO: should check return whether it was successful?
+                # forward log to central logstash
+                # TODO: should check return whether it was successful?
+                logstash_socket.send(log)
             else:
                 pass  # drop log
     except Exception as e:

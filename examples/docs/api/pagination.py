@@ -1,6 +1,6 @@
 import requests
 
-base_url = 'http://nomad-lab.eu/prod/v1/api/v1'
+base_url = 'https://nomad-lab.eu/prod/v1/api/v1'
 json_body = {
     'query': {
         'results.material.elements': {

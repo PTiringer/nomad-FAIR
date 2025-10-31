@@ -37,7 +37,7 @@ import threading
 import uuid
 from collections.abc import Coroutine, Iterable, Iterator, Sequence
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Union, cast
 
 import requests
@@ -57,8 +57,12 @@ from mongoengine import (
 from pymongo import UpdateOne
 from structlog import wrap_logger
 from structlog.processors import StackInfoRenderer, TimeStamper, format_exc_info
+from temporalio.common import RetryPolicy
+from temporalio.service import RPCError
 
 from nomad import client, datamodel, infrastructure, metainfo, parsing, search, utils
+from nomad.actions import TaskQueue
+from nomad.actions.client import get_client
 from nomad.app.v1.models import (
     Aggregation,
     MetadataEditRequest,
@@ -67,7 +71,6 @@ from nomad.app.v1.models import (
     TermsAggregation,
     restrict_query_to_upload,
 )
-from nomad.app.v1.routers.metainfo import store_package_definition
 from nomad.archive import to_json
 from nomad.common import is_safe_relative_path
 from nomad.config import config
@@ -92,8 +95,9 @@ from nomad.files import (
     UploadFiles,
     create_tmp_dir,
 )
-from nomad.groups import MongoUserGroup, user_group_exists
 from nomad.metainfo.data_type import Datatype, Datetime
+from nomad.mongo.groups import MongoUserGroup, user_group_exists
+from nomad.mongo.package import PackageDefinition
 from nomad.normalizing import normalizers
 from nomad.orchestrator.client import get_client
 from nomad.orchestrator.shared.constant import TaskQueue
@@ -109,6 +113,7 @@ from nomad.processing.base import (
 )
 from nomad.search import update_metadata as es_update_metadata
 from nomad.utils.pydantic import CustomErrorWrapper
+from nomad.utils.structlogging import ISO8601_UTC_FORMAT
 from nomad.workflows.shared_objects import (
     DeleteUploadWorkflowInput,
     EditUploadMetadataWorkflowInput,
@@ -206,7 +211,7 @@ _log_processors = [
     StackInfoRenderer(),
     _pack_log_event,
     format_exc_info,
-    TimeStamper(fmt='%Y-%m-%d %H:%M.%S', utc=False),
+    TimeStamper(fmt=ISO8601_UTC_FORMAT, utc=True),
 ]
 
 
@@ -323,7 +328,7 @@ class MetadataEditRequestHandler:
         logger,
         user: datamodel.User,
         edit_request: StagingUploadFiles | dict[str, Any],
-        upload_id: str = None,
+        upload_id: str | None = None,
     ):
         # Initialization
         assert user, 'Must specify `user`'
@@ -355,20 +360,20 @@ class MetadataEditRequestHandler:
         ] = {}  # { ref : dataset | None }, ref = dataset_id | dataset_name
 
         # Used when edit_request = json dict
-        self.edit_request_obj: MetadataEditRequest = None
+        self.edit_request_obj: MetadataEditRequest | None = None
         self.verified_metadata: dict[
             str, Any
         ] = {}  # The metadata specified at the top/root level
         self.verified_entries: dict[
             str, dict[str, Any]
         ] = {}  # Metadata specified for individual entries
-        self.affected_uploads: list[Upload] = (
+        self.affected_uploads: list[Upload] | None = (
             None  # A MetadataEditRequest may involve multiple uploads
         )
 
         # Used when edit_request = files
         self.verified_file_metadata_cache: dict[str, dict[str, Any]] = {}
-        self.root_file_entries: dict[str, dict[str, Any]] = (
+        self.root_file_entries: dict[str, dict[str, Any]] | None = (
             None  # `entries` defined in the root metadata file
         )
 
@@ -543,7 +548,7 @@ class MetadataEditRequestHandler:
         raw_metadata: dict[str, Any],
         loc: tuple[str, ...],
         can_edit_upload_quantities: bool,
-        auth_level: AuthLevel = None,
+        auth_level: AuthLevel | None = None,
     ) -> dict[str, Any]:
         """
         Performs basic validation of a dictionary with *raw* metadata (i.e. metadata with
@@ -655,7 +660,7 @@ class MetadataEditRequestHandler:
             return False, None
 
     def _verified_value_single(
-        self, definition: metainfo.Definition, value: Any, op: str = None
+        self, definition: metainfo.Definition, value: Any, op: str | None = None
     ) -> Any:
         """
         Verifies a *singular* raw value (i.e. for list quantities we should run this method
@@ -812,7 +817,7 @@ class MetadataEditRequestHandler:
             self.encountered_datasets[ref] = dataset
         return dataset
 
-    def _restricted_request_query(self, upload_id: str = None):
+    def _restricted_request_query(self, upload_id: str | None = None):
         """
         Gets the query of the request, if it has any. If we have a query and if an `upload_id`
         is specified, we return a modified query, by restricting the original query to this upload.
@@ -862,7 +867,7 @@ class MetadataEditRequestHandler:
                 yield Entry.get(result['entry_id'])
         else:
             # We have no query. Return all entries for the upload
-            yield from Entry.objects(upload_id=upload.upload_id)
+            yield from Entry.objects(upload_id=upload.upload_id)  # type: ignore
 
     def _verified_file_metadata(self, path_dir: str) -> dict[str, Any]:
         """
@@ -982,7 +987,7 @@ class Entry(Proc):
     }
 
     def __init__(self, *args, **kwargs):
-        kwargs.setdefault('entry_create_time', datetime.utcnow())
+        kwargs.setdefault('entry_create_time', datetime.now(timezone.utc))
         super().__init__(*args, **kwargs)
         self._parser_results: EntryArchive = None
         self._is_initial_processing: bool = False
@@ -1025,6 +1030,7 @@ class Entry(Proc):
 
         self._parser_results = EntryArchive(m_context=self.upload.archive_context)
         self._parser_results.metadata = self._entry_metadata
+        self.save()
 
     def _apply_metadata_from_process(self, entry_metadata: EntryMetadata):
         """
@@ -1123,7 +1129,7 @@ class Entry(Proc):
                 )
 
         entry_metadata.files = self.upload_files.entry_files(self.mainfile)
-        entry_metadata.last_processing_time = datetime.utcnow()
+        entry_metadata.last_processing_time = datetime.now(timezone.utc)
         entry_metadata.processing_errors = []
 
     def _apply_metadata_from_mongo(
@@ -1167,6 +1173,7 @@ class Entry(Proc):
             if value := rfc3161_timestamp.get(item, None):
                 setattr(timestamp, item, value)
         self.entry_timestamp = timestamp
+        self.save()
 
     def set_mongo_entry_metadata(self, *args, **kwargs):
         """
@@ -1310,6 +1317,7 @@ class Entry(Proc):
                 ),
                 id=workflow_id,
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS.value,
+                retry_policy=RetryPolicy(maximum_attempts=1),
             )
         except Exception as e:
             raise ProcessFailure(f'Failed to start temporal workflow: {e}')
@@ -1333,7 +1341,7 @@ class Entry(Proc):
 
         # Get child entries, if any
         self._child_entries = list(
-            Entry.objects(
+            Entry.objects(  # type: ignore
                 upload_id=self.upload_id, mainfile=self.mainfile, mainfile_key__ne=None
             )
         )
@@ -1438,7 +1446,12 @@ class Entry(Proc):
     def on_success(self):
         # Mark any child entries as successfully completed (necessary because the child entries
         # are not processed the normal way)
-        for child_entry in self._child_entries:
+        child_entries = list(
+            Entry.objects(  # type: ignore
+                upload_id=self.upload_id, mainfile=self.mainfile, mainfile_key__ne=None
+            )
+        )
+        for child_entry in child_entries:
             child_entry.errors = []
             child_entry.process_status = ProcessStatus.SUCCESS
             child_entry.last_status_message = (
@@ -1450,7 +1463,12 @@ class Entry(Proc):
         self._on_fail()
         # Mark any child entries as failed (necessary because the child entries
         # are not processed the normal way)
-        for child_entry in self._child_entries:
+        child_entries = list(
+            Entry.objects(  # type: ignore
+                upload_id=self.upload_id, mainfile=self.mainfile, mainfile_key__ne=None
+            )
+        )
+        for child_entry in child_entries:
             child_entry.errors = self.errors
             child_entry.process_status = ProcessStatus.FAILURE
             child_entry.last_status_message = (
@@ -1493,6 +1511,7 @@ class Entry(Proc):
             self.get_logger().error(
                 'could not create minimal metadata after processing failure', exc_info=e
             )
+            self.errors.append(str(e))
 
         if self._perform_index:
             try:
@@ -1566,11 +1585,16 @@ class Entry(Proc):
 
             except Exception as e:
                 raise ProcessFailure(
-                    'parser failed with exception', exc_info=e, error=str(e), **context
+                    'parser failed with exception',
+                    exc_info=e,
+                    error=str(e),
+                    **context,
                 )
             except SystemExit:
                 raise ProcessFailure(
-                    'parser raised system exit', error='system exit', **context
+                    'parser raised system exit',
+                    error='system exit',
+                    **context,
                 )
 
     def normalizing(self):
@@ -1582,6 +1606,7 @@ class Entry(Proc):
                 datamodel.EntryArchive.metadata, self._entry_metadata
             )
 
+        context = {}
         for normalizer in normalizers:
             if (
                 normalizer.domain is not None
@@ -1608,6 +1633,7 @@ class Entry(Proc):
                     )
 
         parser = parser_dict[self.parser_name]
+        logger = self.get_logger()
         try:
             parser.after_normalization(self._parser_results, logger=logger)
         except Exception as e:
@@ -1632,6 +1658,7 @@ class Entry(Proc):
         # persist the entry metadata
         with utils.timer(logger, 'entry metadata saved'):
             self._apply_metadata_to_mongo_entry(self._entry_metadata)
+            self.save()
 
         # index in search
         if self._perform_index:
@@ -1664,31 +1691,17 @@ class Entry(Proc):
 
         archive.processing_logs = self._filtered_processing_logs()
 
-        if config.process.store_package_definition_in_mongo:
-            if archive.definitions is not None:
-                store_package_definition(
-                    archive.definitions,
-                    upload_id=archive.metadata.upload_id,
-                    entry_id=archive.metadata.entry_id,
-                )
-            if archive.data is not None:
-                pkg_definitions = getattr(
-                    archive.data.m_def.m_root(), 'definitions', None
-                )
-                if pkg_definitions is not None:
-                    store_package_definition(
-                        pkg_definitions,
-                        upload_id=archive.metadata.upload_id,
-                        entry_id=archive.metadata.entry_id,
-                    )
+        if archive.definitions is not None:
+            PackageDefinition.create_new(archive.definitions)
+        if archive.data is not None:
+            pkg_definitions = getattr(archive.data.m_def.m_root(), 'definitions', None)
+            if pkg_definitions is not None:
+                PackageDefinition.create_new(pkg_definitions)
 
         # save the archive msg-pack
         try:
             return self.upload_files.write_archive(
-                self.entry_id,
-                archive.m_to_dict(
-                    with_def_id=config.process.write_definition_id_to_archive
-                ),
+                self.entry_id, archive.m_to_dict(with_def_id=True)
             )
         except Exception:
             # most likely failed due to domain data, try to write metadata and processing logs
@@ -1738,7 +1751,7 @@ class Upload(Proc):
     id_field = 'upload_id'
 
     upload_id = StringField(primary_key=True)
-    upload_name = StringField(default=None)
+    upload_name: str | None = StringField(default=None)
     upload_create_time = DateTimeField(required=True)
     external_db = StringField()
     main_author = StringField(required=True)
@@ -1795,10 +1808,30 @@ class Upload(Proc):
         return rv
 
     def __init__(self, **kwargs):
-        kwargs.setdefault('upload_create_time', datetime.utcnow())
+        kwargs.setdefault('upload_create_time', datetime.now(timezone.utc))
         super().__init__(**kwargs)
         self._upload_files: UploadFiles = None
         self.archive_context = ServerContext(self)
+
+    def reset_entry_processing_status(self):
+        """Reset the process status of all entries in the upload."""
+        Entry.objects(upload_id=self.upload_id).update(unset__process_status=1)
+
+    async def await_workflows(self):
+        self.reload()
+        while self.process_running:
+            await asyncio.sleep(0.1)
+            self.reload()
+
+        if self.workflow_ids:
+            client = await get_client()
+            for workflow_id in self.workflow_ids:
+                try:
+                    handle = client.get_workflow_handle(workflow_id)
+                    await handle.result()
+                except RPCError:
+                    # might have already finished and been removed
+                    pass
 
     @classmethod
     def get(cls, id: str) -> 'Upload':
@@ -1807,7 +1840,7 @@ class Upload(Proc):
     @classmethod
     def user_uploads(cls, user: datamodel.User, **kwargs) -> Sequence['Upload']:
         """Returns all uploads for the given user. Kwargs are passed to mongo query."""
-        return cls.objects(main_author=str(user.user_id), **kwargs)
+        return cls.objects(main_author=str(user.user_id), **kwargs)  # type: ignore
 
     @property
     def main_author_user(self) -> datamodel.User:
@@ -1836,7 +1869,7 @@ class Upload(Proc):
         return logger
 
     @classmethod
-    def create(cls, main_author: datamodel.User = None, **kwargs) -> 'Upload':
+    def create(cls, main_author: datamodel.User | None = None, **kwargs) -> 'Upload':
         """
         Creates a new upload for the given main_author, a user given upload_name is optional.
         It will populate the record with a signed url and pending :class:`UploadProc`.
@@ -1859,7 +1892,7 @@ class Upload(Proc):
 
     def delete(self):
         """Deletes this upload and its entries."""
-        Entry.objects(upload_id=self.upload_id).delete()
+        Entry.objects(upload_id=self.upload_id).delete()  # type: ignore
         super().delete()
 
     def delete_upload_local(self):
@@ -1917,6 +1950,7 @@ class Upload(Proc):
                 DeleteUploadWorkflowInput(upload_id=self.upload_id),
                 id=workflow_id,
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS.value,
+                retry_policy=RetryPolicy(maximum_attempts=1),
             )
         except Exception as e:
             raise ProcessFailure(f'Failed to start temporal workflow: {e}')
@@ -1931,7 +1965,7 @@ class Upload(Proc):
 
         return ProcessStatus.DELETED  # Signal deletion to the process framework
 
-    def publish_upload(self, embargo_length: int = None):
+    def publish_upload(self, embargo_length: int | None = None):
         from nomad.config import config
 
         if config.temporal.enabled:
@@ -1940,11 +1974,11 @@ class Upload(Proc):
         else:
             return self._publish_upload(embargo_length)
 
-    async def _start_publish_upload_workflow(self, embargo_length: int = None):
+    async def _start_publish_upload_workflow(self, embargo_length: int | None = None):
         client = await get_client()
         workflow_id = f'publish-upload-{self.upload_id}-{uuid.uuid4()}'
         try:
-            await client.execute_workflow(
+            return await client.execute_workflow(
                 'PublishUploadWorkflow',
                 PublishUploadWorkflowInput(
                     upload_id=self.upload_id,
@@ -1952,12 +1986,13 @@ class Upload(Proc):
                 ),
                 id=workflow_id,
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS.value,
+                retry_policy=RetryPolicy(maximum_attempts=1),
             )
         except Exception as e:
             raise ProcessFailure(f'Failed to start temporal workflow: {e}')
 
     @process(is_blocking=True)
-    def _publish_upload(self, embargo_length: int = None):
+    def _publish_upload(self, embargo_length: int | None = None):
         self._publish_upload_local(embargo_length)
 
     def _publish_upload_local(self, embargo_length: int | None = None):
@@ -1985,23 +2020,43 @@ class Upload(Proc):
                 if isinstance(self.upload_files, StagingUploadFiles):
                     with utils.timer(logger, 'upload staging files deleted'):
                         self.upload_files.delete()
-                        self.publish_time = datetime.utcnow()
-                        self.last_update = datetime.utcnow()
+                        self.publish_time = datetime.now(timezone.utc)
+                        self.last_update = datetime.now(timezone.utc)
                         self.save()
                 else:
-                    self.last_update = datetime.utcnow()
+                    self.last_update = datetime.now(timezone.utc)
                     self.save()
 
-    def publish_externally(self, embargo_length: int = None):
+    def publish_externally(
+        self,
+        embargo_length: int | None = None,
+        target_deployment_url: str | None = None,
+        auth_token: str | None = None,
+    ):
         from nomad.config import config
 
         if config.temporal.enabled:
             self.process_status = ProcessStatus.PENDING
-            return run_async(self._start_publish_externally_workflow(embargo_length))
+            return run_async(
+                self._start_publish_externally_workflow(
+                    embargo_length=embargo_length,
+                    target_deployment_url=target_deployment_url,
+                    auth_token=auth_token,
+                )
+            )
         else:
-            return self._publish_externally(embargo_length)
+            return self._publish_externally(
+                embargo_length=embargo_length,
+                target_deployment_url=target_deployment_url,
+                auth_token=auth_token,
+            )
 
-    async def _start_publish_externally_workflow(self, embargo_length: int = None):
+    async def _start_publish_externally_workflow(
+        self,
+        embargo_length: int | None = None,
+        target_deployment_url: str | None = None,
+        auth_token: str | None = None,
+    ):
         client = await get_client()
         workflow_id = f'publish-externally-{self.upload_id}-{uuid.uuid4()}'
         try:
@@ -2010,24 +2065,41 @@ class Upload(Proc):
                 PublishExternallyWorkflowInput(
                     upload_id=self.upload_id,
                     embargo_length=embargo_length,
+                    target_deployment_url=target_deployment_url,
+                    auth_token=auth_token,
                 ),
                 id=workflow_id,
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS.value,
+                retry_policy=RetryPolicy(maximum_attempts=1),
             )
         except Exception as e:
             raise ProcessFailure(f'Failed to start temporal workflow: {e}')
 
     @process(is_blocking=True)
-    def _publish_externally(self, embargo_length: int = None):
-        self._publish_externally_local(embargo_length)
+    def _publish_externally(
+        self,
+        embargo_length: int | None = None,
+        target_deployment_url: str | None = None,
+        auth_token: str | None = None,
+    ):
+        self._publish_externally_local(
+            embargo_length=embargo_length,
+            target_deployment_url=target_deployment_url,
+            auth_token=auth_token,
+        )
 
-    def _publish_externally_local(self, embargo_length: int = None):
+    def _publish_externally_local(
+        self,
+        embargo_length: int | None = None,
+        target_deployment_url: str | None = None,
+        auth_token: str | None = None,
+    ):
         assert self.published, (
             'Only published uploads can be published to the central NOMAD.'
         )
-        assert config.oasis.central_nomad_deployment_url not in self.published_to, (
-            'Upload is already published to the central NOMAD.'
-        )
+
+        if target_deployment_url is None:
+            target_deployment_url = config.oasis.central_nomad_deployment_url
 
         tmp_dir = create_tmp_dir('export_' + self.upload_id)
         bundle_path = os.path.join(tmp_dir, self.upload_id + '.zip')
@@ -2045,38 +2117,45 @@ class Upload(Proc):
             ).export_bundle()
 
             # upload to central NOMAD
-            self.set_last_status_message('Uploading bundle to central NOMAD.')
-            upload_auth = client.Auth(
-                user=config.keycloak.username, password=config.keycloak.password
-            )
+            self.set_last_status_message('Uploading bundle externally')
             upload_parameters: dict[str, Any] = {}
             if embargo_length is not None:
                 upload_parameters.update(embargo_length=embargo_length)
-            upload_url = (
-                f'{config.oasis.central_nomad_deployment_url}/v1/uploads/bundle'
-            )
+
+            upload_url = f'{target_deployment_url}/v1/uploads/bundle'
 
             with open(bundle_path, 'rb') as f:
-                response = requests.post(
-                    upload_url, params=upload_parameters, data=f, auth=upload_auth
-                )
+                if auth_token is not None:
+                    response = requests.post(
+                        upload_url,
+                        params=upload_parameters,
+                        data=f,
+                        headers={'Authorization': f'Bearer {auth_token}'},
+                    )
+                else:
+                    upload_auth = client.Auth(
+                        user=config.keycloak.username, password=config.keycloak.password
+                    )
+                    response = requests.post(
+                        upload_url, params=upload_parameters, data=f, auth=upload_auth
+                    )
 
             if response.status_code != 200:
                 self.get_logger().error(
-                    'Could not upload to central NOMAD',
+                    'Could not upload to external deployment',
                     status_code=response.status_code,
                     body=response.text,
                 )
                 raise ProcessFailure(
-                    f'Error message from central NOMAD: {response.text}'
+                    f'Error message from external deployment: {response.text}'
                 )
 
-            self.published_to.append(config.oasis.central_nomad_deployment_url)
+            self.published_to.append(target_deployment_url)
         finally:
             PathObject(tmp_dir).delete()
 
     def process_example_upload(
-        self, entry_point_id: str, file_operations: list[dict[str, Any]] = None
+        self, entry_point_id: str, file_operations: list[dict[str, Any]] | None = None
     ):
         """Used to initiate the processing of an example upload entry point.
         This process is only triggered once per example upload, and any further
@@ -2102,7 +2181,7 @@ class Upload(Proc):
     async def _start_process_example_upload_workflow(
         self,
         entry_point_id: str,
-        file_operations: list[dict[str, Any]] = None,
+        file_operations: list[dict[str, Any]] | None = None,
     ):
         """
         Internal method to start a temporal process example upload workflow.
@@ -2118,9 +2197,11 @@ class Upload(Proc):
                     example_upload_id=entry_point_id,
                     file_operations=file_operations,
                     publish_directly=self.publish_directly,
+                    workflow_tmp_dir=create_tmp_dir(f'{self.upload_id}_{workflow_id}'),
                 ),
                 id=workflow_id,
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS.value,
+                retry_policy=RetryPolicy(maximum_attempts=1),
             )
             self.process_status = ProcessStatus.PENDING
             self.save()
@@ -2165,7 +2246,7 @@ class Upload(Proc):
 
     @process()
     def _process_example_upload(
-        self, entry_point_id: str, file_operations: list[dict[str, Any]] = None
+        self, entry_point_id: str, file_operations: list[dict[str, Any]] | None = None
     ):
         """Used to initiate the processing of an example upload entry point.
         This process is only triggered once per example upload, and any further
@@ -2184,9 +2265,73 @@ class Upload(Proc):
 
     def process_upload(
         self,
-        file_operations: list[dict[str, Any]] = None,
-        reprocess_settings: dict[str, Any] = None,
-        path_filter: str = None,
+        file_operations: list[dict[str, Any]] | None = None,
+        reprocess_settings: dict[str, Any] | None = None,
+        path_filter: str | None = None,
+        only_updated_files: bool = False,
+    ):
+        if config.temporal.enabled:
+            if self.process_status == ProcessStatus.RUNNING:
+                raise ProcessAlreadyRunning
+
+            self.process_status = ProcessStatus.PENDING
+            # Start temporal workflow
+            return run_async(
+                self._start_process_upload_workflow(
+                    file_operations,
+                    reprocess_settings,
+                    path_filter,
+                    only_updated_files,
+                ),
+            )
+
+        else:
+            return self._process_upload(
+                file_operations, reprocess_settings, path_filter, only_updated_files
+            )
+
+    async def _start_process_upload_workflow(
+        self,
+        file_operations: list[dict[str, Any]] | None = None,
+        reprocess_settings: dict[str, Any] | None = None,
+        path_filter: str | None = None,
+        only_updated_files: bool = False,
+    ):
+        """
+        Internal method to start a temporal process upload workflow.
+        This method should be called from an async context.
+        """
+        client = await get_client()
+        workflow_id = f'process-upload-{self.upload_id}-{uuid.uuid4()}'
+        data = UploadProcessingWorkflowInput(
+            upload_id=self.upload_id,
+            file_operations=file_operations,
+            reprocess_settings=reprocess_settings,
+            path_filter=path_filter,
+            only_updated_files=only_updated_files,
+            workflow_id=workflow_id,
+            workflow_tmp_dir=create_tmp_dir(f'{self.upload_id}_{workflow_id}'),
+        )
+        try:
+            handle = await client.start_workflow(
+                'ProcessUploadWorkflow',
+                data,
+                id=workflow_id,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS.value,
+                retry_policy=RetryPolicy(maximum_attempts=1),
+            )
+            self.process_status = ProcessStatus.PENDING
+            self.save()
+            return handle
+        except Exception as e:
+            raise ProcessFailure(f'Failed to start temporal workflow: {e}')
+
+    @process()
+    def _process_upload(
+        self,
+        file_operations: list[dict[str, Any]] | None = None,
+        reprocess_settings: dict[str, Any] | None = None,
+        path_filter: str | None = None,
         only_updated_files: bool = False,
     ):
         if config.temporal.enabled:
@@ -2279,9 +2424,9 @@ class Upload(Proc):
 
     def _process_upload_local(
         self,
-        file_operations: list[dict[str, Any]] = None,
-        reprocess_settings: dict[str, Any] = None,
-        path_filter: str = None,
+        file_operations: list[dict[str, Any]] | None = None,
+        reprocess_settings: dict[str, Any] | None = None,
+        path_filter: str | None = None,
         only_updated_files: bool = False,
     ):
         """
@@ -2324,7 +2469,7 @@ class Upload(Proc):
 
     @process_local
     def put_file_and_process_local(
-        self, path, target_dir, reprocess_settings: Reprocess = None
+        self, path, target_dir, reprocess_settings: Reprocess | None = None
     ) -> Entry:
         """
         Pushes a raw file, matches it, and if matched, runs the processing - all as a local process.
@@ -2342,7 +2487,7 @@ class Upload(Proc):
             )
 
         if reprocess_settings:
-            self.reprocess_settings = reprocess_settings.dict()
+            self.reprocess_settings = reprocess_settings.model_dump()
 
         # Push the file
         self.set_last_status_message('Putting the file')
@@ -2357,7 +2502,7 @@ class Upload(Proc):
         # Process entries, if matched; remove existing entries if unmatched.
         old_entries_dict: dict[str, Entry] = {
             e.entry_id: e
-            for e in Entry.objects(upload_id=self.upload_id, mainfile=target_path)
+            for e in Entry.objects(upload_id=self.upload_id, mainfile=target_path)  # type: ignore
         }
         entry_ids_to_delete = set(old_entries_dict.keys())
         main_entry: Entry = None
@@ -2414,9 +2559,37 @@ class Upload(Proc):
         # Delete existing unmatched entries
         if entry_ids_to_delete:
             for entry_id in entry_ids_to_delete:
-                search.delete_entry(entry_id=entry_id, update_materials=True)
+                search.delete_entry(entry_id=entry_id, update_materials=False)
                 old_entries_dict[entry_id].delete()
         return main_entry
+
+    async def _stop_processing_workflows(self):
+        client = await get_client()
+        for workflow_id in self.workflow_ids:  # type: ignore
+            try:
+                await client.get_workflow_handle(workflow_id).terminate()
+            except Exception as e:
+                if isinstance(e, RPCError):
+                    if e.status == 5:
+                        # Upload is already terminated
+                        pass
+                    else:
+                        raise e
+                else:
+                    pass
+
+    def stop_processing(self):
+        if not config.temporal.enabled:
+            raise ProcessFailure(
+                'This functionality is only available when temporal is enabled.'
+            )
+
+        run_async(self._stop_processing_workflows())
+
+        self.workflow_ids = []
+        self.process_status = ProcessStatus.READY
+        self.last_status_message = 'Processing stopped'
+        self.save()
 
     @property
     def upload_files(self) -> UploadFiles:
@@ -2533,11 +2706,17 @@ class Upload(Proc):
             # Unstripped POTCAR file found
             # create checksum
             hash = hashlib.sha224()
+            is_potcar = False
             with open(
                 self.staging_upload_files.raw_file_object(path).os_path, 'rb'
             ) as orig_f:
                 for line in orig_f.readlines():
                     hash.update(line)
+                    # check if this is indeed a POTCAR file
+                    if b'END of PSCTR' in line:
+                        is_potcar = True
+            if not is_potcar:
+                return
 
             checksum = hash.hexdigest()
 
@@ -2558,6 +2737,10 @@ class Upload(Proc):
                     /END of PSCTR/ {{ dump=0 }}'
                 """
             )
+            if config.process.exclude_potcar:
+                # remove unstripped POTCAR file
+                self.warning('Removing POTCAR file from upload.')
+                self.update_files([dict(op='DELETE', path=path)], True)
 
     def match_mainfiles(
         self, path_filter: str | None = None, updated_files: set[str] | None = None
@@ -2597,6 +2780,8 @@ class Upload(Proc):
             for path_info in path_infos:
                 self._preprocess_files(path_info.path)
 
+                if not staging_upload_files.raw_path_exists(path_info.path):
+                    continue
                 if skip_matching and path_info.path not in entries_metadata:
                     continue
 
@@ -2650,7 +2835,7 @@ class Upload(Proc):
                 old_entries = set()
                 processing_entries = []
                 with utils.timer(logger, 'existing entries scanned'):
-                    for entry in Entry.objects(upload_id=self.upload_id):
+                    for entry in Entry.objects(upload_id=self.upload_id):  # type: ignore  # type: ignore  # type: ignore
                         if entry.process_running:
                             processing_entries.append(entry.entry_id)
                         if self._passes_process_filter(
@@ -2689,7 +2874,7 @@ class Upload(Proc):
 
                 with utils.timer(logger, 'storing entry metadata to mongo'):
                     if entries:
-                        Entry.objects.insert(entries)
+                        Entry.objects.insert(entries)  # type: ignore
 
                         # Delete old entries
                     if len(old_entries) > 0:
@@ -2702,7 +2887,7 @@ class Upload(Proc):
                         ):
                             for entry_id in old_entries:
                                 search.delete_entry(
-                                    entry_id=entry_id, update_materials=True
+                                    entry_id=entry_id, update_materials=False
                                 )
                                 entry = Entry.get(entry_id)
                                 entry.delete()
@@ -2780,7 +2965,10 @@ class Upload(Proc):
         return entry, was_created, metadata_handler
 
     def parse_next_level(
-        self, min_level: int, path_filter: str = None, updated_files: set[str] = None
+        self,
+        min_level: int,
+        path_filter: str | None = None,
+        updated_files: set[str] | None = None,
     ) -> bool:
         """
         Triggers processing on the next level of parsers (parsers with level >= min_level).
@@ -2822,7 +3010,7 @@ class Upload(Proc):
         next_entries: list[Entry] = []
         with utils.timer(logger, 'entries processing called'):
             # Determine what the next level is and which entries belongs to this level
-            for entry in Entry.objects(upload_id=self.upload_id, mainfile_key=None):
+            for entry in Entry.objects(upload_id=self.upload_id, mainfile_key=None):  # type: ignore
                 parser = parser_dict.get(entry.parser_name)
                 if parser:
                     level = parser.level
@@ -2876,15 +3064,23 @@ class Upload(Proc):
 
             if entry:
                 if config.temporal.enabled:
-                    # temporal child workflows can't be spawned within an activitiy
-                    # so we just process this from the current activity
-                    if self.parser_level >= parser.level:
-                        try:
-                            entry._process_entry_local()
-                            entry.process_status = ProcessStatus.SUCCESS
-                        except Exception:
-                            entry.process_status = ProcessStatus.FAILURE
-                        entry.save()
+                    if (
+                        self.current_process_flags is not None
+                        and self.current_process_flags.is_local
+                    ):
+                        # Run also this entry processing locally. If it fails, an
+                        # exception will be raised.
+                        entry.process_entry_local()
+                    else:
+                        # temporal child workflows can't be spawned within an activitiy
+                        # so we just process this from the current activity
+                        if self.parser_level >= parser.level:
+                            try:
+                                entry._process_entry_local()
+                                entry.process_status = ProcessStatus.SUCCESS
+                            except Exception:
+                                entry.process_status = ProcessStatus.FAILURE
+                            entry.save()
                 else:
                     if (
                         self.current_process_flags is not None
@@ -2949,7 +3145,7 @@ class Upload(Proc):
                 )
 
             self._cleanup_staging_files()
-            self.last_update = datetime.utcnow()
+            self.last_update = datetime.now(timezone.utc)
             self.save()
 
         if (
@@ -2970,8 +3166,8 @@ class Upload(Proc):
                 with utils.timer(logger, 'upload staging files deleted'):
                     self.staging_upload_files.delete()
 
-                self.publish_time = datetime.utcnow()
-                self.last_update = datetime.utcnow()
+                self.publish_time = datetime.now(timezone.utc)
+                self.last_update = datetime.now(timezone.utc)
                 self.save()
 
         with self.entries_metadata() as entries:
@@ -3077,12 +3273,12 @@ class Upload(Proc):
 
     def get_entry(self, entry_id) -> Entry:
         """Returns the upload entry with the given id or ``None``."""
-        return Entry.objects(upload_id=self.upload_id, entry_id=entry_id).first()
+        return Entry.objects(upload_id=self.upload_id, entry_id=entry_id).first()  # type: ignore
 
     @property
     def processed_entries_count(self) -> int:
         """The number of entries that have finished processing (process_status == SUCCESS | FAILURE)."""
-        return Entry.objects(
+        return Entry.objects(  # type: ignore
             upload_id=self.upload_id,
             process_status__in=[ProcessStatus.SUCCESS, ProcessStatus.FAILURE],
         ).count()
@@ -3090,12 +3286,12 @@ class Upload(Proc):
     @property
     def total_entries_count(self) -> int:
         """The total number of entries for this upload (regardless of process status)."""
-        return Entry.objects(upload_id=self.upload_id).count()
+        return Entry.objects(upload_id=self.upload_id).count()  # type: ignore
 
     @property
     def failed_entries_count(self) -> int:
         """The number of entries with failed processing."""
-        return Entry.objects(
+        return Entry.objects(  # type: ignore
             upload_id=self.upload_id, process_status=ProcessStatus.FAILURE
         ).count()
 
@@ -3108,7 +3304,7 @@ class Upload(Proc):
             end: the end index of the requested page
             order_by: the property to order by
         """
-        query = Entry.objects(upload_id=self.upload_id)[start:end]
+        query = Entry.objects(upload_id=self.upload_id)[start:end]  # type: ignore
         if not order_by:
             return query
         if isinstance(order_by, str):
@@ -3119,7 +3315,7 @@ class Upload(Proc):
     @property
     def successful_entries(self) -> Sequence[Entry]:
         """All successfully processed entries."""
-        return Entry.objects(
+        return Entry.objects(  # type: ignore
             upload_id=self.upload_id, process_status=ProcessStatus.SUCCESS
         )
 
@@ -3133,7 +3329,7 @@ class Upload(Proc):
             # read all entry objects first to avoid missing cursor errors
             yield [
                 entry.full_entry_metadata(self)
-                for entry in list(Entry.objects(upload_id=self.upload_id))
+                for entry in list(Entry.objects(upload_id=self.upload_id))  # type: ignore
             ]
 
         finally:
@@ -3144,9 +3340,9 @@ class Upload(Proc):
         Returns a list of :class:`EntryMetadata` containing the mongo metadata
         only, for all entries of this upload.
         """
-        return [
+        return [  # type: ignore
             entry.mongo_metadata(self)
-            for entry in Entry.objects(upload_id=self.upload_id)
+            for entry in Entry.objects(upload_id=self.upload_id)  # type: ignore
         ]
 
     def edit_upload_metadata(self, edit_request_json: dict[str, Any], user_id: str):
@@ -3180,6 +3376,7 @@ class Upload(Proc):
                 ),
                 id=workflow_id,
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS.value,
+                retry_policy=RetryPolicy(maximum_attempts=1),
             )
         except Exception as e:
             raise ProcessFailure(f'Failed to execute temporal workflow: {e}')
@@ -3214,7 +3411,7 @@ class Upload(Proc):
             PublicUploadFiles(self.upload_id).re_pack(with_embargo=self.with_embargo)
 
         # Entry level metadata
-        last_edit_time = datetime.utcnow()
+        last_edit_time = datetime.now(timezone.utc)
         entry_mongo_writes = []
         updated_metadata: list[datamodel.EntryMetadata] = []
         for entry in handler.find_request_entries(self):
@@ -3245,20 +3442,68 @@ class Upload(Proc):
         if updated_metadata:
             with utils.timer(logger, 'ES updated', nupdates=len(updated_metadata)):
                 failed_es = es_update_metadata(
-                    updated_metadata, update_materials=True, refresh=True
+                    updated_metadata, update_materials=False, refresh=True
                 )
                 assert not failed_es, (
                     f'Failed to update ES, there were {failed_es} fails'
                 )
 
     def entry_ids(self) -> list[str]:
-        return [entry.entry_id for entry in Entry.objects(upload_id=self.upload_id)]
+        return [entry.entry_id for entry in Entry.objects(upload_id=self.upload_id)]  # type: ignore
 
     def import_bundle(
         self,
         bundle_path: str,
         import_settings: dict[str, Any],
-        embargo_length: int = None,
+        embargo_length: int | None = None,
+    ):
+        """
+        A method that imports data from an upload bundle to the current upload (which should
+        have been created using the :func:`BundleImporter.create_upload_skeleton` method).
+        See the :class:`BundleImporter` class for more info. Does not check permissions.
+        """
+        from nomad.config import config
+
+        if config.temporal.enabled:
+            self.process_status = ProcessStatus.PENDING
+            return run_async(
+                self._start_import_bundle_workflow(
+                    bundle_path, import_settings, embargo_length
+                ),
+            )
+        else:
+            return self._import_bundle(bundle_path, import_settings, embargo_length)
+
+    async def _start_import_bundle_workflow(
+        self,
+        bundle_path: str,
+        import_settings: dict[str, Any],
+        embargo_length: int | None = None,
+    ):
+        client = await get_client()
+        workflow_id = f'import-bundle-{self.upload_id}-{uuid.uuid4()}'
+        try:
+            await client.execute_workflow(
+                'ImportBundleWorkflow',
+                ImportBundleWorkflowInput(
+                    upload_id=self.upload_id,
+                    bundle_path=bundle_path,
+                    import_settings=import_settings,
+                    embargo_length=embargo_length,
+                ),
+                id=workflow_id,
+                task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS.value,
+                retry_policy=RetryPolicy(maximum_attempts=1),
+            )
+        except Exception as e:
+            raise ProcessFailure(f'Failed to execute temporal workflow: {e}')
+
+    @process(is_blocking=True)
+    def _import_bundle(
+        self,
+        bundle_path: str,
+        import_settings: dict[str, Any],
+        embargo_length: int | None = None,
     ):
         """
         A method that imports data from an upload bundle to the current upload (which should

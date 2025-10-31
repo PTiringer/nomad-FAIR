@@ -1,15 +1,14 @@
 {
-  "python.defaultInterpreterPath": ".pyenv/bin/python",
+  "python.defaultInterpreterPath": ".venv/bin/python",
   "python.terminal.activateEnvInCurrentTerminal": true,
-  "editor.rulers": [90],
-  "editor.renderWhitespace": "all",
+  "editor.rulers": [88],
   "editor.tabSize": 4,
   "[javascript]": {
     "editor.tabSize": 2
   },
   "files.trimTrailingWhitespace": true,
   "files.watcherExclude": {
-    "${workspaceFolder}/.pyenv/**": true
+    "${workspaceFolder}/.venv/**": true
   },
   "launch": {
     "version": "0.2.0",

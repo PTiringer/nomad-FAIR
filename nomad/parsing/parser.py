@@ -28,7 +28,6 @@ from typing import IO, Any
 
 import numpy as np
 import yaml
-from pydantic import BaseModel, Extra  # noqa: F401
 
 from nomad import utils
 from nomad.config import config
@@ -61,7 +60,7 @@ class Parser(metaclass=ABCMeta):
         mime: str,
         buffer: bytes,
         decoded_buffer: str,
-        compression: str = None,
+        compression: str | None = None,
     ) -> bool | Iterable[str]:
         """
         Checks if a file is a mainfile for the parser. Should return True or a set of
@@ -95,7 +94,7 @@ class Parser(metaclass=ABCMeta):
         mainfile: str,
         archive: EntryArchive,
         logger=None,
-        child_archives: dict[str, EntryArchive] = None,
+        child_archives: dict[str, EntryArchive] | None = None,
     ) -> None:
         """
         Runs the parser on the given mainfile and populates the result in the given
@@ -124,7 +123,7 @@ class Parser(metaclass=ABCMeta):
         pass
 
     @classmethod
-    def main(cls, mainfile, mainfile_keys: list[str] = None):
+    def main(cls, mainfile, mainfile_keys: list[str] | None = None):
         archive = EntryArchive()
         archive.m_create(EntryMetadata)
         if mainfile_keys:
@@ -165,7 +164,7 @@ class BrokenParser(Parser):
         mime: str,
         buffer: bytes,
         decoded_buffer: str,
-        compression: str = None,
+        compression: str | None = None,
     ) -> bool:
         if decoded_buffer is not None:
             for pattern in self._patterns:
@@ -202,20 +201,20 @@ class MatchingParser(Parser):
 
     def __init__(
         self,
-        name: str = None,
-        code_name: str = None,
-        code_homepage: str = None,
-        code_category: str = None,
-        mainfile_contents_re: str = None,
-        mainfile_binary_header: bytes = None,
-        mainfile_binary_header_re: bytes = None,
+        name: str | None = None,
+        code_name: str | None = None,
+        code_homepage: str | None = None,
+        code_category: str | None = None,
+        mainfile_contents_re: str | None = None,
+        mainfile_binary_header: bytes | None = None,
+        mainfile_binary_header_re: bytes | None = None,
         mainfile_mime_re: str = r'text/.*',
         mainfile_name_re: str = r'.*',
         mainfile_alternative: bool = False,
-        mainfile_contents_dict: dict = None,
+        mainfile_contents_dict: dict | None = None,
         level: int = 0,
         domain='dft',
-        metadata: dict = None,
+        metadata: dict | None = None,
         supported_compressions: list[str] = [],
         **kwargs,
     ) -> None:
@@ -271,7 +270,7 @@ class MatchingParser(Parser):
         mime: str,
         buffer: bytes,
         decoded_buffer: str,
-        compression: str = None,
+        compression: str | None = None,
     ) -> bool | Iterable[str]:
         if self._mainfile_binary_header is not None:
             if self._mainfile_binary_header not in buffer:
@@ -332,7 +331,7 @@ class MatchingParser(Parser):
                 tmp = value.pop('__has_comment', None)
                 for key, val in value.items():
                     if key == '__has_key':
-                        matches.append(val in reference_keys)
+                        matches.append(any([re.match(val, k) for k in reference_keys]))
                     elif key == '__has_all_keys':
                         assert isinstance(val, list) and isinstance(
                             reference_keys, list
@@ -388,6 +387,15 @@ class MatchingParser(Parser):
                     is_match = match(self._mainfile_contents_dict, data)
                 except Exception:
                     pass
+            elif mime == 'application/octet-stream' and re.match(r'.+\.nc$', filename):
+                from scipy.io import netcdf_file
+
+                try:
+                    with netcdf_file(filename) as f:
+                        is_match = match(self._mainfile_contents_dict, f.__dict__)
+                except Exception:
+                    pass
+
             if not is_match:
                 return False
 
@@ -415,7 +423,7 @@ def to_hdf5(value: Any, f: str | IO, path: str):
     return f'{f if isinstance(f, str) else os.path.basename(f.name)}#{path}'
 
 
-def import_class(class_name, class_description: str = None):
+def import_class(class_name, class_description: str | None = None):
     logger = utils.get_logger(__name__)
     try:
         module_path, cls = class_name.rsplit('.', 1)
@@ -483,7 +491,7 @@ class MatchingParserInterface(MatchingParser):
         mime: str,
         buffer: bytes,
         decoded_buffer: str,
-        compression: str = None,
+        compression: str | None = None,
     ) -> bool | Iterable[str]:
         is_mainfile = super().is_mainfile(
             filename=filename,
@@ -560,6 +568,66 @@ class ArchiveParser(MatchingParser):
             self.parse_file(mainfile, f, archive, logger)
 
         self.validate_definitions(archive, logger)
+
+
+class ElnMatchingParser(MatchingParser):
+    """A parser implementation that matches mainfiles and creates an ELN section
+    for the data file.
+    This parser is used to create an ELN section for the data file, which can be
+    used to annotate the data file with metadata and other information.
+    """
+
+    def __init__(
+        self,
+        eln_m_def: str | None = None,
+        raw_file_m_def: str | None = None,
+        update: bool = False,
+        data_type: str | None = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.eln_m_def = eln_m_def
+        self.raw_file_m_def = raw_file_m_def
+        self.update = update
+        self.data_type = data_type
+
+    def eln_section(self, mainfile: str, archive: EntryArchive) -> dict:
+        return dict(
+            m_def=self.eln_m_def,
+            data_file=archive.m_context.get_relative_path(mainfile),
+        )
+
+    def eln_name(self, mainfile: str, archive: EntryArchive) -> str:
+        relative_path = archive.m_context.get_relative_path(mainfile)
+        return f'{".".join(relative_path.split(".")[:-1])}.archive.json'
+
+    def parse(
+        self, mainfile: str, archive: EntryArchive, logger=None, child_archives=None
+    ):
+        context = archive.m_context
+        eln_name = self.eln_name(mainfile, archive)
+
+        archive.m_update_from_dict(
+            dict(
+                data=dict(
+                    m_def=self.raw_file_m_def,
+                    eln=f'{context.get_reference(eln_name)}#/data',
+                    data_type=self.data_type,
+                    file_ending=os.path.splitext(mainfile)[1],
+                    file_size=os.path.getsize(mainfile),
+                ),
+            )
+        )
+        archive.metadata.entry_name = f'Data file {context.get_relative_path(mainfile)}'
+
+        if not self.update and context.raw_path_exists(eln_name):
+            return
+
+        with context.update_entry(eln_name, write=True, process=True) as content:
+            data_dict: dict = content.get('data', {})
+            update_dict = self.eln_section(mainfile, archive)
+            data_dict.update(update_dict)
+            content['data'] = data_dict
 
 
 class MissingParser(MatchingParser):

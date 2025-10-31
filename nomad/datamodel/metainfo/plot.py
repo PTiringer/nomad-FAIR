@@ -148,6 +148,18 @@ class Figure(MSection):
 
 class PlotlyFigureQuantity(Quantity):
     def __set__(self, obj, value, **kwargs):
+        if value is not None and 'layout' in value and value['layout'] is not None:
+            layout = value['layout']
+            layout_template_title = None
+            if layout.get('template', {}).get('title', {}).get('text') is not None:
+                layout_template_title = layout['template']['title']
+            if layout.get('template', None) is not None:
+                del value['layout']['template']
+                if layout_template_title:
+                    value['layout']['title'] = {
+                        **layout_template_title,
+                        **value['layout']['title'],
+                    }
         # Make generated json serializable by converting numpy.ndarray to python list
         if value is not None:
             if 'data' in value:

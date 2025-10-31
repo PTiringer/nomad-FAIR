@@ -1,3 +1,52 @@
+## 1.4.0 (2025-10-31)
+
+### Changed (9 changes)
+
+- [Relax numpy upper bound constraint, bump `pymatgen` (which would also unblock Python 3.13 support)](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/a977ad3a874a4d6ad97f08b29d44a6ed76a76dda) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2694))
+- [Disabled materials indexing by default](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/cde085ee8e2bb059a0fec7fa1329019f0605368b) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2688))
+- [Changed processing to use temporal by default](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/bec30f63a8c6767fb0084eeb8f19a6266cc9d095) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2656))
+- [Enable writing definition IDs to archive and storing custom definitions in MongoDB](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/6a308c7286886af43e41a621456ae28503926b68) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2590))
+- [Changed default value of `config.services.api_base_path` from...](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/70585cff9d098a8c41126d3c83581c9d62df1387) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2598))
+- [Pass context to sub-section](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/f7971f7d09aa374f0c4555413cdf582f7508c271) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2577))
+- [Changed visualization of matrices from column-major to row-major ordering](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/b902741ada92234df3bf47783f369a8dc30c9548) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2558))
+- [Bump ase to 3.25.0](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/aefdb4e38ffc1f088ff272aa99a227c7c22c4519) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2563))
+- [Refactored upload transfer UI](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/e403dcd079033965ea32e32fe20d294b9c2c879e) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2635))
+
+### Added (13 changes)
+
+- [Added support for dimensionless units such as percent, permille and ppm](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/85309221bf2de523ad0fe933790e155e1fec36ad) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2687))
+- [Added consistent templating for Plotly plots](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/bfa8442b646b5a0cd1f4c4f95faea665a0a0e8ce) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2586))
+- [Added support for providing the filepath of new entries created from the GUI](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/df1d7a7e831e0fa8e5b120d7fecf5edc6af5b845) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2638))
+- [Added API endpoints for interacting with NOMAD Actions](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/493bcf693275c952750158f6fdcfc07775c789d7) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2624))
+- [Added option to specify multiple configuration files for the `nomad run` command](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/a09e00e2384fbfaa08895c16754f9fad80833dd4) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2542))
+- [Added new plugin entry point type for actions](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/3653a2bb28c5ab9bb181f5b6b8c6061a9ee852e5) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2496))
+- [Add button to stop upload processing when temporal is enabled](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/e111382c04227644960d8fbc8fce0779d72c3c18) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2559))
+- [Added ElnMatchingParser](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/2578a7f7464c94a945b4b01936a134f880d11783) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2453))
+- [Added option for requiring authentication to access sensitive information through API](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/6c2af564d4cf2a6e72d7262dfe8f2201ee854039) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2509))
+- [Added possibility to request GPU devices in the NORTH tool configuration](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/59e06c58d8c1aefd22819f18c5965630d2101bb6) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2471))
+- [Added authentication source to 401 HTTP response headers](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/575c465d3711c2424443635c078a2ad5168fbad4) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2648))
+- [Added new upload transfer endpoint](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/c9b0a4e1a5fc3e66f8a317fbbff1edfbb63f3fb1) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2552))
+- [Added setting for controlling production/development mode](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/cf0fbbe5672863db7904da63fe79157c80d65e42) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2700))
+
+### Fixed (9 changes)
+
+- [Fix unnecessary nesting of sub-sections](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/690a902782a5355f0890cb2695abaae61ed50df8) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2557))
+- [Fixed issue in parsing JMESPath operators with filter expressions containing multiple conditions](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/28517c70809f17dc58ce991bef71c8db449eb33d) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2675))
+- [Fixed issue with slow Apps API response](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/67dbd6ad219d40242086b803828b02decdf5ad73) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2651))
+- [Fixed issue with null references in graph API](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/9e996bed6c34d520f5cefbb4c6d445d6326c63e8) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2647))
+- [Fixed user dependency issue with h5groove app](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/600540509cbf4aeb732d538572bb3f7bed60e889) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2617))
+- [Fixed issue with long error message formatting when viewing uploads in the GUI](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/fb3230188641ae80ec77b89a0a229bca326b0846) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2576))
+- [Fixed issue in downloading data for multiple selected entries](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/1b3f4bac0a848316e3e0a2ecc522d2bd8ad0a79c) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2533))
+- [Fix FHI-aims method normalizer](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/68c7ab9fbcf54bfaae490b4c792238c992c1559c) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2536))
+- [Fix issues with POTCAR stripping and removal](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/385b254afe2e7ac10a5c2c246e3511232ae37c1c) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2550))
+
+### Removed (4 changes)
+
+- [Remove resources app](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/a330922423c5f2a6e5e49ba83e8e6adea84ccffa) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2564))
+- [Removed the materials app](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/abd8bdee3e398737dce52a4d8442b745050743c6) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2658))
+- [Removed GET endpoint for fetching bearer token](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/67d8c35a1d55ef573f8ec4a504e1e63c5fb55272) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2665))
+- [Remove unused basic_auth](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/caecfb33ce51747c49d4dedda6a81e77d0e9c697) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2678))
+
 ## 1.3.17 (2025-08-25)
 
 ### Added (11 changes)

@@ -17,7 +17,7 @@
  */
 import {
   Accordion, AccordionDetails, AccordionSummary, Box, Button, Checkbox, Dialog,
-  DialogContent, DialogTitle, FormControl, FormHelperText, Grid, IconButton, Input,
+  DialogContent, DialogTitle, FormControl, FormHelperText, Grid, IconButton,
   InputLabel, Link, makeStyles, MenuItem, Select, Step, StepContent, StepLabel, Stepper,
   Tooltip, Typography
 } from '@material-ui/core'
@@ -26,14 +26,16 @@ import DialogContentText from '@material-ui/core/DialogContentText'
 import FormControlLabel from '@material-ui/core/FormControlLabel'
 import ReprocessIcon from '@material-ui/icons/Autorenew'
 import DownloadIcon from '@material-ui/icons/CloudDownload'
+import StopIcon from '@material-ui/icons/Stop'
 import UploadIcon from '@material-ui/icons/CloudUpload'
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore'
 import MembersIcon from '@material-ui/icons/Group'
 import ReloadIcon from '@material-ui/icons/Replay'
+import SendIcon from '@material-ui/icons/Send'
 import PropTypes from 'prop-types'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { appBase, oasis } from '../../config'
+import { appBase, temporalProcessingEnabled } from '../../config'
 import { formatTimestamp } from '../../utils'
 import { CodeList } from '../About'
 import { useDataStore } from "../DataStore"
@@ -57,6 +59,8 @@ import { useUploadPageContext } from './UploadPageContext'
 import UploadProgressDialog from './UploadProgressDialog'
 import UploadSearchMenu from './UploadSearchMenu'
 import UploadStatusIcon from './UploadStatusIcon'
+import TransferUploadDialog from './TransferUploadDialog'
+import Ellipsis from '../visualization/Ellipsis'
 
 const useDropButtonStyles = makeStyles(theme => ({
   dropzone: {
@@ -76,9 +80,9 @@ const useDropButtonStyles = makeStyles(theme => ({
   }
 }))
 
-function DropButton({onDrop, ...buttonProps}) {
+function DropButton({ onDrop, ...buttonProps }) {
   const classes = useDropButtonStyles()
-  const {getRootProps, getInputProps, isDragAccept, isDragReject} = useDropzone({onDrop})
+  const { getRootProps, getInputProps, isDragAccept, isDragReject } = useDropzone({ onDrop })
   const className = (isDragAccept && classes.dropzoneAccept) || (isDragReject && classes.dropzoneReject) || classes.dropzone
   return (
     <div className={className}>
@@ -87,7 +91,7 @@ function DropButton({onDrop, ...buttonProps}) {
         <Button
           variant="contained"
           color="primary"
-          startIcon={<UploadIcon/>}
+          startIcon={<UploadIcon />}
           {...buttonProps}
         >
           Drop files here or click to open dialog
@@ -100,15 +104,20 @@ DropButton.propTypes = {
   onDrop: PropTypes.func
 }
 
-function EmbargoSelect({embargo, onChange, disabledReason}) {
-  return <FormControl style={{width: '100%'}}>
-    <InputLabel shrink htmlFor="embargo-label-placeholder">
-      Embargo period
-    </InputLabel>
+function EmbargoSelect({ embargo, onChange, disabledReason, variant, hideLabel = false }) {
+  const classes = useStyles()
+  return <FormControl style={{ width: '100%' }} variant={variant} className={classes.formControl}>
+    {
+      !hideLabel && (
+        <InputLabel shrink htmlFor="embargo-label-placeholder">
+          Embargo period
+        </InputLabel>
+      )
+    }
     <Select
       value={embargo}
       onChange={event => onChange(event.target.value)}
-      input={<Input name="embargo" id="embargo-label-placeholder"/>}
+      labelId='embargo-label-placeholder'
       displayEmpty
       name="embargo"
       disabled={!!disabledReason}
@@ -132,15 +141,17 @@ function EmbargoSelect({embargo, onChange, disabledReason}) {
 EmbargoSelect.propTypes = {
   embargo: PropTypes.number,
   onChange: PropTypes.func,
-  disabledReason: PropTypes.string
+  disabledReason: PropTypes.string,
+  variant: PropTypes.string,
+  hideLabel: PropTypes.bool
 }
 
-function PublishUpload({upload, onPublish, isVisibleForAll}) {
+function PublishUpload({ upload, onPublish, isVisibleForAll }) {
   const [embargo, setEmbargo] = useState(upload.embargo_length === undefined ? 0 : upload.embargo_length)
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false)
   const handlePublish = () => {
     setOpenConfirmDialog(false)
-    onPublish({embargo_length: embargo, to_central_nomad: false})
+    onPublish({ embargo_length: embargo })
   }
 
   useEffect(() => {
@@ -190,7 +201,7 @@ function PublishUpload({upload, onPublish, isVisibleForAll}) {
     `}</Markdown>
     <Box marginTop={2}>
       <Grid container direction="row" spacing={2}>
-        <Grid item style={{width: 300}}>
+        <Grid item style={{ width: 300 }}>
           <EmbargoSelect
             embargo={embargo}
             onChange={setEmbargo}
@@ -200,7 +211,7 @@ function PublishUpload({upload, onPublish, isVisibleForAll}) {
         <Grid item>
           <Box marginTop={2} >
             <Button
-              style={{height: 32, minWith: 100}}
+              style={{ height: 32, minWith: 100 }}
               size="small" variant="contained"
               onClick={() => setOpenConfirmDialog(true)} color="primary"
               disabled={upload.process_running}
@@ -220,92 +231,8 @@ PublishUpload.propTypes = {
   isVisibleForAll: PropTypes.bool
 }
 
-function PublishUploadExternally({upload, onPublish, isPublished, isVisibleForAll}) {
-  const [embargo, setEmbargo] = useState(upload.embargo_length === undefined ? 0 : upload.embargo_length)
-  const [openConfirmDialog, setOpenConfirmDialog] = useState(false)
-  const handlePublish = () => {
-    setOpenConfirmDialog(false)
-    onPublish({embargo_length: embargo, to_central_nomad: true})
-  }
-
-  useEffect(() => {
-    if (isVisibleForAll) {
-      setEmbargo(0)
-    }
-  }, [isVisibleForAll])
-
-  if (upload?.published_to?.find(server => server === 'https://nomad-lab.eu/prod/v1/api')) {
-    return <Markdown>{`
-      This upload has already been published to central NOMAD.
-    `}</Markdown>
-  }
-
-  const buttonLabel = 'Publish to Central NOMAD'
-
-  return <React.Fragment>
-    <Dialog
-      open={openConfirmDialog}
-      onClose={() => setOpenConfirmDialog(false)}
-    >
-      <DialogTitle>Confirm that you want to publish the upload to central NOMAD</DialogTitle>
-      <DialogContent>
-        <DialogContentText>
-          You are about to publish this upload to central NOMAD.
-        </DialogContentText>
-        <DialogContentText>
-          Please note that this upload will be published under the pre-configured account of this OASIS, which may or
-          may not be your current account.
-        </DialogContentText>
-        <DialogContentText>
-          The upload will be published to the central NOMAD with the chosen embargo period. Please check the central
-          NOMAD for the status of the upload.
-          If this upload is already published, this action has no effect.
-        </DialogContentText>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={() => setOpenConfirmDialog(false)} autoFocus>Cancel</Button>
-        <Button onClick={handlePublish}>{buttonLabel}</Button>
-      </DialogActions>
-    </Dialog>
-    <Typography>
-      After publishing locally on this OASIS. You can choose to publish this upload to the central NOMAD.
-    </Typography>
-    <Box marginTop={2}>
-      <Grid container direction="row" spacing={2}>
-        <Grid item style={{width: 300}}>
-          <EmbargoSelect
-            embargo={embargo}
-            onChange={setEmbargo}
-            disabledReason={isVisibleForAll ? 'Upload is publicly visible, embargo disabled' : null}
-          />
-        </Grid>
-        <Grid item>
-          <Box marginTop={2}>
-            <Button
-              style={{height: 32, minWith: 100}}
-              size="small" variant="contained"
-              onClick={() => setOpenConfirmDialog(true)} color="primary"
-              disabled={!isPublished}
-              data-testid='publish-upload-externally-button'
-            >
-              {buttonLabel}
-            </Button>
-          </Box>
-        </Grid>
-      </Grid>
-    </Box>
-  </React.Fragment>
-}
-
-PublishUploadExternally.propTypes = {
-  upload: PropTypes.object,
-  onPublish: PropTypes.func,
-  isPublished: PropTypes.bool,
-  isVisibleForAll: PropTypes.bool
-}
-
-function ProcessingStatus({data}) {
-  const {pagination, upload, processing_successful, processing_failed} = data
+function ProcessingStatus({ data }) {
+  const { pagination, upload, processing_successful, processing_failed } = data
   let mainMessage = null
   if (upload.process_running) {
     mainMessage = 'Processing ...'
@@ -318,11 +245,29 @@ function ProcessingStatus({data}) {
       mainMessage = 'Waiting for processing ...'
     }
   }
-  return <Box marginTop={1} marginBottom={2}>
-    <Typography>
-      {mainMessage}, {processing_successful}/{pagination?.total} entries processed{(processing_failed > 0) && `, ${processing_failed} failed`}
-    </Typography>
-  </Box>
+
+  return (
+    <Box marginTop={1} marginBottom={2}>
+      <Typography
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem'
+        }}
+      >
+        {/* left: ellipsized main message */}
+        <Ellipsis tooltip={mainMessage} style={{ flex: 1, minWidth: 0 }}>
+          {mainMessage}
+        </Ellipsis>
+
+        {/* right: always visible status */}
+        <span style={{ flexShrink: 0 }}>
+          {`${processing_successful}/${pagination?.total} entries processed`}
+          {processing_failed > 0 && `, ${processing_failed} failed`}
+        </span>
+      </Typography>
+    </Box>
+  )
 }
 ProcessingStatus.propTypes = {
   data: PropTypes.object
@@ -343,7 +288,7 @@ const useStyles = makeStyles(theme => ({
   }
 }))
 
-export function SupportedCodes({children}) {
+export function SupportedCodes({ children }) {
   return <DialogLink title="Supported codes" text={children}>
     <Typography>
       For the following codes, we support automatic parsing of data into
@@ -356,7 +301,7 @@ SupportedCodes.propTypes = {
   children: PropTypes.node
 }
 
-export function UploadDocumentation({children}) {
+export function UploadDocumentation({ children }) {
   return <Link href={`${appBase}/docs/web.html#uploading-and-publishing-data`}>
     {children}
   </Link>
@@ -365,7 +310,7 @@ UploadDocumentation.propTypes = {
   children: PropTypes.node
 }
 
-export function SchemaDocumentation({children}) {
+export function SchemaDocumentation({ children }) {
   return <Link href={`${appBase}/docs/schema/basics.html`}>
     {children}
   </Link>
@@ -377,24 +322,27 @@ SchemaDocumentation.propTypes = {
 function UploadOverview(props) {
   const classes = useStyles()
   const dataStore = useDataStore()
-  const {api, user} = useApi()
-  const {raiseError} = useErrors()
+  const { api, user } = useApi()
+  const { raiseError } = useErrors()
   const {
     uploadId, upload, entries, apiData, hasUpload, isProcessing, error, isVisibleForAll,
     isWriter, pagination, deleteRequested, updateUpload, requestRefreshUpload,
-    isMainAuthor} = useUploadPageContext()
+    isMainAuthor } = useUploadPageContext()
   const [uploading, setUploading] = useState(null)
   const [openEmbargoConfirmDialog, setOpenEmbargoConfirmDialog] = useState(false)
+  const [openTransferDialog, setOpenTransferDialog] = useState(false)
   const [readme, setReadme] = useState(null)
   const [openEditMembersDialog, setOpenEditMembersDialog] = useState(false)
 
   const handleIsVisibleForAll = useCallback((event) => {
     const action = event.target.checked ? 'add' : 'remove'
-    api.post(`/uploads/${uploadId}/edit`, {metadata: {
-      'reviewer_groups': { [action]: 'all'}
-    }})
-    .then(requestRefreshUpload)
-    .catch(raiseError)
+    api.post(`/uploads/${uploadId}/edit`, {
+      metadata: {
+        'reviewer_groups': { [action]: 'all' }
+      }
+    })
+      .then(requestRefreshUpload)
+      .catch(raiseError)
   }, [api, requestRefreshUpload, raiseError, uploadId])
 
   useEffect(() => {
@@ -425,7 +373,7 @@ function UploadOverview(props) {
         setUploading(percentCompleted)
       }
     })
-      .then(results => updateUpload({upload: results.data}))
+      .then(results => updateUpload({ upload: results.data }))
       .catch(raiseError)
       .finally(() => {
         setUploading(null)
@@ -433,20 +381,20 @@ function UploadOverview(props) {
   }, [uploadId, updateUpload, setUploading, api, raiseError])
 
   const handleNameChange = (upload_name) => {
-    api.post(`/uploads/${uploadId}/edit`, {metadata: {upload_name: upload_name}})
+    api.post(`/uploads/${uploadId}/edit`, { metadata: { upload_name: upload_name } })
       .then(() => requestRefreshUpload())
       .catch(raiseError)
   }
 
-  const handlePublish = ({embargo_length, to_central_nomad}) => {
-    api.post(`/uploads/${uploadId}/action/publish?embargo_length=${embargo_length}&to_central_nomad=${to_central_nomad}`)
-      .then(results => updateUpload({upload: results.data}))
+  const handlePublish = ({ embargo_length }) => {
+    api.post(`/uploads/${uploadId}/action/publish?embargo_length=${embargo_length}`)
+      .then(results => updateUpload({ upload: results.data }))
       .catch(raiseError)
   }
 
   const handleLiftEmbargo = () => {
     setOpenEmbargoConfirmDialog(false)
-    api.post(`/uploads/${uploadId}/edit`, {metadata: {embargo_length: 0}})
+    api.post(`/uploads/${uploadId}/edit`, { metadata: { embargo_length: 0 } })
       .then(() => requestRefreshUpload())
       .catch(raiseError)
   }
@@ -457,13 +405,19 @@ function UploadOverview(props) {
 
   const handleReprocess = () => {
     api.post(`/uploads/${uploadId}/action/process`)
+      .then(results => updateUpload({ upload: results.data }))
+      .catch(raiseError)
+  }
+
+  const handleStopProcessing = () => {
+    api.post(`/uploads/${uploadId}/action/stop-processing`)
       .then(results => updateUpload({upload: results.data}))
       .catch(raiseError)
   }
 
   const handleDelete = () => {
     api.delete(`/uploads/${uploadId}`)
-      .then(results => updateUpload({upload: results.data}))
+      .then(results => updateUpload({ upload: results.data }))
       .catch(raiseError)
   }
 
@@ -484,7 +438,7 @@ function UploadOverview(props) {
         <Grid item>
           <UploadStatusIcon data={upload} user={user} fontSize="large" />
         </Grid>
-        <Grid item style={{flexGrow: 1}}>
+        <Grid item style={{ flexGrow: 1 }}>
           <UploadName upload_name={upload?.upload_name} onChange={handleNameChange} />
           <WithButton clipboard={uploadId}>
             <Typography>upload id: {uploadId}</Typography>
@@ -493,15 +447,17 @@ function UploadOverview(props) {
         <Grid item>
           <Box display={'flex'}>
             <UploadSearchMenu uploadId={uploadId}/>
-            <IconButton
-              onClick={() => setOpenEditMembersDialog(true)}
-              disabled={!isWriter || isProcessing}
-              data-testid='edit-members-action'
-            >
-              <Tooltip title="Edit upload members">
-                <MembersIcon/>
+            <Tooltip title="Edit upload members">
+              <span>
+                <IconButton
+                  onClick={() => setOpenEditMembersDialog(true)}
+                  disabled={!isWriter || isProcessing}
+                  data-testid='edit-members-action'
+                >
+                  <MembersIcon/>
+                </IconButton>
+              </span>
               </Tooltip>
-            </IconButton>
             <EditMembersDialog open={openEditMembersDialog} setOpen={setOpenEditMembersDialog} />
             <Download
               component={IconButton} tooltip="Download files"
@@ -510,16 +466,36 @@ function UploadOverview(props) {
             >
               <DownloadIcon />
             </Download>
-            <IconButton onClick={handleReload}>
-              <Tooltip title="Reload">
-                <ReloadIcon />
-              </Tooltip>
-            </IconButton>
-            <IconButton disabled={isPublished || !isWriter} onClick={handleReprocess} data-testid='upload-reprocess-action'>
-              <Tooltip title="Reprocess">
-                <ReprocessIcon />
-              </Tooltip>
-            </IconButton>
+            <Tooltip title="Reload">
+              <span>
+                <IconButton onClick={handleReload}>
+                  <ReloadIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Reprocess">
+              <span>
+                <IconButton disabled={isPublished || !isWriter} onClick={handleReprocess} data-testid='upload-reprocess-action'>
+                  <ReprocessIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
+            {temporalProcessingEnabled &&
+              <Tooltip title="Stop processing">
+                <span>
+                  <IconButton disabled={isPublished || !isWriter || upload.process_status !== 'PENDING'} onClick={handleStopProcessing} data-testid='upload-stop-processing-action'>
+                    <StopIcon />
+                  </IconButton>
+                </span>
+              </Tooltip>}
+            <Tooltip title={isPublished ? "Transfer upload" : "The upload must be published before it can be transferred"}>
+              <span>
+                <IconButton disabled={!isPublished} onClick={() => setOpenTransferDialog(true)}>
+                  <SendIcon/>
+                </IconButton>
+              </span>
+            </Tooltip>
+            <TransferUploadDialog open={openTransferDialog} setOpen={setOpenTransferDialog}/>
             <SourceApiDialogButton maxWidth="lg" fullWidth>
               <SourceApiCall {...apiData} />
             </SourceApiDialogButton>
@@ -545,7 +521,7 @@ function UploadOverview(props) {
           </Accordion>
         </Box>
       )}
-      <Stepper classes={{root: classes.stepper}} orientation="vertical" >
+      <Stepper classes={{ root: classes.stepper }} orientation="vertical" >
         <Step expanded active={false}>
           <StepLabel>Prepare and upload your files</StepLabel>
           <StepContent>
@@ -557,7 +533,7 @@ function UploadOverview(props) {
                 <Typography className={classes.stepContent}>
                   Here you can upload files. Top-level .zip/.tar files will be uncompressed automatically. For more information,
                   see our documentation on <UploadDocumentation>uploading
-                  files</UploadDocumentation> or view the <SupportedCodes>supported codes</SupportedCodes>.
+                    files</UploadDocumentation> or view the <SupportedCodes>supported codes</SupportedCodes>.
                   Optionally, you can also create an entry from built-in or
                   uploaded schemas. Please take a look at our documentation on <SchemaDocumentation>schemas</SchemaDocumentation>.
                 </Typography>
@@ -593,10 +569,10 @@ function UploadOverview(props) {
           <StepContent>
             <ProcessingStatus data={apiData.response} />
             <ProcessingTable
-              data={entries.map(entry => ({...entry.entry_metadata, ...entry}))}
+              data={entries.map(entry => ({ ...entry.entry_metadata, ...entry }))}
               pagination={combinePagination(pagination, apiData.response?.pagination)}
               customTitle='entry'
-              onPaginationChanged={newPagination => updateUpload({pagination: newPagination})}/>
+              onPaginationChanged={newPagination => updateUpload({ pagination: newPagination })} />
           </StepContent>
         </Step>
         {(isAuthenticated && isWriter) && <Step expanded active={false}>
@@ -622,7 +598,7 @@ function UploadOverview(props) {
               color='primary'
               disabled={isProcessing}
             >
-              <MembersIcon className={classes.mixedButtonIcon}/> Edit upload members
+              <MembersIcon className={classes.mixedButtonIcon} /> Edit upload members
             </Button>
           </StepContent>
         </Step>}
@@ -638,7 +614,7 @@ function UploadOverview(props) {
               You can either select and edit individual entries from the list above, or
               edit all entries at once.
             </Typography>
-            {!isEmpty && <EditMetaDataDialog selectedEntries={{'upload_id': upload.upload_id}}/>}
+            {!isEmpty && <EditMetaDataDialog selectedEntries={{ 'upload_id': upload.upload_id }} />}
           </StepContent>
         </Step>}
         {(isAuthenticated && isWriter) && <Step expanded={!isEmpty} active={false}>
@@ -672,20 +648,10 @@ function UploadOverview(props) {
             </Dialog>
           </StepContent>
         </Step>}
-        {(isAuthenticated && isWriter && oasis) && <Step expanded={!isEmpty} active={false}>
-          <StepLabel>Publish to central NOMAD</StepLabel>
-          <StepContent>
-            <PublishUploadExternally
-              upload={upload}
-              onPublish={handlePublish}
-              isPublished={isPublished}
-              isVisibleForAll={isVisibleForAll}
-            />
-          </StepContent>
-        </Step>}
       </Stepper>
     </Page>
   )
 }
 
 export default UploadOverview
+export {EmbargoSelect}

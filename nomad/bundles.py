@@ -11,7 +11,7 @@
 import json
 import os
 from collections.abc import Iterable
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, cast
 
 from fastapi import HTTPException, status
@@ -172,7 +172,7 @@ class BundleImporter:
         self,
         user: datamodel.User,
         import_settings: BundleImportSettings,
-        embargo_length: int = None,
+        embargo_length: int | None = None,
     ):
         """
         Class for importing an upload from a *bundle*.
@@ -224,23 +224,12 @@ class BundleImporter:
             return  # No permission checks
 
         is_admin = self.user.is_admin
-        is_oasis = (
-            not is_admin
-            and self.user.is_oasis_admin
-            and config.bundle_import.allow_bundles_from_oasis
-        )
-
-        if not is_admin and not is_oasis:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail='User not authorized to import bundles',
-            )
 
         if not is_admin:
-            for k, v in self.import_settings.dict().items():
-                if v != config.bundle_import.default_settings.dict().get(k):
+            for k, v in self.import_settings.model_dump().items():
+                if v != config.bundle_import.default_settings.model_dump().get(k):
                     raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        status_code=status.HTTP_403_FORBIDDEN,
                         detail=f'Changing the setting {k} requires an admin user',
                     )
 
@@ -300,7 +289,7 @@ class BundleImporter:
         """
         self.upload = upload
         logger = self.upload.get_logger(bundle_path=self.bundle_path)
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         new_datasets: list[datamodel.Dataset] = []
         dataset_id_mapping: dict[str, str] = {}
         entry_data_to_index: list[datamodel.EntryArchive] = []  # Data to index in ES
@@ -466,9 +455,10 @@ class BundleImporter:
             self.upload.complete_time,
             self.upload.publish_time,
         ):
-            assert timestamp is None or timestamp < current_time_plus_tolerance, (
-                'Timestamp is in the future'
-            )
+            assert (
+                timestamp is None
+                or timestamp.replace(tzinfo=timezone.utc) < current_time_plus_tolerance
+            ), 'Timestamp is in the future'
         # Manage source info
         if self.import_settings.set_from_oasis:
             self.upload.from_oasis = True

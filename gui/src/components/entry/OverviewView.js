@@ -35,7 +35,6 @@ import DynamicalPropertiesCard from '../entry/properties/DynamicalPropertiesCard
 import StructuralPropertiesCard from '../entry/properties/StructuralPropertiesCard'
 import GeometryOptimizationCard from '../entry/properties/GeometryOptimizationCard'
 import SpectroscopicPropertiesCard from './properties/SpectroscopicPropertiesCard'
-import RelatedResourcesCard from '../entry/properties/RelatedResourcesCard'
 import WorkflowCard from './properties/WorkflowCard'
 import { MethodMetadata } from './EntryDetails'
 import Page from '../Page'
@@ -156,7 +155,8 @@ const OverviewView = React.memo(() => {
 
   const classes = useStyles()
   const {raiseError} = useErrors()
-  const m_def = archive?.data?.m_def_id ? `${archive.data.m_def}@${archive.data.m_def_id}` : archive?.data?.m_def
+  // const m_def = archive?.data?.m_def_id ? `${archive.data.m_def}@${archive.data.m_def_id}` : archive?.data?.m_def
+  const m_def = archive?.data?.m_def
   const dataMetainfoDefUrl = url && resolveNomadUrlNoThrow(m_def, url)
   const dataMetainfoDef = useMetainfoDef(dataMetainfoDefUrl)
 
@@ -209,8 +209,7 @@ const OverviewView = React.memo(() => {
       spectroscopic: SpectroscopicPropertiesCard,
       workflow: WorkflowCard,
       references: ReferenceUsingCard,
-      history: SampleHistoryUsingCard,
-      relatedResources: RelatedResourcesCard
+      history: SampleHistoryUsingCard
     }
 
     if (isEmpty(cards?.options)) {

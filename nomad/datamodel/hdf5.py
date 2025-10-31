@@ -107,7 +107,11 @@ class HDF5Reference(NonPrimitive):
 
     @staticmethod
     def write_dataset(
-        archive, value: Any, path: str, attributes: dict = {}, quantity_name: str = None
+        archive,
+        value: Any,
+        path: str,
+        attributes: dict = {},
+        quantity_name: str | None = None,
     ) -> None:
         """
         Write value to HDF5 file specified in path following the form
@@ -211,8 +215,9 @@ class HDF5Dataset(NonPrimitive):
         There is no need to additionally manage file access here.
         """
         section = kwargs.get('section')
+        archive = section.m_root()
 
-        if not (section_context := section.m_root().m_context):
+        if not (section_context := archive.m_context):
             raise ValueError('Cannot normalize HDF5 value without context.')
 
         if not isinstance(
@@ -220,7 +225,11 @@ class HDF5Dataset(NonPrimitive):
         ):
             raise ValueError(f'Invalid HDF5 dataset value: {value}.')
 
-        hdf5_path: str = section_context.hdf5_path(section)
+        from nomad.files import UploadFiles
+
+        hdf5_path: str = UploadFiles.get(
+            section_context.upload_id
+        ).archive_hdf5_location(archive.entry_id)
 
         if isinstance(value, str):
             if not (match := match_hdf5_reference(value)):

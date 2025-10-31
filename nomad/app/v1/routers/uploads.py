@@ -20,11 +20,12 @@ import os
 import shutil
 import tarfile
 import zipfile
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, cast
-from urllib.parse import unquote
+from urllib.parse import unquote, urlparse
 
+import requests
 from fastapi import (
     APIRouter,
     Body,
@@ -44,13 +45,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from pydantic_core import PydanticCustomError
 
 from nomad import files, utils
+from nomad.app.v1.models.models import TransferBundleRequest
 from nomad.bundles import BundleExporter, BundleImporter
 from nomad.common import get_compression_format, is_safe_basename, is_safe_relative_path
 from nomad.config import config
 from nomad.config.models.config import Reprocess
 from nomad.config.models.plugins import ExampleUploadEntryPoint
 from nomad.files import PublicUploadFiles, StagingUploadFiles
-from nomad.groups import MongoUserGroup
+from nomad.mongo.groups import MongoUserGroup
 from nomad.processing import (
     Entry,
     MetadataEditRequestHandler,
@@ -234,6 +236,7 @@ class UploadProcDataPagination(Pagination):
                 'publish_time',
                 'upload_name',
                 'last_status_message',
+                'process_status',
             ):
                 raise PydanticCustomError(
                     'invalid_order_by', 'order_by must be a valid attribute'
@@ -315,14 +318,14 @@ entry_proc_data_pagination_parameters = parameter_dependency_from_model(
 
 
 class UploadProcDataResponse(BaseModel):
-    upload_id: str = Field(
+    upload_id: str | None = Field(
         None,
         description=strip(
             """
         Unique id of the upload."""
         ),
     )
-    data: UploadProcData = Field(
+    data: UploadProcData | None = Field(
         None,
         description=strip(
             """
@@ -386,7 +389,7 @@ upload_proc_data_query_parameters = parameter_dependency_from_model(
 class UploadProcDataQueryResponse(BaseModel):
     query: UploadProcDataQuery = Field()
     pagination: PaginationResponse = Field()
-    data: list[UploadProcData] = Field(
+    data: list[UploadProcData] | None = Field(
         None,
         description=strip(
             """
@@ -403,7 +406,7 @@ class EntryProcDataResponse(BaseModel):
 
 class EntryProcDataQueryResponse(BaseModel):
     pagination: PaginationResponse = Field()
-    processing_successful: int = Field(
+    processing_successful: int | None = Field(
         None,
         description=strip(
             """
@@ -411,7 +414,7 @@ class EntryProcDataQueryResponse(BaseModel):
         """
         ),
     )
-    processing_failed: int = Field(
+    processing_failed: int | None = Field(
         None,
         description=strip(
             """
@@ -419,7 +422,7 @@ class EntryProcDataQueryResponse(BaseModel):
         """
         ),
     )
-    upload: UploadProcData = Field(
+    upload: UploadProcData | None = Field(
         None,
         description=strip(
             """
@@ -427,7 +430,7 @@ class EntryProcDataQueryResponse(BaseModel):
         """
         ),
     )
-    data: list[EntryProcData] = Field(
+    data: list[EntryProcData] | None = Field(
         None,
         description=strip(
             """
@@ -527,14 +530,14 @@ class ProcessingData(BaseModel):
 
 
 class PutRawFileResponse(BaseModel):
-    upload_id: str = Field(
+    upload_id: str | None = Field(
         None,
         description=strip(
             """
         Unique id of the upload."""
         ),
     )
-    data: UploadProcData = Field(
+    data: UploadProcData | None = Field(
         None,
         description=strip(
             """
@@ -812,7 +815,7 @@ async def get_uploads(
     end = start + pagination.page_size
 
     # Fetch data from DB
-    mongodb_query = pagination.order_result(Upload.objects.filter(mongo_query))
+    mongodb_query = pagination.order_result(Upload.objects.filter(mongo_query))  # type: ignore
 
     data = [upload_to_pydantic(upload) for upload in mongodb_query[start:end]]
 
@@ -876,6 +879,7 @@ async def get_upload_entries(
     upload = get_upload_with_read_access(upload_id, user, include_others=True)
 
     order_by = pagination.order_by
+    assert order_by is not None
     order_by_with_sign = (
         order_by if pagination.order == Direction.asc else '-' + order_by
     )
@@ -895,8 +899,8 @@ async def get_upload_entries(
     ).query
     metadata_entries = search(
         pagination=MetadataPagination(page_size=len(entries)),
-        owner='admin' if user and user.is_admin else 'visible',
-        user_id=user.user_id if user else None,
+        owner='admin' if user is not None and user.is_admin else 'visible',
+        user_id=user.user_id if user is not None else None,
         query=metadata_entries_query,
     )
     metadata_entries_map = {
@@ -1022,7 +1026,7 @@ async def get_upload_rawdir_path(
                 name=os.path.basename(path), size=upload_files.raw_file_size(path)
             )
             if include_entry_info:
-                entry: Entry = Entry.objects(
+                entry: Entry = Entry.objects(  # type: ignore
                     upload_id=upload_id, mainfile=path, mainfile_key=None
                 ).first()
                 if entry:
@@ -1052,7 +1056,7 @@ async def get_upload_rawdir_path(
                         path_to_element[path_info.path] = element
 
             if include_entry_info and content:
-                for entry in Entry.objects(
+                for entry in Entry.objects(  # type: ignore  # type: ignore
                     upload_id=upload_id,
                     mainfile__in=path_to_element.keys(),
                     mainfile_key=None,
@@ -1230,7 +1234,7 @@ async def get_upload_raw_path(
                     compress=True,
                 )
             else:
-                if offset < 0:
+                if offset is not None and offset < 0:
                     raise HTTPException(
                         status.HTTP_400_BAD_REQUEST,
                         detail=strip(
@@ -1238,7 +1242,7 @@ async def get_upload_raw_path(
                         Invalid offset provided."""
                         ),
                     )
-                if length <= 0 and length != -1:
+                if length is not None and length <= 0 and length != -1:
                     raise HTTPException(
                         status.HTTP_400_BAD_REQUEST,
                         detail=strip(
@@ -1541,7 +1545,7 @@ async def put_upload_raw_path(
             response = PutRawFileResponse(
                 upload_id=upload_id, data=upload_to_pydantic(upload)
             )
-            response_text = response.json()
+            response_text = response.model_dump_json()
             media_type = 'application/json'
         else:
             response_text = _thank_you_message
@@ -1607,7 +1611,8 @@ async def put_upload_raw_path(
         )
 
         return StreamingResponse(
-            create_stream_from_string(response.json()), media_type='application/json'
+            create_stream_from_string(response.model_dump_json()),
+            media_type='application/json',
         )
     except HTTPException:
         raise
@@ -1713,7 +1718,7 @@ async def post_upload_raw_create_dir_path(
         upload.staging_upload_files.raw_create_directory(path)
         # No real processing is needed when just adding a folder, but we should signal that
         # the upload has changed.
-        upload.complete_time = datetime.utcnow()
+        upload.complete_time = datetime.now(timezone.utc)
         upload.save()
     except Exception as e:
         raise HTTPException(
@@ -1814,7 +1819,7 @@ async def post_upload(
             Specifies the name of the file, when using method 2."""
         ),
     ),
-    upload_name: str = FastApiQuery(
+    upload_name: str | None = FastApiQuery(
         None,
         description=strip(
             """
@@ -1929,7 +1934,7 @@ async def post_upload(
         upload_id=upload_id,
         main_author=user,
         upload_name=upload_name,
-        upload_create_time=datetime.utcnow(),
+        upload_create_time=datetime.now(timezone.utc),
         embargo_length=embargo_length,
         publish_directly=publish_directly,
     )
@@ -1961,7 +1966,7 @@ async def post_upload(
         upload_proc_data_response = UploadProcDataResponse(
             upload_id=upload_id, data=upload_to_pydantic(upload)
         )
-        response_text = upload_proc_data_response.json()
+        response_text = upload_proc_data_response.model_dump_json()
         media_type = 'application/json'
     else:
         response_text = _thank_you_message
@@ -2096,10 +2101,11 @@ async def post_upload_action_publish(
         False,
         description=strip(
             """
-                Will send the upload to the central NOMAD repository and publish it. This
-                option is only available on an OASIS. The upload must already be published
-                on the OASIS."""
+            DEPRECATED
+            To publish to an external oasis or to the central nomad you can use the new entpoint /uploads/{upload_id}/action/transfer.
+                """
         ),
+        deprecated=True,
     ),
     user: User = Depends(create_user_dependency(required=True)),
 ):
@@ -2145,12 +2151,12 @@ async def post_upload_action_publish(
             )
         if not upload.published:
             raise HTTPException(
-                status.HTTP_401_UNAUTHORIZED,
+                status.HTTP_400_BAD_REQUEST,
                 detail='The upload must be published on the OASIS first.',
             )
         if not user.is_admin:
             raise HTTPException(
-                status.HTTP_401_UNAUTHORIZED,
+                status.HTTP_403_FORBIDDEN,
                 detail='Only admin of OASIS can publish to the central NOMAD.',
             )
         # Everything looks ok, try to publish it to the central NOMAD!
@@ -2159,7 +2165,7 @@ async def post_upload_action_publish(
         # Publish to this repository
         if upload.published:
             raise HTTPException(
-                status.HTTP_401_UNAUTHORIZED,
+                status.HTTP_400_BAD_REQUEST,
                 detail='The upload is already published.',
             )
         try:
@@ -2513,8 +2519,8 @@ async def post_upload_bundle(
         )
     )
 
-    bundle_importer: BundleImporter = None
-    bundle_path: str = None
+    bundle_importer: BundleImporter | None = None
+    bundle_path: str | None = None
     method = None
 
     if local_path:
@@ -2555,7 +2561,9 @@ async def post_upload_bundle(
         # Import the bundle using the unified method
         upload.import_bundle(
             bundle_path=bundle_path,
-            import_settings=import_settings.dict(),
+            import_settings=import_settings.model_dump()
+            if import_settings is not None
+            else {},
             embargo_length=embargo_length,
         )
 
@@ -2573,6 +2581,76 @@ async def post_upload_bundle(
             status.HTTP_400_BAD_REQUEST,
             detail=f'Failed to import bundle: {str(e)}',
         )
+
+
+@router.post(
+    '/{upload_id}/action/transfer',
+    tags=[APITag.ACTION],
+    summary='Transfer upload to another NOMAD deployment.',
+    response_model=UploadProcDataResponse,
+    responses=create_responses(
+        _upload_not_found, _not_authorized_to_upload, _bad_request
+    ),
+    response_model_exclude_unset=True,
+    response_model_exclude_none=True,
+)
+async def transfer_upload_bundle(
+    transfer_options: TransferBundleRequest,
+    upload_id: str = Path(
+        ...,
+        description=strip(
+            """
+                The unique id of the upload to transfer."""
+        ),
+    ),
+    user: User = Depends(create_user_dependency(required=True)),
+):
+    """
+    Start a transfer of an upload to another NOMAD deployment.
+    By default the transfer will target the central nomad deployment if no `target_deployment_url` is provided.
+    `auth_token` is required to authenticate the transfer process in the target deploment (custom OASIS or central NOMAD).
+    """
+    upload = get_upload_with_read_access(
+        upload_id=upload_id, user=user, include_others=True
+    )
+    if not upload.published:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='The upload should be published first.',
+        )
+
+    target_deployment_url = transfer_options.target_deployment_url
+
+    _validate_target_deployment_url(target_deployment_url)
+    _check_upload_not_processing(upload)
+    _check_external_deployment_status(target_deployment_url)
+
+    upload.publish_externally(
+        target_deployment_url=target_deployment_url,
+        auth_token=transfer_options.auth_token,
+        embargo_length=transfer_options.embargo_length,
+    )
+    return UploadProcDataResponse(upload_id=upload_id, data=upload_to_pydantic(upload))
+
+
+def _validate_target_deployment_url(url: str):
+    # urlparse never raises, but may return empty parts
+    parsed = urlparse(url)
+    # Check scheme
+    if parsed.scheme not in ('http', 'https'):
+        raise HTTPException(
+            status_code=422, detail='URL must start with http:// or https://'
+        )
+
+    # Check host
+    if not parsed.netloc:
+        raise HTTPException(
+            status_code=422, detail='URL must contain a valid host (e.g., example.com)'
+        )
+
+    # Check that path ends with /api
+    if not parsed.path.endswith('/api'):
+        raise HTTPException(status_code=422, detail="URL path must end with '/api'")
 
 
 async def _get_files_if_provided(
@@ -2597,7 +2675,7 @@ async def _get_files_if_provided(
         # Method 0: Local file - only for admin use.
         if not user.is_admin:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
+                status_code=status.HTTP_403_FORBIDDEN,
                 detail=strip("""
                 You are not authorized to access this path.
                 """),
@@ -2723,7 +2801,7 @@ async def _get_files_if_provided(
 
 
 def _query_mongodb(**kwargs):
-    return Upload.objects(**kwargs)
+    return Upload.objects(**kwargs)  # type: ignore
 
 
 def get_role_query(roles: list[UploadRole], user: User, include_all=False) -> Q:
@@ -2746,7 +2824,8 @@ def get_role_query(roles: list[UploadRole], user: User, include_all=False) -> Q:
     return role_query
 
 
-def is_user_upload_viewer(upload: Upload, user: User | None):
+def is_user_upload_viewer(upload: Upload, user: User | None) -> bool:
+    """Check whether user has access to that upload."""
     if 'all' in upload.reviewer_groups:
         return True
 
@@ -2807,24 +2886,24 @@ def get_upload_with_read_access(
 
     if not include_others:
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
             detail='You do not have access to the specified upload.',
         )
 
     if not upload.published:
-        if user:
+        if user is None:
             raise HTTPException(
                 status.HTTP_401_UNAUTHORIZED,
-                detail='You do not have access to the specified upload.',
+                detail='You need to log in to access the specified upload.',
             )
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
-            detail='You need to log in to access the specified upload.',
+            status.HTTP_403_FORBIDDEN,
+            detail='You do not have access to the specified upload.',
         )
 
     if upload.with_embargo:
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
             detail='You do not have access to the specified upload - published with embargo.',
         )
 
@@ -2859,13 +2938,13 @@ def _get_upload_with_write_access(
 
     if not is_user_upload_writer(upload, user):
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
             detail='You do not have write access to the specified upload.',
         )
 
     if only_main_author and not user.is_admin and upload.main_author != user.user_id:
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
             detail='Only main author has permissions for this operation.',
         )
 
@@ -2874,7 +2953,7 @@ def _get_upload_with_write_access(
 
     if not include_published:
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_400_BAD_REQUEST,
             detail='Upload is already published, operation not possible.',
         )
 
@@ -2889,7 +2968,7 @@ def _get_upload_with_write_access(
         and not (is_failed_import and include_failed_imports)
     ):
         raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
             detail='Upload is already published, only admins can perform this operation.',
         )
 
@@ -2900,7 +2979,7 @@ def upload_to_pydantic(
     upload: Upload, *, include_total_count: bool = True
 ) -> UploadProcData:
     """Converts the mongo db object to an UploadProcData object."""
-    pydantic_upload = UploadProcData.from_orm(upload)
+    pydantic_upload = UploadProcData.model_validate(upload)
     if include_total_count:
         pydantic_upload.entries = upload.total_entries_count
     try:
@@ -2919,7 +2998,7 @@ def entry_to_pydantic(
     Converts the mongo db object to an EntryProcData object, and optionally also adds metadata
     from ES
     """
-    rv = EntryProcData.from_orm(entry)
+    rv = EntryProcData.model_validate(entry)
     if add_es_metadata:
         # load entries's metadata from search
         metadata_entries = search(
@@ -2942,3 +3021,71 @@ def _check_upload_not_processing(upload: Upload):
             status.HTTP_400_BAD_REQUEST,
             detail='The upload is currently being processed, operation not allowed.',
         )
+
+
+def _perform_status_check(url: str):
+    response = requests.get(url, timeout=15)
+    return response
+
+
+def _check_external_deployment_status(deployment_url: str):
+    parsed_url = urlparse(deployment_url)
+
+    base_url = f'{parsed_url.scheme}://{parsed_url.netloc}'
+    try:
+        response = _perform_status_check(f'{base_url}/-/health')
+        if response.status_code != status.HTTP_200_OK:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                detail='The target deployment is not available or the URL is incorrectly formatted. The target deployment URL should end with /api.',
+            )
+    except requests.exceptions.ConnectionError:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail='The target deployment is not available. Connection refused.',
+        )
+    except requests.exceptions.Timeout:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail='The target deployment is not available. Timeout.',
+        )
+    except Exception as e:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=f'Failed to check external deployment health. Error: {str(e)}',
+        )
+
+
+@router.post(
+    '/{upload_id}/action/stop-processing',
+    tags=[APITag.ACTION],
+    summary='Stops the processing of the upload.',
+    response_model=UploadProcDataResponse,
+    responses=create_responses(
+        _upload_not_found, _not_authorized_to_upload, _bad_request
+    ),
+    response_model_exclude_unset=True,
+    response_model_exclude_none=True,
+)
+async def stop_upload_processing(
+    upload_id: str = Path(..., description='The unique id of the upload.'),
+    user: User = Depends(create_user_dependency(required=True)),
+):
+    """
+    Stops the processing of the specified upload.
+    """
+    upload = _get_upload_with_write_access(upload_id, user, include_published=False)
+
+    if not config.temporal.enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='This functionality is only available when temporal is enabled.',
+        )
+    if upload.process_status != ProcessStatus.PENDING:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='This functionality is only available when upload process state is pending.',
+        )
+    upload.stop_processing()
+
+    return UploadProcDataResponse(upload_id=upload_id, data=upload_to_pydantic(upload))

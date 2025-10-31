@@ -2,7 +2,7 @@
   "4fb167ea4a236fd22afec9242e306b2f": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/users?prefix=schei",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/users?prefix=schei",
         "method": "GET",
         "body": "",
         "headers": {
@@ -86,7 +86,7 @@
   "13f25438d310781bc2b34b2f13009dca": [
     {
       "request": {
-        "url": "http://localhost:8000/fairdi/nomad/latest/api/v1/users?user_id=20bb9766-d338-4314-be43-7906042a5086",
+        "url": "http://localhost:8000/nomad-oasis/api/v1/users?user_id=20bb9766-d338-4314-be43-7906042a5086",
         "method": "GET",
         "body": "",
         "headers": {

@@ -16,7 +16,8 @@
 # limitations under the License.
 #
 
-from datetime import datetime
+import asyncio
+from datetime import datetime, timezone
 
 import pytest
 
@@ -482,10 +483,11 @@ class TestEditRepo:
         ),
     ],
 )
-def test_post_entries_edit(
+@pytest.mark.asyncio
+async def test_post_entries_edit(
     auth_headers,
     client,
-    proc_infra,
+    temporal_worker,
     example_data_writeable,
     example_datasets,
     users_dict,
@@ -513,11 +515,18 @@ def test_post_entries_edit(
     add_coauthor = kwargs.get('add_coauthor', False)
     if add_coauthor:
         upload = proc.Upload.get(affected_upload_ids[0])
-        upload.edit_upload_metadata(
-            edit_request_json={'metadata': {'coauthors': user.user_id}},
-            user_id=upload.main_author,
-        )
-        upload.block_until_complete()
+        async with temporal_worker() as env:
+            handle_id = await asyncio.to_thread(
+                lambda: upload.edit_upload_metadata(
+                    edit_request_json={'metadata': {'coauthors': user.user_id}},
+                    user_id=upload.main_author,
+                )
+            )
+            handle = env.client.get_workflow_handle(handle_id)
+            try:
+                await handle.result()
+            except Exception:
+                pass
 
     edit_request_json = dict(
         query=query,
@@ -528,8 +537,12 @@ def test_post_entries_edit(
         verify_only=verify_only,
     )
     url = 'entries/edit'
-    edit_start = datetime.utcnow().isoformat()[0:22]
-    response = client.post(url, headers=user_auth, json=edit_request_json)
+    edit_start = datetime.now(timezone.utc).isoformat()[0:22]
+
+    async with temporal_worker():
+        response = await asyncio.to_thread(
+            lambda: client.post(url, headers=user_auth, json=edit_request_json)
+        )
     if expected_error_loc:
         assert_response(response, 422)
         error_locs = [tuple(d['loc']) for d in response.json()['detail']]

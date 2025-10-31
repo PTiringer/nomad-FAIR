@@ -36,10 +36,8 @@ from nomad.archive import (
 from nomad.archive.converter import convert_archive
 from nomad.archive.storage import _decode, _entries_per_block, to_json
 from nomad.config import config
-from nomad.datamodel import ClientContext, EntryArchive
+from nomad.datamodel import ClientContext, Context, EntryArchive
 from nomad.metainfo import (
-    Context,
-    MetainfoError,
     MProxy,
     MSection,
     Quantity,
@@ -427,34 +425,6 @@ def archive(json_dict):
 
 
 @pytest.mark.parametrize(
-    'definition_id,context,exception_type',
-    [
-        pytest.param(
-            EntryArchive.m_def.definition_id + 'a',
-            None,
-            MetainfoError,
-            id='wrong_id_no_context',
-        ),
-        pytest.param(
-            EntryArchive.m_def.definition_id[::-1],
-            Context(),
-            NotImplementedError,
-            id='wrong_id_with_context',
-        ),
-    ],
-)
-def test_archive_with_wrong_id(json_dict, definition_id, context, exception_type):
-    """
-    Test that the archive with wrong id raises the expected exception.
-    """
-    json_dict['m_def_id'] = definition_id
-    with pytest.raises(exception_type):
-        EntryArchive.m_from_dict(json_dict, m_context=context)
-
-    del json_dict['m_def_id']
-
-
-@pytest.mark.parametrize(
     'm_def,m_def_id',
     [
         pytest.param(None, EntryArchive.m_def.definition_id, id='plain-definition-id'),
@@ -483,12 +453,10 @@ def test_archive_with_id_in_reference(json_dict, m_def, m_def_id, monkeypatch):
     Patch Context to return proper section definition to test if the archive is correctly created.
     """
 
-    def resolve_section_definition(self, definition: str, definition_id: str):  # pylint: disable=unused-argument
+    def _fetch_section(self, definition: str, definition_id: str):  # pylint: disable=unused-argument
         return EntryArchive
 
-    monkeypatch.setattr(
-        'nomad.metainfo.Context.resolve_section_definition', resolve_section_definition
-    )
+    monkeypatch.setattr('nomad.datamodel.context.Context.fetch_section', _fetch_section)
 
     if m_def is not None:
         json_dict['m_def'] = m_def
@@ -527,6 +495,8 @@ def assert_list(l1, l2):
 def assert_dict(d1: dict, d2):
     d1.pop('m_def', None)
     d2.pop('m_def', None)
+    d1.pop('m_def_id', None)
+    d2.pop('m_def_id', None)
     assert set(d1.keys()) == set(d2.keys())
     for k, v in d1.items():
         if isinstance(v, dict):
@@ -793,7 +763,7 @@ def all_archive():
     ],
 )
 def test_required_reader(
-    archive, required, inplace_result, root_result, resolve_inplace, mongo_function
+    archive, required, inplace_result, root_result, resolve_inplace, temporal_worker
 ):
     f = BytesIO()
     write_archive(f, 1, [('entry_id', archive.m_to_dict())], entry_toc_depth=2)
@@ -818,7 +788,7 @@ def test_required_reader(
 
 
 @pytest.fixture(scope='function')
-def example_data_with_reference(proc_infra, user1, json_dict):
+def example_data_with_reference(temporal_worker, user1, json_dict):
     """
     Provides a couple of entries with references.
 
@@ -1045,7 +1015,7 @@ def test_required_reader_with_remote_reference(
             assert calculation.system_ref.symmetry[0].space_group_number == 221
 
 
-def test_custom_schema(user1, proc_infra):
+def test_custom_schema(user1, temporal_worker):
     yaml_archive = yaml.safe_load(
         """
 ---

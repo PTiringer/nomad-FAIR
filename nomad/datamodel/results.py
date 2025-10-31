@@ -17,7 +17,6 @@
 #
 
 from logging import Logger
-from typing import TYPE_CHECKING
 
 import numpy as np
 from ase.data import chemical_symbols
@@ -236,64 +235,72 @@ _band_gap_quantities = dict(
 )
 
 
-if TYPE_CHECKING:
+class BandGapDeprecated(PropertySection):
+    m_def = Section(
+        validate=False,
+        description="""
+        Base class for breaking up circular dependencies between BandGap, Dos, and
+        BandStructure.
+        """,
+    )
 
-    class BandGapDeprecated(PropertySection):
-        pass
+    index = Quantity(
+        type=np.int32,
+        description="""
+        The spin channel index.
+        """,
+        a_elasticsearch=Elasticsearch(material_entry_type),
+    )
 
-else:
-    BandGapDeprecated = type(
-        'BandGapDeprecated',
-        (runschema.calculation.BandGapDeprecated if runschema else PropertySection,),
-        {
-            **_band_gap_quantities,
-            **(
-                dict(
-                    index=runschema.calculation.BandGapDeprecated.index.m_copy().m_update(
-                        a_elasticsearch=[Elasticsearch(material_entry_type)]
-                    ),
-                    value=runschema.calculation.BandGapDeprecated.value.m_copy().m_update(
-                        a_elasticsearch=[Elasticsearch(material_entry_type)]
-                    ),
-                    type=runschema.calculation.BandGapDeprecated.type.m_copy().m_update(
-                        a_elasticsearch=[Elasticsearch(material_entry_type)]
-                    ),
-                )
-                if runschema
-                else {}
-            ),
-        },
+    value = Quantity(
+        type=np.float64,
+        shape=[],
+        unit='joule',
+        description="""
+        The actual value of the band gap. Value of zero indicates a vanishing band gap and
+        is distinct from sources lacking any band gap measurement or calculation.""",
+        a_elasticsearch=Elasticsearch(material_entry_type),
+    )
+
+    type = Quantity(
+        type=MEnum('direct', 'indirect'),
+        shape=[],
+        description="""
+        Band gap type.
+        """,
+        a_elasticsearch=Elasticsearch(material_entry_type),
+    )
+
+    energy_highest_occupied = Quantity(
+        type=np.float64,
+        unit='joule',
+        shape=[],
+        description="""
+        The highest occupied energy.
+        """,
+    )
+
+    energy_lowest_unoccupied = Quantity(
+        type=np.float64,
+        unit='joule',
+        shape=[],
+        description="""
+        The lowest unoccupied energy.
+        """,
     )
 
 
-if TYPE_CHECKING:
-
-    class BandGap(PropertySection):
-        pass
-
-else:
-    BandGap = type(
-        'BandGap',
-        (runschema.calculation.BandGap if runschema else PropertySection,),
-        {
-            **_band_gap_quantities,
-            **(
-                dict(
-                    index=runschema.calculation.BandGap.index.m_copy().m_update(
-                        a_elasticsearch=[Elasticsearch(material_entry_type)]
-                    ),
-                    value=runschema.calculation.BandGap.value.m_copy().m_update(
-                        a_elasticsearch=[Elasticsearch(material_entry_type)]
-                    ),
-                    type=runschema.calculation.BandGap.type.m_copy().m_update(
-                        a_elasticsearch=[Elasticsearch(material_entry_type)]
-                    ),
-                )
-                if runschema
-                else {}
-            ),
-        },
+class BandGap(BandGapDeprecated):
+    m_def = Section(
+        description="""
+        Contains information for each present spin channel.
+        """
     )
+
+    if runschema:
+        provenance = SubSection(
+            sub_section=runschema.calculation.ElectronicStructureProvenance.m_def
+        )
 
 
 class SourceInformation(MSection):
@@ -1725,20 +1732,65 @@ class HubbardKanamoriModel(MSection):
 
     m_def = Section(validate=False)
 
-    if runschema:
-        atom_label = runschema.method.AtomParameters.label.m_copy()
-        orbital = runschema.method.HubbardKanamoriModel.orbital.m_copy()
-        u_effective = runschema.method.HubbardKanamoriModel.u_effective.m_copy()
-        u_effective.m_annotations['elasticsearch'] = [
-            Elasticsearch(material_entry_type)
-        ]
-        u = runschema.method.HubbardKanamoriModel.u.m_copy()
-        u.m_annotations['elasticsearch'] = [Elasticsearch(material_entry_type)]
-        j = runschema.method.HubbardKanamoriModel.j.m_copy()
-        j.m_annotations['elasticsearch'] = [Elasticsearch(material_entry_type)]
-        double_counting_correction = (
-            runschema.method.HubbardKanamoriModel.double_counting_correction.m_copy()
-        )
+    atom_label = Quantity(
+        type=str,
+        shape=[],
+        description="""
+        String used to identify the atoms of this kind. This should correspond to the
+        atom labels of the configuration. It is possible for one atom kind to have
+        multiple labels (in order to allow two atoms of the same kind to have two
+        differently defined sets of atom-centered basis functions or two different pseudo-
+        potentials). Atom kind is typically the symbol of the atomic species but it can be
+        also a ghost or pseudo-atom.
+        """,
+    )
+
+    orbital = Quantity(
+        type=str,
+        shape=[],
+        description="""
+        Orbital label corresponding to the Hubbard model. The typical orbitals with strong
+        Hubbard interactions have partially filled '3d', '4d' and '4f' orbitals.
+        """,
+    )
+
+    u_effective = Quantity(
+        type=np.float64,
+        shape=[],
+        unit='joule',
+        description="""
+        Value of the effective U parameter (u - j).
+        """,
+        a_elasticsearch=Elasticsearch(material_entry_type),
+    )
+
+    u = Quantity(
+        type=np.float64,
+        shape=[],
+        unit='joule',
+        description="""
+        Value of the (intraorbital) Hubbard interaction
+        """,
+        a_elasticsearch=Elasticsearch(material_entry_type),
+    )
+
+    j = Quantity(
+        type=np.float64,
+        shape=[],
+        unit='joule',
+        description="""
+        Value of the exchange interaction. In rotational invariant systems, j = jh.
+        """,
+        a_elasticsearch=Elasticsearch(material_entry_type),
+    )
+
+    double_counting_correction = Quantity(
+        type=str,
+        shape=[],
+        description="""
+        Name of the double counting correction algorithm applied.
+        """,
+    )
 
 
 class DFT(MSection):
@@ -1774,37 +1826,68 @@ class DFT(MSection):
         """,
         a_elasticsearch=Elasticsearch(material_entry_type),
     )
-    if runschema:
-        scf_threshold_energy_change = (
-            runschema.method.Scf.threshold_energy_change.m_copy()
-        )
-        scf_threshold_energy_change.m_annotations['elasticsearch'] = Elasticsearch(
-            material_entry_type
-        )
-        van_der_Waals_method = runschema.method.Electronic.van_der_waals_method.m_copy()
-        van_der_Waals_method.description = 'The used van der Waals method.'
-        van_der_Waals_method.m_annotations['elasticsearch'] = [
+    scf_threshold_energy_change = Quantity(
+        type=np.float64,
+        shape=[],
+        unit='joule',
+        description="""
+        Specifies the threshold for the total energy change between two subsequent
+        self-consistent field (SCF) iterations. The SCF is considered converged when the
+        total-energy change between two SCF cycles is below the threshold (possibly in
+        combination with other criteria).
+        """,
+        a_elasticsearch=Elasticsearch(material_entry_type),
+    )
+    van_der_Waals_method = Quantity(
+        type=str,
+        shape=[],
+        description='The used van der Waals method.',
+        a_elasticsearch=[
             Elasticsearch(material_entry_type),
             Elasticsearch(suggestion='default'),
-        ]
-
-        relativity_method = runschema.method.Electronic.relativity_method.m_copy()
-        relativity_method.m_annotations['elasticsearch'] = [
+        ],
+    )
+    relativity_method = Quantity(
+        type=MEnum(
+            [
+                'scalar_relativistic',
+                'pseudo_scalar_relativistic',
+                'scalar_relativistic_atomic_ZORA',
+            ]
+        ),
+        shape=[],
+        description="""
+        Describes the relativistic treatment used for the calculation of the final energy
+        and related quantities. If skipped or empty, no relativistic treatment is applied.
+        """,
+        a_elasticsearch=[
             Elasticsearch(material_entry_type),
             Elasticsearch(suggestion='default'),
-        ]
-
-        smearing_kind = runschema.method.Smearing.kind.m_copy()
-        smearing_kind.m_annotations['elasticsearch'] = [
+        ],
+    )
+    smearing_kind = Quantity(
+        type=str,
+        shape=[],
+        description="""
+        Specifies the kind of smearing on the electron occupation used to calculate the
+        free energy (see energy_free)
+        """,
+        a_elasticsearch=[
             Elasticsearch(material_entry_type),
             Elasticsearch(suggestion='default'),
-        ]
+        ],
+    )
+    smearing_width = Quantity(
+        type=np.float64,
+        shape=[],
+        description="""
+        Specifies the width of the smearing in energy for the electron occupation used to
+        calculate the free energy (see energy_free).
 
-        smearing_width = runschema.method.Smearing.width.m_copy()
-        smearing_width.m_annotations['elasticsearch'] = Elasticsearch(
-            material_entry_type
-        )
-
+        *NOTE:* Not all methods specified in smearing_kind uses this value.
+        """,
+        a_elasticsearch=Elasticsearch(material_entry_type),
+    )
     jacobs_ladder = Quantity(
         type=MEnum(list(xc_treatments.values()) + [unavailable, not_processed]),
         default=not_processed,
@@ -1883,13 +1966,18 @@ class ExcitedStateMethodology(MSection):
         Methodology for a Excited-State calculation.
         """
     )
-    if runschema:
-        type = runschema.method.ExcitedStateMethodology.type.m_copy().m_update(
-            a_elasticsearch=[
-                Elasticsearch(material_entry_type),
-                Elasticsearch(suggestion='default'),
-            ],
-        )
+    type = Quantity(
+        type=str,
+        shape=[],
+        description="""
+        Type which allows to identify the excited-state calculation with a
+        common string.
+        """,
+        a_elasticsearch=[
+            Elasticsearch(material_entry_type),
+            Elasticsearch(suggestion='default'),
+        ],
+    )
     basis_set_type = Quantity(
         type=MEnum(basis_set_types),
         description='The used basis set functions.',
@@ -1922,13 +2010,47 @@ class GW(ExcitedStateMethodology):
         Methodology for a GW calculation.
         """
     )
-    if runschema:
-        type = runschema.method.GW.type.m_copy().m_update(
-            a_elasticsearch=[
-                Elasticsearch(material_entry_type),
-                Elasticsearch(suggestion='default'),
-            ]
-        )
+
+    type = Quantity(
+        type=MEnum(
+            'G0W0',
+            'scGW',
+            'scGW0',
+            'scG0W',
+            'ev-scGW0',
+            'ev-scGW',
+            'qp-scGW0',
+            'qp-scGW',
+        ),
+        shape=[],
+        description="""
+        GW Hedin's self-consistency cycle:
+
+        | Name      | Description                      | Reference             |
+
+        | --------- | -------------------------------- | --------------------- |
+
+        | `'G0W0'`  | single-shot                      | PRB 74, 035101 (2006) |
+
+        | `'scGW'`  | self-consistent G and W               | PRB 75, 235102 (2007) |
+
+        | `'scGW0'` | self-consistent G with fixed W0  | PRB 54, 8411 (1996)   |
+
+        | `'scG0W'` | self-consistent W with fixed G0  | -                     |
+
+        | `'ev-scGW0'`  | eigenvalues self-consistent G with fixed W0   | PRB 34, 5390 (1986)   |
+
+        | `'ev-scGW'`  | eigenvalues self-consistent G and W   | PRB 74, 045102 (2006)   |
+
+        | `'qp-scGW0'`  | quasiparticle self-consistent G with fixed W0 | PRL 99, 115109 (2007) |
+
+        | `'qp-scGW'`  | quasiparticle self-consistent G and W | PRL 96, 226402 (2006) |
+        """,
+        a_elasticsearch=[
+            Elasticsearch(material_entry_type),
+            Elasticsearch(suggestion='default'),
+        ],
+    )
 
 
 class BSE(ExcitedStateMethodology):
@@ -1937,29 +2059,71 @@ class BSE(ExcitedStateMethodology):
         Methodology for a BSE calculation.
         """
     )
-    if runschema:
-        type = runschema.method.BSE.type.m_copy().m_update(
-            a_elasticsearch=[
-                Elasticsearch(material_entry_type),
-                Elasticsearch(suggestion='default'),
-            ],
-        )
-        solver = runschema.method.BSE.solver.m_copy().m_update(
-            a_elasticsearch=[
-                Elasticsearch(material_entry_type),
-                Elasticsearch(suggestion='default'),
-            ],
-        )
-        gw_type = Quantity(
-            type=MEnum(
-                list(runschema.method.GW.type.type)
-            ),  # TODO solve conflict between BSE.gw_type and GW.type when using GWMethod.type.m_copy()
-            description=runschema.method.GW.type.description,
-            a_elasticsearch=[
-                Elasticsearch(material_entry_type),
-                Elasticsearch(suggestion='default'),
-            ],
-        )
+    type = Quantity(
+        type=MEnum('Singlet', 'Triplet', 'IP', 'RPA'),
+        shape=[],
+        description="""
+        Type of BSE hamiltonian solved:
+
+            H_BSE = H_diagonal + 2 * gx * Hx - gc * Hc
+
+        where gx, gc specifies the type""",
+        a_elasticsearch=[
+            Elasticsearch(material_entry_type),
+            Elasticsearch(suggestion='default'),
+        ],
+    )
+    solver = Quantity(
+        type=MEnum('Full-diagonalization', 'Lanczos-Haydock', 'GMRES', 'SLEPc', 'TDA'),
+        shape=[],
+        description="""
+        Solver algotithm used to diagonalize the BSE Hamiltonian.
+        """,
+        a_elasticsearch=[
+            Elasticsearch(material_entry_type),
+            Elasticsearch(suggestion='default'),
+        ],
+    )
+    gw_type = Quantity(
+        type=MEnum(
+            'G0W0',
+            'scGW',
+            'scGW0',
+            'scG0W',
+            'ev-scGW0',
+            'ev-scGW',
+            'qp-scGW0',
+            'qp-scGW',
+        ),
+        shape=[],
+        description="""
+        GW Hedin's self-consistency cycle:
+
+        | Name      | Description                      | Reference             |
+
+        | --------- | -------------------------------- | --------------------- |
+
+        | `'G0W0'`  | single-shot                      | PRB 74, 035101 (2006) |
+
+        | `'scGW'`  | self-consistent G and W               | PRB 75, 235102 (2007) |
+
+        | `'scGW0'` | self-consistent G with fixed W0  | PRB 54, 8411 (1996)   |
+
+        | `'scG0W'` | self-consistent W with fixed G0  | -                     |
+
+        | `'ev-scGW0'`  | eigenvalues self-consistent G with fixed W0   | PRB 34, 5390 (1986)   |
+
+        | `'ev-scGW'`  | eigenvalues self-consistent G and W   | PRB 74, 045102 (2006)   |
+
+        | `'qp-scGW0'`  | quasiparticle self-consistent G with fixed W0 | PRL 99, 115109 (2007) |
+
+        | `'qp-scGW'`  | quasiparticle self-consistent G and W | PRL 96, 226402 (2006) |
+        """,
+        a_elasticsearch=[
+            Elasticsearch(material_entry_type),
+            Elasticsearch(suggestion='default'),
+        ],
+    )
 
 
 class DMFT(MSection):
@@ -1968,32 +2132,103 @@ class DMFT(MSection):
         Methodology for a DMFT calculation.
         """
     )
-    if runschema:
-        impurity_solver_type = runschema.method.DMFT.impurity_solver.m_copy().m_update(
-            a_elasticsearch=[
-                Elasticsearch(material_entry_type),
-                Elasticsearch(suggestion='default'),
-            ],
-        )
-        inverse_temperature = (
-            runschema.method.DMFT.inverse_temperature.m_copy().m_update(
-                a_elasticsearch=[Elasticsearch(material_entry_type)],
-            )
-        )
-        magnetic_state = runschema.method.DMFT.magnetic_state.m_copy()
-        magnetic_state.description = (
-            'Magnetic state in which the DMFT calculation is done.'
-        )
-        magnetic_state.m_annotations['elasticsearch'] = [
+    impurity_solver_type = Quantity(
+        type=MEnum(
+            'CT-INT',
+            'CT-HYB',
+            'CT-AUX',
+            'ED',
+            'NRG',
+            'MPS',
+            'IPT',
+            'NCA',
+            'OCA',
+            'slave_bosons',
+            'hubbard_I',
+        ),
+        shape=[],
+        description="""
+        Impurity solver method used in the DMFT loop:
+
+        | Name              | Reference                            |
+
+        | ----------------- | ------------------------------------ |
+
+        | `'CT-INT'`        | Rubtsov et al., JEPT Lett 80 (2004)  |
+
+        | `'CT-HYB'`        | Werner et al., PRL 97 (2006)         |
+
+        | `'CT-AUX'`        | Gull et al., EPL 82 (2008)           |
+
+        | `'ED'`            | Caffarrel et al, PRL 72 (1994)       |
+
+        | `'NRG'`           | Bulla et al., RMP 80 (2008)          |
+
+        | `'MPS'`           | Ganahl et al., PRB 90 (2014)         |
+
+        | `'IPT'`           | Georges et al., PRB 45 (1992)        |
+
+        | `'NCA'`           | Pruschke et al., PRB 47 (1993)       |
+
+        | `'OCA'`           | Pruschke et al., PRB 47 (1993)       |
+
+        | `'slave_bosons'`  | Kotliar et al., PRL 57 (1986)        |
+
+        | `'hubbard_I'`     | -                                    |
+        """,
+        a_elasticsearch=[
             Elasticsearch(material_entry_type),
             Elasticsearch(suggestion='default'),
-        ]
-        u = runschema.method.HubbardKanamoriModel.u.m_copy().m_update(
-            a_elasticsearch=[Elasticsearch(material_entry_type)]
-        )
-        jh = runschema.method.HubbardKanamoriModel.jh.m_copy().m_update(
-            a_elasticsearch=[Elasticsearch(material_entry_type)]
-        )
+        ],
+    )
+    inverse_temperature = Quantity(
+        type=np.float64,
+        unit='1/joule',
+        shape=[],
+        description="""
+        Inverse temperature = 1/(kB*T).
+        """,
+        a_elasticsearch=[Elasticsearch(material_entry_type)],
+    )
+    magnetic_state = Quantity(
+        type=MEnum('paramagnetic', 'ferromagnetic', 'antiferromagnetic'),
+        shape=[],
+        description="""
+        Magnetic state in which the DMFT calculation is done:
+
+        | Name                  | State                   |
+
+        | --------------------- | ----------------------- |
+
+        | `'paramagnetic'`      | paramagnetic state      |
+
+        | `'ferromagnetic'`     | ferromagnetic state     |
+
+        | `'antiferromagnetic'` | antiferromagnetic state |
+        """,
+        a_elasticsearch=[
+            Elasticsearch(material_entry_type),
+            Elasticsearch(suggestion='default'),
+        ],
+    )
+    u = Quantity(
+        type=np.float64,
+        shape=[],
+        unit='joule',
+        description="""
+        Value of the (intraorbital) Hubbard interaction
+        """,
+        a_elasticsearch=[Elasticsearch(material_entry_type)],
+    )
+    jh = Quantity(
+        type=np.float64,
+        shape=[],
+        unit='joule',
+        description="""
+        Value of the (interorbital) Hund's coupling.
+        """,
+        a_elasticsearch=[Elasticsearch(material_entry_type)],
+    )
     analytical_continuation = Quantity(
         type=MEnum('Pade', 'MaxEnt', 'SVD', 'Stochastic'),
         shape=[],
@@ -2050,26 +2285,86 @@ class Precision(MSection):
         """,
         a_elasticsearch=[Elasticsearch(material_entry_type)],
     )
-    if runschema:
-        native_tier = runschema.method.BasisSetContainer.native_tier.m_copy().m_update(
-            a_elasticsearch=[Elasticsearch(material_entry_type)]
-        )
-        basis_set = runschema.method.BasisSetContainer.type.m_copy().m_update(
-            a_elasticsearch=[
-                Elasticsearch(material_entry_type),
-                Elasticsearch(suggestion='default'),
-            ],
-        )
-        planewave_cutoff = runschema.method.BasisSet.cutoff.m_copy().m_update(
-            a_elasticsearch=[  # TODO: set better names?
-                Elasticsearch(material_entry_type)
-            ],
-        )
-        apw_cutoff = runschema.method.BasisSet.cutoff_fractional.m_copy().m_update(
-            a_elasticsearch=[  # TODO: set better names?
-                Elasticsearch(material_entry_type)
-            ],
-        )
+
+    native_tier = Quantity(
+        type=str,
+        shape=[],
+        description="""
+        The code-specific tag indicating the precision used
+        for the basis set and meshes of numerical routines.
+
+        Supported codes (with hyperlinks to the relevant documentation):
+        - [`VASP`](https://www.vasp.at/wiki/index.php/PREC)
+        - `FHI-aims`
+        - [`CASTEP`](http://www.tcm.phy.cam.ac.uk/castep/documentation/WebHelp/CASTEP.html#modules/castep/tskcastepsetelecquality.htm?Highlight=ultra-fine)
+        """,
+        a_elasticsearch=[Elasticsearch(material_entry_type)],
+    )
+    basis_set = Quantity(
+        type=MEnum(
+            [
+                'atom-centered orbitals',
+                'APW',
+                'LAPW',
+                'APW+lo',
+                'LAPW+lo',
+                '(L)APW',
+                '(L)APW+lo',
+                'plane waves',
+                'gaussians + plane waves',
+                'real-space grid',
+                'support functions',
+                unavailable,
+                not_processed,
+            ]
+        ),
+        default=unavailable,
+        description="""
+        The type of basis set used by the program.
+
+        | Value                          |                       Description |
+        | ------------------------------ | --------------------------------- |
+        | `'APW'`                        | Augmented plane waves             |
+        | `'LAPW'`                       | Linearized augmented plane waves  |
+        | `'APW+lo'`             | Augmented plane waves with local orbitals |
+        | `'LAPW+lo'` | Linearized augmented plane waves with local orbitals |
+        | `'(L)APW'`                     |     A combination of APW and LAPW |
+        | `'(L)APW+lo'`  | A combination of APW and LAPW with local orbitals |
+        | `'plane waves'`                | Plane waves                       |
+        | `'gaussians + plane waves'`    | Basis set of the Quickstep algorithm (DOI: 10.1016/j.cpc.2004.12.014) |
+        | `'real-space grid'`            | Real-space grid                   |
+        | `'suppport functions'`         | Support functions                 |
+        """,
+        a_elasticsearch=[
+            Elasticsearch(material_entry_type),
+            Elasticsearch(suggestion='default'),
+        ],
+    )
+    planewave_cutoff = Quantity(
+        type=np.float64,
+        shape=[],
+        unit='joule',
+        description="""
+        Spherical cutoff in reciprocal space for a plane-wave basis set. It is the energy
+        of the highest plane-wave ($\\frac{\\hbar^2|k+G|^2}{2m_e}$) included in the basis
+        set.
+        """,
+        a_elasticsearch=[  # TODO: set better names?
+            Elasticsearch(material_entry_type)
+        ],
+    )
+    apw_cutoff = Quantity(
+        type=np.float64,
+        shape=[],
+        description="""
+        The spherical cutoff parameter for the interstitial plane waves in the LAPW family.
+        This cutoff is unitless, referring to the product of the smallest muffin-tin radius
+        and the length of the cutoff reciprocal vector ($r_{MT} * |K_{cut}|$).
+        """,
+        a_elasticsearch=[  # TODO: set better names?
+            Elasticsearch(material_entry_type)
+        ],
+    )
 
 
 class Simulation(MSection):
@@ -2374,9 +2669,30 @@ class DOSNew(MSection):
             Projected DOS values per orbital and per atom.
             """,
         )
-        spin_channel = runschema.calculation.Dos.spin_channel.m_copy()
-        energy_fermi = runschema.calculation.Dos.energy_fermi.m_copy()
-        energy_ref = runschema.calculation.Dos.energy_ref.m_copy()
+    spin_channel = Quantity(
+        type=np.int32,
+        shape=[],
+        description="""
+        Spin channel of the corresponding DOS. It can take values of 0 or 1.
+        """,
+    )
+    energy_fermi = Quantity(
+        type=np.float64,
+        unit='joule',
+        shape=[],
+        description="""
+        Fermi energy.
+        """,
+    )
+    energy_ref = Quantity(
+        type=np.float64,
+        unit='joule',
+        shape=[],
+        description="""
+        Energy level denoting the origin along the energy axis, used for comparison and visualization.
+        It is defined as the energy_highest_occupied and does not necessarily coincide with energy_fermi.
+        """,
+    )
     band_gap = SubSection(
         sub_section=BandGapDeprecated.m_def,
         repeats=True,
@@ -2509,14 +2825,21 @@ class GreensFunctionsElectronic(MSection):
         Base class for Green's functions information.
         """,
     )
+    type = Quantity(
+        type=MEnum('impurity', 'lattice'),
+        description="""
+        Type of Green's function calculated from the mapping of the Hubbard-Kanamori model
+        into the Anderson impurity model. These calculations are converged if both types of
+        Green's functions converge to each other (G_impurity == G_lattice).
+        """,
+    )
+    label = Quantity(
+        type=str,
+        description="""
+        Label to identify the Greens functions data, e.g. the method employed.
+        """,
+    )
     if runschema:
-        type = runschema.calculation.GreensFunctions.type.m_copy()
-        label = Quantity(
-            type=str,
-            description="""
-            Label to identify the Greens functions data, e.g. the method employed.
-            """,
-        )
         tau = Quantity(
             type=runschema.calculation.GreensFunctions.tau,
             description="""
@@ -2844,8 +3167,14 @@ class ElectricFieldGradient(MSection):  # ? why is this in results
         for NMR and describes the potential generated by the nuclei in the system.
         """,
     )
+    contribution = Quantity(
+        type=MEnum('total', 'local', 'non_local'),
+        description="""
+        Type of contribution to the electric field gradient (EFG). The total EFG is
+        composed of `local` and `non_local` contributions.
+        """,
+    )
     if runschema:
-        contribution = runschema.calculation.ElectricFieldGradient.contribution.m_copy()
         value = Quantity(type=runschema.calculation.ElectricFieldGradient.value)
 
 
@@ -2902,8 +3231,31 @@ class SpinSpinCoupling(SourceInformation):
         Base class for the spin-spin coupling information.
         """,
     )
+    contribution = Quantity(
+        type=MEnum(
+            'total',
+            'direct_dipolar',
+            'fermi_contact',
+            'orbital_diamagnetic',
+            'orbital_paramagnetic',
+            'spin_dipolar',
+        ),
+        description="""
+        Type of contribution to the indirect spin-spin coupling. The total indirect spin-spin
+        coupling is composed of:
+
+            `total` = `direct_dipolar` + J_coupling
+
+        Where the J_coupling is:
+            J_coupling = `fermi_contact`
+                        + `spin_dipolar`
+                        + `orbital_diamagnetic`
+                        + `orbital_paramagnetic`
+
+        See https://pubs.acs.org/doi/full/10.1021/cr300108a.
+        """,
+    )
     if runschema:
-        contribution = runschema.calculation.SpinSpinCoupling.contribution.m_copy()
         value = Quantity(type=runschema.calculation.SpinSpinCoupling.value)
         reduced_value = Quantity(
             type=runschema.calculation.SpinSpinCoupling.reduced_value
@@ -2916,10 +3268,13 @@ class MagneticSusceptibility(SourceInformation):
         Base class for the magnetic susceptibility information.
         """,
     )
+    scale_dimension = Quantity(
+        type=MEnum('microscopic', 'macroscopic'),
+        description="""
+        Identifier of the scale dimension of the magnetic susceptibility tensor.
+        """,
+    )
     if runschema:
-        scale_dimension = (
-            runschema.calculation.MagneticSusceptibility.scale_dimension.m_copy()
-        )
         value = Quantity(type=runschema.calculation.MagneticSusceptibility.value)
 
 
@@ -3071,22 +3426,41 @@ class RadiusOfGyration(QuantityDynamic, MDPropertySection):
         Contains Radius of Gyration values as a trajectory.
         """,
     )
-    if runschema:
-        kind = runschema.calculation.RadiusOfGyration.kind.m_copy()
-        kind.m_annotations['elasticsearch'] = [
+    kind = Quantity(
+        type=str,
+        shape=[],
+        description="""
+        Kind of the quantity.
+        """,
+        a_elasticsearch=[
             Elasticsearch(material_entry_type),
             Elasticsearch(suggestion='default'),
-        ]
-        label = runschema.calculation.RadiusOfGyrationValues.label.m_copy()
-        label.m_annotations['elasticsearch'] = [
+        ],
+    )
+    label = Quantity(
+        type=str,
+        shape=[],
+        description="""
+        Describes the atoms or molecule types involved in determining the property.
+        """,
+        a_elasticsearch=[
             Elasticsearch(material_entry_type),
             Elasticsearch(suggestion='default'),
-        ]
+        ],
+    )
+    value = Quantity(
+        type=np.dtype(np.float64),
+        shape=[],
+        unit='m',
+        description="""
+        Value of Rg.
+        """,
+    )
 
+    if runschema:
         atomsgroup_ref = (
             runschema.calculation.RadiusOfGyrationValues.atomsgroup_ref.m_copy()
         )
-        value = runschema.calculation.RadiusOfGyrationValues.value.m_copy()
 
 
 class RadialDistributionFunction(MDPropertySection):

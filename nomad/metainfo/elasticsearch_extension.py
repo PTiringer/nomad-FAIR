@@ -156,12 +156,14 @@ sub-sections as if they were direct sub-sections.
 .. autoclass:: Index
 """
 
+import json
 import math
 import re
 from collections import defaultdict
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Optional, cast
 
+from elasticsearch.exceptions import TransportError
 from elasticsearch_dsl import Q
 from pint import Quantity as PintQuantity
 
@@ -189,6 +191,37 @@ schema_separator = '#'
 dtype_separator = '#'
 yaml_prefix = 'entry_id:'
 nexus_prefix = 'pynxtools.nomad.schema'
+ES_DEFAULT_PAYLOAD_SIZE = 100  # in MB
+
+
+class PayloadTooLarge(Exception):
+    """Raised when a request's payload exceeds Elasticsearch's request size limit (100MB)."""
+
+
+def _estimate_bytes(obj) -> int | None:
+    try:
+        if obj is None:
+            return None
+        if isinstance(obj, bytes | bytearray):
+            return len(obj)
+        if isinstance(obj, str):
+            return len(obj.encode('utf-8'))
+        if isinstance(obj, list | tuple):
+            total = 0
+            for item in obj:
+                if isinstance(item, bytes | bytearray):
+                    b = item
+                elif isinstance(item, str):
+                    b = item.encode('utf-8')
+                else:
+                    b = json.dumps(item, separators=(',', ':')).encode('utf-8')
+                total += len(b) + 1
+            return total
+        if isinstance(obj, dict):
+            return len(json.dumps(obj, separators=(',', ':')).encode('utf-8'))
+    except Exception:
+        return None
+    return None
 
 
 class DocumentType:
@@ -331,7 +364,7 @@ class DocumentType:
     def create_mapping(
         self,
         section_def: Section,
-        prefix: str = None,
+        prefix: str | None = None,
         auto_include_subsections: bool = False,
     ):
         """
@@ -361,7 +394,7 @@ class DocumentType:
     def _create_mapping_recursive(
         self,
         section_def: Section,
-        prefix: str = None,
+        prefix: str | None = None,
         auto_include_subsections: bool = False,
         repeats: bool = False,
     ):
@@ -511,7 +544,7 @@ class DocumentType:
         # infinite recursion, but it should be made possible in the GUI + search
         # API to query arbitrarily deep into the data structure.
         def get_all_quantities(
-            m_def, prefix=None, branch=None, repeats=False, max_level=None
+            m_def, prefix=None, branch=None, repeats=False, level=0, max_level=None
         ):
             if max_level == 0:
                 return
@@ -519,7 +552,7 @@ class DocumentType:
                 branch = set()
             for quantity_name, quantity in m_def.all_quantities.items():
                 quantity_name = f'{prefix}.{quantity_name}' if prefix else quantity_name
-                yield quantity, quantity_name, repeats
+                yield quantity, quantity_name, repeats, level
             for sub_section_def in m_def.all_sub_sections.values():
                 if sub_section_def in branch:
                     continue
@@ -533,7 +566,8 @@ class DocumentType:
                     full_name,
                     new_branch,
                     repeats,
-                    max_level - 1,
+                    level + 1,
+                    max_level - 1 if max_level is not None else None,
                 )
 
         quantities_dynamic = {}
@@ -574,7 +608,7 @@ class DocumentType:
                             ].sub_section
                             path_prefix = path_prefix + '.'
 
-                        for quantity_def, path, repeats in get_all_quantities(
+                        for quantity_def, path, repeats, level in get_all_quantities(
                             selected_section, max_level=max_level
                         ):
                             annotation = create_dynamic_quantity_annotation(
@@ -582,11 +616,33 @@ class DocumentType:
                             )
                             if not annotation:
                                 continue
-                            full_name = f'data.{path_prefix}{path}{schema_separator}{schema_name}'
-                            search_quantity = SearchQuantity(
-                                annotation, qualified_name=full_name, repeats=repeats
+                            # TODO: The quantities at the first level of the hierarchy get
+                            # registered under both the topmost class name and the class
+                            # that actually contains the quantity definition. This is a
+                            # workaround to allow base class searches at the top level.
+                            # NOTE: This implementation ignores classes that might exist
+                            # between the topmost classs and the class that contains the
+                            # definition, e.g. if the hierarchy is A->B->C, and C contains
+                            # the definition, it won't be available under the class B.
+                            class_names = (
+                                [schema_name]
+                                if level > 0
+                                else list(
+                                    {
+                                        schema_name,
+                                        quantity_def.m_parent.qualified_name(),
+                                    }
+                                )
                             )
-                            quantities_dynamic[full_name] = search_quantity
+                            for class_name in class_names:
+                                full_name = f'data.{path_prefix}{path}{schema_separator}{class_name}'
+                                search_quantity = SearchQuantity(
+                                    annotation,
+                                    qualified_name=full_name,
+                                    repeats=repeats,
+                                )
+                                quantities_dynamic[full_name] = search_quantity
+
         self.quantities.update(quantities_dynamic)
 
     def _register(self, annotation, prefix, repeats):
@@ -638,8 +694,24 @@ class Index:
         if 'index' not in kwargs:
             kwargs['index'] = self.index_name
 
-        results = getattr(self.elastic_client, name)(*args, **kwargs)
-        return results
+        try:
+            return getattr(self.elastic_client, name)(*args, **kwargs)
+        except TransportError as e:
+            status = getattr(e, 'status_code', None) or getattr(e, 'status', None)
+            if status == 413:
+                payload = kwargs.get('body', kwargs.get('operations', None))
+                estimated_bytes = _estimate_bytes(payload)
+                size_mb = (
+                    f'{(estimated_bytes or 0) / 1_000_000:.1f}'
+                    if estimated_bytes is not None
+                    else 'unknown'
+                )
+                raise PayloadTooLarge(
+                    f'Failed to index upload data in Elasticsearch during {name} operation due to too large payload '
+                    f'({size_mb} MB). The payload for a single index operation is limited to '
+                    f'{ES_DEFAULT_PAYLOAD_SIZE} MB by default.'
+                ) from e
+            raise
 
     @property
     def index_name(self):
@@ -830,23 +902,23 @@ class Elasticsearch(DefinitionAnnotation):
     def __init__(
         self,
         doc_type: DocumentType = entry_type,
-        mapping: str | dict[str, Any] = None,
-        field: str = None,
-        es_field: str = None,
-        value: Callable[[MSectionBound], Any] = None,
+        mapping: str | dict[str, Any] | None = None,
+        field: str | None = None,
+        es_field: str | None = None,
+        value: Callable[[MSectionBound], Any] | None = None,
         index: bool = True,
-        values: list[str] = None,
-        default_aggregation_size: int = None,
-        metrics: dict[str, str] = None,
+        values: list[str] | None = None,
+        default_aggregation_size: int | None = None,
+        metrics: dict[str, str] | None = None,
         many_all: bool = False,
         auto_include_subsections: bool = False,
         nested: bool = False,
-        suggestion: str | Callable[[MSectionBound], Any] = None,
+        suggestion: str | Callable[[MSectionBound], Any] | None = None,
         variants: Callable[[str], list[str]] | None = None,
-        normalizer: Callable[[Any], Any] = None,
+        normalizer: Callable[[Any], Any] | None = None,
         es_query: str = 'match',
-        _es_field: str = None,
-        definition: Definition = None,
+        _es_field: str | None = None,
+        definition: Definition | None = None,
         dynamic: bool = False,
     ):
         # TODO remove _es_field if it is not necessary anymore to enforce a specific mapping
@@ -1038,8 +1110,8 @@ class SearchQuantity:
     def __init__(
         self,
         annotation: Elasticsearch,
-        prefix: str = None,
-        qualified_name: str = None,
+        prefix: str | None = None,
+        qualified_name: str | None = None,
         repeats: bool = False,
     ):
         """
@@ -1093,7 +1165,32 @@ class SearchQuantity:
             searchable_quantity = create_searchable_quantity(
                 self.definition, path, schema_name=schema
             )
-            filter_path = Q('term', search_quantities__id=searchable_quantity.id)
+
+            segments = path.split('.')
+            part_queries = [
+                Q(
+                    'term',
+                    **{f'search_quantities__segments__{i + 1}.path.keyword': part},
+                )
+                for i, part in enumerate(segments)
+            ]
+            part_queries.append(
+                Q(
+                    'term',
+                    **{f'search_quantities__segments__1.definitions.keyword': schema},
+                )
+            )
+
+            filter_path = Q(
+                'bool',
+                should=[
+                    # Old style query
+                    Q('term', search_quantities__id=searchable_quantity.id),
+                    # New style query
+                    Q('bool', must=part_queries),
+                ],
+                minimum_should_match=1,
+            )
 
             return filter_path
 
@@ -1140,7 +1237,8 @@ class SearchQuantity:
 
 
 def create_indices(
-    entry_section_def: Section = None, material_section_def: Section = None
+    entry_section_def: Section | None = None,
+    material_section_def: Section | None = None,
 ):
     """
     Creates the mapping for all document types and creates the indices in Elasticsearch.
@@ -1260,7 +1358,8 @@ def index_entries(entries: list, refresh: bool = False) -> dict[str, str]:
         # Extract only the errors from the indexing_result
         if indexing_result['errors']:
             for item in indexing_result['items']:
-                if item['index']['status'] >= 400:
+                status = item['index'].get('status')
+                if status is not None and status >= 400:
                     rv[item['index']['_id']] = str(item['index']['error'])
         return rv
 
@@ -1547,7 +1646,7 @@ def get_searchable_quantity_value_field(
 
 
 def create_dynamic_quantity_annotation(
-    quantity_def: Quantity, doc_type: DocumentType = None
+    quantity_def: Quantity, doc_type: DocumentType | None = None
 ) -> Elasticsearch | None:
     """Given a quantity definition, this function will return the corresponding
     ES annotation if one can be built.
@@ -1565,12 +1664,30 @@ def create_dynamic_quantity_annotation(
     return annotation
 
 
+def find_base_classes(section):
+    """Loops over the inheritance tree of the the given section and finds
+    all definitions that this section fullfills. ArchiveSection and
+    EntryData are for now ignored because they are too generic for any
+    meaningful queries.
+    """
+    from nomad.datamodel.data import ArchiveSection, EntryData
+
+    return [
+        cls.m_def
+        for cls in section.__mro__
+        if issubclass(cls, MSection)
+        and cls.m_def
+        and cls != ArchiveSection
+        and cls != EntryData
+    ]
+
+
 def create_searchable_quantity(
     quantity_def: Quantity,
     quantity_path: Quantity,
-    section: MSection = None,
-    path_archive: str = None,
-    schema_name: str = None,
+    sections: list[MSection] | None = None,
+    path_archive: str | None = None,
+    schema_name: str | None = None,
 ) -> Optional['SearchableQuantity']:
     """Transforms a quantity definition into a SearchQuantity."""
     from nomad.datamodel.datamodel import SearchableQuantity
@@ -1579,17 +1696,41 @@ def create_searchable_quantity(
     if not annotation:
         return None
     mapping = annotation.mapping['type']
+    quantity_m_def = quantity_def.qualified_name()
+    names = quantity_path.split('.')
+    segments = {}
+
+    # Add segments for section definitions (index 0 is reserved for the root and is not
+    # populated).
+    i_segment = 1
+    if sections:
+        for i, section in enumerate(sections[1:], start=1):
+            segments[str(i)] = {
+                'path': names[i - 1],
+                'definitions': [
+                    d.qualified_name() for d in find_base_classes(type(section))
+                ],
+            }
+            i_segment += 1
+
+    # Add quantity definition as the last segment.
+    segments[str(i_segment)] = {
+        'path': names[-1],
+        'definitions': [quantity_m_def.rsplit('.', 1)[0]],
+    }
 
     searchable_quantity = SearchableQuantity(
         id=f'{quantity_path}{schema_separator}{schema_name}'
         if schema_name
         else quantity_path,
         path_archive=path_archive,
-        definition=quantity_def.qualified_name(),
+        definition=quantity_m_def,
+        segments=segments,
     )
 
     # If a section is given, also store the value
-    if section is not None:
+    if sections:
+        section = sections[-1]
         logger = utils.get_logger(__name__)
         value = section.m_get(quantity_def)
         if value is None:

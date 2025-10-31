@@ -34,10 +34,10 @@ describe('Test numberEditQuantity', () => {
     render(<NumberEditQuantity
       quantityDef={{
         name: 'name',
-        description: `This is **MARKDOWN** help text.`
+        description: `This is **MARKDOWN** help text.`,
+        type: {type_kind: 'python', type_data: 'int'}
       }}
       onChange={handleChange}
-      type={{type_kind: 'python', type_data: 'int'}}
       value={10}
     />)
     const numberFieldValue = screen.queryByTestId('number-edit-quantity-value')
@@ -55,7 +55,7 @@ describe('Test numberEditQuantity', () => {
   })
 
   test.each([
-    ['no default unit or unit system, defaults to global scope units', 'm', undefined, undefined, '100000000000'],
+    ['no display unit, defaults to units system defaults', 'm', undefined, undefined, '100000000000'],
     ['with display unit', 'm', 'mm', undefined, '10000'],
     ['complex unit with no display unit', 'm**2 / second**2', undefined, undefined, '1e-9'],
     ['complex unit with display unit', 'm**2 / second**2', 'Å**2 / fs**2', undefined, '1e-9'],
@@ -67,6 +67,7 @@ describe('Test numberEditQuantity', () => {
           name: 'name',
           m_def: 'nomad.metainfo.metainfo.Quantity',
           unit: unit,
+          type: {type_kind: 'python', type_data: 'int'},
           m_annotations: {
             display: displayUnit && [{
               unit: displayUnit
@@ -76,7 +77,6 @@ describe('Test numberEditQuantity', () => {
             }]
           }
         }}
-        type={{type_kind: 'python', type_data: 'int'}}
         value={10}
       />
     )

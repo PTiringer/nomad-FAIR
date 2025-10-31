@@ -236,14 +236,22 @@ const useOverviewEquationOfStateStyles = makeStyles({
 })
 export const OverviewEquationOfState = React.memo(({def, section, units}) => {
   const style = useOverviewEquationOfStateStyles()
+
+  // Use section.results if it exists, otherwise fallback to section
+  const volumes = section.results?.volumes || section.volumes
+  const energies = section.results?.energies || section.energies
+  const eosFit = section.results?.eos_fit || section.eos_fit
+
   const data = [{
-    volumes: section.volumes,
-    energies: section.energies,
+    volumes: volumes,
+    energies: energies,
     name: 'raw'
   }]
-  section.eos_fit.forEach(fit => {
+
+  // Iterate over eosFit if it exists
+  eosFit.forEach(fit => {
     data.push({
-      volumes: section.volumes,
+      volumes: volumes,
       energies: fit.fitted_energies,
       name: fit.function_name
     })

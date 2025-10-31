@@ -21,7 +21,7 @@ import logging
 import os
 import time
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, NamedTuple
 
 import billiard
@@ -49,7 +49,7 @@ from mongoengine.connection import ConnectionFailure
 
 import nomad.patch  # noqa: F401
 from nomad import infrastructure, utils
-from nomad.app.v1.routers.info import statistics
+from nomad.app.v1.routers.info import get_statistics
 from nomad.config import config
 from nomad.config.models.config import CELERY_WORKER_ROUTING
 
@@ -113,7 +113,7 @@ app.conf.worker_redirect_stdouts_level = 'INFO'
 def transfer_logs():
     from nomad.logtransfer import transfer_logs
 
-    utils.get_logger('nomad.oasis').info('oasis statistics', **statistics())
+    utils.get_logger('nomad.oasis').info('oasis statistics', **get_statistics())
     transfer_logs()
 
 
@@ -258,7 +258,7 @@ class Proc(Document):
             NOTE: This value is managed by the framework, do not tamper with this value.
     """
 
-    id_field: str = None
+    id_field: str | None = None
     meta: Any = {
         'abstract': True,
     }
@@ -267,7 +267,7 @@ class Proc(Document):
 
     errors = ListField(StringField())
     warnings = ListField(StringField())
-    last_status_message = StringField(default=None)
+    last_status_message: str | None = StringField(default=None)
 
     current_process = StringField(default=None)
     process_status = StringField(default=ProcessStatus.READY)
@@ -319,7 +319,7 @@ class Proc(Document):
         return False
 
     def get_logger(self):
-        process = billiard.current_process()  # pylint: disable=no-member
+        process = billiard.current_process()  # type: ignore # pylint: disable=no-member
         worker_id = getattr(process, '_nomad_id', None)
         if worker_id is None:
             worker_id = utils.create_uuid()
@@ -350,7 +350,7 @@ class Proc(Document):
     def reset(
         self,
         force: bool = False,
-        worker_hostname: str = None,
+        worker_hostname: str | None = None,
         process_status: str = ProcessStatus.READY,
         errors: list[str] = [],
         clear_queue: bool = True,
@@ -373,7 +373,7 @@ class Proc(Document):
     @classmethod
     def reset_pymongo_update(
         cls,
-        worker_hostname: str = None,
+        worker_hostname: str | None = None,
         process_status=ProcessStatus.READY,
         errors: list[str] = [],
         clear_queue: bool = True,
@@ -438,7 +438,8 @@ class Proc(Document):
         NOTE, processes should NOT call this method directly, or tamper with self.errors etc.
         Rather, if something goes wrong in a process, it should raise an exception!
         """
-        assert self.process_running, 'Cannot fail a completed process.'
+        if not config.temporal.enabled:
+            assert self.process_running, 'Cannot fail a completed process.'
 
         failed_with_exception = False
 
@@ -463,7 +464,7 @@ class Proc(Document):
             errors_str = '; '.join([str(error) for error in errors])
             Proc.log(logger, log_level, 'process failed', errors=errors_str)
 
-        self.complete_time = datetime.utcnow()
+        self.complete_time = datetime.now(timezone.utc)
 
         try:
             self.on_fail()
@@ -999,7 +1000,7 @@ def proc_task(task, cls_name, self_id, func_name, args, kwargs):
                 # All looks good
                 proc.on_success()
                 proc.process_status = ProcessStatus.SUCCESS
-                proc.complete_time = datetime.utcnow()
+                proc.complete_time = datetime.now(timezone.utc)
                 if proc.warnings:
                     proc.last_status_message = (
                         f'Process {func_name} completed with warnings'
@@ -1064,7 +1065,7 @@ def proc_task(task, cls_name, self_id, func_name, args, kwargs):
                     # Succeeded and process is done
                     proc.on_success()
                     proc.process_status = ProcessStatus.SUCCESS
-                    proc.complete_time = datetime.utcnow()
+                    proc.complete_time = datetime.now(timezone.utc)
                     if proc.warnings:
                         proc.last_status_message = (
                             f'Process {proc.current_process} completed with warnings'
@@ -1200,7 +1201,8 @@ def process_local(func):
                 # All looks good
                 self.on_success()
                 self.process_status = ProcessStatus.SUCCESS
-                self.complete_time = datetime.utcnow()
+                self.complete_time = datetime.now(timezone.utc)
+                self.save()
                 if self.warnings:
                     self.last_status_message = (
                         f'Process {func_name} completed with warnings'

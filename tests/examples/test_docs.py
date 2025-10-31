@@ -31,7 +31,9 @@ def test_python_schema():
     from examples.docs.basic_schema.package import Sample
 
     sample = Sample.m_from_dict(yaml_data)
-    assert json.dumps(sample.m_to_dict()) == json.dumps(yaml_data)
+    assert json.dumps(sample.m_to_dict(), sort_keys=True) == json.dumps(
+        yaml_data, sort_keys=True
+    )
 
 
 def test_yaml_schema():
@@ -43,7 +45,9 @@ def test_yaml_schema():
     package.init_metainfo()
     composition_def = package.all_definitions['Composition']
     composition = composition_def.section_cls.m_from_dict(yaml_data)
-    assert json.dumps(composition.m_to_dict()) == json.dumps(yaml_data)
+    assert json.dumps(composition.m_to_dict(), sort_keys=True) == json.dumps(
+        yaml_data, sort_keys=True
+    )
 
 
 def test_yaml_data():

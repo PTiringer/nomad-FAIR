@@ -17,7 +17,7 @@
 #
 
 import os.path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from cachetools import TTLCache, cached
 from pydantic import Field
@@ -37,6 +37,9 @@ from nomad.metainfo.metainfo import (
 )
 from nomad.metainfo.pydantic_extension import PydanticModel
 
+if TYPE_CHECKING:
+    from nomad.datamodel.context import Context
+
 
 class ArchiveSection(MSection):
     """
@@ -45,6 +48,8 @@ class ArchiveSection(MSection):
     """
 
     normalizer_level = 0
+
+    m_context: 'Context'
 
     def normalize(self, archive, logger):
         """
@@ -176,17 +181,17 @@ class User(Author):
 
     @staticmethod
     @cached(TTLCache(maxsize=2048, ttl=24 * 3600))
-    def get(*args, **kwargs) -> 'User':
+    def get(*args, **kwargs) -> 'User | None':
         from nomad import infrastructure
 
-        return infrastructure.user_management.get_user(*args, **kwargs)  # type: ignore
+        return infrastructure.user_management.get_user(*args, **kwargs)
 
     def full_user(self) -> 'User':
         """Returns a User object with all attributes loaded from the user management system."""
         from nomad import infrastructure
 
         assert self.user_id is not None
-        return infrastructure.user_management.get_user(user_id=self.user_id)  # type: ignore
+        return infrastructure.user_management.get_user(user_id=self.user_id)
 
 
 class UserReference(Reference):
@@ -196,7 +201,7 @@ class UserReference(Reference):
     def serialize_self(self, section):
         return {'type_kind': 'User', 'type_data': 'User'}
 
-    def _normalize_impl(self, section, value):
+    def _normalize_impl(self, value, **kwargs):
         if isinstance(value, User):
             return value
 
@@ -224,7 +229,7 @@ class AuthorReference(Reference):
     def serialize_self(self, section):
         return {'type_kind': 'Author', 'type_data': 'Author'}
 
-    def _normalize_impl(self, section, value):
+    def _normalize_impl(self, value, **kwargs):
         if isinstance(value, Author):
             return value
 

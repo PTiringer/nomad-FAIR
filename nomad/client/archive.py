@@ -63,7 +63,7 @@ def run_async(func, *args, **kwargs):
 
 
 def _collect(
-    required, parent_section: mi.Section = None, parent_path: str = None
+    required, parent_section: mi.Section | None = None, parent_path: str | None = None
 ) -> set:
     """
     Flatten required quantities for uncoupled query
@@ -142,15 +142,15 @@ class ArchiveQuery:
     def __init__(
         self,
         owner: str = 'visible',
-        query: dict = None,
-        required: dict = None,
-        url: str = None,
-        after: str = None,
+        query: dict | None = None,
+        required: dict | None = None,
+        url: str | None = None,
+        after: str | None = None,
         results_max: int = 1000,
         page_size: int = 100,
         batch_size: int = 10,
-        username: str = None,
-        password: str = None,
+        username: str | None = None,
+        password: str | None = None,
         retry: int = 1,
         sleep_time: float = 4.0,
         from_api: bool = False,
@@ -195,8 +195,8 @@ class ArchiveQuery:
         self._current_after: str = self._after
         self._current_results: int = 0
 
-        # check if url has the form of http(s)://<hostname>/api/v1
-        # http://nomad-lab.eu/prod/v1/api/v1
+        # check if URL has the form of http(s)://<hostname>/api/v1
+        # https://nomad-lab.eu/prod/v1/api/v1
         if self._url.endswith('/'):
             self._url = self._url[:-1]
         if not self._url.endswith('/api/v1'):
@@ -230,8 +230,6 @@ class ArchiveQuery:
         if self._current_after:
             request['pagination']['page_after_value'] = self._current_after
 
-        # print(f'Current request: {request}')
-
         return request
 
     def _download_request(self, entry_ids: list[str]) -> dict:
@@ -245,8 +243,6 @@ class ArchiveQuery:
             request['query']['and'].append(t_list)
         request['query']['and'].append({'entry_id:any': entry_ids})
         request.setdefault('pagination', {'page_size': len(entry_ids)})
-
-        # print(f'Current request: {request}')
 
         return request
 
@@ -401,7 +397,7 @@ class ArchiveQuery:
             while chunk := list(islice(iterator, chunk_size)):
                 yield chunk
 
-        with progressbar(  # type: ignore
+        with progressbar(
             length=actual_number, label=f'Downloading {actual_number} entries...'
         ) as bar:
             async with AsyncClient(timeout=Timeout(timeout=300)) as session:
@@ -570,7 +566,7 @@ class ArchiveQuery:
 
     def entries_to_dataframe(
         self,
-        keys_to_filter: list[str] = None,
+        keys_to_filter: list[str] | None = None,
         resolve_references: bool = False,
         query_selection: str | list[str] = 'last',
     ):

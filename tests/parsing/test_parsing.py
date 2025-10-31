@@ -77,7 +77,6 @@ parser_examples = [
     ('parser/molcas', 'tests/data/parsers/molcas/test000.input.out'),
     ('parsers/qbox', 'tests/data/parsers/qbox/01_h2ogs.r'),
     ('parser/onetep', 'tests/data/parsers/onetep/fluor/12-difluoroethane.out'),
-    ('parsers/eels', 'tests/data/parsers/eels.json'),
     ('parsers/lobster', 'tests/data/parsers/lobster/NaCl/lobsterout'),
     ('parsers/aflow', 'tests/data/parsers/aflow/Ag1Co1O2_ICSD_246157/aflowlib.json'),
     ('parsers/atomate', 'tests/data/parsers/atomate/mp-1/materials.json'),

@@ -65,7 +65,8 @@ const testPublishedWritePermissions = async () => {
 
   // Test if only the first two steps are shown
   expect(screen.queryByText('Prepare and upload your files')).toBeInTheDocument()
-  expect(screen.queryByText('Processing completed, 1/1 entries processed')).toBeInTheDocument()
+  expect(screen.getByText("Processing completed")).toBeInTheDocument()
+  expect(screen.getByText("1/1 entries processed")).toBeInTheDocument()
   expect(screen.queryByText('You can either select and edit individual entries from the list above, or edit all entries at once.')).toBeInTheDocument()
   expect(screen.queryByText('This upload has already been published.')).toBeInTheDocument()
 
@@ -88,7 +89,8 @@ const testUnpublishedWritePermissions = async () => {
 
   // Test if only the first two steps are shown
   expect(screen.queryByText('Prepare and upload your files')).toBeInTheDocument()
-  expect(screen.queryByText('Processing completed, 1/1 entries processed')).toBeInTheDocument()
+  expect(screen.getByText("Processing completed")).toBeInTheDocument()
+  expect(screen.getByText("1/1 entries processed")).toBeInTheDocument()
   expect(screen.queryByText('You can either select and edit individual entries from the list above, or edit all entries at once.')).toBeInTheDocument()
 
   expect(screen.getByTestId('edit-members-action')).toBeEnabled()
@@ -107,7 +109,8 @@ const testEmbargoedPublishesWritePermissions = async () => {
 
   // Test if only the first two steps are shown
   expect(screen.queryByText('Prepare and upload your files')).toBeInTheDocument()
-  expect(screen.queryByText('Processing completed, 1/1 entries processed')).toBeInTheDocument()
+  expect(screen.getByText("Processing completed")).toBeInTheDocument()
+  expect(screen.getByText("1/1 entries processed")).toBeInTheDocument()
   expect(screen.queryByText('You can either select and edit individual entries from the list above, or edit all entries at once.')).toBeInTheDocument()
 
   expect(screen.getByTestId('edit-members-action')).toBeEnabled()
@@ -130,7 +133,8 @@ const testReadOnlyPermissions = async (isLoggedIn) => {
 
   // Test if only the first two steps are shown
   expect(screen.queryByText('Prepare and upload your files')).toBeInTheDocument()
-  expect(screen.queryByText('Processing completed, 1/1 entries processed')).toBeInTheDocument()
+  expect(screen.getByText("Processing completed")).toBeInTheDocument()
+  expect(screen.getByText("1/1 entries processed")).toBeInTheDocument()
   expect(screen.queryByText('You can either select and edit individual entries from the list above, or edit all entries at once.')).not.toBeInTheDocument()
 
   expect(screen.queryByTestId('edit-members-action')).toBeDisabled()

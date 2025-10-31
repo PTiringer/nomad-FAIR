@@ -153,7 +153,7 @@ def filter_archive(
     required: str | dict[str, Any],
     archive_item: dict | ArchiveDict | str,
     transform: Callable,
-    result_root: dict = None,
+    result_root: dict | None = None,
     resolve_inplace: bool = False,
 ) -> dict:
     if archive_item is None:

@@ -41,6 +41,7 @@ from nomad.files import (
     empty_archive_file_size,
     empty_zip_file_size,
 )
+from nomad.mongo.package import PackageDefinition
 from nomad.processing import Upload
 
 EntryWithFiles = tuple[datamodel.EntryMetadata, str]
@@ -768,7 +769,13 @@ def create_test_upload_files(
         assert entry_id is not None, (
             'Archives to create test upload must have an entry_id'
         )
-        upload_files.write_archive(entry_id, archive.m_to_dict())
+        if archive.definitions is not None:
+            if not archive.definitions.upload_id:
+                archive.definitions.upload_id = upload_id
+            if not archive.definitions.entry_id:
+                archive.definitions.entry_id = entry_id
+            PackageDefinition.create_new(archive.definitions)
+        upload_files.write_archive(entry_id, archive.m_to_dict(with_def_id=True))
 
     # remove the template
     shutil.rmtree(source)

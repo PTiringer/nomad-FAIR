@@ -28,12 +28,12 @@ from fastapi import HTTPException
 from nomad import utils
 from nomad.metainfo import (
     Definition,
+    MSectionReference,
     Package,
     Quantity,
     QuantityReference,
     Reference,
     Section,
-    SectionReference,
     SubSection,
 )
 
@@ -143,7 +143,7 @@ class RequiredReader:
     def __init__(
         self,
         required: dict | str,
-        root_section_def: Section = None,
+        root_section_def: Section | None = None,
         resolve_inplace: bool = False,
         user=None,
     ):
@@ -497,8 +497,8 @@ class RequiredReader:
         def __resolve_definition_in_archive(
             _root: dict,
             _path_stack: list,
-            _upload_id: str = None,
-            _entry_id: str = None,
+            _upload_id: str | None = None,
+            _entry_id: str | None = None,
         ):
             custom_def_package: Package = Package.m_from_dict(_root, m_context=context)
             custom_def_package.entry_id = _entry_id
@@ -525,7 +525,7 @@ class RequiredReader:
                 entry_id = match.groups()[0]
                 from nomad.processing import Entry
 
-                upload_id = Entry.objects(entry_id=entry_id).first().upload_id
+                upload_id = Entry.objects(entry_id=entry_id).first().upload_id  # type: ignore
                 archive = self._retrieve_archive('archive', entry_id, upload_id)
                 return __resolve_definition_in_archive(
                     to_json(archive['definitions']),
@@ -534,8 +534,7 @@ class RequiredReader:
                     entry_id,
                 )
 
-        proxy = SectionReference().normalize(definition)
-        proxy.m_proxy_context = context
+        proxy = MSectionReference().normalize(definition, context=context)
         return self._unwrap_reference(proxy.section_cls.m_def)
 
     def _apply_required(
@@ -646,7 +645,7 @@ class RequiredReader:
             # get the corresponding entry id
             from nomad.processing import Entry
 
-            entry: Entry = Entry.objects(
+            entry: Entry = Entry.objects(  # type: ignore
                 upload_id=upload_id, mainfile=id_or_path
             ).first()
             if not entry:

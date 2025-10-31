@@ -229,10 +229,11 @@ class TableData(ArchiveSection):
                 if file_mode == TabularFileModeEnum.multiple_new_entries:
                     for index, row_section in enumerate(row_sections):
                         if index > 0:
-                            logger.warning(
-                                f'{row_section} is not parsed.'
-                                f'Consider creating a new mapping mode to create new entries from this section'
-                            )
+                            if logger is not None:
+                                logger.warning(
+                                    f'{row_section} is not parsed.'
+                                    f'Consider creating a new mapping mode to create new entries from this section'
+                                )
                         else:
                             if row_section == root_mapping['root']:
                                 self._parse_entry_mode(
@@ -886,11 +887,11 @@ def _append_subsections_from_section(
 def read_table_data(
     path,
     file_or_path=None,
-    comment: str = None,
-    sep: str = None,
-    skiprows: list[int] | int = None,
-    separator: str = None,
-    filters: dict = None,
+    comment: str | None = None,
+    sep: str | None = None,
+    skiprows: list[int] | int | None = None,
+    separator: str | None = None,
+    filters: dict | None = None,
 ):
     import pandas as pd
 
@@ -987,7 +988,7 @@ class TabularDataParser(MatchingParser):
         mime: str,
         buffer: bytes,
         decoded_buffer: str,
-        compression: str = None,
+        compression: str | None = None,
     ) -> bool | Iterable[str]:
         # We use the main file regex capabilities of the superclass to check if this is a
         # .csv file

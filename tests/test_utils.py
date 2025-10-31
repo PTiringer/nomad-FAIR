@@ -17,6 +17,7 @@
 #
 
 import time
+from datetime import datetime
 from importlib.metadata import PackageNotFoundError
 
 import pandas as pd
@@ -35,6 +36,7 @@ from nomad.utils import (
     rebuild_dict,
     structlogging,
 )
+from nomad.utils.structlogging import ISO8601_UTC_FORMAT
 
 
 def test_decode_handle_id():
@@ -72,6 +74,12 @@ def test_sanitize_logevent():
     assert structlogging.sanitize_logevent('mat [2, [3.3, 2], 10]') == 'mat M'
 
 
+def test_iso8601_datetime_format():
+    dummy_time = datetime(2025, 9, 2, 12, 34, 56, 789)
+
+    assert dummy_time.strftime(ISO8601_UTC_FORMAT) == '2025-09-02T12:34:56Z'
+
+
 def test_logging(no_warn):
     utils.get_logger(__name__).info('test msg')
 
@@ -103,22 +111,22 @@ def test_class_logger():
     logger.warn('hello world', test='other value')
 
 
-class TestSubSection(MSection):
+class DummySubSection(MSection):
     name = Quantity(type=str)
     subsection_number = Quantity(type=int)
 
 
-class TestSection(MSection):
+class DummySection(MSection):
     quantity_section = Quantity(type=int)
-    subsection = SubSection(sub_section=TestSubSection, repeats=True)
+    subsection = SubSection(sub_section=DummySubSection, repeats=True)
 
 
 def test_extract_section():
-    test_section = TestSection(
+    test_section = DummySection(
         quantity_section=5,
         subsection=[
-            TestSubSection(name='subsection1', subsection_number=1),
-            TestSubSection(name='subsection2'),
+            DummySubSection(name='subsection1', subsection_number=1),
+            DummySubSection(name='subsection2'),
         ],
     )
     # Check if quantities are properly extracted

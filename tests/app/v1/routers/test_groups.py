@@ -1,7 +1,7 @@
 import pytest
 
 from nomad.app.v1.models.groups import UserGroup, UserGroupResponse
-from nomad.groups import MongoUserGroup, get_mongo_user_group, user_group_exists
+from nomad.mongo.groups import MongoUserGroup, get_mongo_user_group, user_group_exists
 from tests.utils import check_with_retry
 
 from .common import assert_response, perform_get, perform_post
@@ -290,7 +290,7 @@ def test_create_group(
     [
         pytest.param(None, 'new_group', None, 401, id='guest-fails'),
         pytest.param('invalid', 'new_group', None, 401, id='faker-fails'),
-        pytest.param('user2', 'new_group', None, 401, id='user2-fails'),
+        pytest.param('user2', 'new_group', None, 403, id='user2-fails'),
         pytest.param('user1', 'new_group', 'new_group_ref1', 200, id='edit-ok'),
         pytest.param('user1', 'whitespace_name', None, 422, id='whitespace-name-fails'),
         pytest.param('user1', 'short_name', 'short_name', 200, id='short-name-ok'),
@@ -343,7 +343,7 @@ def test_update_user_group(
     'user_label, expected_status_code',
     [
         pytest.param('user1', 204, id='user1'),
-        pytest.param('user2', 401, id='user2'),
+        pytest.param('user2', 403, id='user2'),
         pytest.param('invalid', 401, id='invalid-user'),
         pytest.param(None, 401, id='guest-user'),
     ],
