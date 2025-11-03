@@ -32,6 +32,7 @@ import smtplib
 
 # TODO put somemore thought into warnings
 import warnings
+from abc import ABC, abstractmethod
 from datetime import datetime
 from email.mime.text import MIMEText
 from typing import TYPE_CHECKING, Any
@@ -313,17 +314,21 @@ class Keycloak:
 keycloak = Keycloak()
 
 
-class UserManagement:
-    def add_user(self, user, bcrypt_password=None, invite: bool = False):
+class UserManagement(ABC):
+    @abstractmethod
+    def add_user(
+        self, user, bcrypt_password: str | None = None, invite: bool = False
+    ) -> str | None:
         """
         Adds the given :class:`nomad.datamodel.User` instance to the configured keycloak
         realm using the keycloak admin API.
         """
-        raise NotImplementedError()
+        ...
 
-    def search_user(self, query: str):
-        raise NotImplementedError()
+    @abstractmethod
+    def search_user(self, query: str): ...
 
+    @abstractmethod
     def get_user(
         self,
         user_id: str | None = None,
@@ -336,7 +341,7 @@ class UserManagement:
         complete user information, because the info solely gathered from tokens is generally
         incomplete.
         """
-        raise NotImplementedError()
+        ...
 
 
 class OasisUserManagement(UserManagement):
@@ -348,19 +353,17 @@ class OasisUserManagement(UserManagement):
                 f'{config.oasis.central_nomad_deployment_url}/v1/users'
             )
 
-    def add_user(self, user, bcrypt_password=None, invite=False):
-        raise NotImplementedError(
-            'Adding a user is not possible for an Oasis using the central user management.'
-        )
+    def add_user(self, user, bcrypt_password=None, invite=False) -> str:
+        return 'Adding a user is not possible for an Oasis using the central user management.'
 
-    def __user_from_api_user(self, api_user):
+    def __user_from_api_user(self, api_user) -> 'User':
         from nomad import datamodel
 
         del api_user['is_admin']
         del api_user['is_oasis_admin']
         return datamodel.User.m_from_dict(api_user)
 
-    def search_user(self, query: str):
+    def search_user(self, query: str) -> list['User']:
         import requests
 
         response = requests.get(self._users_api_url, params=dict(prefix=query))
