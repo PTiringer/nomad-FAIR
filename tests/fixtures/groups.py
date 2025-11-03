@@ -57,7 +57,7 @@ def custom_group(
     if 'members_info' in fill:
         mold['members_info'] = make_members_info(owner, maintainers, members)
     if 'members' in fill:
-        mold['members'] = [fake_user_uuid(m) for m in members]
+        mold['members'] = [fake_user_uuid(m) for m in members or []]
 
     return mold
 
@@ -141,12 +141,18 @@ def group_molds():
         ),
         'edit_1232': info_group('Group 1232', members=[2, 3, 2]),
         'edit_1232_ref': info_group('Group 1232', members=[1, 2, 3]),
+        'empty_name': info_group('', owner=1),
         'short_name': info_group('G', owner=1),
         'long_name': info_group('G' * 65, owner=1),
         'whitespace_name': info_group(' \t ', owner=1),
         'special_chars_name': info_group(
             '!@#$%^&*()_+-=[]}\r\t\n{:; "\'|\\<,>.?/…😀', owner=1
         ),
+        'no_name': info_group(owner=1),
+        'no_name_ref': full_group(owner=1, members=[1]),
+        'only_name': custom_group('Only Name Group', fill=set()),
+        'only_name_ref': full_group('Only Name Group', owner=1, members=[1]),
+        'both_fields': full_group('Both Fields Group', owner=1, members=[1, 2, 3]),
     }
 
     old_custom_groups = {

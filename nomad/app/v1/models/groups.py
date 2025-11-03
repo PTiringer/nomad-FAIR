@@ -26,8 +26,14 @@ class UserGroupMember(BaseModel):
 # API models
 
 
-class UserGroupEditBase(BaseModel):
-    """Base model for user group edit fields common to both variants."""
+class UserGroupEdit(BaseModel):
+    """
+    Model for creating or editing user groups.
+    To modify members, use the 'members_info' field containing a
+    full list of all members with their user_id and role.
+
+    For backward compatibility, the deprecated 'members' field can be used instead.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -37,40 +43,16 @@ class UserGroupEditBase(BaseModel):
         default=None,
         description='Displayed name of the group.',
     )
-
-
-class UserGroupEditOld(UserGroupEditBase):
-    """
-    Model for editing user groups using the deprecated 'members' field.
-    The owner is determined by the authenticated user or owner field.
-    This variant is used when 'members' field is present in the request.
-
-    .. deprecated::
-        Use UserGroupEdit with 'members_info' field instead.
-    """
-
-    model_config = ConfigDict(json_schema_extra={'deprecated': True})
-
-    members: set[str] = Field(
-        description="User ids of the group members (includes owner). Deprecated: Use 'members_info' instead.",
-        deprecated=True,
-    )
-
-
-class UserGroupEdit(UserGroupEditBase):
-    """
-    Model for editing user groups.
-    The include user_ids and their roles (owner, maintainer, member).
-    This is the default variant when 'members' is not present.
-    """
-
     members_info: list[UserGroupMember] | None = Field(
         default=None,
-        description='Group members with user_ids and roles.',
+        description='Group members with user_id and role.',
     )
-
-
-UserGroupEditUnion = UserGroupEdit | UserGroupEditOld
+    members: set[str] | None = Field(
+        default=None,
+        description='User ids of the group members (includes owner).'
+        " Deprecated: Use 'members_info' instead.",
+        deprecated=True,
+    )
 
 
 class UserGroup(BaseModel):
@@ -85,7 +67,8 @@ class UserGroup(BaseModel):
     )
     members: list[str] = Field(
         default_factory=list,
-        description="User ids of the group members (includes owner). Mirrored from 'members_info'.",
+        description='User ids of the group members (includes owner).'
+        " Mirrored from 'members_info'.",
     )
     members_info: list[UserGroupMember] = Field(
         default_factory=list,
