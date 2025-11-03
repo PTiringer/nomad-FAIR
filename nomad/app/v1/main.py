@@ -81,7 +81,7 @@ app = FastAPI(
     version=f'v1, NOMAD {config.meta.version}',
     description=utils.strip(
         f"""
-        Please visit the [API section of the NOMAD documentation]({config.api_url(True, 'docs/api.html')})
+        Please visit the [API section of the NOMAD documentation]({config.api_url(True, 'docs/howto/manage/program/api.html')})
         for a introduction and examples.
     """
     ),
