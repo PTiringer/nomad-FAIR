@@ -273,6 +273,8 @@ def test_owner_not_member(auth_headers, client, group_molds, group_owner_not_mem
         pytest.param('invalid', 'edit_123', None, 401, id='invalid-user-fails'),
         pytest.param(None, 'edit_123', None, 401, id='guest-user-fails'),
         pytest.param('user1', 'edit_14m5', 'edit_14m5_ref', 201, id='maintained-ok'),
+        pytest.param('user1', 'no_name', 'no_name_ref', 201, id='no-name-ok'),
+        pytest.param('user1', 'empty_name', None, 422, id='empty-name-fails'),
         pytest.param('user1', 'whitespace_name', None, 422, id='whitespace-name-fails'),
         pytest.param('user1', 'short_name', 'short_name', 201, id='short-name-ok'),
         pytest.param('user1', 'long_name', 'long_name', 201, id='long-name-ok'),
@@ -282,6 +284,13 @@ def test_owner_not_member(auth_headers, client, group_molds, group_owner_not_mem
             'special_chars_name',
             201,
             id='special-chars-ok',
+        ),
+        pytest.param(
+            'user1',
+            'only_name',
+            'only_name_ref',
+            201,
+            id='only-name-ok',
         ),
         pytest.param(
             'user1',
@@ -305,6 +314,7 @@ def test_owner_not_member(auth_headers, client, group_molds, group_owner_not_mem
             201,
             id='old-double-member-skipped',
         ),
+        pytest.param('user1', 'both_fields', None, 422, id='both-fields-fails'),
     ],
 )
 def test_create_group(
@@ -341,6 +351,8 @@ def test_create_group(
         pytest.param('invalid', 'group1', 'edit_123', None, 401, id='faker-fails'),
         pytest.param('user2', 'group1', 'edit_123', None, 403, id='user2-fails'),
         pytest.param('user1', 'group1', 'edit_123', 'edit_123_ref', 200, id='edit-ok'),
+        pytest.param('user1', 'group1', 'no_name', 'no_name_ref', 200, id='no-name-ok'),
+        pytest.param('user1', 'group1', 'empty_name', None, 422, id='empty-name-fails'),
         pytest.param(
             'user1', 'group1', 'whitespace_name', None, 422, id='whitespace-name-fails'
         ),
@@ -357,6 +369,9 @@ def test_create_group(
             'special_chars_name',
             200,
             id='special-chars-ok',
+        ),
+        pytest.param(
+            'user1', 'group1', 'only_name', 'only_name_ref', 200, id='only-name-ok'
         ),
         pytest.param(
             'user2',
@@ -412,6 +427,14 @@ def test_create_group(
             'old_edit_x24_ref',
             200,
             id='old-keep-maintainer-ok',
+        ),
+        pytest.param(
+            'user1',
+            'group1',
+            'both_fields',
+            None,
+            422,
+            id='both-fields-fails',
         ),
     ],
 )

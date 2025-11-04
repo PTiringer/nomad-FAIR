@@ -25,8 +25,6 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from nomad.app.v1.models.groups import (
     UserGroup,
     UserGroupEdit,
-    UserGroupEditOld,
-    UserGroupEditUnion,
     UserGroupMember,
     UserGroupMemberRole,
     UserGroupPagination,
@@ -49,7 +47,6 @@ from nomad.mongo.groups import (
     create_mongo_user_group,
     get_mongo_user_group,
 )
-from nomad.utils import strip
 
 from ..models import User
 from .auth import get_current_user
@@ -108,21 +105,17 @@ def validate_members_info(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=[{'loc': ['body'], 'msg': str(e)}],
+            detail=[{'loc': ['body', 'members_info'], 'msg': str(e)}],
         ) from e
 
-    for id in [m.user_id for m in members_info]:
+    for i, id in enumerate(m.user_id for m in members_info):
         try:
             UserDataModel.get(user_id=id)
         except KeyError as exc:
+            loc = ['body', 'members_info', i, 'user_id']
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail=[
-                    {
-                        'loc': ['body'],
-                        'msg': f"User '{id}' was not found.",
-                    }
-                ],
+                detail=[{'loc': loc, 'msg': f"User '{id}' was not found."}],
             ) from exc
 
 
@@ -139,10 +132,8 @@ def check_user_may_edit_user_group(user: User, user_group: UserGroup):
 
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
-        detail=strip(
-            f"Not authorized to edit user group '{user_group.group_id}'."
-            ' Only group owners, maintainers and admins are allowed to edit a group.'
-        ),
+        detail=f"Not authorized to edit user group '{user_group.group_id}'."
+        ' Only group owners, maintainers and admins are allowed to edit a group.',
     )
 
 
@@ -156,11 +147,21 @@ def check_user_may_delete_user_group(user: User, user_group: UserGroup):
 
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
-        detail=strip(
-            f"Not authorized to delete user group '{user_group.group_id}'."
-            ' Only group owners and admins are allowed to delete a group.'
-        ),
+        detail=f"Not authorized to delete user group '{user_group.group_id}'."
+        ' Only group owners and admins are allowed to delete a group.',
     )
+
+
+def check_mutually_exclusive_members_fields(user_group_edit: UserGroupEdit):
+    if user_group_edit.members is not None and user_group_edit.members_info is not None:
+        msg = (
+            "Fields 'members' and 'members_info' are mutually exclusive."
+            " Remove the deprecated 'members' field from your request."
+        )
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=[{'loc': ['body'], 'msg': (msg)}],
+        )
 
 
 @router.get(
@@ -211,15 +212,16 @@ async def get_user_group(group_id: str):
     response_model=UserGroup,
 )
 async def create_user_group(
-    user_group_edit: UserGroupEditUnion,
+    user_group_edit: UserGroupEdit,
     user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """Create user group."""
-    if isinstance(user_group_edit, UserGroupEditOld):
-        members_info = resolve_members_info(user.user_id, user_group_edit.members)
-        user_group_edit = UserGroupEdit(
-            group_name=user_group_edit.group_name, members_info=members_info
+    check_mutually_exclusive_members_fields(user_group_edit)
+    if user_group_edit.members_info is None:
+        user_group_edit.members_info = resolve_members_info(
+            user.user_id, user_group_edit.members or []
         )
+        user_group_edit.members = None
 
     validate_members_info(user_group_edit.members_info, user.user_id)
 
@@ -235,7 +237,7 @@ async def create_user_group(
 )
 async def update_user_group(
     group_id: str,
-    user_group_edit: UserGroupEditUnion,
+    user_group_edit: UserGroupEdit,
     user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """Update user group."""
@@ -243,15 +245,14 @@ async def update_user_group(
     user_group = UserGroup.model_validate(mongo_user_group)
     check_user_may_edit_user_group(user, user_group)
 
-    if isinstance(user_group_edit, UserGroupEditOld):
-        members_info = resolve_members_info(
+    check_mutually_exclusive_members_fields(user_group_edit)
+    if user_group_edit.members is not None:
+        user_group_edit.members_info = resolve_members_info(
             user.user_id,
             user_group_edit.members,
             old_members_info=user_group.members_info,
         )
-        user_group_edit = UserGroupEdit(
-            group_name=user_group_edit.group_name, members_info=members_info
-        )
+        user_group_edit.members = None
 
     if user_group_edit.members_info is not None:
         validate_members_info(user_group_edit.members_info, user_group.owner)

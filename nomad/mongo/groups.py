@@ -62,7 +62,8 @@ class MongoUserGroup(Document):
     A group of users.
 
     Members are users, one of them is the owner, some may be maintainers.
-    Field members_info is the ground truth, members and owner are for compatibility.
+    Field 'members_info' is the ground truth, 'members' and 'owner' are
+    kept for compatibility.
     """
 
     id_field = 'group_id'
@@ -194,6 +195,8 @@ class MongoUserGroup(Document):
         """Returns updated group after cleaning, validating, and saving to the DB.
 
         Use this instead of `update` or `modify` to ensure the object is cleaned.
+
+        Deprecated field 'members' will be overridden on save.
         """
         if info := updates.members_info:
             updates.members_info = [
@@ -227,7 +230,9 @@ signals.post_init.connect(MongoUserGroup._post_init_clean, sender=MongoUserGroup
 
 
 def create_mongo_user_group(data: UserGroupEdit) -> MongoUserGroup:
-    """Create a new user group with validation."""
+    """Create a new user group with validation.
+
+    Deprecated field 'members' will be overridden on creation."""
     user_group = MongoUserGroup(group_id=create_uuid(), group_name=data.group_name)
     if user_group.group_name is None:
         user_group.group_name = user_group.group_id
