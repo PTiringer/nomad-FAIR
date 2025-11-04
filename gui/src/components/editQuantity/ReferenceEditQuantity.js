@@ -296,13 +296,11 @@ const ReferenceEditQuantity = React.memo(function ReferenceEditQuantity(props) {
       const data = response.data
       if (data.length > 0) {
         const archive = data[0].archive.metadata
-        if (archive.processing_errors.length === 0) {
-          setEntry({value: value, archive: archive})
-          setError({error: null, processingError: null})
-        } else {
-          setEntry(null)
-          setError({error: null, processingError: 'There are some processing errors in the referenced value'})
-        }
+        setEntry({value: value, archive: archive})
+        setError({
+          error: null,
+          processingError: archive.processing_errors.length === 0 ? null : 'There are some processing errors in the referenced value'
+        })
       } else {
         setEntry(null)
         setError({error: 'The referenced value does not exist anymore', processingError: null})
