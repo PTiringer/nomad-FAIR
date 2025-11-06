@@ -287,3 +287,15 @@ def publish_externally_activity(input: PublishExternallyWorkflowInput):
         auth_token=input.auth_token,
         embargo_length=input.embargo_length,
     )
+
+
+@activity.defn
+def handle_heartbeat_failure_activity(input: ProcessEntryActivityInput):
+    entry = Entry.get(input.entry_id)
+    entry.fail(
+        *[
+            'Process entry failed due to a heartbeat timeout. '
+            'If this keeps happening contact NOMAD/ your oasis admin for support.'
+        ]
+    )
+    entry.save()

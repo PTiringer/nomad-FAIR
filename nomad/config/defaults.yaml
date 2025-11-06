@@ -88,6 +88,16 @@ temporal:
   namespace: default
   port: 7233
   graceful_shutdown_timeout: 1
+  processing_timeouts:
+    entry_processing_heartbeat_timeout: 600
+    delete_upload_timeout: 7200
+    process_entry_timeout: 7200
+    process_upload_timeout: 7200
+    edit_upload_metadata_timeout: 7200
+    import_bundle_timeout: 7200
+    publish_upload_timeout: 7200
+    publish_externally_timeout: 7200
+    process_example_upload_timeout: 7200
 fs:
   local_tmp: /tmp
   north_home: .volumes/fs/north/users
