@@ -5,7 +5,6 @@ import time
 from collections.abc import AsyncGenerator, Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
-from datetime import timedelta
 from typing import TypeAlias
 
 import elasticsearch
@@ -21,7 +20,6 @@ from nomad.actions.activities.util import get_nomad_internal_activities
 from nomad.actions.workflows.util import get_nomad_internal_workflows
 from nomad.config import config
 from nomad.infrastructure import index_builtin_packages
-from nomad.workflows import workflows
 
 
 class TrieNode:
@@ -394,9 +392,6 @@ def temporal_worker(
     """Combines all fixtures necessary for temporal processing (elastic, files, mongo)"""
     temporal_activities = get_nomad_internal_activities()
     temporal_workflows = get_nomad_internal_workflows()
-
-    # Much smaller timeout for tests.
-    monkeypatch.setattr(workflows, 'WORKFLOW_TIMEOUT', timedelta(seconds=120))
 
     @asynccontextmanager
     async def worker_context() -> AsyncGenerator[WorkflowEnvironment, None]:

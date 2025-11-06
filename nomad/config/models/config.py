@@ -475,6 +475,45 @@ class Elastic(ConfigBaseModel):
     materials_index: str = 'nomad_materials_v1'
 
 
+class ProcessingTimeouts(ConfigBaseModel):
+    entry_processing_heartbeat_timeout: int = Field(
+        600,  # ten minutes
+        description='The maximum interval in seconds that an entry processing activity can run without reporting progress (sending a heartbeat) before Temporal considers it failed.',
+    )
+    delete_upload_timeout: int = Field(
+        7200,  # 2 hours
+        description='The timeout for activities in the delete upload workflow in seconds.',
+    )
+    process_entry_timeout: int = Field(
+        7200,  # 2 hours
+        description='The timeout for the process entry activity in seconds.',
+    )
+    process_upload_timeout: int = Field(
+        7200,  # 2 hours
+        description='The timeout for activities in the process upload workflow in seconds.',
+    )
+    edit_upload_metadata_timeout: int = Field(
+        7200,  # 2 hours
+        description='The timeout for activities in the edit upload metadata workflow in seconds.',
+    )
+    import_bundle_timeout: int = Field(
+        7200,  # 2 hours
+        description='The timeout for activities in the import bundle workflow in seconds.',
+    )
+    publish_upload_timeout: int = Field(
+        7200,  # 2 hours
+        description='The timeout for activities in the publish upload workflow in seconds.',
+    )
+    publish_externally_timeout: int = Field(
+        7200,  # 2 hours
+        description='The timeout for activities in the publish externally workflow in seconds.',
+    )
+    process_example_upload_timeout: int = Field(
+        7200,  # 2 hours
+        description='The timeout for activities in the process example upload workflow in seconds.',
+    )
+
+
 class Temporal(ConfigBaseModel):
     host: str = 'localhost'
     port: int = 7233
@@ -483,6 +522,7 @@ class Temporal(ConfigBaseModel):
     graceful_shutdown_timeout: int = Field(
         1, description='The graceful shutdown timeout for temporal workers in seconds.'
     )
+    processing_timeouts: ProcessingTimeouts = ProcessingTimeouts()
 
 
 class Keycloak(ConfigBaseModel):
