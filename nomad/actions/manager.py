@@ -18,6 +18,7 @@ from typing import Any, get_args, get_origin, get_type_hints
 
 from pydantic import BaseModel, Field, SecretBytes, SecretStr, TypeAdapter
 from temporalio.client import WorkflowExecutionStatus
+from temporalio.service import RPCError, RPCStatusCode
 
 from nomad import infrastructure
 from nomad.actions.action import get_actions
@@ -27,6 +28,7 @@ from nomad.files import StagingUploadFiles
 from nomad.metainfo.metainfo import Callable
 from nomad.mongo.action import ActionDocument
 from nomad.processing.data import Upload
+from nomad.utils.structlogging import get_logger
 
 
 class ActionModel(BaseModel):
@@ -195,29 +197,181 @@ async def _async_get_workflow_result(action_instance_id: str):
     return await handle.result()
 
 
+def _get_workflow_status_safe(
+    action_instance_id: str,
+) -> WorkflowExecutionStatus | None:
+    """
+    Safely retrieves workflow status, returning None if workflow not found.
+
+    Args:
+        action_instance_id: The unique ID of the action instance.
+
+    Returns:
+        The workflow status, or None if workflow not found.
+
+    Raises:
+        Exception: For errors other than workflow not found.
+    """
+    try:
+        return asyncio.run(_async_get_workflow_status(action_instance_id))
+    except Exception as e:
+        if isinstance(e, RPCError):
+            if e.status == RPCStatusCode.NOT_FOUND:
+                return None
+        raise e
+
+
+def _get_workflow_result_safe(action_instance_id: str) -> dict[str, Any] | None:
+    """
+    Safely retrieves workflow result, returning None if workflow not found.
+
+    Args:
+        action_instance_id: The unique ID of the action instance.
+
+    Returns:
+        The workflow result, or None if workflow not found.
+
+    Raises:
+        Exception: For errors other than workflow not found.
+    """
+
+    async def _async_get_workflow_result(action_instance_id: str):
+        client = await get_client()
+        handle = client.get_workflow_handle(action_instance_id)
+        return await handle.result()
+
+    try:
+        return asyncio.run(_async_get_workflow_result(action_instance_id))
+    except Exception as e:
+        if isinstance(e, RPCError):
+            if e.status == RPCStatusCode.NOT_FOUND:
+                return None
+        raise e
+
+
+def _validate_action_ownership(action_instance_id: str, user_id: str) -> ActionDocument:
+    """
+    Validates that an action exists and belongs to the specified user.
+
+    Args:
+        action_instance_id: The unique ID of the action instance.
+        user_id: The user ID to validate ownership against.
+
+    Returns:
+        The action document if found and owned by user.
+
+    Raises:
+        Exception: If action not found or owned by different user.
+    """
+    action = ActionDocument.objects(
+        action_instance_id=action_instance_id, user_id=user_id
+    ).first()
+    if not action:
+        raise Exception(
+            'The action was not registered in the DB or was registered under a different user.'
+        )
+    return action
+
+
+def get_action_status(
+    action_instance_id: str, user_id: str
+) -> WorkflowExecutionStatus | None:
+    """
+    Retrieves the current execution status of an action.
+
+    Args:
+        action_instance_id: The unique ID of the action instance to check.
+        user_id: The user who initiated the action.
+
+    Returns:
+        The current status of the action, or UNKNOWN if workflow not found.
+    """
+    action = _validate_action_ownership(action_instance_id, user_id)
+    logger = get_logger(__name__)
+
+    with ThreadPoolExecutor() as executor:
+        future = executor.submit(_get_workflow_status_safe, action_instance_id)
+        status = future.result()
+
+    if status is None:
+        logger.warning(
+            f'Workflow {action_instance_id} could not be found for user {user_id}. '
+            f'Setting status to UNKNOWN.'
+        )
+        action.status = 'UNKNOWN'
+        action.save()
+        return None
+
+    action.status = str(status.name)
+    action.save()
+    return status
+
+
+def get_action_result(action_instance_id: str, user_id: str) -> dict[str, Any] | None:
+    """
+    Retrieves the result of a completed action.
+    This function is **blocking** and should only be called after confirming
+    that the target workflow has finished execution.
+
+    Args:
+        action_instance_id: The unique ID of the action to check.
+        user_id: The user who initiated the action.
+
+    Returns:
+        The result of the action, or None if workflow not found.
+    """
+    logger = get_logger(__name__)
+    action = _validate_action_ownership(action_instance_id, user_id)
+
+    with ThreadPoolExecutor() as executor:
+        future = executor.submit(_get_workflow_result_safe, action_instance_id)
+        results = future.result()
+
+    if results is None:
+        logger.warning(
+            f'Workflow {action_instance_id} could not be found for user {user_id}. '
+            f'Result could not be retrieved.'
+        )
+        return None
+
+    action.results = _to_dict(results)
+    action.status = str(WorkflowExecutionStatus.COMPLETED.name)
+    action.save()
+    return results
+
+
 def _update_status(action: ActionDocument):
     """
     Update the status of an action in the database.
+    Silently handles workflow not found errors by setting status to UNKNOWN.
 
     Args:
         action: The action document to update.
     """
-    status = asyncio.run(_async_get_workflow_status(action.action_instance_id))
-    if status:
-        action.status = str(status.name)
-        if status.name == 'COMPLETED':
-            results = asyncio.run(
-                _async_get_workflow_result(action_instance_id=action.action_instance_id)
-            )
-            if results:
-                try:
-                    action.results = _to_dict(results)
-                except TypeError:
-                    action.results = results
+    status = _get_workflow_status_safe(action.action_instance_id)
+    logger = get_logger(__name__)
 
+    if status is None:
+        # Workflow not found - mark as unknown and return
+        logger.warning(
+            f'Workflow {action.action_instance_id} could not be found. '
+            f'Setting status to UNKNOWN.'
+        )
+        action.status = 'UNKNOWN'
         action.save()
-    else:
-        raise Exception(f'Action status not found for {action.action_instance_id}')
+        return
+
+    action.status = str(status.name)
+
+    if status.name == 'COMPLETED':
+        results = _get_workflow_result_safe(action.action_instance_id)
+        if results:
+            try:
+                action.results = _to_dict(results)
+            except TypeError:
+                action.results = results
+
+    action.save()
 
 
 def get_all_user_actions(user_id: str) -> list[ActionModelSummary]:
@@ -431,81 +585,3 @@ def stop_action(action_instance_id: str, user_id: str):
 
     action.status = str(WorkflowExecutionStatus.CANCELED.name)
     action.save()
-
-
-def get_action_status(action_instance_id: str, user_id: str) -> WorkflowExecutionStatus:
-    """
-    Retrieves the current execution status of an action.
-
-    Args:
-        action_instance_id: The unique ID of the action instance to check.
-        user_id: The user who initiated the action.
-
-    Returns:
-        The current status of the action.
-    """
-
-    action = ActionDocument.objects(
-        action_instance_id=action_instance_id, user_id=user_id
-    ).first()
-    if not action:
-        raise Exception(
-            'The action was not registered in the DB or was registered under a different user.'
-        )
-
-    with ThreadPoolExecutor() as executor:
-        future = executor.submit(
-            asyncio.run, _async_get_workflow_status(action_instance_id)
-        )
-        status = future.result()
-
-    if status:
-        action.status = str(status.name)
-        action.save()
-    else:
-        raise Exception('Action status not found')
-
-    return status
-
-
-def get_action_result(action_instance_id: str, user_id: str) -> dict[str, Any]:
-    """
-    Retrieves the result of a completed action.
-
-    This function is **blocking** and should only be called after confirming
-    that the target workflow has finished execution.
-
-    Args:
-        action_instance_id: The unique ID of the action to check.
-        user_id: The user who initiated the action.
-
-    Returns:
-        The result of the action.
-    """
-    action = ActionDocument.objects(
-        action_instance_id=action_instance_id, user_id=user_id
-    ).first()
-    if not action:
-        raise Exception(
-            'The action was not registered in the DB or was registered under a different user.'
-        )
-
-    async def _async_get_workflow_result(action_instance_id: str):
-        client = await get_client()
-        handle = client.get_workflow_handle(action_instance_id)
-        return await handle.result()
-
-    with ThreadPoolExecutor() as executor:
-        future = executor.submit(
-            asyncio.run, _async_get_workflow_result(action_instance_id)
-        )
-        results = future.result()
-
-    if not results:
-        raise Exception('Action result not found.')
-
-    action.results = _to_dict(results)
-    action.status = str(WorkflowExecutionStatus.COMPLETED.name)
-    action.save()
-
-    return results
