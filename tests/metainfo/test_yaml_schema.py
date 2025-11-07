@@ -62,11 +62,7 @@ m_package.__init_metainfo__()
 def yaml_to_package(yaml_str):
     class MyContext(Context):
         def create_reference(
-            self,
-            section: MSection,
-            quantity_def: Quantity,
-            value: MSection,
-            global_reference: bool = False,
+            self, section: MSection, quantity_def: Quantity, value: MSection
         ) -> str:
             if section.m_root() == value.m_root():  # type: ignore
                 return super().create_reference(section, quantity_def, value)

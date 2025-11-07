@@ -119,11 +119,7 @@ class Context:
         return fragment
 
     def create_reference(
-        self,
-        section: MSection,
-        quantity_def: Quantity,
-        value: MSection,
-        global_reference: bool = False,
+        self, section: MSection, quantity_def: Quantity, value: MSection
     ) -> str:
         """
         Returns a reference for the given target section (value) based on the given context.
@@ -133,9 +129,6 @@ class Context:
             section: The containing section.
             quantity_def: The definition of the quantity.
             value: The reference value.
-            global_reference: A boolean flag that forces references with upload_ids.
-                Should be used if the reference needs to be used outside the context
-                of the own upload.
 
         Raises: MetainfoReferenceError
         """
@@ -148,11 +141,6 @@ class Context:
         # we distinguish between the two cases by checking if the target_root is a package
         if isinstance(target_root, Package) and target_root.m_is_custom_package:
             return f'../uploads/{target_root.upload_id}/archive/{target_root.entry_id}#definitions/{fragment}'
-
-        if global_reference:
-            upload_id, entry_id = self._get_ids(target_root, required=True)
-
-            return f'../uploads/{upload_id}/archive/{entry_id}#{fragment}'
 
         source_root: MSection = section.m_root()
 
@@ -744,16 +732,10 @@ class ClientContext(Context):
         return os.path.exists(file_path)
 
     def create_reference(
-        self,
-        section: MSection,
-        quantity_def: Quantity,
-        value: MSection,
-        global_reference: bool = False,
+        self, section: MSection, quantity_def: Quantity, value: MSection
     ) -> str:
         try:
-            return super().create_reference(
-                section, quantity_def, value, global_reference
-            )
+            return super().create_reference(section, quantity_def, value)
         except AssertionError:
             return f'<unavailable url>/#{value.m_path()}'
 

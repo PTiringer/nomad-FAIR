@@ -3119,7 +3119,9 @@ class DefinitionReader(ArchiveLikeReader):
             await self._resolve(node, current_config, omit_keys=required.keys())
 
         def __convert(m_def):
-            return _convert_ref_to_path_string(m_def.strict_reference())
+            return _convert_ref_to_path_string(
+                m_def.m_path(package_path=True, reference_like=True)
+            )
 
         for key, value in required.items():
             if key == GeneralReader.__CONFIG__:
@@ -3259,7 +3261,9 @@ class DefinitionReader(ArchiveLikeReader):
             )
 
         def __convert(m_def):
-            return _convert_ref_to_path_string(m_def.strict_reference())
+            return _convert_ref_to_path_string(
+                m_def.m_path(package_path=True, reference_like=True)
+            )
 
         def __override_path(q, s, v, p):
             """
@@ -3352,7 +3356,7 @@ class DefinitionReader(ArchiveLikeReader):
         if isinstance(node.archive, Quantity):
             if isinstance(ref := node.archive.type, Reference):
                 target = __unwrap_ref(ref)
-                ref_str: str = target.strict_reference()
+                ref_str: str = target.m_path(package_path=True, reference_like=True)
                 path_stack: list = _convert_ref_to_path(ref_str)
                 # check if it has been populated
                 if ref_str not in node.visited_path and not await _if_exists(
@@ -3393,7 +3397,7 @@ class DefinitionReader(ArchiveLikeReader):
             for _name in _items:
                 for _index, _base in enumerate(getattr(_definition, _name, [])):
                     _section = _unwrap_subsection(_base)
-                    _ref_str = _section.strict_reference()
+                    _ref_str = _section.m_path(package_path=True, reference_like=True)
                     _path_stack = _convert_ref_to_path(_ref_str)
                     if _section is _definition or self._check_cache(
                         _path_stack, config.hash
@@ -3451,7 +3455,7 @@ class DefinitionReader(ArchiveLikeReader):
         # we always put a reference string at the current location
         # since the section may belong to another package
         # its definition may be placed in at the current location, or another location
-        ref_str: str = node.archive.strict_reference()
+        ref_str: str = node.archive.m_path(package_path=True, reference_like=True)
         if not isinstance(node.archive, Quantity):
             await _populate_result(
                 node.result_root,

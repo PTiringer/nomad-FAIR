@@ -563,13 +563,13 @@ class MSectionReference(Reference):
     !!! FOR INTERNAL USE ONLY !!!
     """
 
-    _pattern = re.compile(r'^\w*(\.\w*)*(@[a-f0-9]{40})?$')
+    _pattern = re.compile(r'(?:entry_id:)?\w*(?:\.\w*)*(?:@[a-f0-9]{40})?')
 
     def __init__(self):
         super().__init__(Section.m_def)
 
     def _normalize_impl(self, value, **kwargs):
-        if isinstance(value, str) and self._pattern.match(value):
+        if isinstance(value, str) and self._pattern.fullmatch(value):
             return SectionProxy(
                 value,
                 m_proxy_section=kwargs.get('section', None),
@@ -2268,22 +2268,23 @@ class MSection(metaclass=MObjectMeta):
                     yield sub_section
 
     def m_path(
-        self, *, quantity_def: Quantity | None = None, package_path: bool = False
+        self, *, package_path: bool = False, reference_like: bool = False
     ) -> str:
         """
         Generate the path of this section or the specified quantity within the section hierarchy.
 
         Parameters:
-            quantity_def: The quantity definition for which to return the path.
-                If None, the path of the section itself is returned.
             package_path: If True, the path starts from the package instead of other roots.
+            reference_like: If True, rewrite custom definition paths to reference-like paths.
         """
-        if quantity_def is not None:
-            assert quantity_def in self.m_def.all_quantities.values()
-            return f'{self.m_path(package_path=package_path).rstrip("/")}/{quantity_def.name}'
-
         if package_path and isinstance(self, Package):
-            return f'entry_id:{self.entry_id}' if self.entry_id else (self.name or '*')
+            if not self.m_is_custom_package:
+                return self.name or '*'
+
+            if not reference_like:
+                return f'entry_id:{self.entry_id}'
+
+            return f'../uploads/{self.upload_id}/archive/{self.entry_id}#definitions'
 
         if self.m_parent is None:
             return '/'
@@ -2292,7 +2293,9 @@ class MSection(metaclass=MObjectMeta):
         if self.m_parent_index != -1:
             segment += f'/{self.m_parent_index:d}'
 
-        parent_path = self.m_parent.m_path(package_path=package_path).rstrip('/')
+        parent_path = self.m_parent.m_path(
+            package_path=package_path, reference_like=reference_like
+        ).rstrip('/')
         return f'{parent_path}/{segment}'
 
     def m_root(self, cls: type[MSectionBound] | None = None) -> MSectionBound:
@@ -2878,40 +2881,21 @@ class Definition(MSection):
         """
         return self.snapshot_id or self.hash().hexdigest()
 
-    def definition_reference(self, source, **kwargs):
+    def definition_reference(self, source):
         """
         Creates a reference string that points to this definition from the
         given source section.
         """
-        if kwargs.pop('strict', False):
-            # if `strict` is set, use the strict path instead of the qualified name
-            definition_reference = self.m_path(package_path=True)
-        else:
-            definition_reference = self.qualified_name()
+        definition_reference = self.qualified_name()
 
         if definition_reference.startswith('entry_id:'):
             # This is not from a python module, use archive reference instead
             if context := self.m_root().m_context:
-                relative_name = context.create_reference(source, None, self, **kwargs)
+                relative_name = context.create_reference(source, None, self)
                 if relative_name:
                     definition_reference = relative_name
 
         return definition_reference
-
-    def strict_reference(self, **kwargs):
-        """
-        Generate a reference string for the current definition.
-        It follows a strict canonical form that is used in graph query.
-        Two possible cases:
-        1. The definition is a build-in definition.
-            nomad.my.package/section_definitions/1/quantities/2
-        2. The definition is a user-defined definition.
-            '../uploads/{upload_id}/archive/{entry_id}#{fragment}'
-        """
-        kwargs['strict'] = True
-        # we always want to use global reference if possible
-        kwargs['global_reference'] = True
-        return self.definition_reference(None, **kwargs)
 
 
 class Attribute(Definition):

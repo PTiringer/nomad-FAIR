@@ -1060,9 +1060,7 @@ class EntryMetadata(MSection):
             ref_item.target_path = path
             ref_item.source_name = current_def.name
             ref_item.source_path = quantity_path
-            ref_item.source_quantity = current_def.definition_reference(
-                archive, global_reference=True
-            )
+            ref_item.source_quantity = current_def.qualified_name()
 
             from ..processing import Entry
 
