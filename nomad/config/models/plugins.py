@@ -193,7 +193,32 @@ class ParserEntryPoint(EntryPoint):
     mainfile_contents_dict: dict | None = Field(
         None,
         description="""
-        Is used to match structured data files like JSON or HDF5.
+        Used to check the contents of structured data files like JSON, HDF5 or
+        csv/excel files. Parser will match the file if the dictionary provided matches
+        the contents of the file. One can also use the following reserved keys for
+        special queries:
+
+            - `__has_key: str`
+
+                Plain string or regular expression of a key in the data to match
+
+            - `__has_all_keys: list[str]`
+
+                List of keys that must be present in the data to match
+
+            - `__has_only_keys: list[str]`
+
+                List of keys that must exclusively be present in the data
+
+            - `__has_comment: str` (only for csv/xlsx files)
+
+                Comments that are ignored, must be at the top level of the dictionary
+
+        In case of a csv/excel file for example, one can set this attribute to
+        `{'__has_all_keys': [<column names>]}` in order to check if certain columns
+        exist in a given sheet. Also in order to check if a certain
+        sheet name with specific column names exist, one may set this attribute to:
+        `{'<sheet name>': {'__has_all_keys': [<column names>]}}`.
     """,
     )
     supported_compressions: list[str] = Field(
@@ -699,18 +724,32 @@ class Parser(PythonPluginBase):
     mainfile_contents_dict: dict | None = Field(
         None,
         description="""
-        Is used to match structured data files like JSON, HDF5 or csv/excel files. In case of a csv/excel file
-        for example, in order to check if certain columns exist in a given sheet, one can set this attribute to
-        `'__has_all_keys': [<column names>]`. In case the csv/excel file contains comments that
-        are supposed to be ignored, use this reserved key-value pair
-        `'__has_comment': '<symbol>'` at the top level of the dictionary. Also in order to check if a certain
+        Used to check the contents of structured data files like JSON, HDF5 or
+        csv/excel files. Parser will match the file if the dictionary provided matches
+        the contents of the file. One can also use the following reserved keys for
+        special queries:
+
+            - `__has_key: str`
+
+                Plain string or regular expression of a key in the data to match
+
+            - `__has_all_keys: list[str]`
+
+                List of keys that must be present in the data to match
+
+            - `__has_only_keys: list[str]`
+
+                List of keys that must exclusively be present in the data
+
+            - `__has_comment: str` (only for csv/xlsx files)
+
+                Comments that are ignored, must be at the top level of the dictionary
+
+        In case of a csv/excel file for example, one can set this attribute to
+        `{'__has_all_keys': [<column names>]}` in order to check if certain columns
+        exist in a given sheet. Also in order to check if a certain
         sheet name with specific column names exist, one may set this attribute to:
-        {'<sheet name>': {'__has_all_keys': [<column names>]}}.
-        Available options are:
-        <i>__has_key: str<i>
-        <i>__has_all_keys: List[str]<i>
-        <i>__has_only_keys: List[str]<i>
-        <i>__has_comment: str<i> (only for csv/xlsx files)
+        `{'<sheet name>': {'__has_all_keys': [<column names>]}}`.
         """,
     )
     supported_compressions: list[str] = Field(
