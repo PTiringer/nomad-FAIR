@@ -466,6 +466,8 @@ class TextParser(FileParser):
 
             non_empty_matches = []
             for match in matches:
+                if isinstance(match, bytes):
+                    match = [match]
                 non_empty_match = [
                     m for m in match[current_index : current_index + n_groups] if m
                 ]
