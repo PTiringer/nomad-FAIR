@@ -35,7 +35,7 @@ import warnings
 from abc import ABC, abstractmethod
 from datetime import datetime
 from email.mime.text import MIMEText
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import jwt
 import unidecode
@@ -44,6 +44,7 @@ from keycloak import KeycloakAdmin, KeycloakOpenID
 from keycloak.exceptions import KeycloakAuthenticationError, KeycloakGetError
 from mongoengine import connect, disconnect
 from mongoengine.connection import ConnectionFailure
+from pydantic import BaseModel
 
 from nomad import utils
 from nomad.config import config
@@ -61,11 +62,11 @@ warnings.filterwarnings('ignore')
 
 logger = get_logger(__name__)
 
+# The elastic search client
 elastic_client = None
-""" The elastic search client. """
 
+# The pymongo mongodb client
 mongo_client = None
-""" The pymongo mongodb client. """
 
 
 def setup():
@@ -179,6 +180,16 @@ def setup_elastic():
     return elastic_client
 
 
+class OIDCToken(BaseModel):
+    access_token: str
+    token_type: Literal['Bearer']
+    expires_in: int | None = None
+    refresh_token: str | None = None
+    scope: str | None = None
+    id_token: str | None = None
+    refresh_expires_in: int | None = None
+
+
 class KeycloakError(Exception):
     pass
 
@@ -222,25 +233,29 @@ class Keycloak:
 
         return self.__public_keys
 
-    def refresh_token(self, access_token: str, refresh_token: str, **kwargs) -> dict:
-        return self._oidc_client.refresh_token(refresh_token)
-
-    def basicauth(self, username: str, password: str) -> str:
+    def refresh_token(self, refresh_token: str) -> OIDCToken:
         """
-        Performs basic authentication and returns an access token.
+        Use the OAuth2 refresh token grant to obtain a new token response.
+        """
+        return OIDCToken(**self._oidc_client.refresh_token(refresh_token))
+
+    def basicauth(self, username: str, password: str) -> OIDCToken:
+        """
+        Performs basic authentication and returns the OAuth2 token response.
 
         Raises:
             KeycloakError
         """
         try:
-            token_info = self._oidc_client.token(username=username, password=password)
+            return OIDCToken(
+                **self._oidc_client.token(username=username, password=password)
+            )
+
         except KeycloakAuthenticationError as e:
             raise KeycloakError(e)
         except Exception as e:
             logger.error('cannot perform basicauth', exc_info=e)
             raise e
-
-        return token_info['access_token']
 
     def decode_access_token(self, access_token: str) -> dict:
         try:

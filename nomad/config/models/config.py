@@ -527,16 +527,16 @@ class Temporal(ConfigBaseModel):
 
 class Keycloak(ConfigBaseModel):
     server_url: str = 'https://nomad-lab.eu/fairdi/keycloak/auth/'
-    public_server_url: str = None
+    public_server_url: str | None = None
     realm_name: str = 'fairdi_nomad_prod'
     username: str = 'admin'
     password: str = 'password'
     client_id: str = 'nomad_public'
-    client_secret: str = None
+    client_secret: str | None = None
 
     @model_validator(mode='after')
     @classmethod
-    def __validate(cls, values):  # pylint: disable=no-self-argument
+    def __validate(cls, values):
         if values.public_server_url is None:
             values.public_server_url = values.server_url
         return values

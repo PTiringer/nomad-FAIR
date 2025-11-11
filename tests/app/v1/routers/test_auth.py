@@ -23,22 +23,42 @@ from nomad.app.v1.models.models import User
 from nomad.app.v1.routers.auth import get_current_user
 from nomad.config.models.config import ModeEnum
 
-
-def perform_get_token_test(client, status_code, username, password):
-    response = client.post(
-        'auth/token',
-        data=dict(username=username, password=password, grant_type='password'),
-    )
-
-    assert response.status_code == status_code
+# Tests for OIDC authentication endpoints
 
 
-def test_post_token_success(client, user1):
-    perform_get_token_test(client, 200, user1.username, 'password')
+@pytest.mark.parametrize(
+    'form_data, expected_status',
+    [
+        pytest.param(
+            dict(username='user1', password='password', grant_type='password'),
+            200,
+            id='valid_credentials',
+        ),
+        pytest.param(
+            dict(username='bad', password='credentials', grant_type='password'),
+            401,
+            id='invalid_credentials',
+        ),
+        pytest.param(
+            dict(username='user1', password='password'),
+            422,
+            id='missing_grant_type',
+        ),
+    ],
+)
+def test_post_token_various_cases(client, user1, form_data, expected_status):
+    if form_data.get('username') == 'user1':
+        form_data['username'] = user1.username
+
+    response = client.post('auth/token', data=form_data)
+    assert response.status_code == expected_status
+
+    if expected_status == 200:
+        assert response.headers.get('Cache-Control') == 'no-store'
+        assert response.headers.get('Pragma') == 'no-cache'
 
 
-def test_post_token_bad_credentials(client):
-    perform_get_token_test(client, 401, 'bad', 'credentials')
+# Tests for NOMAD custom tokens (simple token, upload token)
 
 
 def test_get_signature_token(auth_headers, client):
