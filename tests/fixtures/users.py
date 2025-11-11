@@ -107,8 +107,8 @@ class KeycloakMock:
     def tokenauth(self, access_token: str):
         if access_token in self.users:
             return User(**self.users[access_token])
-        else:
-            raise infrastructure.KeycloakError('user does not exist')
+
+        raise infrastructure.KeycloakError('user does not exist')
 
     def add_user(self, user, *args, **kwargs):
         self.id_counter += 1
@@ -125,16 +125,19 @@ class KeycloakMock:
     def get_user(self, user_id=None, username=None, email=None):
         if user_id is not None:
             return User(**self.users[user_id])
-        elif username is not None:
+
+        if username is not None:
             for _, user_values in self.users.items():
                 if user_values['username'] == username:
                     return User(**user_values)
             raise KeyError('Only test user usernames are recognized')
+
         elif email is not None:
             for _, user_values in self.users.items():
                 if user_values['email'] == email:
                     return User(**user_values)
             raise KeyError('Only test user emails are recognized')
+
         else:
             assert False, 'no token based get_user during tests'
 
@@ -145,10 +148,18 @@ class KeycloakMock:
             if query in ' '.join([str(value) for value in user.values()])
         ]
 
-    def basicauth(self, username: str, password: str) -> str:
+    def basicauth(self, username: str, password: str) -> infrastructure.OIDCToken:
         for user in self.users.values():
             if user['username'] == username or user['email'] == username:
-                return user['user_id']
+                return infrastructure.OIDCToken(
+                    access_token=f'fake-access-{user["user_id"]}',
+                    token_type='Bearer',
+                    expires_in=3600,
+                    refresh_expires_in=7200,
+                    refresh_token=f'fake-refresh-{user["user_id"]}',
+                    id_token=f'fake-id-{user["user_id"]}',
+                    scope='openid profile email',
+                )
 
         raise infrastructure.KeycloakError()
 

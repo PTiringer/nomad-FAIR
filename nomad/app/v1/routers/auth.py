@@ -24,10 +24,10 @@ import uuid
 from collections.abc import Callable
 from enum import Enum
 from inspect import Parameter, Signature
-from typing import Annotated, Literal, cast
+from typing import Annotated, cast
 
 import jwt
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
 from fastapi import Query as FastApiQuery
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestFormStrict
 from pydantic import BaseModel
@@ -48,28 +48,15 @@ router = APIRouter()
 
 
 class APITag(str, Enum):
-    DEFAULT = 'auth'
+    OIDC = 'OpenID Connect Token Endpoints'
+    CUSTOM = 'NOMAD Custom Token Endpoints'
 
 
-class Token(BaseModel):
-    access_token: str
-    token_type: Literal['bearer']
-
-
-class SignatureToken(BaseModel):
-    signature_token: str
-
-
-class AppToken(BaseModel):
-    app_token: str
-
+# Functions for resolving User from tokens
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl=f'{root_path}/auth/token', auto_error=False
 )
-
-JWT_ALGORITHM = 'HS256'
-HMAC_DIGESTMOD = hashlib.sha256
 
 
 def _resolve_user(
@@ -353,6 +340,9 @@ def _get_user_from_upload_token(upload_token: str | None) -> User | None:
         )
 
 
+# OpenID Connect (OIDC) endpoints
+
+
 _bad_credentials_response = (
     status.HTTP_401_UNAUTHORIZED,
     {
@@ -364,30 +354,35 @@ _bad_credentials_response = (
 
 @router.post(
     '/token',
-    tags=[APITag.DEFAULT],
-    summary='Get an access token',
+    tags=[APITag.OIDC],
+    summary='Get an OIDC token response',
     responses=create_responses(_bad_credentials_response),
 )
 async def get_token(
+    response: Response,
     form_data: Annotated[OAuth2PasswordRequestFormStrict, Depends()],
-) -> Token:
+) -> infrastructure.OIDCToken:
     """
-    This API uses OAuth as an authentication mechanism. This operation allows you to
-    retrieve an *access token* by posting username and password as form data.
+    Implements the OpenID Connect (OIDC) Resource Owner Password Credentials (ROPC) grant flow.
 
-    This token can be used on subsequent API calls to authenticate
-    you. Operations that support or require authentication will expect the *access token*
-    in an HTTP Authorization header like this: `Authorization: Bearer <access token>`.
+    Clients can obtain a token set by posting a username and password as form data.
+    The response includes `access_token`, `id_token`, `refresh_token`, and related metadata.
+
+    The `access_token` must be included in the `Authorization` header for subsequent
+    API requests, e.g.:
+        Authorization: Bearer <access_token>
 
     On the OpenAPI dashboard, you can use the *Authorize* button at the top.
-
-    You only need to provide `username` and `password` values. You can ignore the other
-    parameters.
     """
     try:
-        access_token = infrastructure.keycloak.basicauth(
+        token = infrastructure.keycloak.basicauth(
             form_data.username, form_data.password
         )
+        # Add mandatory headers (RFC 6749 §5.1)
+        response.headers['Cache-Control'] = 'no-store'
+        response.headers['Pragma'] = 'no-cache'
+        return token
+
     except infrastructure.KeycloakError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -395,12 +390,25 @@ async def get_token(
             headers={'WWW-Authenticate': 'Basic'},
         )
 
-    return Token(access_token=access_token, token_type='bearer')
+
+# NOMAD custom token (endpoints and generation functions)
+
+
+JWT_ALGORITHM = 'HS256'
+HMAC_DIGESTMOD = hashlib.sha256
+
+
+class SignatureToken(BaseModel):
+    signature_token: str
+
+
+class AppToken(BaseModel):
+    app_token: str
 
 
 @router.get(
     '/signature_token',
-    tags=[APITag.DEFAULT],
+    tags=[APITag.CUSTOM],
     summary='Get a signature token',
 )
 async def get_signature_token(
@@ -419,7 +427,7 @@ async def get_signature_token(
 
 @router.get(
     '/app_token',
-    tags=[APITag.DEFAULT],
+    tags=[APITag.CUSTOM],
     summary='Get an app token',
 )
 async def get_app_token(
