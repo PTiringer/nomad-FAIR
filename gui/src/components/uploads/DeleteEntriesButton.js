@@ -53,8 +53,8 @@ export const DeleteEntriesButton = React.memo(({tooltip, disabled, buttonProps, 
     if (!openDeleteConfirmDialog) {
       return
     }
-    const requestBody = selectedEntries?.entry_id
-        ? {owner: 'visible', query: {entry_references: {'target_entry_id:any': selectedEntries?.entry_id || []}}}
+    const requestBody = selectedEntries?.["entry_id:any"]
+        ? {owner: 'visible', query: {entry_references: {'target_entry_id:any': selectedEntries?.["entry_id:any"] || []}}}
         : {owner: 'visible', query: {entry_references: {'target_upload_id:any': selectedEntries?.upload_id ? [selectedEntries?.upload_id] : []}}}
     api.post(`entries/query`, requestBody)
       .then(results => {
