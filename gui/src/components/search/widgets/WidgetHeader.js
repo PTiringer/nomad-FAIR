@@ -15,15 +15,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React, { useMemo, useCallback } from 'react'
-import { makeStyles } from '@material-ui/core'
-import { Cancel } from '@material-ui/icons'
+import React, { useState, useCallback } from 'react'
+import { IconButton, makeStyles } from '@material-ui/core'
+import { Cancel, InfoOutlined } from '@material-ui/icons'
 import PropTypes from 'prop-types'
 import clsx from 'clsx'
 import { useSearchContext } from '../SearchContext'
 import FilterTitle from '../FilterTitle'
 import { Actions, ActionHeader, Action } from '../../Actions'
-import { useBoolState } from '../../../hooks'
+import { HelpDialog } from '../../Help'
 
 /**
  * The header displayed by all widgets.
@@ -60,44 +60,32 @@ const WidgetHeader = React.memo(({
   const styles = useStyles({classes: classes})
   const { useRemoveWidget } = useSearchContext()
   const removeWidget = useRemoveWidget()
-  const [isDragging, setDragging, setNotDragging] = useBoolState(false)
-  const [isTooltipOpen, openTooltip, closeTooltip] = useBoolState(false)
-
-  const handleMouseDown = useCallback((event) => {
-    setDragging()
-    closeTooltip()
-  }, [closeTooltip, setDragging])
-
-  const handleMouseUp = useCallback(() => {
-    setNotDragging()
-  }, [setNotDragging])
+  const [open, setOpen] = useState(false)
 
   const handleRemove = useCallback(() => {
     removeWidget(id)
   }, [removeWidget, id])
 
-  const tooltipProps = useMemo(() => ({
-    open: isTooltipOpen,
-    onClose: closeTooltip,
-    onOpen: () => !isDragging && openTooltip()
-  }), [isTooltipOpen, closeTooltip, isDragging, openTooltip])
+  const handleToggleDialog = useCallback(() => {
+    setOpen(old => !old)
+  }, [])
 
   return <Actions className={clsx(styles.root, className)}>
     <ActionHeader disableSpacer>
       <div
         className={clsx("dragHandle", styles.handle)}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
       >
         <FilterTitle
           variant="subtitle2"
           quantity={quantity}
           label={label}
-          description={description}
           disableUnit={disableUnit}
-          TooltipProps={tooltipProps}
+          TooltipProps={{open: false}}
           full
         />
+        {description && <IconButton size="small" onClick={handleToggleDialog}>
+          <InfoOutlined style={{fontSize: 16}}/>
+        </IconButton>}
         <div className={styles.spacer}/>
       </div>
     </ActionHeader>
@@ -105,6 +93,7 @@ const WidgetHeader = React.memo(({
     <Action tooltip='Remove' onClick={handleRemove} data-testid={`${id}-remove-widget`}>
       <Cancel fontSize="small"/>
     </Action>
+    {description && <HelpDialog heading={label} text={description} open={open} onClose={handleToggleDialog}/>}
   </Actions>
 })
 

@@ -356,6 +356,16 @@ export const WidgetTermsEdit = React.memo((props) => {
           />
         </WidgetEditOption>
         <WidgetEditOption>
+          <InputTextField
+            label="Description"
+            fullWidth
+            value={settings?.description}
+            multiline
+            maxRows={10}
+            onChange={(event) => handleChange('description', event.target.value)}
+          />
+        </WidgetEditOption>
+        <WidgetEditOption>
           <TextField
             select
             fullWidth

@@ -1074,6 +1074,14 @@ class Widget(ConfigBaseModel):
         None,
         description='Custom widget title. If not specified, a widget-specific default title is used.',
     )
+    description: str | None = Field(
+        None,
+        description="""
+        Optional description of the widget and the data it is showing. Can contain
+        markdown notation. If populated, an icon is shown next to the title that can be
+        clicked to show the description.
+        """,
+    )
     type: str = Field(description='Used to identify the widget type.')
     layout: dict[BreakpointEnum, Layout] = Field(
         description="""

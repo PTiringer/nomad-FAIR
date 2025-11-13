@@ -95,7 +95,6 @@ WidgetEditDialog.propTypes = {
   onAccept: PropTypes.func,
   error: PropTypes.bool,
   children: PropTypes.node
-
 }
 
 /**
