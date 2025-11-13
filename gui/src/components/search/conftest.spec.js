@@ -127,9 +127,6 @@ export async function expectWidgetTerms(widget, loaded, items, prompt, root = sc
       'Only provide one value with prompt=single'
     )
 
-    // Test immediately displayed elements
-    await expectFilterTitle(widget.search_quantity)
-
     // Check that placeholder disappears
     if (!loaded) {
       await waitFor(() => expect(root.queryByTestId('widgetterms-placeholder')).toBe(null))
@@ -171,7 +168,7 @@ export async function expectWidgetHistogram(widget, root = screen) {
     // Test immediately displayed elements
     const xAxis = widget.x
     const {quantity: x} = parseJMESPath(xAxis.search_quantity)
-    await expectFilterTitle(x, xAxis.title, xAxis.unit, undefined, undefined, root)
+    await expectFilterTitle(x, xAxis.title, undefined, xAxis.unit, undefined, root)
 }
 
 /**

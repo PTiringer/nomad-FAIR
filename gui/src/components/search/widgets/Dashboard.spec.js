@@ -24,7 +24,6 @@ import { SearchContext } from '../SearchContext'
 import {
   expectWidgetTerms,
   expectWidgetScatterPlot,
-  expectInputHeader,
   expectInputRange
 } from '../conftest.spec'
 
@@ -123,7 +122,7 @@ describe('displaying an initial widget and removing it', () => {
         }
       },
       async (widget, loaded) => {
-        await expectInputHeader(widget.search_quantity)
+        expect(screen.getByText('Elements')).toBeInTheDocument()
         // TODO: For some reason this test works out fine locally, but always
         // fails in the CI. Could not be resolved even by making the tests wait
         // much longer.

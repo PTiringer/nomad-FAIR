@@ -186,6 +186,16 @@ export const WidgetPeriodicTableEdit = React.memo((props) => {
             onChange={(event) => handleChange('title', event.target.value)}
           />
         </WidgetEditOption>
+        <WidgetEditOption>
+          <InputTextField
+            label="Description"
+            fullWidth
+            value={settings?.description}
+            multiline
+            maxRows={10}
+            onChange={(event) => handleChange('description', event.target.value)}
+          />
+        </WidgetEditOption>
       </WidgetEditGroup>
     </WidgetEditDialog>
 })
@@ -196,7 +206,8 @@ WidgetPeriodicTableEdit.propTypes = {
   visible: PropTypes.bool,
   quantity: PropTypes.string,
   scale: PropTypes.string,
-  onClose: PropTypes.func
+  onClose: PropTypes.func,
+  description: PropTypes.string
 }
 
 export const schemaWidgetPeriodicTable = schemaWidget.shape({
