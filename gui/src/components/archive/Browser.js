@@ -128,7 +128,7 @@ export const Browser = React.memo(function Browser({adaptor, form}) {
   const rootRef = useRef()
   const outerRef = useRef()
   const innerRef = useRef()
-  const { pathname } = useLocation()
+  const { pathname, hash } = useLocation()
   const { url } = useRouteMatch()
 
   const { api } = useApi()
@@ -178,7 +178,22 @@ export const Browser = React.memo(function Browser({adaptor, form}) {
     }
     computingForUrl.current = url
     const rootPath = url.endsWith('/') ? url.substring(0, url.length - 1) : url
-    const path = pathname?.replace(/\/(-?\d*)(\/|$)/g, ":$1/").replace(/\/$/, "")
+    // memoize path; translate numeric segments only for hash paths, and special-case outputs index in pathname
+    const path = (() => {
+      let base = pathname.replace(/\/files:(-?\d+)(?=\/|$)/g, '/files/$1')
+
+      const k = base.indexOf('/data')
+      if (k !== -1) {
+        const pre = base.slice(0, k)
+        const suf = base.slice(k).replace(/\/(-?\d+)(?=\/|$)/g, ':$1')
+        base = pre + suf
+      }
+      base = base.replace(/\/$/, '')
+      const frag = hash && hash.startsWith('#/')
+        ? hash.slice(2).replace(/\/(-?\d+)(?=\/|$)/g, ':$1')
+        : ''
+      return frag ? (base + '/' + frag).replace(/\/$/, '') : base
+    })()
     const segments = ['root'].concat(path.substring(url.length).split('/').filter(segment => segment))
     const oldLanes = lanes.current
     const newLanes = []
@@ -254,7 +269,7 @@ export const Browser = React.memo(function Browser({adaptor, form}) {
     lanes.current = newLanes
     computingForUrl.current = null
     internalUpdate()
-  }, [adaptor, api, dataStore, internalUpdate, url, pathname])
+  }, [adaptor, api, dataStore, hash, internalUpdate, url, pathname])
 
   // Method used to invalidate and refresh lanes from the provided lane index and forward.
   const invalidateLanesFromIndex = useCallback((index) => {
