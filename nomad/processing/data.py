@@ -1834,9 +1834,23 @@ class Upload(Proc):
         self._upload_files: UploadFiles = None
         self.archive_context = ServerContext(self)
 
-    def reset_entry_processing_status(self):
-        """Reset the process status of all entries in the upload."""
-        Entry.objects(upload_id=self.upload_id).update(unset__process_status=1)
+    def reset_entry_processing_status(
+        self,
+        path_filter: str | None = None,
+        updated_files: set[str] | None = None,
+    ):
+        """
+        Reset the process status of all entries in the upload that will be reprocessed.
+        """
+        entries_to_reset = []
+        for entry in Entry.objects(upload_id=self.upload_id):
+            if self._passes_process_filter(entry.mainfile, path_filter, updated_files):
+                entries_to_reset.append(entry.entry_id)
+
+        if entries_to_reset:
+            Entry.objects(
+                upload_id=self.upload_id, entry_id__in=entries_to_reset
+            ).update(set__process_status=ProcessStatus.READY)
 
     async def await_workflows(self):
         self.reload()
