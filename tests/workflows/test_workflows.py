@@ -148,6 +148,14 @@ def mock_data_layer(monkeypatch):
     mock_processing_timeouts.publish_upload_timeout = 7200
     mock_processing_timeouts.publish_externally_timeout = 7200
     mock_processing_timeouts.process_example_upload_timeout = 7200
+    mock_processing_timeouts.setup_upload_timeout = 7200
+    mock_processing_timeouts.update_files_timeout = 7200
+    mock_processing_timeouts.match_all_timeout = 7200
+    mock_processing_timeouts.next_level_entries_timeout = 7200
+    mock_processing_timeouts.cleanup_timeout = 7200
+    mock_processing_timeouts.process_upload_success_timeout = 7200
+    mock_processing_timeouts.remove_workflow_id_timeout = 7200
+    mock_processing_timeouts.cleanup_workflow_tmp_dir_timeout = 7200
     mock_temporal_config.processing_timeouts = mock_processing_timeouts
     mock_config.reprocess = mock_reprocess
     mock_config.temporal = mock_temporal_config

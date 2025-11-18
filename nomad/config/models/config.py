@@ -481,7 +481,7 @@ class ProcessingTimeouts(ConfigBaseModel):
         description='The maximum interval in seconds that an entry processing activity can run without reporting progress (sending a heartbeat) before Temporal considers it failed.',
     )
     delete_upload_timeout: int = Field(
-        7200,  # 2 hours
+        3600,  # 1 hour
         description='The timeout for activities in the delete upload workflow in seconds.',
     )
     process_entry_timeout: int = Field(
@@ -489,28 +489,60 @@ class ProcessingTimeouts(ConfigBaseModel):
         description='The timeout for the process entry activity in seconds.',
     )
     process_upload_timeout: int = Field(
-        7200,  # 2 hours
+        3600,  # 1 hour
         description='The timeout for activities in the process upload workflow in seconds.',
     )
     edit_upload_metadata_timeout: int = Field(
-        7200,  # 2 hours
+        3600,  # 1 hour
         description='The timeout for activities in the edit upload metadata workflow in seconds.',
     )
     import_bundle_timeout: int = Field(
-        7200,  # 2 hours
+        3600,  # 1 hour
         description='The timeout for activities in the import bundle workflow in seconds.',
     )
     publish_upload_timeout: int = Field(
-        7200,  # 2 hours
+        3600,  # 1 hour
         description='The timeout for activities in the publish upload workflow in seconds.',
     )
     publish_externally_timeout: int = Field(
-        7200,  # 2 hours
+        3600,  # 1 hour
         description='The timeout for activities in the publish externally workflow in seconds.',
     )
     process_example_upload_timeout: int = Field(
-        7200,  # 2 hours
+        3600,  # 1 hour
         description='The timeout for activities in the process example upload workflow in seconds.',
+    )
+    setup_upload_timeout: int = Field(
+        300,  # 5 minutes
+        description='The timeout for the setup upload activity in seconds.',
+    )
+    update_files_timeout: int = Field(
+        3600,  # 1 hour
+        description='The timeout for the update files activity in seconds.',
+    )
+    match_all_timeout: int = Field(
+        3600,  # 1 hour
+        description='The timeout for the match all activity in seconds.',
+    )
+    next_level_entries_timeout: int = Field(
+        3600,  # 1 hour
+        description='The timeout for the next level entries activity in seconds.',
+    )
+    cleanup_timeout: int = Field(
+        3600,  # 1 hour
+        description='The timeout for the cleanup activity in seconds.',
+    )
+    process_upload_success_timeout: int = Field(
+        300,  # 5 minutes
+        description='The timeout for the process upload success activity in seconds.',
+    )
+    remove_workflow_id_timeout: int = Field(
+        300,  # 5 minutes
+        description='The timeout for the remove workflow id activity in seconds.',
+    )
+    cleanup_workflow_tmp_dir_timeout: int = Field(
+        300,  # 5 minutes
+        description='The timeout for the cleanup workflow tmp dir activity in seconds.',
     )
 
 
