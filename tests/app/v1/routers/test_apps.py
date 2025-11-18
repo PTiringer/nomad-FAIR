@@ -121,6 +121,20 @@ def test_search_quantities_suggestions_and_exact_match(client, no_warn):
     assert example in quantities
 
 
+def test_search_quantities_filter_by_dtype(client, no_warn):
+    resp = client.post(
+        f'{BASE}/search-quantities',
+        json={
+            'query': {'dtype': ['string']},
+            'pagination': {'page': 1, 'page_size': 50},
+        },
+    )
+    assert resp.status_code == 200
+    out = resp.json()
+    assert out, 'Expected some aggregatable quantities'
+    assert all(item['dtype'] == 'string' for item in out)
+
+
 def test_search_quantities_filter_by_aggregatable(client, no_warn):
     resp = client.post(
         f'{BASE}/search-quantities',

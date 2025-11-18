@@ -83,7 +83,7 @@ _init_lock = Lock()
 _initialized = False
 
 
-class DataType(Enum):
+class DataType(str, Enum):
     INT = 'int'
     FLOAT = 'float'
     TIMESTAMP = 'timestamp'
@@ -386,7 +386,7 @@ def match_search_quantities(
     filtered = [
         sq
         for sq in search_quantities
-        if (dtypes is None or sq.dtype in dtypes)
+        if (dtypes is None or (sq.dtype.value if sq.dtype else None) in dtypes)
         and (query.aggregatable is None or query.aggregatable == sq.aggregatable)
         and (input_norm is None or input_norm in sq.quantity_normalized)
     ]
