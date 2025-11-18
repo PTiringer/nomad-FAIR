@@ -157,7 +157,9 @@ class BatchProcessEntriesWorkflow:
                         batch_dir_path=entry_batch_directory,
                         batch_id=batch_id,
                     ),
-                    schedule_to_close_timeout=timeout,
+                    schedule_to_close_timeout=timedelta(
+                        seconds=config.temporal.processing_timeouts.next_level_entries_timeout
+                    ),
                     retry_policy=retry_policy,
                 )
 
@@ -229,7 +231,9 @@ class ProcessUploadWorkflow:
             await workflow.execute_activity(
                 setup_upload_for_workflow_process,
                 upload_workflow_input,
-                schedule_to_close_timeout=timeout,
+                schedule_to_close_timeout=timedelta(
+                    seconds=config.temporal.processing_timeouts.setup_upload_timeout
+                ),
                 retry_policy=retry_policy,
             )
 
@@ -237,7 +241,9 @@ class ProcessUploadWorkflow:
             updated_files = await workflow.execute_activity(
                 update_files_activity,
                 input,
-                schedule_to_close_timeout=timeout,
+                schedule_to_close_timeout=timedelta(
+                    seconds=config.temporal.processing_timeouts.update_files_timeout
+                ),
                 retry_policy=retry_policy,
             )
 
@@ -257,7 +263,9 @@ class ProcessUploadWorkflow:
             await workflow.execute_activity(
                 match_all_activity,
                 parse_all_input,
-                schedule_to_close_timeout=timeout,
+                schedule_to_close_timeout=timedelta(
+                    seconds=config.temporal.processing_timeouts.match_all_timeout
+                ),
                 retry_policy=retry_policy,
             )
 
@@ -266,7 +274,9 @@ class ProcessUploadWorkflow:
                 next_level_entries_result = await workflow.execute_activity(
                     next_level_entries,
                     parse_all_input,
-                    schedule_to_close_timeout=timeout,
+                    schedule_to_close_timeout=timedelta(
+                        seconds=config.temporal.processing_timeouts.next_level_entries_timeout
+                    ),
                     retry_policy=retry_policy,
                 )
 
@@ -294,7 +304,9 @@ class ProcessUploadWorkflow:
             await workflow.execute_activity(
                 cleanup_activity,
                 input,
-                schedule_to_close_timeout=timeout,
+                schedule_to_close_timeout=timedelta(
+                    seconds=config.temporal.processing_timeouts.cleanup_timeout
+                ),
                 retry_policy=retry_policy,
             )
 
@@ -302,7 +314,9 @@ class ProcessUploadWorkflow:
             await workflow.execute_activity(
                 process_upload_success,
                 upload_workflow_input,
-                schedule_to_close_timeout=timeout,
+                schedule_to_close_timeout=timedelta(
+                    seconds=config.temporal.processing_timeouts.process_upload_success_timeout
+                ),
                 retry_policy=retry_policy,
             )
 
@@ -327,13 +341,17 @@ class ProcessUploadWorkflow:
             await workflow.execute_activity(
                 remove_workflow_id_activity,
                 upload_workflow_input,
-                schedule_to_close_timeout=timeout,
+                schedule_to_close_timeout=timedelta(
+                    seconds=config.temporal.processing_timeouts.remove_workflow_id_timeout
+                ),
                 retry_policy=retry_policy,
             )
             await workflow.execute_activity(
                 cleanup_workflow_tmp_dir_activity,
                 input.workflow_tmp_dir,
-                schedule_to_close_timeout=timeout,
+                schedule_to_close_timeout=timedelta(
+                    seconds=config.temporal.processing_timeouts.cleanup_workflow_tmp_dir_timeout
+                ),
                 retry_policy=retry_policy,
             )
 
