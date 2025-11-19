@@ -37,7 +37,7 @@ const columns = [
   {search_quantity: 'results.eln.lab_ids', title: 'IDs'}
 ]
 
-context.colums = columns
+context.columns = columns
 context.rows.details = { enabled: false }
 context.rows.actions = { enabled: true }
 
