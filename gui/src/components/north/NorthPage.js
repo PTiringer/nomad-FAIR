@@ -183,8 +183,11 @@ const NorthPage = React.memo(() => {
       <Box marginY={2}>
         {Object
           .keys(tools)
-          .map(key => ({name: key, title: key, ...tools[key]}))
-          .map((tool, index) => (
+          .map(key => ({
+            name: key,
+            title: tools[key].display_name ?? key,
+            ...tools[key]
+          })).map((tool, index) => (
             <NorthTool key={index} tool={tool}>
               <NorthToolAccordion
                 expanded={tool.name === expanded}

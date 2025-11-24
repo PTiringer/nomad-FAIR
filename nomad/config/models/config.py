@@ -1153,7 +1153,12 @@ class Config(ConfigBaseModel):
         function.
         """
         from nomad.config import _merge, _plugins
-        from nomad.config.models.plugins import Normalizer, Parser, Schema
+        from nomad.config.models.plugins import (
+            Normalizer,
+            NorthToolEntryPoint,
+            Parser,
+            Schema,
+        )
 
         if self.plugins is None:
 
@@ -1232,6 +1237,13 @@ class Config(ConfigBaseModel):
                 plugin_entry_point_ids.add(key)
             _plugins['plugin_packages'] = plugin_packages
 
+            # Handle NORTH tools defined in nomad.yaml
+            for key, tool in self.north.tools.options.items():
+                if key not in plugin_entry_point_ids:
+                    _plugins['entry_points']['options'][key] = NorthToolEntryPoint(
+                        id=key, north_tool=tool
+                    )
+
             # Handle plugins defined in nomad.yaml (old plugin mechanism)
             def load_plugin_yaml(name, values: dict[str, Any]):
                 """Loads plugin metadata from nomad_plugin.yaml"""
@@ -1264,20 +1276,21 @@ class Config(ConfigBaseModel):
 
             for key, plugin in _plugins['entry_points']['options'].items():
                 if key not in plugin_entry_point_ids:
-                    # Handle new style plugins that are declared directly in nomad.yaml
-                    if plugin.get('entry_point_type') and not plugin.get('id'):
-                        plugin['id'] = key
-                    # Update information for old style plugins
-                    else:
-                        plugin_config = load_plugin_yaml(key, plugin)
-                        plugin_config['id'] = key
-                        plugin_class = {
-                            'parser': Parser,
-                            'normalizer': Normalizer,
-                            'schema': Schema,
-                        }.get(plugin_config['plugin_type'])
-                        _plugins['entry_points']['options'][key] = (
-                            plugin_class.model_validate(plugin_config)
-                        )
+                    if isinstance(plugin, dict):
+                        # Handle new style plugins that are declared directly in nomad.yaml
+                        if plugin.get('entry_point_type') and not plugin.get('id'):
+                            plugin['id'] = key
+                        # Update information for old style plugins
+                        else:
+                            plugin_config = load_plugin_yaml(key, plugin)
+                            plugin_config['id'] = key
+                            plugin_class = {
+                                'parser': Parser,
+                                'normalizer': Normalizer,
+                                'schema': Schema,
+                            }.get(plugin_config['plugin_type'])
+                            _plugins['entry_points']['options'][key] = (
+                                plugin_class.model_validate(plugin_config)
+                            )
 
             self.plugins = Plugins.model_validate(_plugins)

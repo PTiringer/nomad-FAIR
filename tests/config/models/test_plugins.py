@@ -22,9 +22,11 @@ import tempfile
 import pytest
 
 from nomad.config import Config
+from nomad.config.models.north import NORTHTool
 from nomad.config.models.plugins import (
     APIEntryPoint,
     ExampleUploadEntryPoint,
+    NorthToolEntryPoint,
     UploadResource,
 )
 
@@ -433,3 +435,34 @@ def test_api_entry_point_invalid(config, error, value):
     if not error:
         entry_point = MyAPIEntryPoint(**config)
         assert entry_point.prefix == value
+
+
+def test_north_tool_entry_point():
+    tool = NORTHTool(
+        short_description='A test tool',
+        description='A test tool for testing',
+        image='test_image',
+    )
+    entry_point = NorthToolEntryPoint(
+        id='test_tool',
+        north_tool=tool,
+    )
+
+    assert entry_point.load() == tool
+    assert entry_point.dict_safe() == {
+        'id': 'test_tool',
+        'entry_point_type': 'north_tool',
+        'north_tool': {
+            'short_description': 'A test tool',
+            'description': 'A test tool for testing',
+            'image': 'test_image',
+            'image_pull_policy': 'Always',
+            'privileged': False,
+            'seccomp_unconfined': False,
+            'use_gpu': False,
+            'with_path': False,
+            'file_extensions': [],
+            'maintainer': [],
+            'external_mounts': [],
+        },
+    }

@@ -160,7 +160,13 @@ def get_gui_artifacts_js() -> str:
         'searchQuantities': _generate_search_quantities(),
         'metainfo': _generate_metainfo(all_metainfo_packages),
         'parserMetadata': code_metadata,
-        'northTools': {k: v.dict() for k, v in config.north.tools.filtered_items()},
+        'northTools': {
+            plugin.id: plugin.north_tool.dict()
+            for plugin in config.plugins.entry_points.filtered_values()
+            if plugin.entry_point_type == 'north_tool'
+        }
+        if config.plugins
+        else {},
         'unitList': unit_list_json,
         'unitPrefixes': prefixes_json,
     }

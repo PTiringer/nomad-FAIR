@@ -18,7 +18,7 @@
 
 import os
 from enum import Enum
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -28,14 +28,13 @@ from pydantic import BaseModel
 from nomad.app.v1.routers.auth import _generate_simple_token, get_current_user
 from nomad.config import config
 from nomad.config.models.north import NORTHTool
+from nomad.config.models.plugins import NorthToolEntryPoint
 from nomad.mongo.groups import MongoUserGroup
 from nomad.processing import Upload
 from nomad.utils import get_logger, slugify, strip
 
 from ..models import HTTPExceptionModel, User
 from ..utils import create_responses
-
-TOOLS = {k: v for k, v in config.north.tools.filtered_items()}
 
 router = APIRouter()
 
@@ -119,22 +118,41 @@ def _get_status(tool: ToolModel, user: User) -> ToolModel:
     response_model_exclude_none=True,
 )
 async def get_tools(user: Annotated[User, Depends(get_current_user())]):
+    north_tools: list[NorthToolEntryPoint] = []
+    for plugin in config.plugins.entry_points.filtered_values():
+        if plugin.entry_point_type == 'north_tool':
+            if isinstance(plugin, NorthToolEntryPoint):
+                north_tools.append(plugin)
+
     return ToolsResponseModel(
         data=[
-            _get_status(ToolModel(name=name, **tool.dict()), user)
-            for name, tool in TOOLS.items()
+            _get_status(
+                ToolModel(
+                    name=tool.north_tool.display_name
+                    if tool.north_tool.display_name is not None
+                    else tool.id,
+                    **tool.north_tool.dict(),
+                ),
+                user,
+            )
+            for tool in north_tools
         ]
     )
 
 
 async def tool(name: str) -> ToolModel:
-    if name not in TOOLS:
+    try:
+        plugin = config.get_plugin_entry_point(name)
+        if getattr(plugin, 'entry_point_type', None) != 'north_tool':
+            raise KeyError
+    except KeyError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail='The tools does not exist.'
         )
 
-    tool = TOOLS[name]
-    return ToolModel(name=name, **tool.dict())
+    north_tool = cast(NorthToolEntryPoint, plugin).north_tool
+
+    return ToolModel(name=name, **north_tool.dict())
 
 
 @router.get(
