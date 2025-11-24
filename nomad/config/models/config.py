@@ -470,6 +470,10 @@ class Elastic(ConfigBaseModel):
     timeout: int = 60
     bulk_timeout: int = 600
     bulk_size: int = 1000
+    max_payload_size: int = Field(
+        90 * 1024 * 1024,  # 90 MB
+        description='Maximum payload size sent to the Elasticsearch server in bytes. Note that Elasticsearch has an internal limit of 100MB that you can configure as well.',
+    )
     entries_per_material_cap: int = 1000
     entries_index: str = 'nomad_entries_v1'
     materials_index: str = 'nomad_materials_v1'

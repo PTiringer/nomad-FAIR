@@ -20,6 +20,7 @@ import json
 from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
@@ -382,6 +383,45 @@ def test_quantity_values(indices, example_data):
         'test_entry_id_2',
         'test_entry_id_3',
     ]
+
+
+def test_index_large_payload(indices, elastic_function, user1, monkeypatch):
+    monkeypatch.setattr('nomad.config.elastic.max_payload_size', 10)
+
+    data = ExampleData(main_author=user1)
+
+    upload_id = 'test_large_upload_id'
+
+    data.create_upload(upload_id=upload_id, published=True, embargo_length=0)
+
+    num_entries = 10  # A number large enough to trigger batching
+
+    for i in range(num_entries):
+        data.create_entry(
+            upload_id=upload_id,
+            entry_id=f'test_entry_id_{i}',
+        )
+
+    # Call the index function, which should now handle batching internally
+    from nomad import search
+    from nomad.metainfo import elasticsearch_extension
+
+    with patch(
+        'nomad.metainfo.elasticsearch_extension._generate_entry_batches',
+        wraps=elasticsearch_extension._generate_entry_batches,
+    ) as mock_generate_entry_batches:
+        search.index(list(data.archives.values()), refresh=True)
+        assert mock_generate_entry_batches.called
+
+    # Verify that all entries are indexed
+    results = search.search(owner='all', query={'upload_id': upload_id})
+
+    assert results.pagination.total == num_entries
+
+    for i in range(num_entries):
+        entry_id = f'test_entry_id_{i}'
+
+        assert search.entry_index.get(id=entry_id) is not None
 
 
 @pytest.mark.parametrize(
