@@ -160,7 +160,7 @@ import json
 import math
 import re
 from collections import defaultdict
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from typing import TYPE_CHECKING, Any, Optional, cast
 
 from elasticsearch.exceptions import TransportError
@@ -1297,71 +1297,106 @@ def index_entries_with_materials(entries: list, refresh: bool = False):
     update_materials(entries, refresh=refresh)
 
 
+def _generate_entry_batches(
+    entries: list[dict[str, Any]],
+    entry_type,
+    max_size: int,
+    logger,
+) -> Iterator[list[dict[str, Any]]]:
+    """
+    Generate batches of Elasticsearch bulk actions from entries.
+
+    Streams through entries and yields batches of action-document pairs that fit
+    within max_size. Memory efficient - generates batches on-the-fly without
+    building an intermediate list.
+
+    Args:
+        entries: List of entry dictionaries with 'entry_id' keys.
+        entry_type: Object with create_index_doc method for converting entries.
+        max_size: Maximum batch size in bytes.
+        logger: Logger for error reporting.
+
+    Yields:
+        Lists of alternating action and document dicts for ES bulk indexing.
+    """
+    current_batch: list[dict[str, Any]] = []
+    current_size = 0
+
+    for entry in entries:
+        try:
+            entry_index_doc = entry_type.create_index_doc(entry)
+            action = {'index': {'_id': entry['entry_id']}}
+
+            pair_size = (_estimate_bytes(action) or 0) + (
+                _estimate_bytes(entry_index_doc) or 0
+            )
+
+            # Start new batch if adding this pair would exceed max_size
+            if current_size + pair_size > max_size and current_batch:
+                yield current_batch
+                current_batch = []
+                current_size = 0
+
+            current_batch.extend([action, entry_index_doc])
+            current_size += pair_size
+
+        except Exception as e:
+            logger.error(
+                'could not create entry index doc',
+                entry_id=entry['entry_id'],
+                exc_info=e,
+            )
+
+    # Yield final batch if it contains any items
+    if current_batch:
+        yield current_batch
+
+
 def index_entries(entries: list, refresh: bool = False) -> dict[str, str]:
     """
     Upserts the given entries in the entry index. Optionally updates the materials index
     as well. Returns a dictionary of the format {entry_id: error_message} for all entries
     that failed to index.
     """
-    rv = {}
-    # split into reasonably sized problems
-    if len(entries) > config.elastic.bulk_size:
-        for entries_part in [
-            entries[i : i + config.elastic.bulk_size]
-            for i in range(0, len(entries), config.elastic.bulk_size)
-        ]:
-            errors = index_entries(entries_part, refresh=refresh)
-            rv.update(errors)
-        return rv
-
-    if len(entries) == 0:
-        return rv
+    if not entries:
+        return {}
 
     logger = utils.get_logger('nomad.search', n_entries=len(entries))
+    MAX_PAYLOAD_SIZE = config.elastic.max_payload_size
+    rv = {}
 
-    with utils.timer(logger, 'prepare bulk index of entries actions and docs'):
-        actions_and_docs = []
-        for entry in entries:
-            try:
-                entry_index_doc = entry_type.create_index_doc(entry)
-
-                actions_and_docs.append(dict(index=dict(_id=entry['entry_id'])))
-                actions_and_docs.append(entry_index_doc)
-            except Exception as e:
-                logger.error(
-                    'could not create entry index doc',
-                    entry_id=entry['entry_id'],
-                    exc_info=e,
-                )
-
-        timer_kwargs: dict[str, Any] = {}
+    def perform_bulk(batch):
+        nonlocal rv
+        timer_kwargs: dict[str, Any] = {'n_actions': len(batch)}
         try:
-            import json
-
-            timer_kwargs['size'] = len(json.dumps(actions_and_docs))
-            timer_kwargs['n_actions'] = len(actions_and_docs)
+            timer_kwargs['size'] = _estimate_bytes(batch)
         except Exception:
             pass
+        with utils.timer(
+            logger,
+            'perform bulk index of entries',
+            lnr_event='failed to bulk index entries',
+            **timer_kwargs,
+        ):
+            indexing_result = entry_index.bulk(
+                body=batch,
+                refresh=refresh,
+                timeout=f'{config.elastic.bulk_timeout}s',
+                request_timeout=config.elastic.bulk_timeout,
+            )
+            if indexing_result.get('errors'):
+                for item in indexing_result.get('items', []):
+                    status = item.get('index', {}).get('status')
+                    if status is not None and status >= 400:
+                        rv[item['index']['_id']] = str(item['index']['error'])
 
-    with utils.timer(
-        logger,
-        'perform bulk index of entries',
-        lnr_event='failed to bulk index entries',
-        **timer_kwargs,
-    ):
-        indexing_result = entry_index.bulk(
-            body=actions_and_docs,
-            refresh=refresh,
-            timeout=f'{config.elastic.bulk_timeout}s',
-            request_timeout=config.elastic.bulk_timeout,
-        )
-        # Extract only the errors from the indexing_result
-        if indexing_result['errors']:
-            for item in indexing_result['items']:
-                status = item['index'].get('status')
-                if status is not None and status >= 400:
-                    rv[item['index']['_id']] = str(item['index']['error'])
-        return rv
+    with utils.timer(logger, 'bulk index of entries'):
+        for batch in _generate_entry_batches(
+            entries, entry_type, MAX_PAYLOAD_SIZE, logger
+        ):
+            perform_bulk(batch)
+
+    return rv
 
 
 def update_materials(entries: list, refresh: bool = False):
