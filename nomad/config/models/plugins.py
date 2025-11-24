@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from nomad.actions.shared.constant import TaskQueue
 from nomad.common import download_file, get_package_path, is_safe_relative_path, is_url
+from nomad.config.models.north import NORTHTool
 
 from .common import Options
 from .ui import App
@@ -801,6 +802,25 @@ class Parser(PythonPluginBase):
         return MatchingParserInterface(**data)
 
 
+class NorthToolEntryPoint(EntryPoint):
+    """Base model for NORTH tool plugin entry points."""
+
+    entry_point_type: Literal['north_tool'] = Field(
+        'north_tool',
+        description='Determines the entry point type.',
+        json_schema_extra={'hidden': True},
+    )
+    north_tool: NORTHTool
+
+    def load(self) -> NORTHTool:
+        return self.north_tool
+
+    def dict_safe(self):
+        return self.model_dump(
+            include=NorthToolEntryPoint.model_fields.keys(), exclude_none=True
+        )
+
+
 EntryPointType = Union[  # noqa
     Schema,
     Normalizer,
@@ -812,6 +832,7 @@ EntryPointType = Union[  # noqa
     ExampleUploadEntryPoint,
     APIEntryPoint,
     ActionEntryPoint,
+    NorthToolEntryPoint,
 ]
 
 

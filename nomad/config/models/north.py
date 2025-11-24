@@ -45,6 +45,10 @@ class NORTHExternalMount(BaseModel):
 
 
 class NORTHTool(BaseModel):
+    display_name: str | None = Field(
+        None,
+        description='A display name for the tool, e.g. shown in the NOMAD GUI.',
+    )
     short_description: str | None = Field(
         None,
         description='A short description of the tool, e.g. shown in the NOMAD GUI.',
