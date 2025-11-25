@@ -259,8 +259,8 @@ class Keycloak:
 
     def decode_access_token(self, access_token: str) -> dict:
         try:
-            kid = jwt.get_unverified_header(access_token)['kid']
-            key = keycloak._public_keys.get(kid)
+            key_id = jwt.get_unverified_header(access_token)['kid']
+            key = self._public_keys.get(key_id)
             if key is None:
                 logger.error(
                     'The user provided keycloak public key does not exist. Does the UI use the right realm?'
@@ -274,19 +274,18 @@ class Keycloak:
                     )
                 )
 
-            issuer = f'{config.keycloak.public_server_url.rstrip("/")}/realms/{config.keycloak.realm_name}'
-            options = dict(verify_aud=False, verify_exp=True, verify_iss=True)
             return jwt.decode(
                 access_token,
                 key=key,
                 algorithms=['RS256'],
-                options=options,
-                issuer=issuer,
+                options=dict(verify_aud=False),
+                issuer=self._oidc_client.well_known()['issuer'],
             )
-        except jwt.InvalidTokenError:
+        except jwt.InvalidTokenError as e:
+            logger.error('Keycloak token validation failed', exc_info=e)
             raise KeycloakError(
                 'Could not validate credentials. The given token is invalid.'
-            )
+            ) from e
 
     def tokenauth(self, access_token: str) -> 'User':
         """
