@@ -169,26 +169,26 @@ def test_tokenauth_missing_sub(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    'payload,issuer_config,expected_cause',
+    'payload_factory, issuer_config, expected_cause',
     [
         # Expired token
         (
-            {
+            lambda now: {
                 'sub': 'user1',
-                'exp': int(time.time()) - 1000,
-                'iat': int(time.time()) - 2000,
+                'exp': now - 1000,
+                'iat': now - 2000,
                 'iss': 'https://issuer.example',
             },
             'https://issuer.example',
             jwt.ExpiredSignatureError,
         ),
-        # nbf (not before) in future
+        # nbf (not before) in the future
         (
-            {
+            lambda now: {
                 'sub': 'user1',
-                'nbf': int(time.time()) + 5000,
-                'iat': int(time.time()),
-                'exp': int(time.time()) + 6000,
+                'nbf': now + 5000,
+                'iat': now,
+                'exp': now + 6000,
                 'iss': 'issuer',
             },
             'issuer',
@@ -196,10 +196,10 @@ def test_tokenauth_missing_sub(monkeypatch):
         ),
         # Wrong issuer
         (
-            {
+            lambda now: {
                 'sub': 'user1',
-                'iat': int(time.time()),
-                'exp': int(time.time()) + 300,
+                'iat': now,
+                'exp': now + 300,
                 'iss': 'WRONG-ISSUER',
             },
             'correct-issuer',
@@ -207,21 +207,24 @@ def test_tokenauth_missing_sub(monkeypatch):
         ),
         # Ignore audience (success)
         (
-            {
+            lambda now: {
                 'sub': 'user123',
                 'aud': 'BAD-AUD',
-                'iat': int(time.time()),
-                'exp': int(time.time()) + 300,
+                'iat': now,
+                'exp': now + 300,
                 'iss': 'https://issuer.example',
             },
             'https://issuer.example',
-            None,  # Success expected
+            None,  # success expected
         ),
     ],
 )
 def test_decode_access_token_parametrized(
-    monkeypatch, rsa_keys, payload, issuer_config, expected_cause
+    monkeypatch, rsa_keys, payload_factory, issuer_config, expected_cause
 ):
+    # Avoid xdist time drift
+    NOW = int(time.time())
+
     kc = Keycloak()
     private_key, public_pem = rsa_keys
 
@@ -234,6 +237,8 @@ def test_decode_access_token_parametrized(
 
     monkeypatch.setattr(kc, '_Keycloak__oidc_client', FakeOIDC())
 
+    payload = payload_factory(NOW)
+
     token = jwt.encode(
         payload,
         private_key,
@@ -244,7 +249,7 @@ def test_decode_access_token_parametrized(
     # Success case
     if expected_cause is None:
         decoded = kc.decode_access_token(token)
-        # check that essential fields match
+        # only compare claims present in payload
         for k, v in payload.items():
             assert decoded[k] == v
         return
