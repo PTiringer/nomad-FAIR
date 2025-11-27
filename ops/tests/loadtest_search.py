@@ -17,35 +17,140 @@
 # limitations under the License.
 #
 
-from locust import HttpUser, task, between
-import random
 import os.path
+import random
+
+from locust import HttpUser, between, task
 
 chemical_symbols = [
     # 0
     'X',
     # 1
-    'H', 'He',
+    'H',
+    'He',
     # 2
-    'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne',
+    'Li',
+    'Be',
+    'B',
+    'C',
+    'N',
+    'O',
+    'F',
+    'Ne',
     # 3
-    'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar',
+    'Na',
+    'Mg',
+    'Al',
+    'Si',
+    'P',
+    'S',
+    'Cl',
+    'Ar',
     # 4
-    'K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn',
-    'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr',
+    'K',
+    'Ca',
+    'Sc',
+    'Ti',
+    'V',
+    'Cr',
+    'Mn',
+    'Fe',
+    'Co',
+    'Ni',
+    'Cu',
+    'Zn',
+    'Ga',
+    'Ge',
+    'As',
+    'Se',
+    'Br',
+    'Kr',
     # 5
-    'Rb', 'Sr', 'Y', 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd',
-    'In', 'Sn', 'Sb', 'Te', 'I', 'Xe',
+    'Rb',
+    'Sr',
+    'Y',
+    'Zr',
+    'Nb',
+    'Mo',
+    'Tc',
+    'Ru',
+    'Rh',
+    'Pd',
+    'Ag',
+    'Cd',
+    'In',
+    'Sn',
+    'Sb',
+    'Te',
+    'I',
+    'Xe',
     # 6
-    'Cs', 'Ba', 'La', 'Ce', 'Pr', 'Nd', 'Pm', 'Sm', 'Eu', 'Gd', 'Tb', 'Dy',
-    'Ho', 'Er', 'Tm', 'Yb', 'Lu',
-    'Hf', 'Ta', 'W', 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg', 'Tl', 'Pb', 'Bi',
-    'Po', 'At', 'Rn',
+    'Cs',
+    'Ba',
+    'La',
+    'Ce',
+    'Pr',
+    'Nd',
+    'Pm',
+    'Sm',
+    'Eu',
+    'Gd',
+    'Tb',
+    'Dy',
+    'Ho',
+    'Er',
+    'Tm',
+    'Yb',
+    'Lu',
+    'Hf',
+    'Ta',
+    'W',
+    'Re',
+    'Os',
+    'Ir',
+    'Pt',
+    'Au',
+    'Hg',
+    'Tl',
+    'Pb',
+    'Bi',
+    'Po',
+    'At',
+    'Rn',
     # 7
-    'Fr', 'Ra', 'Ac', 'Th', 'Pa', 'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk',
-    'Cf', 'Es', 'Fm', 'Md', 'No', 'Lr',
-    'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt', 'Ds', 'Rg', 'Cn', 'Nh', 'Fl', 'Mc',
-    'Lv', 'Ts', 'Og']
+    'Fr',
+    'Ra',
+    'Ac',
+    'Th',
+    'Pa',
+    'U',
+    'Np',
+    'Pu',
+    'Am',
+    'Cm',
+    'Bk',
+    'Cf',
+    'Es',
+    'Fm',
+    'Md',
+    'No',
+    'Lr',
+    'Rf',
+    'Db',
+    'Sg',
+    'Bh',
+    'Hs',
+    'Mt',
+    'Ds',
+    'Rg',
+    'Cn',
+    'Nh',
+    'Fl',
+    'Mc',
+    'Lv',
+    'Ts',
+    'Og',
+]
 
 
 # These are the API requests from the search UI with various tabs and statistics
@@ -55,7 +160,7 @@ query_params = [
     'page=1&per_page=10&order_by=upload_create_time&order=-1&domain=dft&owner=public&statistics=dft.code_name&statistics=dft.basis_set&statistics=dft.xc_functional&exclude=atoms,only_atoms,dft.files,quantities,optimade,dft.labels,dft.geometries',
     'page=1&per_page=10&order_by=upload_create_time&order=-1&domain=dft&owner=public&statistics=dft.search_quantities&statistics=dft.labels_springer_classification&statistics=dft.workflow.workflow_type&exclude=atoms,only_atoms,dft.files,quantities,optimade,dft.labels,dft.geometries',
     'page=1&per_page=10&order_by=upload_create_time&order=-1&domain=dft&owner=public&statistics=dft.search_quantities&statistics=dft.labels_springer_classification&statistics=dft.workflow.workflow_type&exclude=atoms,only_atoms,dft.files,quantities,optimade,dft.labels,dft.geometries&datasets_grouped=true',
-    'page=1&per_page=10&order_by=upload_create_time&order=-1&domain=dft&owner=public&metrics=dft.calculations&statistics=atoms&exclude=atoms,only_atoms,dft.files,quantities,optimade,dft.labels,dft.geometries&datasets_grouped=true'
+    'page=1&per_page=10&order_by=upload_create_time&order=-1&domain=dft&owner=public&metrics=dft.calculations&statistics=atoms&exclude=atoms,only_atoms,dft.files,quantities,optimade,dft.labels,dft.geometries&datasets_grouped=true',
 ]
 
 
@@ -64,12 +169,12 @@ class QuickstartUser(HttpUser):
 
     @task
     def empty_search(self):
-        self.client.get('/prod/rae/beta/api/repo/?%s' % query_params[0])
+        self.client.get(f'/prod/rae/beta/api/repo/?{query_params[0]}')
 
     def run_random_query(self):
-        return self.client.get("/prod/rae/beta/api/repo/?%s&atoms=%s" % (
-            random.choice(query_params),
-            random.choice(chemical_symbols[1:])))
+        return self.client.get(
+            f'/prod/rae/beta/api/repo/?{random.choice(query_params)}&atoms={random.choice(chemical_symbols[1:])}'
+        )
 
     @task(3)
     def elements_search(self):
@@ -87,8 +192,9 @@ class QuickstartUser(HttpUser):
         upload_id = entry['upload_id']
         mainfile = entry['mainfile']
 
-        self.client.get("/prod/rae/beta/api/raw/calc/%s/%s/%s?length=16384&decompress=true" % (
-            upload_id, entry_id, os.path.basename(mainfile)))
+        self.client.get(
+            f'/prod/rae/beta/api/raw/calc/{upload_id}/{entry_id}/{os.path.basename(mainfile)}?length=16384&decompress=true'
+        )
 
     @task(1)
     def archive_access(self):
@@ -101,7 +207,7 @@ class QuickstartUser(HttpUser):
         entry_id = entry['entry_id']
         upload_id = entry['upload_id']
 
-        self.client.get("/prod/rae/beta/api/archive/%s/%s" % (upload_id, entry_id))
+        self.client.get(f'/prod/rae/beta/api/archive/{upload_id}/{entry_id}')
 
     def on_start(self):
         pass

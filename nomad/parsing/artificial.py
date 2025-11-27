@@ -22,7 +22,6 @@ Parser for creating artificial test, brenchmark, and demonstration data.
 
 import json
 import os
-import os.path
 import random
 import re
 import signal

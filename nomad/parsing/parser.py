@@ -19,7 +19,6 @@
 import importlib
 import json
 import os
-import os.path
 import re
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable

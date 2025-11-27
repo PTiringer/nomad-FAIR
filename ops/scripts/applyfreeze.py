@@ -16,19 +16,18 @@
 # limitations under the License.
 #
 
-'''
+"""
 A simple script that applies the output of `pip freeze` to the packages mentioned
 in a requirements.txt while leaving the rest untouched.
-'''
+"""
 
 import re
-
 
 freeze_path = 'freeze.txt'
 requirements_path = 'requirements.txt'
 
 
-with open(freeze_path, 'rt') as f:
+with open(freeze_path) as f:
     pkgs = {}
     for line in f.readlines():
         if '==' in line:
@@ -36,7 +35,7 @@ with open(freeze_path, 'rt') as f:
             pkgs[key] = value
 
 
-with open(requirements_path, 'rt') as f:
+with open(requirements_path) as f:
     for line in f.readlines():
         match = re.search(r'^([a-zA-Z0-9_\-]+)(\[[^\]]+\])?', line)
         if match:

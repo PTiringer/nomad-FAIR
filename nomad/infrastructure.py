@@ -25,13 +25,10 @@ exist to facilitate testing, aspects of :py:mod:`nomad.cli`, etc.
 
 import json
 import os
-import os.path
 import re
 import shutil
 import smtplib
-
-# TODO put somemore thought into warnings
-import warnings
+import warnings  # TODO put somemore thought into warnings
 from abc import ABC, abstractmethod
 from datetime import datetime
 from email.mime.text import MIMEText

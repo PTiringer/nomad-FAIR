@@ -1,9 +1,11 @@
 import csv
 import sys
+import urllib.parse
+from inspect import cleandoc as strip
+
 import click
 import requests
-from inspect import cleandoc as strip
-import urllib.parse
+
 
 @click.command()
 @click.option('--issue-id')
@@ -14,7 +16,7 @@ import urllib.parse
 def processing_issues(issue_id, project_id, access_token, gitlab_url, csv_files):
     data = []
     for file in csv_files:
-        with open(file, 'rt', encoding='utf-8-sig') as f:
+        with open(file, encoding='utf-8-sig') as f:
             data += [row for row in csv.DictReader(f)]
 
     data = reversed(sorted(data, key=lambda item: int(item['n_entries'])))
@@ -28,17 +30,20 @@ def processing_issues(issue_id, project_id, access_token, gitlab_url, csv_files)
 
     issues = []
     for item in data:
-        issue = strip(f'''
+        issue = (
+            strip(f"""
             - [ ] **{item['n_entries']}** entries in {item['n_uploads']} uploads: *{item['event']}*,\\
             entry_id: `{item['entry_id']}`, upload_id: `{item['upload_id']}`,\\
             parser: `{item['parser']}`{f', normalizer: `{item["normalizer"]}`' if item['normalizer'] != '-' else ''}\\
             [process installation](https://nomad-lab.eu/prod/v1/process/gui/entry/id/{item['entry_id']}),
             [production installation](https://nomad-lab.eu/prod/v1/gui/entry/id/{item['entry_id']})
 
-        ''') + '\n'
+        """)
+            + '\n'
+        )
 
         if 'exception' in item:
-            issue += (f'\n```\n{item["exception"]}\n```\n')
+            issue += f'\n```\n{item["exception"]}\n```\n'
 
         issue += '\n'
 
@@ -52,7 +57,8 @@ def processing_issues(issue_id, project_id, access_token, gitlab_url, csv_files)
     for issue in issues:
         response = requests.post(
             url=f'{gitlab_url}/projects/{project_id}/issues/{issue_id}/notes?body={urllib.parse.quote(issue)}',
-            headers={'PRIVATE-TOKEN': access_token})
+            headers={'PRIVATE-TOKEN': access_token},
+        )
 
         if response.status_code >= 300:
             print(f'success fully posted:\n{issue}')

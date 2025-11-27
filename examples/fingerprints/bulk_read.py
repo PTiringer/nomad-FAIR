@@ -1,4 +1,4 @@
-'''
+"""
 In this example, we go through many uploads in parallel to extract information from
 certain calculations.
 
@@ -9,12 +9,13 @@ sequentially read all of the upload's archive file.
 This is not an API example, but directly accesses archive files. Specifically, we
 try to read all fingerprints for upload/calc/material combinations read from an
 input file. The fingerprint data gets writting to an output file.
-'''
-from typing import Any
-from multiprocessing import Pool, Queue, Event
-from queue import Empty
+"""
+
 import json
 import traceback
+from multiprocessing import Event, Pool, Queue
+from queue import Empty
+from typing import Any
 
 from nomad import files
 from nomad.archive import to_json
@@ -39,7 +40,8 @@ def read_archive(entries):
                                     'upload_id': upload_id,
                                     'entry_id': entry_id,
                                     'material_id': material_id,
-                                    'fingerprint': fingerprint}
+                                    'fingerprint': fingerprint,
+                                }
     except Exception:
         traceback.print_exc()
 
@@ -69,7 +71,7 @@ def worker():
 def writer():
     ended_worker = 0
     count = 0
-    f = open('local/fingerprints.json', 'wt')
+    f = open('local/fingerprints.json', 'w')
     f.write('[')
     while not (ended_worker == nworker and result_queue.empty()):
         try:
@@ -94,7 +96,7 @@ def writer():
 
 
 def producer():
-    with open('local/materials.json', 'r') as f:
+    with open('local/materials.json') as f:
         data = json.load(f)
 
     upload_id = None

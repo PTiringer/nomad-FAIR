@@ -120,7 +120,6 @@ def run_app(
     if with_gui:
         import glob
         import os
-        import os.path
         import shutil
 
         gui_folder = os.path.abspath(

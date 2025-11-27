@@ -39,7 +39,7 @@ yaml.add_representer(str, str_presenter)
 
 
 def sh(cmd):
-    result = subprocess.run(['bash', '-c', cmd], stdout=subprocess.PIPE)
+    result = subprocess.run(['bash', '-c', cmd], stdout=subprocess.PIPE, check=False)
     output = result.stdout.decode('utf-8')
     return output
 
@@ -105,17 +105,17 @@ def move_submodule_to_github(path: str):
         for line in sh('git shortlog -sne').splitlines()
     ]
 
-    with open(authors_file, 'wt') as f:
+    with open(authors_file, 'w') as f:
         f.write('\n'.join(authors))
         f.write('\n')
     # 4. update the metadata
-    with open('metadata.yaml', 'rt') as f:
+    with open('metadata.yaml') as f:
         parser_metadata = yaml.load(f, Loader=yaml.SafeLoader)
         title = parser_metadata['codeLabel']
         parser_metadata['parserGitUrl'] = github_url
         parser_metadata['preamble'] = ''
         parser_metadata['codeName'] = name
-    with open('metadata.yaml', 'wt') as f:
+    with open('metadata.yaml', 'w') as f:
         yaml.dump(parser_metadata, f)
     sh(f'nomad dev update-parser-readmes --parser {name}')
 
@@ -197,6 +197,5 @@ def run_move_submodules_to_github():
 
 
 if __name__ == '__main__':
-    global __file__
     __file__ = os.path.abspath(__file__)
     run_move_submodules_to_github()

@@ -1,5 +1,5 @@
-from nomad.datamodel import Schema, ArchiveSection
-from nomad.metainfo.metainfo import Quantity, Datetime, SubSection
+from nomad.datamodel import ArchiveSection, Schema
+from nomad.metainfo.metainfo import Datetime, Quantity, SubSection
 
 
 class Sample(ArchiveSection):
@@ -9,7 +9,7 @@ class Sample(ArchiveSection):
     sample_id = Quantity(type=str)
 
     def normalize(self, archive, logger):
-        super(Sample, self).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         if self.sample_id is None:
             self.sample_id = f'{self.added_date}--{self.formula}'

@@ -104,10 +104,8 @@ dev = [
 nomad = "nomad.cli:run_cli"
 
 [tool.ruff]
-include = ["nomad/*.py", "tests/*.py"]
-exclude = ["dependencies"]
+include = ["nomad/**/*.py", "tests/**/*.py", "examples/**/*.py", "ops/**/*.py"]
 
-# Same as Black.
 line-length = 88
 indent-width = 4
 
