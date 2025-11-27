@@ -266,6 +266,15 @@ def publish(entries: Iterable[EntryMetadata], index: str | None = None) -> int:
     )
 
 
+def unpublish(entries: Iterable[EntryMetadata]) -> int:
+    """
+    Simply set published flag to false for the given entries.
+    """
+    return update_metadata(
+        entries, published=False, update_materials=False, refresh=True
+    )
+
+
 def update_metadata(
     entries: Iterable[EntryMetadata],
     index: str | None = None,
