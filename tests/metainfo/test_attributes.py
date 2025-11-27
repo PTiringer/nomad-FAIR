@@ -20,7 +20,6 @@ import datetime
 
 import numpy as np
 import pytest
-import pytz
 
 from nomad.metainfo import (
     Attribute,
@@ -42,7 +41,9 @@ from nomad.units import ureg
         pytest.param(str, 0, 'test_value', id='str'),
         pytest.param(np.float64, 0, 1.1, id='numpy'),
         pytest.param(MEnum('value1'), 0, 'value1', id='enum'),
-        pytest.param(Datetime, 0, datetime.datetime.now(tz=pytz.utc), id='datetime'),
+        pytest.param(
+            Datetime, 0, datetime.datetime.now(tz=datetime.timezone.utc), id='datetime'
+        ),
         pytest.param(Reference(Quantity.m_def), 1, None, id='reference'),
     ],
 )

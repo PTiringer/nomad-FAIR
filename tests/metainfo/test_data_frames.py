@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
+from pint import Quantity
 
 from nomad.metainfo.data_frames import DataFrameTemplate, ValuesTemplate
 from nomad.metainfo.metainfo import Datetime, MEnum, MSection, Package
@@ -340,9 +341,9 @@ def test_original_shape():
     assert my_section_2.stress.fields[0].original_shape == [3, 3, 4, 5]
 
 
-temperature = ureg.Quantity([300.0, 320.0, 340.0], 'K')
-pressure = ureg.Quantity([1e5, 1.2e5, 1.4e5], 'Pa')
-time = ureg.Quantity([1.0, 2.0, 3.0], 's')
+temperature: Quantity = ureg.Quantity([300.0, 320.0, 340.0], 'K')
+pressure: Quantity = ureg.Quantity([1e5, 1.2e5, 1.4e5], 'Pa')
+time: Quantity = ureg.Quantity([1.0, 2.0, 3.0], 's')
 
 
 @pytest.mark.parametrize(

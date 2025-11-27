@@ -17,11 +17,11 @@
 #
 import datetime
 import json
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pint
 import pytest
-import pytz
 
 from nomad.metainfo.metainfo import (
     JSON,
@@ -58,7 +58,7 @@ from tests.metainfo import MTypes
         ),
         pytest.param(
             Datetime,
-            datetime.datetime.now(pytz.timezone('America/Los_Angeles')),
+            datetime.datetime.now(ZoneInfo('America/Los_Angeles')),
             id='Datetime',
         ),
         pytest.param(Datetime, datetime.date.today(), id='Date'),
@@ -76,7 +76,7 @@ def test_basic_types(def_type, value):
     if not isinstance(value, datetime.datetime) and isinstance(value, datetime.date):
         assert section.quantity == datetime.datetime.combine(
             value, datetime.datetime.min.time()
-        ).replace(tzinfo=pytz.utc)
+        ).replace(tzinfo=datetime.timezone.utc)
     else:
         assert section.quantity == value
 
@@ -86,7 +86,7 @@ def test_basic_types(def_type, value):
     if not isinstance(value, datetime.datetime) and isinstance(value, datetime.date):
         assert section.quantity == datetime.datetime.combine(
             value, datetime.datetime.min.time()
-        ).replace(tzinfo=pytz.utc)
+        ).replace(tzinfo=datetime.timezone.utc)
     else:
         assert section.quantity == value
 

@@ -22,7 +22,7 @@ import importlib
 import re
 import typing
 from base64 import b64decode, b64encode
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from functools import reduce
 from inspect import isclass
 from typing import Any as TypingAny
@@ -32,7 +32,6 @@ import numpy as np
 import orjson
 import pandas as pd
 import pint
-import pytz
 from dateutil.parser import parse
 
 from nomad.units import ureg
@@ -1020,9 +1019,9 @@ class Datetime(NonPrimitive):
             raise ValueError(f'Cannot convert {value} to datetime.')
 
         if datetime_obj.tzinfo is None:
-            datetime_obj = datetime_obj.replace(tzinfo=pytz.utc)
+            datetime_obj = datetime_obj.replace(tzinfo=timezone.utc)
         else:
-            datetime_obj = datetime_obj.astimezone(pytz.utc)
+            datetime_obj = datetime_obj.astimezone(timezone.utc)
 
         return datetime_obj
 
