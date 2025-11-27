@@ -2062,6 +2062,40 @@ class Upload(Proc):
                     self.last_update = datetime.now(timezone.utc)
                     self.save()
 
+    def unpublish_upload(self):
+        """
+        Unpublish a published upload.
+        Perform the minimum steps to unpublish an upload:
+            1. Update search index to remove published flag
+            2. Change file storage from public to staging
+            3. Update upload metadata to remove publish time and embargo length
+            4. Update last update time
+
+        Usage is strongly discouraged.
+        Only use when absolutely necessary.
+        """
+        if not self.published:
+            return
+
+        logger = self.get_logger()
+        logger.info('started to unpublish')
+
+        try:
+            self.upload_files.to_staging_upload_files(create=True, include_archive=True)
+        except Exception as e:
+            logger.error('unpublish failed', exc_info=e)
+            raise
+
+        with self.entries_metadata() as entries, utils.timer(logger, 'index updated'):
+            search.unpublish(entries)
+
+        self.upload_files.delete()
+
+        self.embargo_length = 0
+        self.publish_time = None
+        self.last_update = datetime.now(timezone.utc)
+        self.save()
+
     def publish_externally(
         self,
         embargo_length: int | None = None,

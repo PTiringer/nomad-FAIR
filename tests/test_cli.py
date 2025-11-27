@@ -314,6 +314,20 @@ class TestAdminUploads:
         assert upload.publish_time is not None
         assert upload.embargo_length == 2
 
+    def test_unpublish(self, published):
+        upload_id = published.upload_id
+        upload = Upload.objects(upload_id=upload_id).first()
+        result = invoke_cli(
+            cli,
+            ['admin', 'uploads', 'unpublish', upload_id],
+            catch_exceptions=False,
+        )
+
+        assert result.exit_code == 0
+        upload.reload()
+        assert upload.publish_time is None
+        assert upload.embargo_length == 0
+
     def test_re_pack(self, elastic_function, published, monkeypatch):
         upload_id = published.upload_id
         entry = Entry.objects(upload_id=upload_id).first()

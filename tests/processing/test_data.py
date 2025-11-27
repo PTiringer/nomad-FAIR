@@ -333,6 +333,28 @@ async def test_publish_directly(
 
 
 @pytest.mark.asyncio
+async def test_unpublish(
+    non_empty_uploaded, user1, temporal_worker, no_warn, elastic_function
+):
+    async with temporal_worker():
+        processed = await asyncio.to_thread(
+            lambda: run_processing(non_empty_uploaded, user1, publish_directly=True)
+        )
+
+    assert_processing(Upload.get(processed.upload_id), published=True)
+    with processed.entries_metadata() as entries:
+        assert_upload_files(processed.upload_id, entries, PublicUploadFiles)
+        assert_search_upload(entries, published=True)
+
+    processed.unpublish_upload()
+
+    assert_processing(Upload.get(processed.upload_id), published=False)
+    with processed.entries_metadata() as entries:
+        assert_upload_files(processed.upload_id, entries, StagingUploadFiles)
+        assert_search_upload(entries, published=False)
+
+
+@pytest.mark.asyncio
 async def test_republish(
     elastic_function,
     non_empty_processed_with_temporal: Upload,

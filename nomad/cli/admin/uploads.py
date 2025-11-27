@@ -763,6 +763,29 @@ def publish(
     )
 
 
+@uploads.command(
+    help="""Unpublish selected uploads.
+WARNING: this operation changes the visibility of the target uploads!
+This may break existing dependencies and should only be used with caution."""
+)
+@click.argument('UPLOADS', nargs=-1)
+@click.option(
+    '--parallel',
+    default=1,
+    type=int,
+    help='Use the given amount of parallel processes. Default is 1.',
+)
+@click.pass_context
+def unpublish(ctx, uploads, parallel: int):
+    _, targets = _query_uploads(uploads, **ctx.obj.uploads_kwargs)
+    _run_processing(
+        targets,
+        parallel,
+        lambda upload: upload.unpublish_upload(),
+        'unpublishing',
+    )
+
+
 @uploads.command(help='Repack selected uploads.')
 @click.argument('UPLOADS', nargs=-1)
 @click.pass_context
