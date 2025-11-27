@@ -2,7 +2,7 @@ from nomad.config import config
 from nomad.config.models.config import _DEFAULT_API_KEY, ModeEnum
 
 
-def check_api_secret():
+def check_api_secret() -> None:
     if (
         config.services.mode == ModeEnum.PRODUCTION
         and config.services.api_secret == _DEFAULT_API_KEY

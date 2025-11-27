@@ -16,11 +16,10 @@
 # limitations under the License.
 #
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import numpy as np
 import pytest
-import pytz
 
 from nomad.datamodel import EntryData
 from nomad.datamodel.datamodel import EntryArchive, EntryMetadata, SearchableQuantity
@@ -59,9 +58,9 @@ from tests.variables import python_schema_name
         pytest.param(Quantity(type=int), 1, SearchableQuantity.int_value, 1, id='long'),
         pytest.param(
             Quantity(type=Datetime),
-            datetime.fromtimestamp(0, tz=pytz.UTC),
+            datetime.fromtimestamp(0, tz=timezone.utc),
             SearchableQuantity.datetime_value,
-            datetime(1970, 1, 1, 0, 0, tzinfo=pytz.UTC),
+            datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
             id='date',
         ),
         pytest.param(Quantity(type=str, shape=['*']), ['test'], None, None, id='shape'),
@@ -182,9 +181,9 @@ def populate_reference(data):
         ),
         pytest.param(
             'timestamp',
-            datetime.fromtimestamp(0, tz=pytz.UTC),
+            datetime.fromtimestamp(0, tz=timezone.utc),
             SearchableQuantity.datetime_value,
-            datetime(1970, 1, 1, 0, 0, tzinfo=pytz.UTC),
+            datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
             f'{python_schema_name}.timestamp',
             id='datetime',
         ),
@@ -209,7 +208,7 @@ def populate_reference(data):
             'reference_section',
             populate_reference,
             None,
-            datetime(1970, 1, 1, 0, 0, tzinfo=pytz.UTC),
+            datetime(1970, 1, 1, 0, 0, tzinfo=timezone.utc),
             None,
             id='references are skipped',
         ),
