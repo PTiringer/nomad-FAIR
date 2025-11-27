@@ -1,8 +1,8 @@
 # Simple script that distributes the contents of a tar file over even sized 32GB zip file.
 # It will not split directories to preserve the mainfile/auxiliary file structure.
 
-import tarfile
 import os.path
+import tarfile
 import zipfile
 
 file = './file-to-split.tar.gz'
@@ -35,7 +35,9 @@ while True:
 
     if current_zip is None:
         zip_file_name = f'{name}-{current_zip_number}.zip'
-        current_zip = zipfile.ZipFile(zip_file_name, mode='w', compression=0, allowZip64=True)
+        current_zip = zipfile.ZipFile(
+            zip_file_name, mode='w', compression=0, allowZip64=True
+        )
 
     reader = tar_file.extractfile(info)
     with current_zip.open(info.name, mode='w') as f:

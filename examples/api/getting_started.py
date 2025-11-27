@@ -1,27 +1,21 @@
-'''
+"""
 Demonstrates how to use requests for a simple query and archive access.
-'''
+"""
+
+import json
 
 import requests
-import json
 
 base_url = 'https://nomad-lab.eu/prod/v1/api/v1'
 
 response = requests.post(
     f'{base_url}/entries/query',
     json={
-        'query': {
-            'results.material.elements': {
-                'all': ['Ti', 'O']
-            }
-        },
-        'pagination': {
-            'page_size': 1
-        },
-        'required': {
-            'include': ['entry_id']
-        }
-    })
+        'query': {'results.material.elements': {'all': ['Ti', 'O']}},
+        'pagination': {'page_size': 1},
+        'required': {'include': ['entry_id']},
+    },
+)
 response_json = response.json()
 print(json.dumps(response.json(), indent=2))
 
@@ -34,13 +28,12 @@ response = requests.post(
             'workflow': {
                 'calculation_result_ref': {
                     'energy': '*',
-                    'system_ref': {
-                        'chemical_composition': '*'
-                    }
+                    'system_ref': {'chemical_composition': '*'},
                 }
             }
         }
-    })
+    },
+)
 response_json = response.json()
 print(json.dumps(response_json, indent=2))
 

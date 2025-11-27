@@ -3,17 +3,15 @@ The scenario is that you have a lot of <name>-*.zip files for upload. This scrip
 will add a nomad.json to the uploads, upload them 1 at a time, watch the processing, repeat.
 """
 
-from typing import Dict, Any
-from urllib.parse import urlparse
-import time
 import os.path
 import sys
 import zipfile
+from typing import Any
 
 import requests
 
-from nomad.config import config
 from nomad.client import Auth, upload_file
+from nomad.config import config
 
 nomad_url = config.client.url
 user = 'youruser'
@@ -45,19 +43,19 @@ def upload(
     # add metadata
     if metadata_path is not None:
         assert os.path.isfile(metadata_path), f'The {metadata_path} is not a file'
-        assert os.path.basename(metadata_path).endswith(
-            '.json'
-        ), f'The {metadata_path} is not a nomad metadata file'
-        assert path.endswith(
-            '.zip'
-        ), 'Adding nomad metadata is only supported for .zip files'
+        assert os.path.basename(metadata_path).endswith('.json'), (
+            f'The {metadata_path} is not a nomad metadata file'
+        )
+        assert path.endswith('.zip'), (
+            'Adding nomad metadata is only supported for .zip files'
+        )
 
         with zipfile.ZipFile(path, 'a') as zip:
             zip.write(metadata_path, 'nomad.json')
 
     # upload
     print(f'uploading {path}')
-    kwargs: Dict[str, Any] = {}
+    kwargs: dict[str, Any] = {}
     if publish_directly:
         kwargs['publish_directly'] = True
 

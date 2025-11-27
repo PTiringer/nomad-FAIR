@@ -2,8 +2,8 @@
 # basic metrics on how many sections and properties are defined
 # per package
 
-from nomad.metainfo import Section, Property, Quantity, Package
 from nomad.datamodel import all_metainfo_packages
+from nomad.metainfo import Package, Property, Quantity, Section
 
 all_sections = 0
 all_properties = 0
@@ -36,9 +36,9 @@ for definition, _, _, _ in metainfo.m_traverse():
         quantities[package] = quantities.get(package, 0) + 1
 
 
-for package in sections.keys():
+for package, section in sections.items():
     print(
-        f'{package.name}: {sections[package]}, {properties.get(package, 0)}, {quantities.get(package, 0)}'
+        f'{package.name}: {section}, {properties.get(package, 0)}, {quantities.get(package, 0)}'
     )
 
 print(f'SUM: {all_sections}, {all_properties}, {all_quantities}')

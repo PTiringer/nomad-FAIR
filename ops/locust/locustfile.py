@@ -1,6 +1,7 @@
-from locust import HttpUser, task
-from ase.data import chemical_symbols
 import random
+
+from ase.data import chemical_symbols
+from locust import HttpUser, task
 
 
 class HelloWorldUser(HttpUser):

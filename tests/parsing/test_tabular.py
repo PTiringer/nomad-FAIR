@@ -19,7 +19,6 @@
 import asyncio
 import datetime
 import os
-import os.path
 import re
 
 import pytest

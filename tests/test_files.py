@@ -18,7 +18,6 @@
 
 import itertools
 import os
-import os.path
 import pathlib
 import re
 import shutil

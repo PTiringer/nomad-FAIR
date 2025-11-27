@@ -16,11 +16,12 @@
 # limitations under the License.
 #
 
-import gitlab
-import dateutil.parser
 import datetime
 import re
+
 import click
+import dateutil.parser
+import gitlab
 
 from nomad.config import config
 

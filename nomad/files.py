@@ -49,7 +49,6 @@ import hashlib
 import io
 import json
 import os
-import os.path
 import shutil
 import tarfile  # noqa: F401
 import zipfile
