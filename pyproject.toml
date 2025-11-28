@@ -42,7 +42,6 @@ dependencies = [
     'python-keycloak>=5.0',
     'python-magic-bin;sys_platform=="win32"',
     'python-magic;sys_platform!="win32"',
-    'python-magic',
     'pyyaml>=6.0',
     'requests>=2.27.1',
     'rfc3161ng>=2.1.3',
