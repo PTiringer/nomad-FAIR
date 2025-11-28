@@ -18,8 +18,13 @@
 
 from __future__ import annotations
 
+import bz2
+import gzip
+import lzma
 import os.path
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
+
+import magic
 
 from nomad.config import config
 from nomad.config.models.plugins import Parser as ParserPlugin
@@ -37,25 +42,13 @@ from .parser import (
 )
 from .tabular import TabularDataParser
 
-try:
-    # these packages are not available without parsing extra, which is ok, if the
-    # parsers are only initialized to load their metainfo definitions
-    import bz2
-    import gzip
-    import lzma
+_compressions: dict[bytes, tuple[str, Callable]] = {
+    b'\x1f\x8b\x08': ('gz', gzip.open),
+    b'\x42\x5a\x68': ('bz2', bz2.open),
+    b'\xfd\x37\x7a': ('xz', lzma.open),
+}
 
-    import magic
-
-    _compressions = {
-        b'\x1f\x8b\x08': ('gz', gzip.open),
-        b'\x42\x5a\x68': ('bz2', bz2.open),
-        b'\xfd\x37\x7a': ('xz', lzma.open),
-    }
-
-    encoding_magic = magic.Magic(mime_encoding=True)
-
-except ImportError:
-    pass
+encoding_magic = magic.Magic(mime_encoding=True)
 
 
 def match_parser(
