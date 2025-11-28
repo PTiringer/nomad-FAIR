@@ -1,13 +1,5 @@
 # Syntax reference: https://docs.gitlab.com/ci/yaml/
 
-# Overview:
-# Pipelines run only on merge requests, schedules, tags, or the develop branch (default).
-# - A schedule pipeline (e.g. nightly build) runs all the jobs.
-# - A tag pipeline runs most of the jobs but skips some (also, v#.#.# tags are special).
-# - Merge requests and pushes to develop will run
-#   - few jobs if only `docs/` files changed,
-#   - all jobs if any other files changed.
-
 .anchors:
   .manual-allow_failure: &manual-allow_failure
     when: manual
