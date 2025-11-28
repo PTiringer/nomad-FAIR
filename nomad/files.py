@@ -50,7 +50,6 @@ import io
 import json
 import os
 import shutil
-import tarfile  # noqa: F401
 import zipfile
 from abc import ABCMeta
 from collections.abc import Callable, Iterable, Iterator
