@@ -32,6 +32,7 @@ import warnings  # TODO put somemore thought into warnings
 from abc import ABC, abstractmethod
 from datetime import datetime
 from email.mime.text import MIMEText
+from email.utils import make_msgid
 from typing import TYPE_CHECKING, Any, Literal
 
 import jwt
@@ -717,11 +718,12 @@ def send_mail(name: str, email: str, message: str, subject: str) -> None:
             server.login(config.mail.user, config.mail.password)
         except Exception as e:
             logger.warning('Could not log into mail server', exc_info=e)
-
     msg = MIMEText(message)
     msg['Subject'] = subject
     msg['To'] = name
     msg['From'] = config.mail.from_address
+    msg['Message-ID'] = make_msgid()
+    to_addrs = [email]
     to_addrs = [email]
 
     if config.mail.cc_address is not None:
