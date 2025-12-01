@@ -1816,7 +1816,14 @@ async def get_entry_archive_download(
     response = answer_entry_archive_request(
         dict(entry_id=entry_id), required='*', user=user
     )
-    return ORJSONResponse(response['data']['archive'])
+    return ORJSONResponse(
+        response['data']['archive'],
+        media_type='application/json',
+        headers={
+            'Content-Disposition': f'attachment; filename="{entry_id}.archive.json"',
+            'Access-Control-Expose-Headers': 'Content-Disposition',
+        },
+    )
 
 
 @router.post(
