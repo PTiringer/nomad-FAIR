@@ -1,20 +1,22 @@
 import asyncio
 import multiprocessing
 import signal
+import sys
 from concurrent.futures.process import ProcessPoolExecutor
 from datetime import timedelta
 
-from temporalio.worker import SharedStateManager
+from temporalio.worker import SharedStateManager, Worker
 
 from nomad.actions import TaskQueue
+from nomad.actions.activities.util import get_all_activities
 from nomad.actions.client import get_client
-from nomad.actions.workers.util import get_worker
+from nomad.actions.workflows.util import get_all_workflows
 from nomad.config import config
 from nomad.infrastructure import setup
 from nomad.utils.structlogging import get_logger
 
 
-async def run_worker(workers: int):
+async def run_worker(workers: int, max_tasks_per_child: int = 100):
     logger = get_logger(__name__)
     loop = asyncio.get_running_loop()
     stop_event = asyncio.Event()
@@ -28,12 +30,18 @@ async def run_worker(workers: int):
     loop.add_signal_handler(signal.SIGINT, _signal_handler)
 
     client = await get_client()
+    executor_kwargs = {'max_workers': workers, 'initializer': setup}
+    if sys.version_info >= (3, 11):
+        executor_kwargs['max_tasks_per_child'] = max_tasks_per_child
 
     # NOTE: internal processing is not thread safe, avoid using ThreadPoolExecutor with more than 1 worker.
-    with ProcessPoolExecutor(max_workers=workers, initializer=setup) as executor:
-        worker = get_worker(
+    # mypy: has issues with **kwargs in this context
+    with ProcessPoolExecutor(**executor_kwargs) as executor:  # type: ignore
+        worker = Worker(
             client=client,
             task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
+            workflows=get_all_workflows(TaskQueue.NOMAD_INTERNAL_WORKFLOWS),
+            activities=get_all_activities(TaskQueue.NOMAD_INTERNAL_WORKFLOWS),
             activity_executor=executor,
             shared_state_manager=SharedStateManager.create_from_multiprocessing(
                 multiprocessing.Manager()
@@ -41,6 +49,8 @@ async def run_worker(workers: int):
             graceful_shutdown_timeout=timedelta(
                 seconds=config.temporal.graceful_shutdown_timeout
             ),
+            # Limit the number of concurrent activities to avoid overloading the worker
+            max_concurrent_activities=workers,
         )
 
         # Run the worker until SIGTERM
