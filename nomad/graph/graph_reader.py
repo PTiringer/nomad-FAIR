@@ -1328,10 +1328,13 @@ class MongoReader(GeneralReader):
 
     @functools.cached_property
     def uploads(self):
+        group_ids = MongoUserGroup.get_ids_by_user_id(self.auth_user_id)
         return Upload.objects(  # type: ignore
             Q(main_author=self.auth_user_id)
             | Q(reviewers=self.auth_user_id)
             | Q(coauthors=self.auth_user_id)
+            | Q(reviewer_groups__in=group_ids)
+            | Q(coauthor_groups__in=group_ids)
         )
 
     @functools.cached_property
@@ -2165,17 +2168,23 @@ class UserReader(MongoReader):
 
     @functools.cached_property
     def uploads(self):
+        target_group_ids = MongoUserGroup.get_ids_by_user_id(self.target_user_id)
         mongo_query = (
             Q(main_author=self.target_user_id)
             | Q(reviewers=self.target_user_id)
             | Q(coauthors=self.target_user_id)
+            | Q(reviewer_groups__in=target_group_ids)
+            | Q(coauthor_groups__in=target_group_ids)
         )
         # self.user must have access to the upload
         if self.target_user_id != self.auth_user_id and not self.auth_user_is_admin:
+            auth_group_ids = MongoUserGroup.get_ids_by_user_id(self.auth_user_id)
             mongo_query &= (
                 Q(main_author=self.auth_user_id)
                 | Q(reviewers=self.auth_user_id)
                 | Q(coauthors=self.auth_user_id)
+                | Q(reviewer_groups__in=auth_group_ids)
+                | Q(coauthor_groups__in=auth_group_ids)
             )
 
         return Upload.objects(mongo_query)  # type: ignore

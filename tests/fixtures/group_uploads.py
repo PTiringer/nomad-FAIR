@@ -167,3 +167,13 @@ def uploads_search_query_groups(
     yield from create_group_uploads_from_molds(
         labels, save_kwargs={'with_files': False, 'with_mongo': False}
     )
+
+
+@pytest.fixture(scope='function')
+def uploads_graph_access_via_group(
+    create_group_uploads_from_molds,
+    elastic_function,
+    groups_function,
+):
+    labels = ('CGg2', 'RGg2')
+    yield from create_group_uploads_from_molds(labels)
