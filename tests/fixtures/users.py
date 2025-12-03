@@ -77,6 +77,12 @@ def user2():
 
 
 @pytest.fixture(scope='session')
+def user3():
+    """Return an another user object."""
+    return User(**users[fake_user_uuid(3)])
+
+
+@pytest.fixture(scope='session')
 def users_dict(user_molds):
     """Return a dict: user labels -> user objects."""
     return {k: User(**v) for k, v in user_molds.items()}

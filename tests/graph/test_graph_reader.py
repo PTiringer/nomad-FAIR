@@ -101,7 +101,7 @@ def assert_dict(observed, expected):
             assert_time(v, expected[k])
 
 
-user_dict = {
+user1_dict = {
     'name': 'Sheldon Cooper',
     'first_name': 'Sheldon',
     'last_name': 'Cooper',
@@ -110,6 +110,26 @@ user_dict = {
     'username': 'scooper',
     'is_admin': False,
     'is_oasis_admin': True,
+}
+
+user2_dict = {
+    'name': 'Leonard Hofstadter',
+    'first_name': 'Leonard',
+    'last_name': 'Hofstadter',
+    'email': 'leonard.hofstadter@nomad-fairdi.tests.de',
+    'user_id': '00000000-0000-0000-0000-000000000002',
+    'username': 'lhofstadter',
+    'is_admin': False,
+}
+
+user3_dict = {
+    'name': 'Howard Wolowitz',
+    'first_name': 'Howard',
+    'last_name': 'Wolowitz',
+    'email': 'howard.wolowitz@nomad-fairdi.tests.de',
+    'user_id': '00000000-0000-0000-0000-000000000003',
+    'username': 'hwolowitz',
+    'is_admin': False,
 }
 
 
@@ -214,13 +234,13 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                     'upload_id': 'id_published_with_ref',
                     'upload_name': 'name_published',
                     'upload_create_time': '2023-03-05T21:24:22.171000',
-                    'main_author': user_dict,
+                    'main_author': user1_dict,
                     'coauthors': [],
                     'reviewers': [],
                     'coauthor_groups': [],
                     'reviewer_groups': [],
-                    'writers': [user_dict],
-                    'viewers': [user_dict],
+                    'writers': [user1_dict],
+                    'viewers': [user1_dict],
                     'writer_groups': [],
                     'viewer_groups': [],
                     'published': False,
@@ -271,13 +291,13 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                     'upload_id': 'id_published_with_ref',
                     'upload_name': 'name_published',
                     'upload_create_time': '2023-03-05T21:30:22.806000',
-                    'main_author': user_dict,
+                    'main_author': user1_dict,
                     'coauthors': [],
                     'reviewers': [],
                     'coauthor_groups': [],
                     'reviewer_groups': [],
-                    'writers': [user_dict],
-                    'viewers': [user_dict],
+                    'writers': [user1_dict],
+                    'viewers': [user1_dict],
                     'writer_groups': [],
                     'viewer_groups': [],
                     'published': False,
@@ -475,13 +495,13 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                     'upload_id': 'id_published_with_ref',
                     'upload_name': 'name_published',
                     'upload_create_time': '2023-03-05T21:31:56.872000',
-                    'main_author': user_dict,
+                    'main_author': user1_dict,
                     'coauthors': [],
                     'reviewers': [],
                     'coauthor_groups': [],
                     'reviewer_groups': [],
-                    'writers': [user_dict],
-                    'viewers': [user_dict],
+                    'writers': [user1_dict],
+                    'viewers': [user1_dict],
                     'writer_groups': [],
                     'viewer_groups': [],
                     'published': False,
@@ -637,13 +657,13 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                     'upload_id': 'id_published_with_ref',
                     'upload_name': 'name_published',
                     'upload_create_time': '2023-03-05T21:31:56.872000',
-                    'main_author': user_dict,
+                    'main_author': user1_dict,
                     'coauthors': [],
                     'reviewers': [],
                     'coauthor_groups': [],
                     'reviewer_groups': [],
-                    'writers': [user_dict],
-                    'viewers': [user_dict],
+                    'writers': [user1_dict],
+                    'viewers': [user1_dict],
                     'writer_groups': [],
                     'viewer_groups': [],
                     'published': False,
@@ -747,13 +767,13 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                                 'upload_id': 'id_published_with_ref',
                                 'upload_name': 'name_published',
                                 'upload_create_time': '2023-03-05T21:31:56.872000',
-                                'main_author': user_dict,
+                                'main_author': user1_dict,
                                 'coauthors': [],
                                 'reviewers': [],
                                 'coauthor_groups': [],
                                 'reviewer_groups': [],
-                                'writers': [user_dict],
-                                'viewers': [user_dict],
+                                'writers': [user1_dict],
+                                'viewers': [user1_dict],
                                 'writer_groups': [],
                                 'viewer_groups': [],
                                 'published': False,
@@ -875,13 +895,13 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
             'upload_id': 'id_published_with_ref',
             'upload_name': 'name_published',
             'upload_create_time': '2023-03-05T22:12:08.420000',
-            'main_author': user_dict,
+            'main_author': user1_dict,
             'coauthors': [],
             'reviewers': [],
             'coauthor_groups': [],
             'reviewer_groups': [],
-            'writers': [user_dict],
-            'viewers': [user_dict],
+            'writers': [user1_dict],
+            'viewers': [user1_dict],
             'writer_groups': [],
             'viewer_groups': [],
             'published': False,
@@ -921,13 +941,13 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
             'upload_id': 'id_published_with_ref',
             'upload_name': 'name_published',
             'upload_create_time': '2023-03-05T22:16:52.435000',
-            'main_author': user_dict,
+            'main_author': user1_dict,
             'coauthors': [],
             'reviewers': [],
             'coauthor_groups': [],
             'reviewer_groups': [],
-            'writers': [user_dict],
-            'viewers': [user_dict],
+            'writers': [user1_dict],
+            'viewers': [user1_dict],
             'writer_groups': [],
             'viewer_groups': [],
             'published': False,
@@ -1014,12 +1034,12 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
             'upload_id': 'id_published_with_ref',
             'upload_name': 'name_published',
             'upload_create_time': '2023-03-05T22:16:52.435000',
-            'main_author': user_dict,
+            'main_author': user1_dict,
             'coauthors': [],
             'reviewers': [],
             'coauthor_groups': [],
             'reviewer_groups': [],
-            'writers': [user_dict],
+            'writers': [user1_dict],
             'writer_groups': [],
             'viewer_groups': [],
             'published': False,
@@ -1032,7 +1052,7 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
             'processing_failed': 0,
             'processing_successful': 6,
             'upload_files_server_path': 'id_published_with_ref',
-            'viewers': [user_dict],
+            'viewers': [user1_dict],
         },
     )
 
@@ -1056,13 +1076,13 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
             'complete_time': '2023-03-05T22:16:52.436000',
             'upload_name': 'name_published',
             'upload_create_time': '2023-03-05T22:16:52.435000',
-            'main_author': user_dict,
+            'main_author': user1_dict,
             'coauthors': [],
             'reviewers': [],
             'coauthor_groups': [],
             'reviewer_groups': [],
-            'writers': [user_dict],
-            'viewers': [user_dict],
+            'writers': [user1_dict],
+            'viewers': [user1_dict],
             'writer_groups': [],
             'viewer_groups': [],
             'published': False,
@@ -1086,13 +1106,13 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                 'upload_id': 'id_published_with_ref',
                 'upload_name': 'name_published',
                 'upload_create_time': '2023-03-05T22:16:52.435000',
-                'main_author': user_dict,
+                'main_author': user1_dict,
                 'coauthors': [],
                 'reviewers': [],
                 'coauthor_groups': [],
                 'reviewer_groups': [],
-                'writers': [user_dict],
-                'viewers': [user_dict],
+                'writers': [user1_dict],
+                'viewers': [user1_dict],
                 'writer_groups': [],
                 'viewer_groups': [],
                 'published': False,
@@ -1138,13 +1158,13 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                 'complete_time': '2023-03-05T22:16:52.436000',
                 'upload_name': 'name_published',
                 'upload_create_time': '2023-03-05T22:16:52.435000',
-                'main_author': user_dict,
+                'main_author': user1_dict,
                 'coauthors': [],
                 'reviewers': [],
                 'coauthor_groups': [],
                 'reviewer_groups': [],
-                'writers': [user_dict],
-                'viewers': [user_dict],
+                'writers': [user1_dict],
+                'viewers': [user1_dict],
                 'writer_groups': [],
                 'viewer_groups': [],
                 'published': False,
@@ -1208,13 +1228,13 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
             'complete_time': '2023-03-05T22:16:52.436000',
             'upload_name': 'name_published',
             'upload_create_time': '2023-03-05T22:16:52.435000',
-            'main_author': user_dict,
+            'main_author': user1_dict,
             'coauthors': [],
             'reviewers': [],
             'coauthor_groups': [],
             'reviewer_groups': [],
-            'writers': [user_dict],
-            'viewers': [user_dict],
+            'writers': [user1_dict],
+            'viewers': [user1_dict],
             'writer_groups': [],
             'viewer_groups': [],
             'published': False,
@@ -1613,13 +1633,13 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                 'upload_id': 'id_published_with_ref',
                 'upload_name': 'name_published',
                 'upload_create_time': '2023-03-05T22:16:52.435000',
-                'main_author': user_dict,
+                'main_author': user1_dict,
                 'coauthors': [],
                 'reviewers': [],
                 'coauthor_groups': [],
                 'reviewer_groups': [],
-                'writers': [user_dict],
-                'viewers': [user_dict],
+                'writers': [user1_dict],
+                'viewers': [user1_dict],
                 'writer_groups': [],
                 'viewer_groups': [],
                 'published': False,
@@ -1679,8 +1699,8 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                 'reviewers': [],
                 'coauthor_groups': [],
                 'reviewer_groups': [],
-                'writers': [user_dict],
-                'viewers': [user_dict],
+                'writers': [user1_dict],
+                'viewers': [user1_dict],
                 'writer_groups': [],
                 'viewer_groups': [],
                 'published': False,
@@ -1693,7 +1713,7 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                 'processing_failed': 0,
                 'processing_successful': 6,
                 'upload_files_server_path': 'id_published_with_ref',
-                'main_author': user_dict,
+                'main_author': user1_dict,
             },
         },
     )
@@ -2023,13 +2043,13 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                         'upload_id': 'id_published_with_ref',
                         'upload_name': 'name_published',
                         'upload_create_time': '2023-03-05T22:16:52.435000',
-                        'main_author': user_dict,
+                        'main_author': user1_dict,
                         'coauthors': [],
                         'reviewers': [],
                         'coauthor_groups': [],
                         'reviewer_groups': [],
-                        'writers': [user_dict],
-                        'viewers': [user_dict],
+                        'writers': [user1_dict],
+                        'viewers': [user1_dict],
                         'writer_groups': [],
                         'viewer_groups': [],
                         'published': False,
@@ -2112,13 +2132,13 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                         'upload_id': 'id_published_with_ref',
                         'upload_name': 'name_published',
                         'upload_create_time': '2023-03-05T22:16:52.435000',
-                        'main_author': user_dict,
+                        'main_author': user1_dict,
                         'coauthors': [],
                         'reviewers': [],
                         'coauthor_groups': [],
                         'reviewer_groups': [],
-                        'writers': [user_dict],
-                        'viewers': [user_dict],
+                        'writers': [user1_dict],
+                        'viewers': [user1_dict],
                         'writer_groups': [],
                         'viewer_groups': [],
                         'published': False,
@@ -2634,13 +2654,13 @@ def test_general_reader(json_dict, example_data_with_reference, user1):
                     'upload_id': 'id_published_with_ref',
                     'upload_name': 'name_published',
                     'upload_create_time': '2023-03-05T22:20:46.583000',
-                    'main_author': user_dict,
+                    'main_author': user1_dict,
                     'coauthors': [],
                     'reviewers': [],
                     'coauthor_groups': [],
                     'reviewer_groups': [],
-                    'writers': [user_dict],
-                    'viewers': [user_dict],
+                    'writers': [user1_dict],
+                    'viewers': [user1_dict],
                     'writer_groups': [],
                     'viewer_groups': [],
                     'published': False,
@@ -2706,13 +2726,13 @@ def test_general_reader(json_dict, example_data_with_reference, user1):
                     'upload_id': 'id_published_with_ref',
                     'upload_name': 'name_published',
                     'upload_create_time': '2023-03-05T22:20:46.583000',
-                    'main_author': user_dict,
+                    'main_author': user1_dict,
                     'coauthors': [],
                     'reviewers': [],
                     'coauthor_groups': [],
                     'reviewer_groups': [],
-                    'writers': [user_dict],
-                    'viewers': [user_dict],
+                    'writers': [user1_dict],
+                    'viewers': [user1_dict],
                     'writer_groups': [],
                     'viewer_groups': [],
                     'published': False,
@@ -3353,6 +3373,102 @@ def test_general_reader_search(json_dict, example_data_with_reference, user1):
                 },
             }
         },
+    )
+
+
+def test_general_reader_access_via_group(
+    json_dict, uploads_graph_access_via_group, user2, user3
+):
+    def __ge_print(
+        msg, required, *, to_file: bool = False, result: dict = None, user: dict = None
+    ):
+        with MongoReader(required, user=user) as reader:
+            if result:
+                assert_dict(reader.sync_read(), result)
+            else:
+                rprint(f'\n\nExample: {next(counter)} -> {msg}:')
+                rprint(required)
+                if not to_file:
+                    rprint('output:')
+                    rprint(reader.sync_read())
+                else:
+                    with open('archive_reader_test.json', 'w') as f:
+                        f.write(json.dumps(reader.sync_read()))
+
+    __ge_print(
+        'user2 has upload access via coauthor group and reviewer group (as group owner)',
+        {
+            Token.UPLOADS: {
+                '*': {
+                    'm_request': {
+                        'include': [
+                            'upload_id',
+                            'main_author',
+                            'coauthors',
+                            'reviewers',
+                            'coauthor_groups',
+                            'reviewer_groups',
+                        ]
+                    },
+                }
+            }
+        },
+        user=user2,
+        result={
+            Token.UPLOADS: {
+                'id_CGg2': {
+                    'upload_id': 'id_CGg2',
+                    'main_author': user1_dict,
+                    'coauthors': [],
+                    'reviewers': [],
+                    'coauthor_groups': ['GGGGGGGGGGGGGGGGGGGGG2'],
+                    'reviewer_groups': [],
+                },
+                'id_RGg2': {
+                    'upload_id': 'id_RGg2',
+                    'main_author': user1_dict,
+                    'coauthors': [],
+                    'reviewers': [],
+                    'coauthor_groups': [],
+                    'reviewer_groups': ['GGGGGGGGGGGGGGGGGGGGG2'],
+                },
+            }
+        },
+    )
+
+    __ge_print(
+        'user2 has entry access via coauthor group and reviewer group (as group owner)',
+        {
+            Token.ENTRIES: {
+                '*': {
+                    'm_request': {
+                        'directive': 'resolved',
+                        'include': ['upload_id', 'entry_id'],
+                    },
+                }
+            }
+        },
+        user=user2,
+        result={
+            Token.ENTRIES: {
+                'id_CGg2_1': {'upload_id': 'id_CGg2', 'entry_id': 'id_CGg2_1'},
+                'id_RGg2_1': {'upload_id': 'id_RGg2', 'entry_id': 'id_RGg2_1'},
+            }
+        },
+    )
+
+    __ge_print(
+        'user3 does not have upload access',
+        {Token.UPLOADS: {}},
+        user=user3,
+        result={Token.UPLOADS: {}},
+    )
+
+    __ge_print(
+        'user3 does not have entry access',
+        {Token.ENTRIES: {}},
+        user=user3,
+        result={Token.ENTRIES: {}},
     )
 
 
