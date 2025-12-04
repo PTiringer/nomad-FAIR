@@ -49,9 +49,9 @@ from mongoengine.connection import ConnectionFailure
 
 import nomad.patch  # noqa: F401
 from nomad import infrastructure, utils
-from nomad.app.v1.routers.info import get_statistics
 from nomad.config import config
 from nomad.config.models.config import CELERY_WORKER_ROUTING
+from nomad.search import get_statistics
 
 if config.logstash.enabled:
     from nomad.utils import structlogging
