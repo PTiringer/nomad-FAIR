@@ -24,7 +24,7 @@ import yaml
 from pydantic import ValidationError
 
 from nomad.config import load_config
-from nomad.config.models.plugins import Parser, ParserEntryPoint, Schema
+from nomad.config.models.plugins import ParserEntryPoint, SchemaPackageEntryPoint
 from nomad.utils import flatten_dict
 
 from .utils import assert_log
@@ -334,7 +334,7 @@ def test_parser_plugins():
     parsers = [
         entry_point
         for entry_point in config.plugins.entry_points.options.values()
-        if isinstance(entry_point, Parser | ParserEntryPoint)
+        if isinstance(entry_point, ParserEntryPoint)
     ]
     assert len(parsers) == 68
 
@@ -344,20 +344,21 @@ def test_plugin_polymorphism(mockopen, monkeypatch):
         'plugins': {
             'options': {
                 'schema': {
-                    'plugin_type': 'schema',
+                    'entry_point_type': 'schema_package',
                     'name': 'test',
-                    'python_package': 'runschema',
+                    'plugin_package': 'runschema',
                 },
                 'parser': {
-                    'plugin_type': 'parser',
+                    'entry_point_type': 'parser',
                     'name': 'parsers/abinit',
-                    'python_package': 'electronicparsers.abinit',
-                    'parser_class_name': 'electronicparsers.abinit.parser.AbinitParser',
+                    'plugin_package': 'electronicparsers',
                 },
             }
         }
     }
     config = load_test_config(plugins, None, mockopen, monkeypatch)
     config.load_plugins()
-    assert isinstance(config.plugins.entry_points.options['schema'], Schema)
-    assert isinstance(config.plugins.entry_points.options['parser'], Parser)
+    assert isinstance(
+        config.plugins.entry_points.options['schema'], SchemaPackageEntryPoint
+    )
+    assert isinstance(config.plugins.entry_points.options['parser'], ParserEntryPoint)

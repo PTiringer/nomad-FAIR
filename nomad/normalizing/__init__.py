@@ -44,7 +44,6 @@ from collections import UserList
 from nomad.config import config
 
 from nomad.config.models.plugins import (
-    Normalizer as OldNormalizerPlugin,
     NormalizerEntryPoint,
 )
 from .normalizer import Normalizer
@@ -115,12 +114,6 @@ if config.plugins is not None:
     enabled_entry_points = config.plugins.entry_points.filtered_values()
 normalizers = SortedNormalizers([])
 
-# Load normalizers using old plugin mechanism
-for entry_point in enabled_entry_points:
-    if isinstance(entry_point, OldNormalizerPlugin):
-        normalizers.append(NormalizerInterface(entry_point.normalizer_class_name))
-
-# Load normalizers using old config mechanism
 for normalizer in config.normalize.normalizers.filtered_values():
     normalizers.append(NormalizerInterface(normalizer))
 

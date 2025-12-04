@@ -16,9 +16,11 @@
 # limitations under the License.
 #
 import builtins
+import importlib
 import logging
 import os
 import socketserver
+import sys
 import tempfile
 import time
 import warnings
@@ -29,7 +31,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from nomad.config import config
-from nomad.config.models.plugins import Schema, add_plugin, remove_plugin
 
 # make sure to disable logstash (the logs can interfere with the testing, especially for logtransfer)
 config.logstash.enabled = False  # noqa: E402  # this must be set *before* the other modules are imported
@@ -199,19 +200,58 @@ def with_warn(log_output):
 @pytest.fixture(scope='function')
 def plugin_schema():
     """Fixture for loading a schema plugin into the config."""
+    from nomad.metainfo.elasticsearch_extension import entry_type  # noqa
+    from nomad.metainfo import Package  # noqa
+
     plugin_path = str(Path(__file__, '../data/schemas').resolve())
     plugin_name = 'nomadschemaexample'
-    plugin = Schema(
-        name=plugin_name,
-        key=plugin_name,
-        package_path=plugin_path,
-        python_package=plugin_name,
-    )
-    add_plugin(plugin)
+
+    if plugin_path not in sys.path:
+        sys.path.insert(0, plugin_path)
+
+    package = importlib.import_module(plugin_name)
+    plugin = package.nomadexample_schema
+
+    # Add plugin to config
+    if (
+        config.plugins is not None
+        and config.plugins.entry_points is not None
+        and config.plugins.entry_points.options is not None
+    ):
+        config.plugins.entry_points.options[plugin_name] = plugin
+
+    # Add plugin to Package registry
+    package = plugin.load()
+    package.__init_metainfo__()  # type: ignore
+
+    # Reload the dynamic quantities so that API is aware of the plugin
+    # quantities.
+    entry_type.reload_quantities_dynamic()
 
     yield
 
-    remove_plugin(plugin)
+    try:
+        sys.path.remove(plugin_path)
+    except Exception:
+        pass
+
+    # Remove package as plugin
+    if (
+        config.plugins is not None
+        and config.plugins.entry_points is not None
+        and config.plugins.entry_points.options is not None
+    ):
+        del config.plugins.entry_points.options[plugin_name]
+
+    # Remove plugin from Package registry
+    for key, i_package in Package.registry.items():
+        if i_package is package:
+            del Package.registry[key]
+            break
+
+    # Reload the dynamic quantities so that API is aware of the plugin
+    # quantities.
+    entry_type.reload_quantities_dynamic()
 
 
 @pytest.fixture

@@ -19,7 +19,6 @@
 import importlib
 
 from nomad.config import config
-from nomad.config.models.plugins import Schema
 
 from . import (
     annotations,
@@ -52,7 +51,5 @@ for entry_point in config.plugins.entry_points.filtered_values():
         simulationworkflowschema = SchemaInterface(entry_point)
     elif entry_point.name == 'RunSchema':
         runschema = SchemaInterface(entry_point)
-    elif isinstance(entry_point, Schema):
-        importlib.import_module(entry_point.python_package)
 
 SCHEMA_IMPORT_ERROR = 'Schema not defined.'

@@ -60,7 +60,6 @@ def all_metainfo_packages(populate_env: bool = True):
     import all plugins, if they are not already imported.
     """
     from nomad.metainfo import Package
-    from nomad.config.models.plugins import PythonPluginBase
 
     # Due to lazyloading plugins, we need to explicitly
     # import plugin's python packages if we want to assure that their
@@ -70,8 +69,6 @@ def all_metainfo_packages(populate_env: bool = True):
     config.load_plugins()
     if config.plugins is not None:  # Added check
         for entry_point in config.plugins.entry_points.filtered_values():
-            if isinstance(entry_point, PythonPluginBase):
-                entry_point.import_python_package()
             if isinstance(entry_point, SchemaPackageEntryPoint):
                 entry_point.load()
 
