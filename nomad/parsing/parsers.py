@@ -27,7 +27,6 @@ from collections.abc import Callable, Iterable
 import magic
 
 from nomad.config import config
-from nomad.config.models.plugins import Parser as ParserPlugin
 from nomad.config.models.plugins import ParserEntryPoint
 from nomad.datamodel import EntryArchive, EntryMetadata, results
 from nomad.datamodel.context import ClientContext, ServerLocalContext
@@ -223,15 +222,6 @@ config.load_plugins()
 enabled_entry_points = []
 if config.plugins is not None:
     enabled_entry_points = config.plugins.entry_points.filtered_values()
-
-# Load parsers using old plugin mechanism
-parsers.extend(
-    [
-        entry_point.create_matching_parser_interface()
-        for entry_point in enabled_entry_points
-        if isinstance(entry_point, ParserPlugin)
-    ]
-)
 
 # Load parsers using new plugin mechanism. The entry point name is used to
 # identify the parser.

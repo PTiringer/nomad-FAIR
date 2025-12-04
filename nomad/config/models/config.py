@@ -21,7 +21,6 @@ import os
 import warnings
 from enum import Enum
 from importlib.metadata import version
-from typing import Any
 
 _DEFAULT_API_KEY = 'default-api-secret-that-is-long-enough'
 
@@ -31,7 +30,6 @@ class ModeEnum(str, Enum):
     DEVELOPMENT = 'development'
 
 
-import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 try:
@@ -41,8 +39,6 @@ except Exception:  # noqa
     pass
 
 from importlib.metadata import entry_points
-
-from nomad.common import get_package_path
 
 from .common import ConfigBaseModel, Options
 from .north import NORTH
@@ -1153,12 +1149,7 @@ class Config(ConfigBaseModel):
         function.
         """
         from nomad.config import _merge, _plugins
-        from nomad.config.models.plugins import (
-            Normalizer,
-            NorthToolEntryPoint,
-            Parser,
-            Schema,
-        )
+        from nomad.config.models.plugins import NorthToolEntryPoint
 
         if self.plugins is None:
 
@@ -1244,36 +1235,6 @@ class Config(ConfigBaseModel):
                         id=key, north_tool=tool
                     )
 
-            # Handle plugins defined in nomad.yaml (old plugin mechanism)
-            def load_plugin_yaml(name, values: dict[str, Any]):
-                """Loads plugin metadata from nomad_plugin.yaml"""
-                python_package = values.get('python_package')
-                if not python_package:
-                    raise ValueError(
-                        f'Could not find python_package for plugin entry point: {name}.'
-                    )
-
-                package_path = values.get('package_path')
-                if package_path is None:
-                    package_path = get_package_path(python_package)
-                    values['package_path'] = package_path
-
-                metadata_path = os.path.join(package_path, 'nomad_plugin.yaml')
-                if os.path.exists(metadata_path):
-                    try:
-                        with open(metadata_path, encoding='UTF-8') as f:
-                            metadata = yaml.load(f, Loader=yaml.SafeLoader)
-                    except Exception as e:
-                        raise ValueError(
-                            f'Cannot load plugin metadata file {metadata_path}.', e
-                        )
-
-                    for key, value in metadata.items():
-                        if key not in values:
-                            values[key] = value
-
-                return values
-
             for key, plugin in _plugins['entry_points']['options'].items():
                 if key not in plugin_entry_point_ids:
                     if isinstance(plugin, dict):
@@ -1282,15 +1243,8 @@ class Config(ConfigBaseModel):
                             plugin['id'] = key
                         # Update information for old style plugins
                         else:
-                            plugin_config = load_plugin_yaml(key, plugin)
-                            plugin_config['id'] = key
-                            plugin_class = {
-                                'parser': Parser,
-                                'normalizer': Normalizer,
-                                'schema': Schema,
-                            }.get(plugin_config['plugin_type'])
-                            _plugins['entry_points']['options'][key] = (
-                                plugin_class.model_validate(plugin_config)
+                            raise ValueError(
+                                f'Failed loading {key} plugin. Old style plugins are no longer supported.'
                             )
 
             self.plugins = Plugins.model_validate(_plugins)

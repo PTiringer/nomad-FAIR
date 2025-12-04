@@ -169,7 +169,7 @@ from pint import Quantity as PintQuantity
 
 from nomad import utils
 from nomad.config import config
-from nomad.config.models.plugins import Parser, Schema, SchemaPackageEntryPoint
+from nomad.config.models.plugins import SchemaPackageEntryPoint
 
 from . import DefinitionAnnotation
 from .data_type import Datatype, to_elastic_type
@@ -513,17 +513,10 @@ class DocumentType:
 
         # Gather the list of enabled schema plugins. Raise error if duplicate
         # package name is encountered.
-        package_names = set()
+        package_names: set[str] = set()
         packages_from_plugins = {}
         for entry_point in config.plugins.entry_points.filtered_values():
-            if isinstance(entry_point, Schema | Parser):
-                package_name = entry_point.python_package
-                if package_name in package_names:
-                    raise ValueError(
-                        f'Your plugin configuration contains two packages with the same name: {entry_point.python_package}.'
-                    )
-                package_names.add(package_name)
-            elif isinstance(entry_point, SchemaPackageEntryPoint):
+            if isinstance(entry_point, SchemaPackageEntryPoint):
                 instance = entry_point.load()
                 assert isinstance(instance, SchemaPackage), (
                     f'Error loading entry point "{entry_point.id}": The load method of a schema package entry point must return a SchemaPackage instance'
