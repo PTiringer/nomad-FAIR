@@ -1973,3 +1973,23 @@ def quantity_values(
         page_after_value = value_agg.pagination.next_page_after_value
         if page_after_value is None:
             break
+
+
+def get_statistics():
+    search_response = search(
+        aggregations=dict(
+            statistics=Aggregation(
+                statistics=StatisticsAggregation(
+                    metrics=[
+                        'n_entries',
+                        'n_materials',
+                        'n_uploads',
+                        'n_quantities',
+                        'n_calculations',
+                    ]
+                )
+            )
+        )
+    )
+    statistics = search_response.aggregations['statistics'].statistics.data
+    return statistics
