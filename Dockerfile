@@ -123,7 +123,7 @@ COPY tests/data/parsers/archive.json ./tests/data/parsers/archive.json
 COPY tests/data/examples/example.out ./tests/data/examples/example.out
 
 # Build documentation with static version
-RUN SETUPTOOLS_SCM_PRETEND_VERSION='0.0' uv pip install ".[parsing,infrastructure,dev]"
+RUN SETUPTOOLS_SCM_PRETEND_VERSION='0.0' uv pip install ".[infrastructure,dev]"
 
 # Copy the built gui code
 COPY --from=build_node /app/gui/build nomad/app/static/gui
@@ -132,7 +132,7 @@ COPY --from=build_node /app/gui/build nomad/app/static/gui
 ARG SETUPTOOLS_SCM_PRETEND_VERSION='0.0'
 
 # Re-install project with correct version
-RUN uv pip install ".[parsing,infrastructure,dev]"
+RUN uv pip install ".[infrastructure,dev]"
 
 # Build the python package.
 RUN uv build

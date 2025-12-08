@@ -218,7 +218,7 @@ generate gui artifacts:
   stage: test
   image: ${CI_REGISTRY_IMAGE}/dev_python:${DOCKER_TAG}
   script:
-    - uv pip install ".[dev,parsing,infrastructure]"
+    - uv pip install ".[dev,infrastructure]"
     - uv pip install -r requirements-plugins.txt -c requirements-dev.txt # remove this after moving to distro
     - scripts/generate_gui_test_artifacts.sh
   rules:
