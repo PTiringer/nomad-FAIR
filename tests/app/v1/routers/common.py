@@ -22,7 +22,6 @@ from typing import Any, Literal
 from urllib.parse import urlencode
 
 import pytest
-from devtools import debug
 from fastapi import status
 
 from nomad.datamodel import results
@@ -1160,26 +1159,26 @@ def aggregation_exclude_from_search_test_parameters(
 
 
 def assert_response(response, status_code: int | None = None) -> None:
-    """General assertions for status_code and error messages"""
+    """General assertions for status code and error messages"""
     if status_code is None:
         return
 
-    actual: int = response.status_code
+    actual_status: int = response.status_code
 
-    if actual != status_code:
+    if actual_status != status_code:
         try:
-            debug(response.json())
+            print(json.dumps(response.json(), indent=2, ensure_ascii=False))
         except Exception:
             pass
 
-        if actual == status.HTTP_422_UNPROCESSABLE_ENTITY:
+        if actual_status == status.HTTP_422_UNPROCESSABLE_ENTITY:
             pytest.fail(
                 f'Expected {status_code}, but got 422 Unprocessable Entity.\n'
                 f'Detail: {response.json()["detail"]}'
             )
         else:
             pytest.fail(
-                f'Expected {status_code}, but got {actual}.\n'
+                f'Expected {status_code}, but got {actual_status}.\n'
                 f'Response JSON: {response.json()}'
             )
 

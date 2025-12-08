@@ -83,7 +83,6 @@ infrastructure = [
 ]
 dev = [
     'aiosmtpd>=1',
-    'devtools',
     'essential_generators',
     'mypy>=1.15',
     'pytest-asyncio',
