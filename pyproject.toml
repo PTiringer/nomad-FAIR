@@ -93,7 +93,6 @@ dev = [
     'pytest',
     'python-gitlab',
     'ruff',
-    'setuptools>=70', # py3.12 doesn't bundle in setuptools, but this is required by mongomock lib
 ]
 
 
