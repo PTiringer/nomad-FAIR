@@ -61,7 +61,6 @@ classes do represent the processing state, as well as the respective entity.
 """
 
 from nomad.processing.base import (
-    app,
     InvalidId,
     ProcNotRegistered,
     ProcessStatus,

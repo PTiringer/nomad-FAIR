@@ -3163,11 +3163,6 @@ async def stop_upload_processing(
     """
     upload = _get_upload_with_write_access(upload_id, user, include_published=False)
 
-    if not config.temporal.enabled:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='This functionality is only available when temporal is enabled.',
-        )
     if upload.process_status != ProcessStatus.PENDING:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

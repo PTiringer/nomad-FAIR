@@ -86,8 +86,7 @@ def upload_file(
         )
 
         print(
-            f'status: {upload["process_status"]}; process: {upload["current_process"]}; '
-            f'parsing: {successes}/{failures}/{total} {ret}',
+            f'status: {upload["process_status"]}; parsing: {successes}/{failures}/{total} {ret}',
             end='',
         )
 

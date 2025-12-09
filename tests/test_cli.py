@@ -295,24 +295,30 @@ class TestAdminUploads:
             entry.reload()
             assert entry.nomad_version == 'test_version'
 
-    def test_publish(self, non_empty_processed, monkeypatch):
-        monkeypatch.setattr('nomad.config.meta.version', 'test_version')
-        upload_id = non_empty_processed.upload_id
-        upload = Upload.objects(upload_id=upload_id).first()
-        assert upload.publish_time is None
-        assert upload.embargo_length == 0
+    @pytest.mark.asyncio
+    async def test_publish(
+        self, non_empty_processed_with_temporal, monkeypatch, temporal_worker
+    ):
+        async with temporal_worker():
+            monkeypatch.setattr('nomad.config.meta.version', 'test_version')
+            upload_id = non_empty_processed_with_temporal.upload_id
+            upload = Upload.objects(upload_id=upload_id).first()
+            assert upload.publish_time is None
+            assert upload.embargo_length == 0
 
-        result = invoke_cli(
-            cli,
-            ['admin', 'uploads', 'publish', '--embargo-length', '2', upload_id],
-            catch_exceptions=False,
-        )
+            result = await asyncio.to_thread(
+                lambda: invoke_cli(
+                    cli,
+                    ['admin', 'uploads', 'publish', '--embargo-length', '2', upload_id],
+                    catch_exceptions=False,
+                )
+            )
 
-        assert result.exit_code == 0
-        assert 'publishing' in result.stdout
-        upload.reload()
-        assert upload.publish_time is not None
-        assert upload.embargo_length == 2
+            assert result.exit_code == 0
+            assert 'publishing' in result.stdout
+            upload.reload()
+            assert upload.publish_time is not None
+            assert upload.embargo_length == 2
 
     def test_unpublish(self, published):
         upload_id = published.upload_id
@@ -393,8 +399,10 @@ class TestAdminUploads:
             (False, False, True),
         ],
     )
-    def test_reset(self, non_empty_processed, with_entries, success, failure):
-        upload_id = non_empty_processed.upload_id
+    def test_reset(
+        self, non_empty_processed_with_temporal, with_entries, success, failure
+    ):
+        upload_id = non_empty_processed_with_temporal.upload_id
 
         upload = Upload.objects(upload_id=upload_id).first()
         entry = Entry.objects(upload_id=upload_id).first()
@@ -547,10 +555,10 @@ class TestAdminUploads:
         ['--missing-storage', '--missing-raw-files', '--missing-archive-files'],
     )
     def test_integrity_files(
-        self, non_empty_processed, check_item, delete_file, all_entries
+        self, non_empty_processed_with_temporal, check_item, delete_file, all_entries
     ):
         if delete_file:
-            non_empty_processed.upload_files.delete()
+            non_empty_processed_with_temporal.upload_files.delete()
         result = invoke_cli(
             cli,
             f'admin uploads integrity {all_entries} {check_item}',
@@ -558,9 +566,11 @@ class TestAdminUploads:
         )
 
         assert result.exit_code == 0
-        assert (non_empty_processed.upload_id in result.output) == delete_file
+        assert (
+            non_empty_processed_with_temporal.upload_id in result.output
+        ) == delete_file
 
-    def test_integrity_both_storages(self, non_empty_processed):
+    def test_integrity_both_storages(self, non_empty_processed_with_temporal):
         result = invoke_cli(
             cli,
             'admin uploads integrity --both-storages',
@@ -568,33 +578,38 @@ class TestAdminUploads:
         )
 
         assert result.exit_code == 0
-        assert non_empty_processed.upload_id not in result.output
+        assert non_empty_processed_with_temporal.upload_id not in result.output
 
 
 @pytest.mark.usefixtures('reset_config')
 class TestClient:
-    def test_upload(
-        self, non_empty_example_upload, user0, proc_infra, client_with_api_v1
+    @pytest.mark.asyncio
+    async def test_upload(
+        self, non_empty_example_upload, user0, temporal_worker, client_with_api_v1
     ):
-        result = invoke_cli(
-            cli,
-            [
-                'client',
-                '-u',
-                user0.username,
-                '--token-via-api',
-                'upload',
-                '--upload-name',
-                'test_upload',
-                '--local-path',
-                non_empty_example_upload,
-            ],
-            catch_exceptions=False,
-        )
+        def run():
+            result = invoke_cli(
+                cli,
+                [
+                    'client',
+                    '-u',
+                    user0.username,
+                    '--token-via-api',
+                    'upload',
+                    '--upload-name',
+                    'test_upload',
+                    '--local-path',
+                    non_empty_example_upload,
+                ],
+                catch_exceptions=False,
+            )
 
-        assert result.exit_code == 0, result.output
-        assert '1/0/1' in result.output
-        assert proc.Upload.objects(upload_name='test_upload').first() is not None
+            assert result.exit_code == 0, result.output
+            assert '1/0/1' in result.output
+            assert proc.Upload.objects(upload_name='test_upload').first() is not None
+
+        async with temporal_worker():
+            await asyncio.to_thread(run)
 
     def test_local(
         self, elastic_function, published_wo_user_metadata, client_with_api_v1

@@ -145,17 +145,14 @@ async def lifespan(app: FastAPI):
     # Validate API secret
     check_api_secret()
 
-    if config.temporal.enabled:
-        try:
-            app.state.temporal_client = await get_client()
-            yield
-        except Exception as e:
-            logger = get_logger(__name__)
-
-            logger.error(f'Failed to connect to temporal', exc_info=e)
-            raise
-    else:
+    try:
+        app.state.temporal_client = await get_client()
         yield
+    except Exception as e:
+        logger = get_logger(__name__)
+
+        logger.error(f'Failed to connect to temporal', exc_info=e)
+        raise
 
 
 app = FastAPI(lifespan=lifespan)

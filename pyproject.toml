@@ -60,7 +60,6 @@ parsing = []
 infrastructure = [
     'beautifulsoup4>=4,<=4.12.3', # 4.13 introduced breaking changes
     'blinker', # mongoengine needs this for signals
-    'celery>=5',
     'dockerspawner',
     'fastapi',
     'fastapi-cache2',

@@ -56,15 +56,6 @@ bundle_import:
     set_from_oasis: true
     trigger_processing: false
   required_nomad_version: 1.1.2
-celery:
-  acks_late: false
-  max_memory: 64000000.0
-  priorities:
-    Upload.delete_upload: 9
-    Upload.process_upload: 5
-    Upload.publish_upload: 10
-  routing: queue
-  timeout: 1800
 client:
   url: https://nomad-lab.eu/prod/v1/api
 datacite:
@@ -83,7 +74,6 @@ elastic:
   port: 9200
   timeout: 60
 temporal:
-  enabled: True
   host: localhost
   namespace: default
   port: 7233
@@ -185,10 +175,6 @@ process:
   rfc3161_skip_published: false
   use_empty_parsers: false
   exclude_potcar: true
-rabbitmq:
-  host: localhost
-  password: rabbitmq
-  user: rabbitmq
 reprocess:
   add_matched_entries_to_published: true
   delete_unmatched_published_entries: false
