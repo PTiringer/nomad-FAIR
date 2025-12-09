@@ -170,59 +170,6 @@ def clear_raw_files():
 
 
 @pytest.fixture(scope='session')
-def celery_includes():
-    return ['nomad.processing.base']
-
-
-@pytest.fixture(scope='session')
-def celery_config():
-    return {'broker_url': config.rabbitmq_url(), 'task_queue_max_priority': 10}
-
-
-@pytest.fixture(scope='session')
-def purged_app(celery_session_app):
-    """
-    Purges all pending tasks of the celery app before test. This is necessary to
-    remove tasks from the queue that might be 'left over' from prior tests.
-    """
-    celery_session_app.control.purge()
-    yield celery_session_app
-    celery_session_app.control.purge()
-
-
-@pytest.fixture(scope='session')
-def celery_inspect(purged_app, pytestconfig):
-    timeout = pytestconfig.getoption('celery_inspect_timeout')
-    yield purged_app.control.inspect(timeout=timeout)
-
-
-# It might be necessary to make this a function scoped fixture, if old tasks keep
-# 'bleeding' into successive tests.
-@pytest.fixture(scope='function')
-def worker(mongo_function, celery_session_worker, celery_inspect):
-    """Provides a clean worker (no old tasks) per function. Waits for all tasks to be completed."""
-    yield
-
-    # wait until there no more active tasks, to leave clean worker and queues for the next
-    # test run.
-    try:
-        while True:
-            empty = True
-            celery_active = celery_inspect.active()
-            if not celery_active:
-                break
-            for value in celery_active.values():
-                empty = empty and len(value) == 0
-            if empty:
-                break
-    except Exception:
-        print('Exception during worker tear down.')
-        import traceback
-
-        traceback.print_exc()
-
-
-@pytest.fixture(scope='session')
 def mongo_db_name(worker_id):
     return f'test_db_{worker_id}'
 
@@ -369,11 +316,8 @@ def reset_infra(mongo_function, elastic_function):
 
 
 @pytest.fixture(scope='function')
-def proc_infra(
-    worker, elastic_function, mongo_function, raw_files_function, monkeypatch
-):
+def proc_infra(elastic_function, mongo_function, raw_files_function, monkeypatch):
     """Combines all fixtures necessary for processing (elastic, worker, files, mongo)"""
-    monkeypatch.setattr(config.temporal, 'enabled', False)
     return dict(elastic=elastic_function)
 
 

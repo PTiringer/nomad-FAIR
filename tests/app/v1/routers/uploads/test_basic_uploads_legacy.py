@@ -24,9 +24,7 @@ from typing import Any
 
 import pytest
 
-from nomad.config import config
-from nomad.config.models.config import BundleImportSettings
-from nomad.processing import ProcessStatus, Upload
+from nomad.processing import ProcessStatus
 from tests.app.v1.routers.common import (
     assert_browser_download_headers,
     assert_response,
@@ -35,13 +33,11 @@ from tests.app.v1.routers.common import (
 from tests.app.v1.routers.uploads.test_basic_uploads import (
     assert_file_upload_and_processing,
     assert_pagination,
-    assert_processing,
-    perform_post_upload_action,
 )
 from tests.test_files import example_file_mainfile_different_atoms
 
 from ..test_entries import assert_archive_response
-from .common import assert_entry, assert_upload
+from .common import assert_entry
 
 
 @pytest.mark.parametrize(
@@ -205,133 +201,6 @@ def test_editing_raw_file(
         None,
         None,
     )
-
-
-@pytest.mark.parametrize(
-    'import_settings, query_args',
-    [
-        pytest.param(
-            BundleImportSettings(include_archive_files=False, trigger_processing=True),
-            dict(embargo_length=0),
-            id='trigger-processing',
-        ),
-        pytest.param(
-            BundleImportSettings(include_archive_files=True, trigger_processing=False),
-            dict(embargo_length=28),
-            id='no-processing',
-        ),
-    ],
-)
-def test_post_upload_action_publish_to_central_nomad(
-    auth_headers,
-    client,
-    proc_infra,
-    monkeypatch,
-    oasis_publishable_upload,
-    users_dict,
-    import_settings,
-    query_args,
-):
-    """Tests the publish action with to_central_nomad=True."""
-    upload_id, suffix = oasis_publishable_upload
-    query_args['to_central_nomad'] = True
-    embargo_length = query_args.get('embargo_length')
-    expected_status_code = 200
-    user = 'user0'
-    user_auth = auth_headers[user]
-    old_upload = Upload.get(upload_id)
-
-    import_settings = config.bundle_import.default_settings.customize(import_settings)
-    monkeypatch.setattr('nomad.config.bundle_import.default_settings', import_settings)
-    monkeypatch.setattr('nomad.config.bundle_import.allow_bundles_from_oasis', True)
-
-    # Finally, invoke the method to publish to central nomad
-    response = perform_post_upload_action(
-        client, user_auth, upload_id, 'publish', **query_args
-    )
-
-    assert_response(response, expected_status_code)
-    if expected_status_code == 200:
-        upload = assert_upload(response.json())
-        assert upload['current_process'] == '_publish_externally'
-        assert upload['process_running']
-        assert_processing(client, upload_id, user_auth, published=old_upload.published)
-        assert_processing(
-            client, upload_id + suffix, user_auth, published=old_upload.published
-        )
-
-        old_upload = Upload.get(upload_id)
-        new_upload = Upload.get(upload_id + suffix)
-        assert (
-            len(old_upload.successful_entries)
-            == len(new_upload.successful_entries)
-            == 1
-        )
-        if embargo_length is None:
-            embargo_length = old_upload.embargo_length
-        old_entry = old_upload.successful_entries[0]
-        new_entry = new_upload.successful_entries[0]
-        old_entry_metadata_dict = old_entry.full_entry_metadata(old_upload).m_to_dict()
-        new_entry_metadata_dict = new_entry.full_entry_metadata(new_upload).m_to_dict()
-        for k, v in old_entry_metadata_dict.items():
-            if k == 'with_embargo':
-                assert new_entry_metadata_dict[k] == (embargo_length > 0)
-            elif k not in (
-                'upload_id',
-                'entry_id',
-                'upload_create_time',
-                'entry_create_time',
-                'last_processing_time',
-                'publish_time',
-                'embargo_length',
-                'n_quantities',
-                'quantities',
-            ):  # TODO: n_quantities and quantities update problem?
-                assert new_entry_metadata_dict[k] == v, f'Metadata not matching: {k}'
-        assert new_entry.datasets == ['dataset_id']
-        assert old_upload.published_to[0] == config.oasis.central_nomad_deployment_url
-        assert new_upload.from_oasis and new_upload.oasis_deployment_url
-        assert new_upload.embargo_length == embargo_length
-        assert (
-            old_upload.upload_files.access == 'restricted'
-            if old_upload.with_embargo
-            else 'public'
-        )
-        assert (
-            new_upload.upload_files.access == 'restricted'
-            if new_upload.with_embargo
-            else 'public'
-        )
-
-
-def test_stop_processing_action_temporal_disabled(
-    non_empty_uploaded,
-    user1,
-    auth_headers,
-    client,
-    proc_infra,
-):
-    """Tests the endpoint for stopping the processing of an upload."""
-    upload_id, _ = non_empty_uploaded
-
-    upload_owner = user1
-    upload = Upload.create(
-        upload_id=upload_id,
-        main_author=upload_owner,
-        workflow_ids=['example-workflow-id'],
-    )
-    upload.save()
-    upload.process_status = ProcessStatus.PENDING
-    upload.save()
-
-    user_auth = auth_headers['user1']
-
-    # Perform the request
-    response = perform_post_upload_action(
-        client, user_auth, upload_id, 'stop-processing'
-    )
-
-    assert_response(response, 400)
 
 
 @pytest.mark.parametrize(

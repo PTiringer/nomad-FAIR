@@ -329,7 +329,6 @@ def convert_to_comparable_value_single(quantity, value, format, user):
 @pytest.mark.asyncio
 async def test_edit_metadata(
     temporal_worker,
-    purged_app,
     example_data_writeable,
     example_datasets,
     users_dict,
@@ -555,7 +554,6 @@ async def test_set_and_clear_all(
 @pytest.mark.asyncio
 async def test_list_quantities(
     temporal_worker,
-    purged_app,
     example_data_writeable,
     example_datasets,
     users_dict,

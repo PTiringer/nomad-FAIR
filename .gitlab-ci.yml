@@ -125,8 +125,6 @@ check python dependencies:
   image: ${CI_REGISTRY_IMAGE}/dev_python:${DOCKER_TAG}
   stage: test
   services:
-    - name: rabbitmq:4
-      alias: rabbitmq
     - name: elasticsearch:7.17.24
       alias: elastic
       command:
@@ -136,11 +134,6 @@ check python dependencies:
     - name: mongo:5
       alias: mongo
   variables:
-    RABBITMQ_ERLANG_COOKIE: SWQOKODSQALRPCLNMEQG
-    RABBITMQ_DEFAULT_USER: rabbitmq
-    RABBITMQ_DEFAULT_PASS: rabbitmq
-    RABBITMQ_DEFAULT_VHOST: /
-    NOMAD_RABBITMQ_HOST: rabbitmq
     NOMAD_ELASTIC_HOST: elastic
     NOMAD_MONGO_HOST: mongo
     NOMAD_KEYCLOAK_PASSWORD: ${CI_KEYCLOAK_ADMIN_PASSWORD}

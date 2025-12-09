@@ -837,20 +837,7 @@ def stop(ctx, uploads, entries: bool, kill: bool, no_celery: bool):
             kwargs = {}
             if kill:
                 kwargs.update(signal='SIGKILL')
-            try:
-                if not no_celery:
-                    proc.app.control.revoke(
-                        process.celery_task_id, terminate=True, **kwargs
-                    )
-            except Exception as e:
-                logger.warning(
-                    'could not revoke celery task',
-                    exc_info=e,
-                    celery_task_id=process.celery_task_id,
-                    **logger_kwargs,
-                )
 
-            if kill:
                 logger.info(
                     'fail proc',
                     celery_task_id=process.celery_task_id,
@@ -1314,13 +1301,6 @@ def export_bundle(
             period defined in the bundle will be used.""",
 )
 @click.option(
-    '--use-celery',
-    '-c',
-    is_flag=True,
-    help="""If specified, uses celery and the worker pool to do the main part of the import.
-            NOTE: this requires that the workers can access the bundle via the exact same path.""",
-)
-@click.option(
     '--ignore-errors',
     '-i',
     is_flag=True,
@@ -1328,9 +1308,7 @@ def export_bundle(
             (the default behaviour is to abort on first failing bundle).""",
 )
 @click.pass_context
-def import_bundle(
-    ctx, input_path, multi, settings, embargo_length, use_celery, ignore_errors
-):
+def import_bundle(ctx, input_path, multi, settings, embargo_length, ignore_errors):
     from nomad import infrastructure
     from nomad.bundles import BundleImporter
 
@@ -1392,15 +1370,10 @@ def import_bundle(
                     )
                     bundle_importer.open(bundle_path)
                     upload = bundle_importer.create_upload_skeleton()
-                    if use_celery:
-                        # Run using celery (as a @process)
+                    try:
+                        bundle_importer.import_bundle(upload, True)
+                    finally:
                         bundle_importer.close()
-                        upload.import_bundle(
-                            bundle_path, import_settings, embargo_length
-                        )
-                    else:
-                        # Run in same thread (as a @process_local)
-                        upload.import_bundle_local(bundle_importer)
                     if upload.errors:
                         raise RuntimeError(f'Import failed: {upload.errors[0]}')
                 except Exception:

@@ -107,7 +107,6 @@ from nomad.processing.base import (
     ProcessAlreadyRunning,
     ProcessFailure,
     ProcessStatus,
-    process,
     process_local,
 )
 from nomad.search import update_metadata as es_update_metadata
@@ -1007,7 +1006,7 @@ class Entry(Proc):
         `activity.heartbeat()` to inform the temporal server that the activity is
         still alive.
         """
-        if config.temporal.enabled and activity.in_activity():
+        if activity.in_activity():
             activity.heartbeat()
 
     @classmethod
@@ -1305,11 +1304,8 @@ class Entry(Proc):
 
     def process_entry(self):
         """Processes or reprocesses an entry."""
-        if config.temporal.enabled:
-            self.process_status = ProcessStatus.PENDING
-            return run_async(self._start_process_entry_workflow())
-        else:
-            return self._process_entry()
+        self.process_status = ProcessStatus.PENDING
+        return run_async(self._start_process_entry_workflow())
 
     async def _start_process_entry_workflow(self):
         """
@@ -1332,11 +1328,6 @@ class Entry(Proc):
             )
         except Exception as e:
             raise ProcessFailure(f'Failed to start temporal workflow: {e}')
-
-    @process(is_blocking=False, clear_queue_on_failure=False, is_child=True)
-    def _process_entry(self):
-        """Processes or reprocesses an entry."""
-        self._process_entry_local()
 
     @process_local
     def process_entry_local(self):
@@ -1959,12 +1950,9 @@ class Upload(Proc):
         Deletes the upload, including its processing state and
         staging files. This starts the celery process of deleting the upload.
         """
-        if config.temporal.enabled:
-            self.process_status = ProcessStatus.PENDING
-            self.current_process = 'delete_upload'
-            return run_async(self._start_delete_upload_workflow())
-        else:
-            return self._delete_upload()
+        self.process_status = ProcessStatus.PENDING
+        self.current_process = 'delete_upload'
+        return run_async(self._start_delete_upload_workflow())
 
     async def _start_delete_upload_workflow(self):
         """
@@ -1990,24 +1978,9 @@ class Upload(Proc):
         except Exception as e:
             raise ProcessFailure(f'Failed to start temporal workflow: {e}')
 
-    @process(is_blocking=True)
-    def _delete_upload(self):
-        """
-        Deletes the upload, including its processing state and
-        staging files. This starts the celery process of deleting the upload.
-        """
-        self.delete_upload_local()
-
-        return ProcessStatus.DELETED  # Signal deletion to the process framework
-
     def publish_upload(self, embargo_length: int | None = None):
-        from nomad.config import config
-
-        if config.temporal.enabled:
-            self.process_status = ProcessStatus.PENDING
-            return run_async(self._start_publish_upload_workflow(embargo_length))
-        else:
-            return self._publish_upload(embargo_length)
+        self.process_status = ProcessStatus.PENDING
+        return run_async(self._start_publish_upload_workflow(embargo_length))
 
     async def _start_publish_upload_workflow(self, embargo_length: int | None = None):
         client = await get_client()
@@ -2025,10 +1998,6 @@ class Upload(Proc):
             )
         except Exception as e:
             raise ProcessFailure(f'Failed to start temporal workflow: {e}')
-
-    @process(is_blocking=True)
-    def _publish_upload(self, embargo_length: int | None = None):
-        self._publish_upload_local(embargo_length)
 
     def _publish_upload_local(self, embargo_length: int | None = None):
         assert self.processed_entries_count > 0
@@ -2102,23 +2071,14 @@ class Upload(Proc):
         target_deployment_url: str | None = None,
         auth_token: str | None = None,
     ):
-        from nomad.config import config
-
-        if config.temporal.enabled:
-            self.process_status = ProcessStatus.PENDING
-            return run_async(
-                self._start_publish_externally_workflow(
-                    embargo_length=embargo_length,
-                    target_deployment_url=target_deployment_url,
-                    auth_token=auth_token,
-                )
-            )
-        else:
-            return self._publish_externally(
+        self.process_status = ProcessStatus.PENDING
+        return run_async(
+            self._start_publish_externally_workflow(
                 embargo_length=embargo_length,
                 target_deployment_url=target_deployment_url,
                 auth_token=auth_token,
             )
+        )
 
     async def _start_publish_externally_workflow(
         self,
@@ -2143,19 +2103,6 @@ class Upload(Proc):
             )
         except Exception as e:
             raise ProcessFailure(f'Failed to start temporal workflow: {e}')
-
-    @process(is_blocking=True)
-    def _publish_externally(
-        self,
-        embargo_length: int | None = None,
-        target_deployment_url: str | None = None,
-        auth_token: str | None = None,
-    ):
-        self._publish_externally_local(
-            embargo_length=embargo_length,
-            target_deployment_url=target_deployment_url,
-            auth_token=auth_token,
-        )
 
     def _publish_externally_local(
         self,
@@ -2236,16 +2183,13 @@ class Upload(Proc):
             file_operattions: Additional file operations that should be added on
                 top of the file operations coming from the entry point.
         """
-        if config.temporal.enabled:
-            self.process_status = ProcessStatus.PENDING
-            # Start temporal workflow
-            return run_async(
-                self._start_process_example_upload_workflow(
-                    entry_point_id, file_operations
-                ),
-            )
-        else:
-            return self._process_example_upload(entry_point_id, file_operations)
+        self.process_status = ProcessStatus.PENDING
+        # Start temporal workflow
+        return run_async(
+            self._start_process_example_upload_workflow(
+                entry_point_id, file_operations
+            ),
+        )
 
     async def _start_process_example_upload_workflow(
         self,
@@ -2313,25 +2257,6 @@ class Upload(Proc):
                 'error loading example upload entry point "{example_upload_entry_point_id}": error in load() function'
             ) from e
 
-    @process()
-    def _process_example_upload(
-        self, entry_point_id: str, file_operations: list[dict[str, Any]] | None = None
-    ):
-        """Used to initiate the processing of an example upload entry point.
-        This process is only triggered once per example upload, and any further
-        reprocessing happens through the usual `process_upload` function.
-
-        Arguments:
-            entry_point_id: The unique indentifier for the example upload entry
-                point id to initialize.
-            file_operattions: Additional file operations that should be added on
-                top of the file operations coming from the entry point.
-        """
-        self.setup_example_upload(entry_point_id=entry_point_id)
-        # Process upload. Any file operations from the original API call are
-        # added on top.
-        self.process_upload(file_operations=file_operations)
-
     def process_upload(
         self,
         file_operations: list[dict[str, Any]] | None = None,
@@ -2339,25 +2264,19 @@ class Upload(Proc):
         path_filter: str | None = None,
         only_updated_files: bool = False,
     ):
-        if config.temporal.enabled:
-            if self.process_status == ProcessStatus.RUNNING:
-                raise ProcessAlreadyRunning
+        if self.process_status == ProcessStatus.RUNNING:
+            raise ProcessAlreadyRunning
 
-            self.process_status = ProcessStatus.PENDING
-            # Start temporal workflow
-            return run_async(
-                self._start_process_upload_workflow(
-                    file_operations,
-                    reprocess_settings,
-                    path_filter,
-                    only_updated_files,
-                ),
-            )
-
-        else:
-            return self._process_upload(
-                file_operations, reprocess_settings, path_filter, only_updated_files
-            )
+        self.process_status = ProcessStatus.PENDING
+        # Start temporal workflow
+        return run_async(
+            self._start_process_upload_workflow(
+                file_operations,
+                reprocess_settings,
+                path_filter,
+                only_updated_files,
+            ),
+        )
 
     async def _start_process_upload_workflow(
         self,
@@ -2394,44 +2313,6 @@ class Upload(Proc):
             return handle
         except Exception as e:
             raise ProcessFailure(f'Failed to start temporal workflow: {e}')
-
-    @process()
-    def _process_upload(
-        self,
-        file_operations: list[dict[str, Any]] | None = None,
-        reprocess_settings: dict[str, Any] | None = None,
-        path_filter: str | None = None,
-        only_updated_files: bool = False,
-    ):
-        """
-        A @process that executes a file operation (if provided), and matches, parses and normalizes
-        the upload. Can be used for initial parsing or to re-parse, and can also be used
-        after an upload has been published (published uploads are extracted back to the
-        staging area first, and re-packed to the public area when done). Reprocessing may
-        also cause existing entries to disappear (if main files have been removed from an
-        upload in the staging area, or no longer match because of modified parsers, etc).
-
-        Arguments:
-            file_operations: A list of dictionaries specifying file operation(s) to perform before
-                the actual processing, if any. The dictionaries should contain a key `op` which defines
-                the operation, "ADD", "DELETE", "COPY" or "MOVE". The "ADD" operation further expects
-                keys named `path` (the path to the source file), `target_dir` (the destination
-                path relative to the raw folder), and `temporary` (if the source file and parent
-                folder should be deleted when done). The "DELETE" operation expects a key named
-                `path` (specifying the path relative to the raw folder which is to be deleted).
-                "COPY" and "MOVE" operations require two arguments: `path_to_existing_file` and
-                `path_to_target_file`.
-            reprocess_settings: Optional configuration of the reprocessing behavior.
-                Settings that are not specified are defaulted. See `config.reprocess` for
-                available options and the configured default values.
-            path_filter: An optional path used to filter out what should be processed.
-                If path denotes a file, only this file will be processed; if it denotes a
-                folder, everything under this folder will be processed.
-            only_updated_files: If only files updated by the file operations should be processed.
-        """
-        return self._process_upload_local(
-            file_operations, reprocess_settings, path_filter, only_updated_files
-        )
 
     def _process_upload_local(
         self,
@@ -2478,7 +2359,6 @@ class Upload(Proc):
         else:
             self.cleanup()
 
-    @process_local
     def put_file_and_process_local(
         self, path, target_dir, reprocess_settings: Reprocess | None = None
     ) -> Entry:
@@ -2590,11 +2470,6 @@ class Upload(Proc):
                     pass
 
     def stop_processing(self):
-        if not config.temporal.enabled:
-            raise ProcessFailure(
-                'This functionality is only available when temporal is enabled.'
-            )
-
         run_async(self._stop_processing_workflows())
 
         self.workflow_ids = []
@@ -3074,49 +2949,23 @@ class Upload(Proc):
                 entry.save()
 
             if entry:
-                if config.temporal.enabled:
-                    if (
-                        self.current_process_flags is not None
-                        and self.current_process_flags.is_local
-                    ):
-                        # Run also this entry processing locally. If it fails, an
-                        # exception will be raised.
-                        entry.process_entry_local()
-                    else:
-                        # temporal child workflows can't be spawned within an activitiy
-                        # so we just process this from the current activity
-                        if self.parser_level >= parser.level:
-                            try:
-                                entry._process_entry_local()
-                                entry.process_status = ProcessStatus.SUCCESS
-                            except Exception:
-                                entry.process_status = ProcessStatus.FAILURE
-                            entry.save()
+                if (
+                    self.current_process_flags is not None
+                    and self.current_process_flags.is_local
+                ):
+                    # Run also this entry processing locally. If it fails, an
+                    # exception will be raised.
+                    entry.process_entry_local()
                 else:
-                    if (
-                        self.current_process_flags is not None
-                        and self.current_process_flags.is_local
-                    ):
-                        # Running locally
-                        if entry.process_running:
-                            # Should not happen, but if it does happen (which suggests that some jobs
-                            # have been interrupted abnormally or the like) we reset it, to avoid problems.
-                            logger.warn(
-                                'Running locally and entry is already processing, will reset it.',
-                                entry_id=entry.entry_id,
-                            )
-                            entry.reset(
-                                force=True,
-                                worker_hostname=self.worker_hostname,
-                                process_status=ProcessStatus.FAILURE,
-                            )
-                            entry.save()
-                        # Run also this entry processing locally. If it fails, an exception will be raised.
-                        entry.process_entry_local()
-                    else:
-                        # Running normally, using the worker/queue system
-                        if self.parser_level >= parser.level:
-                            entry.process_entry()  # Will queue the job if already running.
+                    # temporal child workflows can't be spawned within an activitiy
+                    # so we just process this from the current activity
+                    if self.parser_level >= parser.level:
+                        try:
+                            entry._process_entry_local()
+                            entry.process_status = ProcessStatus.SUCCESS
+                        except Exception:
+                            entry.process_status = ProcessStatus.FAILURE
+                        entry.save()
 
     def child_cls(self):
         return Entry
@@ -3364,13 +3213,10 @@ class Upload(Proc):
         primitive data types, i.e. the json format, to be able to pass the request to a
         rabbitmq task).
         """
-        if config.temporal.enabled:
-            self.process_status = ProcessStatus.PENDING
-            return run_async(
-                self._start_edit_upload_metadata_workflow(edit_request_json, user_id)
-            )
-        else:
-            return self._edit_upload_metadata(edit_request_json, user_id)
+        self.process_status = ProcessStatus.PENDING
+        return run_async(
+            self._start_edit_upload_metadata_workflow(edit_request_json, user_id)
+        )
 
     async def _start_edit_upload_metadata_workflow(
         self, edit_request_json: dict[str, Any], user_id: str
@@ -3391,10 +3237,6 @@ class Upload(Proc):
             )
         except Exception as e:
             raise ProcessFailure(f'Failed to execute temporal workflow: {e}')
-
-    @process()
-    def _edit_upload_metadata(self, edit_request_json: dict[str, Any], user_id: str):
-        self._edit_upload_metadata_local(edit_request_json, user_id)
 
     def _edit_upload_metadata_local(
         self, edit_request_json: dict[str, Any], user_id: str
@@ -3473,17 +3315,12 @@ class Upload(Proc):
         have been created using the :func:`BundleImporter.create_upload_skeleton` method).
         See the :class:`BundleImporter` class for more info. Does not check permissions.
         """
-        from nomad.config import config
-
-        if config.temporal.enabled:
-            self.process_status = ProcessStatus.PENDING
-            return run_async(
-                self._start_import_bundle_workflow(
-                    bundle_path, import_settings, embargo_length
-                ),
-            )
-        else:
-            return self._import_bundle(bundle_path, import_settings, embargo_length)
+        self.process_status = ProcessStatus.PENDING
+        return run_async(
+            self._start_import_bundle_workflow(
+                bundle_path, import_settings, embargo_length
+            ),
+        )
 
     async def _start_import_bundle_workflow(
         self,
@@ -3509,20 +3346,6 @@ class Upload(Proc):
         except Exception as e:
             raise ProcessFailure(f'Failed to execute temporal workflow: {e}')
 
-    @process(is_blocking=True)
-    def _import_bundle(
-        self,
-        bundle_path: str,
-        import_settings: dict[str, Any],
-        embargo_length: int | None = None,
-    ):
-        """
-        A @process that imports data from an upload bundle to the current upload (which should
-        have been created using the :func:`BundleImporter.create_upload_skeleton` method).
-        See the :class:`BundleImporter` class for more info. Does not check permissions.
-        """
-        return self._import_bundle_local(bundle_path, import_settings, embargo_length)
-
     def _import_bundle_local(
         self,
         bundle_path: str,
@@ -3542,17 +3365,6 @@ class Upload(Proc):
         finally:
             if bundle_importer:
                 bundle_importer.close()
-
-    @process_local
-    def import_bundle_local(self, bundle_importer):
-        """
-        Runs the bundle import step as a local process. Takes an open
-        :class:`nomad.bundles.BundleImporter` as argument.
-        """
-        try:
-            return bundle_importer.import_bundle(self, True)
-        finally:
-            bundle_importer.close()
 
     def __str__(self):
         return f'upload {super().__str__()} upload_id{self.upload_id}'
