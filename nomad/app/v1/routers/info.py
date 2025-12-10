@@ -31,6 +31,7 @@ from pydantic.main import BaseModel
 
 from nomad import normalizing
 from nomad.config import config
+from nomad.config.models.plugins import EntryPoint, PluginPackage
 from nomad.parsing import parsers
 from nomad.parsing.parsers import code_metadata
 from nomad.search import get_statistics
@@ -91,11 +92,11 @@ class InfoModel(BaseModel):
     metainfo_packages: list[str]
     codes: list[CodeInfoModel]
     normalizers: list[str]
-    plugin_entry_points: list[dict] | None = Field(
+    plugin_entry_points: list[EntryPoint] | None = Field(
         None,
         description='List of plugin entry points that are activated in this deployment.',
     )
-    plugin_packages: list[dict] | None = Field(
+    plugin_packages: list[PluginPackage] | None = Field(
         None,
         description='List of plugin packages that are installed in this deployment.',
     )
@@ -110,6 +111,7 @@ class InfoModel(BaseModel):
     # should have switched to a new GUI version.
     git: dict | None = Field(
         None,
+        deprecated=True,
         description=strip(
             """
         A deprecated field that always contains an empty value to retain some compatibility
