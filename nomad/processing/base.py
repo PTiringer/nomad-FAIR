@@ -21,9 +21,9 @@ import os
 import time
 from collections import defaultdict
 from datetime import datetime, timezone
+from multiprocessing import current_process
 from typing import Any, NamedTuple
 
-import billiard
 from mongoengine import (
     DateTimeField,
     Document,
@@ -232,7 +232,7 @@ class Proc(Document):
         return False
 
     def get_logger(self):
-        process = billiard.current_process()  # type: ignore # pylint: disable=no-member
+        process = current_process()
         worker_id = getattr(process, '_nomad_id', None)
         if worker_id is None:
             worker_id = utils.create_uuid()
