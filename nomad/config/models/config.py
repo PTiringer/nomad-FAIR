@@ -395,25 +395,65 @@ CELERY_QUEUE_ROUTING = 'queue'
 
 
 class Celery(ConfigBaseModel):
-    max_memory: float = 64e6  # 64 GB
-    timeout: int = 1800  # 1/2hr
-    acks_late: bool = False
-    routing: str = CELERY_QUEUE_ROUTING
-    priorities: dict[str, int] = {
-        'Upload.process_upload': 5,
-        'Upload.delete_upload': 9,
-        'Upload.publish_upload': 10,
-    }
+    max_memory: float = Field(
+        64e6,
+        description='Maximum memory (in bytes) that a Celery worker is allowed to use.',
+    )
+    timeout: int = Field(
+        1800,
+        description='Default hard timeout (in seconds) for Celery tasks.',
+    )
+    acks_late: bool = Field(
+        False,
+        description='If True, acknowledge tasks only after they have been executed (at-least-once semantics).',
+    )
+    routing: str = Field(
+        CELERY_QUEUE_ROUTING,
+        description=(
+            'Routing mode for Celery tasks. Typically either '
+            f'"{CELERY_WORKER_ROUTING}" for worker-based routing or '
+            f'"{CELERY_QUEUE_ROUTING}" for queue-based routing.'
+        ),
+    )
+    priorities: dict[str, int] = Field(
+        default_factory=lambda: {
+            'Upload.process_upload': 5,
+            'Upload.delete_upload': 9,
+            'Upload.publish_upload': 10,
+        },
+        description='Per-task priority mapping for Celery tasks. Lower numbers are scheduled earlier.',
+    )
 
 
 class FS(ConfigBaseModel):
-    tmp: str = '.volumes/fs/tmp'
-    staging: str = '.volumes/fs/staging'
-    staging_external: str = None
-    public: str = '.volumes/fs/public'
-    public_external: str = None
-    north_home: str = '.volumes/fs/north/users'
-    north_home_external: str = None
+    tmp: str = Field(
+        '.volumes/fs/tmp',
+        description='Internal temporary filesystem path used during processing.',
+    )
+    staging: str = Field(
+        '.volumes/fs/staging',
+        description='Internal path used for staging uploads before they are processed.',
+    )
+    staging_external: str | None = Field(
+        None,
+        description='External/absolute path to staging storage. If None, derived from working_directory.',
+    )
+    public: str = Field(
+        '.volumes/fs/public',
+        description='Internal path where public files (e.g. published uploads) are stored.',
+    )
+    public_external: str | None = Field(
+        None,
+        description='External/absolute path to the public storage. If None, derived from working_directory.',
+    )
+    north_home: str = Field(
+        '.volumes/fs/north/users',
+        description='Internal base path for NORTH user home directories.',
+    )
+    north_home_external: str | None = Field(
+        None,
+        description='External/absolute path for NORTH user home directories. If None, derived from working_directory.',
+    )
     north_home_user_folder_map: dict[str, str] | None = Field(
         {},
         description="""
@@ -423,8 +463,14 @@ class FS(ConfigBaseModel):
                      'nomad username': '/path/on/disk/to/work/folder/specific/for/user'
     """,
     )
-    local_tmp: str = '/tmp'
-    prefix_size: int = 2
+    local_tmp: str = Field(
+        '/tmp',
+        description='Local temporary directory on the host system (outside of NOMAD volumes).',
+    )
+    prefix_size: int = Field(
+        2,
+        description='Number of characters from upload/entry IDs used as directory prefixes in storage.',
+    )
     archive_version_suffix: str | list[str] = Field(
         ['v1.2', 'v1'],
         description="""
@@ -437,8 +483,14 @@ class FS(ConfigBaseModel):
         next string, etc.
     """,
     )
-    working_directory: str = os.getcwd()
-    external_working_directory: str = None
+    working_directory: str = Field(
+        default_factory=os.getcwd,
+        description='Base working directory used to resolve relative filesystem paths.',
+    )
+    external_working_directory: str | None = Field(
+        None,
+        description='Optional external working directory overriding working_directory for derived paths.',
+    )
 
     @model_validator(mode='after')
     @classmethod
@@ -463,20 +515,50 @@ class FS(ConfigBaseModel):
 
 
 class Elastic(ConfigBaseModel):
-    username: str = ''
-    password: str = ''
-    host: str = 'localhost'
-    port: int = 9200
-    timeout: int = 60
-    bulk_timeout: int = 600
-    bulk_size: int = 1000
+    username: str = Field(
+        '',
+        description='Username for authenticating with the Elasticsearch server.',
+    )
+    password: str = Field(
+        '',
+        description='Password for authenticating with the Elasticsearch server.',
+    )
+    host: str = Field(
+        'localhost',
+        description='Hostname or IP address of the Elasticsearch server.',
+    )
+    port: int = Field(
+        9200,
+        description='Port on which the Elasticsearch server is listening.',
+    )
+    timeout: int = Field(
+        60,
+        description='Default request timeout (in seconds) for Elasticsearch operations.',
+    )
+    bulk_timeout: int = Field(
+        600,
+        description='Timeout (in seconds) for bulk Elasticsearch operations.',
+    )
+    bulk_size: int = Field(
+        1000,
+        description='Number of documents per bulk indexing/request batch.',
+    )
     max_payload_size: int = Field(
         90 * 1024 * 1024,  # 90 MB
         description='Maximum payload size sent to the Elasticsearch server in bytes. Note that Elasticsearch has an internal limit of 100MB that you can configure as well.',
     )
-    entries_per_material_cap: int = 1000
-    entries_index: str = 'nomad_entries_v1'
-    materials_index: str = 'nomad_materials_v1'
+    entries_per_material_cap: int = Field(
+        1000,
+        description='Maximum number of entries per material used when aggregating entry data to materials.',
+    )
+    entries_index: str = Field(
+        'nomad_entries_v1',
+        description='Name of the Elasticsearch index storing entries.',
+    )
+    materials_index: str = Field(
+        'nomad_materials_v1',
+        description='Name of the Elasticsearch index storing materials.',
+    )
 
 
 class ProcessingTimeouts(ConfigBaseModel):
@@ -551,24 +633,61 @@ class ProcessingTimeouts(ConfigBaseModel):
 
 
 class Temporal(ConfigBaseModel):
-    host: str = 'localhost'
-    port: int = 7233
-    namespace: str = 'default'
-    enabled: bool = True
-    graceful_shutdown_timeout: int = Field(
-        1, description='The graceful shutdown timeout for temporal workers in seconds.'
+    host: str = Field(
+        'localhost',
+        description='Hostname or IP address of the Temporal server.',
     )
-    processing_timeouts: ProcessingTimeouts = ProcessingTimeouts()
+    port: int = Field(
+        7233,
+        description='Port on which the Temporal server is listening.',
+    )
+    namespace: str = Field(
+        'default',
+        description='Temporal namespace used for NOMAD workflows.',
+    )
+    enabled: bool = Field(
+        True,
+        description='If False, Temporal-based processing is disabled and alternative mechanisms may be used.',
+    )
+    graceful_shutdown_timeout: int = Field(
+        1,
+        description='Graceful shutdown timeout (in seconds) for Temporal workers.',
+    )
+    processing_timeouts: ProcessingTimeouts = Field(
+        default_factory=ProcessingTimeouts,
+        description='Timeout configuration for individual processing workflows and activities.',
+    )
 
 
 class Keycloak(ConfigBaseModel):
-    server_url: str = 'https://nomad-lab.eu/fairdi/keycloak/auth/'
-    public_server_url: str | None = None
-    realm_name: str = 'fairdi_nomad_prod'
-    username: str = 'admin'
-    password: str = 'password'
-    client_id: str = 'nomad_public'
-    client_secret: str | None = None
+    server_url: str = Field(
+        'https://nomad-lab.eu/fairdi/keycloak/auth/',
+        description='Internal base URL of the Keycloak server used by NOMAD.',
+    )
+    public_server_url: str | None = Field(
+        None,
+        description='Publicly reachable Keycloak server URL. Defaults to server_url if not explicitly set.',
+    )
+    realm_name: str = Field(
+        'fairdi_nomad_prod',
+        description='Keycloak realm name used for this NOMAD deployment.',
+    )
+    username: str = Field(
+        'admin',
+        description='Administrative Keycloak username used for service-level operations.',
+    )
+    password: str = Field(
+        'password',
+        description='Administrative Keycloak password used for service-level operations.',
+    )
+    client_id: str = Field(
+        'nomad_public',
+        description='Keycloak client ID used by the NOMAD backend/UI.',
+    )
+    client_secret: str | None = Field(
+        None,
+        description='Optional Keycloak client secret used for confidential clients.',
+    )
 
     @model_validator(mode='after')
     @classmethod
@@ -586,15 +705,33 @@ class Mongo(ConfigBaseModel):
     )
     port: int = Field(27017, description='The port to connect with mongodb.')
     db_name: str = Field('nomad_v1', description='The used mongodb database name.')
-    username: str | None = None
-    password: str | None = None
+    username: str | None = Field(
+        None,
+        description='Optional username for MongoDB authentication.',
+    )
+    password: str | None = Field(
+        None,
+        description='Optional password for MongoDB authentication.',
+    )
 
 
 class Logstash(ConfigBaseModel):
-    enabled: bool = False
-    host: str = 'localhost'
-    tcp_port: str = '5000'
-    level: int | str = logging.DEBUG
+    enabled: bool = Field(
+        False,
+        description='If True, logs are forwarded to a Logstash instance.',
+    )
+    host: str = Field(
+        'localhost',
+        description='Hostname or IP address of the Logstash server.',
+    )
+    tcp_port: str = Field(
+        '5000',
+        description='TCP port on which the Logstash server receives logs.',
+    )
+    level: int | str = Field(
+        logging.DEBUG,
+        description='Minimum log level for logs sent to Logstash.',
+    )
 
     # Validators
     _level = field_validator('level', mode='before')(normalize_loglevel)
@@ -650,7 +787,10 @@ class Logtransfer(ConfigBaseModel):
 
 
 class Tests(ConfigBaseModel):
-    default_timeout: int = 60
+    default_timeout: int = Field(
+        60,
+        description='Default timeout (in seconds) used in test utilities and helpers.',
+    )
     assume_auth_for_username: str | None = Field(
         None,
         description=(
@@ -661,14 +801,38 @@ class Tests(ConfigBaseModel):
 
 
 class Mail(ConfigBaseModel):
-    enabled: bool = False
-    with_login: bool = False
-    host: str = ''
-    port: int = 8995
-    user: str = ''
-    password: str = ''
-    from_address: str = 'support@nomad-lab.eu'
-    cc_address: str | None = None
+    enabled: bool = Field(
+        False,
+        description='If True, NOMAD will attempt to send emails using the configured SMTP server.',
+    )
+    with_login: bool = Field(
+        False,
+        description='If True, NOMAD will authenticate to the SMTP server using the given user and password.',
+    )
+    host: str = Field(
+        '',
+        description='Hostname or IP address of the SMTP server.',
+    )
+    port: int = Field(
+        8995,
+        description='Port of the SMTP server.',
+    )
+    user: str = Field(
+        '',
+        description='SMTP username used for authentication (if with_login is True).',
+    )
+    password: str = Field(
+        '',
+        description='SMTP password used for authentication (if with_login is True).',
+    )
+    from_address: str = Field(
+        'support@nomad-lab.eu',
+        description='Email address used in the From header of outgoing emails.',
+    )
+    cc_address: str | None = Field(
+        None,
+        description='Optional email address to CC on outgoing emails.',
+    )
 
 
 class Normalize(ConfigBaseModel):
@@ -786,33 +950,87 @@ class Normalize(ConfigBaseModel):
 
 
 class Client(ConfigBaseModel):
-    user: str | None = None
-    password: str | None = None
-    access_token: str = None
-    url: str = 'https://nomad-lab.eu/prod/v1/api'
+    user: str | None = Field(
+        None,
+        description='Optional username used by the Python NOMAD client for authentication.',
+    )
+    password: str | None = Field(
+        None,
+        description='Optional password used by the Python NOMAD client for authentication.',
+    )
+    access_token: str | None = Field(
+        None,
+        description='Optional bearer access token used by the Python NOMAD client.',
+    )
+    url: str = Field(
+        'https://nomad-lab.eu/prod/v1/api',
+        description='Base URL of the NOMAD API used by the Python client.',
+    )
 
 
 class DataCite(ConfigBaseModel):
-    mds_host: str = 'https://mds.datacite.org'
-    enabled: bool = False
-    prefix: str = '10.17172'
-    user: str = '*'
-    password: str = '*'
+    mds_host: str = Field(
+        'https://mds.datacite.org',
+        description='Base URL of the DataCite MDS (Metadata Store) service.',
+    )
+    enabled: bool = Field(
+        False,
+        description='If True, NOMAD will register DOIs via DataCite for published uploads/datasets.',
+    )
+    prefix: str = Field(
+        '10.17172',
+        description='DataCite DOI prefix assigned to this NOMAD deployment.',
+    )
+    user: str = Field(
+        '*',
+        description='DataCite MDS username.',
+    )
+    password: str = Field(
+        '*',
+        description='DataCite MDS password.',
+    )
 
 
 class GitLab(ConfigBaseModel):
-    private_token: str = 'not set'
+    private_token: str = Field(
+        'not set',
+        description='Private token used for accessing the GitLab API (e.g. for CI integrations).',
+    )
 
 
 class Process(ConfigBaseModel):
-    index_materials: bool = False
-    reuse_parser: bool = True
-    metadata_file_name: str = 'nomad'
-    metadata_file_extensions: tuple[str, ...] = ('json', 'yaml', 'yml')
-    auxfile_cutoff: int = 100
-    parser_matching_size: int = 150 * 80
-    max_upload_size: int = 32 * (1024**3)
-    use_empty_parsers: bool = False
+    index_materials: bool = Field(
+        False,
+        description='If True, material-level indices are created/updated during processing.',
+    )
+    reuse_parser: bool = Field(
+        True,
+        description='If True, parser instances may be reused between entries to improve performance.',
+    )
+    metadata_file_name: str = Field(
+        'nomad',
+        description='Base name (without extension) for per-upload metadata files.',
+    )
+    metadata_file_extensions: tuple[str, ...] = Field(
+        ('json', 'yaml', 'yml'),
+        description='Allowed file extensions for per-upload metadata files.',
+    )
+    auxfile_cutoff: int = Field(
+        100,
+        description='Maximum number of auxiliary files considered when matching parsers.',
+    )
+    parser_matching_size: int = Field(
+        150 * 80,
+        description='Heuristic size parameter used when selecting parsers based on file size.',
+    )
+    max_upload_size: int = Field(
+        32 * (1024**3),
+        description='Maximum allowed upload size in bytes.',
+    )
+    use_empty_parsers: bool = Field(
+        False,
+        description='If True, allow parsers that produce empty archives to be used.',
+    )
     redirect_stdouts: bool = Field(
         False,
         description="""
@@ -820,7 +1038,10 @@ class Process(ConfigBaseModel):
         processing (e.g. created by parsers or normalizers) as log entries.
     """,
     )
-    rfc3161_skip_published: bool = False
+    rfc3161_skip_published: bool = Field(
+        False,
+        description='If True, RFC3161 timestamping is skipped for already published uploads.',
+    )
     exclude_potcar: bool = Field(
         True,
         description="""
@@ -830,12 +1051,30 @@ class Process(ConfigBaseModel):
 
 
 class Reprocess(ConfigBaseModel):
-    rematch_published: bool = True
-    reprocess_existing_entries: bool = True
-    use_original_parser: bool = False
-    add_matched_entries_to_published: bool = True
-    delete_unmatched_published_entries: bool = False
-    index_individual_entries: bool = False
+    rematch_published: bool = Field(
+        True,
+        description='If True, published uploads are rematched with parsers during reprocessing.',
+    )
+    reprocess_existing_entries: bool = Field(
+        True,
+        description='If True, existing entries in the database are reprocessed.',
+    )
+    use_original_parser: bool = Field(
+        False,
+        description='If True, the originally used parser is forced during reprocessing (if available).',
+    )
+    add_matched_entries_to_published: bool = Field(
+        True,
+        description='If True, newly matched entries are added to the published set.',
+    )
+    delete_unmatched_published_entries: bool = Field(
+        False,
+        description='If True, previously published entries that no longer match are deleted.',
+    )
+    index_individual_entries: bool = Field(
+        False,
+        description='If True, individual entries are re-indexed during reprocessing.',
+    )
 
 
 class RFC3161Timestamp(ConfigBaseModel):
@@ -850,8 +1089,14 @@ class RFC3161Timestamp(ConfigBaseModel):
         'sha256',
         description='Hash algorithm used by the rfc3161ng timestamping server.',
     )
-    username: str | None = None
-    password: str | None = None
+    username: str | None = Field(
+        None,
+        description='Optional username for authenticating to the RFC3161 timestamping server.',
+    )
+    password: str | None = Field(
+        None,
+        description='Optional password for authenticating to the RFC3161 timestamping server.',
+    )
 
 
 class BundleExportSettings(ConfigBaseModel):
@@ -1038,33 +1283,114 @@ class Archive(ConfigBaseModel):
 class Config(ConfigBaseModel):
     """Model for the NOMAD configuration."""
 
-    services: Services = Services()
-    meta: Meta = Meta()
-    oasis: Oasis = Oasis()
-    north: NORTH = NORTH()
-    rabbitmq: RabbitMQ = RabbitMQ()
-    celery: Celery = Celery()
-    fs: FS = FS()
-    elastic: Elastic = Elastic()
-    temporal: Temporal = Temporal()
-    keycloak: Keycloak = Keycloak()
-    mongo: Mongo = Mongo()
-    logstash: Logstash = Logstash()
-    logtransfer: Logtransfer = Logtransfer()
-    tests: Tests = Tests()
-    mail: Mail = Mail()
-    normalize: Normalize = Normalize()
-    client: Client = Client()
-    datacite: DataCite = DataCite()
-    gitlab: GitLab = GitLab()
-    process: Process = Process()
-    reprocess: Reprocess = Reprocess()
-    rfc3161_timestamp: RFC3161Timestamp = RFC3161Timestamp()
-    bundle_export: BundleExport = BundleExport()
-    bundle_import: BundleImport = BundleImport()
-    archive: Archive = Archive()
-    ui: UI = UI()
-    plugins: Plugins | None = None
+    services: Services = Field(
+        default_factory=Services,
+        description='Settings for core NOMAD services (API, worker, north).',
+    )
+    meta: Meta = Field(
+        default_factory=Meta,
+        description='Metadata and presentation details for this NOMAD deployment.',
+    )
+    oasis: Oasis = Field(
+        default_factory=Oasis,
+        description='Configuration options specific to NOMAD Oasis deployments.',
+    )
+    north: NORTH = Field(
+        default_factory=NORTH,
+        description='Configuration for NORTH tools and the NORTH hub.',
+    )
+    rabbitmq: RabbitMQ = Field(
+        default_factory=RabbitMQ,
+        description='RabbitMQ connection settings used for task messaging.',
+    )
+    celery: Celery = Field(
+        default_factory=Celery,
+        description='Celery worker configuration and task routing settings.',
+    )
+    fs: FS = Field(
+        default_factory=FS,
+        description='Filesystem paths and storage layout used by NOMAD.',
+    )
+    elastic: Elastic = Field(
+        default_factory=Elastic,
+        description='Elasticsearch connection details and index configuration.',
+    )
+    temporal: Temporal = Field(
+        default_factory=Temporal,
+        description='Temporal.io workflow configuration used for processing.',
+    )
+    keycloak: Keycloak = Field(
+        default_factory=Keycloak,
+        description='Keycloak authentication and user management configuration.',
+    )
+    mongo: Mongo = Field(
+        default_factory=Mongo,
+        description='MongoDB connection configuration for NOMAD.',
+    )
+    logstash: Logstash = Field(
+        default_factory=Logstash,
+        description='Logstash logging and forwarding configuration.',
+    )
+    logtransfer: Logtransfer = Field(
+        default_factory=Logtransfer,
+        description='Configuration for the logtransfer/statistics service.',
+    )
+    tests: Tests = Field(
+        default_factory=Tests,
+        description='Settings that influence testing behaviour and assumptions.',
+    )
+    mail: Mail = Field(
+        default_factory=Mail,
+        description='Outgoing mail (SMTP) configuration.',
+    )
+    normalize: Normalize = Field(
+        default_factory=Normalize,
+        description='Settings controlling normalizers and structural analysis.',
+    )
+    client: Client = Field(
+        default_factory=Client,
+        description='Default configuration for the Python NOMAD client.',
+    )
+    datacite: DataCite = Field(
+        default_factory=DataCite,
+        description='DataCite DOI registration and credentials configuration.',
+    )
+    gitlab: GitLab = Field(
+        default_factory=GitLab,
+        description='GitLab integration and authentication settings.',
+    )
+    process: Process = Field(
+        default_factory=Process,
+        description='Primary configuration for upload and entry processing.',
+    )
+    reprocess: Reprocess = Field(
+        default_factory=Reprocess,
+        description='Configuration for reprocessing and rematching entries.',
+    )
+    rfc3161_timestamp: RFC3161Timestamp = Field(
+        default_factory=RFC3161Timestamp,
+        description='Configuration of RFC3161 timestamping service used by NOMAD.',
+    )
+    bundle_export: BundleExport = Field(
+        default_factory=BundleExport,
+        description='Global defaults for bundle export behaviour.',
+    )
+    bundle_import: BundleImport = Field(
+        default_factory=BundleImport,
+        description='Global defaults for bundle import behaviour.',
+    )
+    archive: Archive = Field(
+        default_factory=Archive,
+        description='Low-level archive storage and performance tuning options.',
+    )
+    ui: UI = Field(
+        default_factory=UI,
+        description='Configuration for the NOMAD web UI and its endpoints.',
+    )
+    plugins: Plugins | None = Field(
+        default=None,
+        description='Resolved plugin configuration, populated by load_plugins().',
+    )
 
     def api_url(
         self,
