@@ -39,6 +39,10 @@ import { Unit } from '../../units/Unit'
 import { useUnitContext } from '../../units/UnitContext'
 import { getAxisConfig } from '../../plotting/common'
 
+const stripDtypeSuffix = (quantity) => {
+  return quantity?.replace(/#(int|float|str|bool|Datetime)$/, '') || quantity
+}
+
 const StyledToggleButtonGroup = styled(ToggleButtonGroup)(({ theme }) => ({
   '& .MuiToggleButtonGroup-grouped': {
     margin: theme.spacing(0, 0.25),
@@ -123,8 +127,8 @@ export const WidgetScatterPlot = React.memo((
     }
   }, [error, filterData, markers?.color, x, units, y])
 
-  const setXFilter = useSetFilter(xParsed.quantity)
-  const setYFilter = useSetFilter(yParsed.quantity)
+  const setXFilter = useSetFilter(stripDtypeSuffix(xParsed.quantity))
+  const setYFilter = useSetFilter(stripDtypeSuffix(yParsed.quantity))
 
   const setWidget = useSetWidget(id)
   const pagination = useMemo(() => ({
