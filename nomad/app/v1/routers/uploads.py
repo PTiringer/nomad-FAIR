@@ -226,20 +226,22 @@ class UploadProcDataPagination(Pagination):
     @model_validator(mode='before')
     @classmethod
     def check_order_by(cls, data):
+        order_by_choices = (
+            'upload_create_time',
+            'publish_time',
+            'upload_name',
+            'last_status_message',
+            'process_status',
+        )
         if isinstance(data, dict):
             order_by = data.get('order_by')
             if order_by is None:
                 order_by = 'upload_create_time'  # Default value
                 data['order_by'] = order_by
-            if order_by not in (
-                'upload_create_time',
-                'publish_time',
-                'upload_name',
-                'last_status_message',
-                'process_status',
-            ):
+            if order_by not in order_by_choices:
                 raise PydanticCustomError(
-                    'invalid_order_by', 'order_by must be a valid attribute'
+                    'invalid_order_by',
+                    f"order_by is '{order_by}', must be one of {order_by_choices}",
                 )
         return data
 
@@ -279,19 +281,22 @@ class EntryProcDataPagination(Pagination):
     @field_validator('order_by')
     @classmethod
     def validate_order_by(cls, order_by):  # pylint: disable=no-self-argument
-        if order_by == 'mainfile_path':
-            return 'mainfile'
-        if order_by is None:
-            return 'mainfile'  # Default value
-        if order_by not in (
+        order_by_choices = (
             'mainfile',
             'parser_name',
             'process_status',
             'current_process',
             'entry_create_time',
-        ):
+        )
+
+        if order_by == 'mainfile_path':
+            return 'mainfile'
+        if order_by is None:
+            return 'mainfile'  # Default value
+        if order_by not in order_by_choices:
             raise PydanticCustomError(
-                'invalid_order_by', 'order_by must be a valid attribute'
+                'invalid_order_by',
+                f"order_by is '{order_by}', must be one of {order_by_choices}",
             )
         return order_by
 

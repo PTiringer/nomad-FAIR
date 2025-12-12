@@ -1,46 +1,15 @@
-from enum import Enum
-
 from fastapi import HTTPException, Request
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
 from nomad.app.v1.utils import update_url_query_arguments
+from nomad.config.models.pagination import Direction, PaginationBaseModel  # noqa: F401
 from nomad.utils import strip
 
 
-class Direction(str, Enum):
-    """
-    Order direction, either ascending (`asc`) or descending (`desc`)
-    """
-
-    asc = 'asc'
-    desc = 'desc'
-
-
-class Pagination(BaseModel):
+class Pagination(PaginationBaseModel):
     """Defines the order, size, and page of results."""
 
-    page_size: int | None = Field(
-        10,
-        description=strip("""
-            The page size, e.g. the maximum number of items contained in one response.
-            A `page_size` of 0 will return no results.
-        """),
-    )
-    order_by: str | None = Field(
-        None,
-        description=strip("""
-            The results are ordered by the values of this field. If omitted, default
-            ordering is applied.
-        """),
-    )
-    order: Direction | None = Field(
-        Direction.asc,
-        description=strip("""
-            The ordering direction of the results based on `order_by`. Its either
-            ascending `asc` or descending `desc`. Default is `asc`.
-        """),
-    )
     page_after_value: str | None = Field(
         None,
         description=strip("""
@@ -88,15 +57,6 @@ class Pagination(BaseModel):
             **NOTE #2**: Only one, `page`, `page_offset` or `page_after_value`, can be used.
         """),
     )
-
-    model_config = ConfigDict(use_enum_values=True)
-
-    @field_validator('page_size')
-    @classmethod
-    def validate_page_size(cls, page_size):  # pylint: disable=no-self-argument
-        if page_size < 0:
-            raise PydanticCustomError('invalid_page_size', 'page_size must be >= 0')
-        return page_size
 
     @field_validator('order_by')
     @classmethod

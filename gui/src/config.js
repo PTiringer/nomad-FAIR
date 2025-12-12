@@ -122,6 +122,8 @@ export const maxLogsToShow = 50
 export const schemaSeparator = '#'
 export const dtypeSeparator = '#'
 export const yamlSchemaPrefix = 'entry_id:'
+export const uploadPagination = window.nomadEnv.uploadPagination
+export const entryPagination = window.nomadEnv.entryPagination
 
 window.nomadArtifacts = window.nomadArtifacts || {}
 export const searchQuantities = window.nomadArtifacts.searchQuantities

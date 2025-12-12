@@ -334,12 +334,16 @@ def get_gui_config() -> str:
         'servicesUploadLimit': config.services.upload_limit,
         'appTokenMaxExpiresIn': config.services.app_token_max_expires_in,
         'uploadMembersGroupSearchEnabled': config.services.upload_members_group_search_enabled,
-        'ui': config.ui.dict(exclude_none=True) if config.ui else {},
+        'uploadPagination': config.uploads.pagination.model_dump(exclude_none=True),
+        'entryPagination': config.uploads.entries.pagination.model_dump(
+            exclude_none=True
+        ),
+        'ui': config.ui.model_dump(exclude_none=True) if config.ui else {},
         'plugins': plugins,
         'dataciteEnabled': config.datacite.enabled,
         'temporalProcessingEnabled': True,
         'termsOfServiceURL': config.oasis.terms_of_service_url,
-        'footerLinks': [link.dict() for link in config.meta.footer_links],
+        'footerLinks': [link.model_dump() for link in config.meta.footer_links],
         'description': config.meta.description,
     }
 

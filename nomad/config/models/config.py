@@ -22,6 +22,8 @@ import warnings
 from enum import Enum
 from importlib.metadata import version
 
+from nomad.config.models.pagination import PaginationBaseModel
+
 _DEFAULT_API_KEY = 'default-api-secret-that-is-long-enough'
 
 
@@ -1276,8 +1278,27 @@ class Archive(ConfigBaseModel):
     )
 
 
+class Pagination(ConfigBaseModel, PaginationBaseModel):
+    pass
+
+
+class Entries(ConfigBaseModel):
+    pagination: Pagination = Pagination(
+        page_size=5, order_by='process_status', order='asc'
+    )
+
+
+class Uploads(ConfigBaseModel):
+    pagination: Pagination = Pagination(
+        page_size=10, order_by='upload_create_time', order='desc'
+    )
+    entries: Entries = Entries()
+
+
 class Config(ConfigBaseModel):
     """Model for the NOMAD configuration."""
+
+    model_config = ConfigDict(validate_by_name=True)
 
     services: Services = Field(
         default_factory=Services,
@@ -1386,6 +1407,11 @@ class Config(ConfigBaseModel):
     plugins: Plugins | None = Field(
         default=None,
         description='Resolved plugin configuration, populated by load_plugins().',
+    )
+    uploads: Uploads = Field(
+        default_factory=Uploads,
+        alias='projects',
+        description='Configuration for uploads/projects presentation.',
     )
 
     def api_url(
