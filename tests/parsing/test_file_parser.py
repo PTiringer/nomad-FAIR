@@ -10,6 +10,7 @@ from nomad.parsing.file_parser import (
     TextParser,
     XMLParser,
 )
+from nomad.units import ureg
 
 
 class TestFileParser:
@@ -419,6 +420,74 @@ class TestTextParser:
         # (3,3) != (9)
         # assert list(lattice_vectors.shape) == Atoms.lattice_vectors.shape
         # assert lattice_vectors.dtype == Atoms.lattice_vectors.type
+
+    def test_parse_line(self, parser):
+        scf_quantities = [
+            Quantity(
+                'energy_total',
+                r'Total energy\s*:\s*([\-\d\.Ee]+)',
+                repeats=False,
+                dtype=float,
+                unit=ureg.hartree,
+            ),
+            Quantity(
+                'dos_fermi',
+                r'DOS at Fermi energy \(states\/Ha\/cell\)\s*:\s*([\-\d\.Ee]+)',
+                repeats=False,
+                dtype=float,
+            ),
+        ]
+
+        parser.quantities = [
+            Quantity(
+                'total_time',
+                r'Total time spent \(seconds\) +: +([\d\.]+)',
+                unit='s',
+                repeats=False,
+                dtype=float,
+            ),
+            Quantity(
+                'groundstate',
+                [
+                    r'\s*\|\s*Groundstate module started\s*[\*\+]\s*',
+                    r'\s*\|\s*Groundstate module stopped\s*[\*\+]\s*',
+                ],
+                sub_parser=TextParser(
+                    quantities=[
+                        Quantity(
+                            'scf_iteration',
+                            [
+                                r'\s*\|\s*SCF iteration number +: +\d+\s+\+\s*',
+                                r'\s*Wall time \(seconds\).+\s*',
+                            ],
+                            sub_parser=TextParser(quantities=scf_quantities),
+                            repeats=True,
+                        ),
+                        Quantity(
+                            'final_scf',
+                            [
+                                r'\s*\|\s*Convergence targets achieved.+\s*',
+                                r'\s*total charge +:.+\s*',
+                            ],
+                            sub_parser=TextParser(quantities=scf_quantities),
+                            repeats=False,
+                        ),
+                    ]
+                ),
+                repeats=False,
+            ),
+        ]
+        parser.line_parsing = True
+
+        assert parser.total_time
+        assert len(parser.groundstate.scf_iteration) == 12
+        assert parser.groundstate.scf_iteration[2].energy_total.to(
+            'hartree'
+        ).magnitude == pytest.approx(-5315.97055490)
+        assert parser.groundstate.scf_iteration[-1].dos_fermi == pytest.approx(
+            94.47898900
+        )
+        assert parser.groundstate.final_scf.dos_fermi == pytest.approx(94.47898904)
 
 
 class TestXMLParser:
