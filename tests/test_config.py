@@ -362,3 +362,73 @@ def test_plugin_polymorphism(mockopen, monkeypatch):
         config.plugins.entry_points.options['schema'], SchemaPackageEntryPoint
     )
     assert isinstance(config.plugins.entry_points.options['parser'], ParserEntryPoint)
+
+
+@pytest.mark.parametrize(
+    'conf_yaml, conf_expected',
+    [
+        pytest.param(
+            None,
+            {
+                'uploads': {
+                    'pagination': {
+                        'page_size': 10,
+                        'order_by': 'upload_create_time',
+                        'order': 'desc',
+                    },
+                    'entries': {
+                        'pagination': {
+                            'page_size': 5,
+                            'order_by': 'process_status',
+                            'order': 'asc',
+                        }
+                    },
+                }
+            },
+            id='default pagination values',
+        ),
+        pytest.param(
+            {
+                'uploads': {
+                    'pagination': {
+                        'page_size': 12,
+                        'order_by': 'upload_id',
+                        'order': 'asc',
+                    },
+                    'entries': {
+                        'pagination': {
+                            'page_size': 6,
+                            'order_by': 'entry_id',
+                            'order': 'desc',
+                        }
+                    },
+                }
+            },
+            {
+                'uploads': {
+                    'pagination': {
+                        'page_size': 12,
+                        'order_by': 'upload_id',
+                        'order': 'asc',
+                    },
+                    'entries': {
+                        'pagination': {
+                            'page_size': 6,
+                            'order_by': 'entry_id',
+                            'order': 'desc',
+                        }
+                    },
+                }
+            },
+            id='all pagination values changed',
+        ),
+        pytest.param(
+            {'projects': {'pagination': {'page_size': 12}}},
+            {'uploads': {'pagination': {'page_size': 12}}},
+            id='using alias projects',
+        ),
+    ],
+)
+def test_pagination(conf_yaml, conf_expected, mockopen, monkeypatch):
+    config = load_test_config(conf_yaml, None, mockopen, monkeypatch)
+    assert_config(config, conf_expected)

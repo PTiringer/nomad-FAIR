@@ -25,7 +25,7 @@ import {
 import ClipboardIcon from '@material-ui/icons/Assignment'
 import { HelpButton } from '../Help'
 import { CopyToClipboard } from 'react-copy-to-clipboard'
-import { guiBase, servicesUploadLimit } from '../../config'
+import { guiBase, servicesUploadLimit, uploadPagination } from '../../config'
 import NewUploadButton from './NewUploadButton'
 import ExampleUploadButton from './ExampleUploadButton'
 import { useApi, withLoginRequired } from '../api'
@@ -234,10 +234,8 @@ export function UploadsPage() {
   const [selected, setSelected] = useState(new Set())
   const fetchTimer = useRef(-1)
   const [pagination, setPagination] = useState({
-    page_size: 10,
-    page: 1,
-    order_by: 'upload_create_time',
-    order: 'desc'
+    ...uploadPagination,
+    page: 1
   })
   const history = useHistory()
 

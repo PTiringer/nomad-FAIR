@@ -123,8 +123,14 @@ export const DatatablePagePagination = React.memo(function DatatablePagePaginati
     })
   }
 
+  const rowsPerPageOptions = pageSizeValues || [5, 10, 50, 100]
+  if (rowsPerPageOptions.indexOf(pagination.page_size) === -1) {
+    rowsPerPageOptions.push(pagination.page_size)
+    rowsPerPageOptions.sort((a, b) => Number.parseInt(a) - Number.parseInt(b))
+  }
+
   return <TablePagination
-    rowsPerPageOptions={pageSizeValues || [5, 10, 50, 100]}
+    rowsPerPageOptions={rowsPerPageOptions}
     component="div"
     count={pagination.total}
     rowsPerPage={pagination.page_size}
