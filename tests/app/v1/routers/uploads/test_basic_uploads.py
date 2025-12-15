@@ -24,12 +24,13 @@ import time
 import zipfile
 from collections.abc import Iterable
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
 import pytest
 import requests
+from fastapi.testclient import TestClient
 
-from nomad import files, infrastructure
+from nomad import files, infrastructure, processing
 from nomad.bundles import BundleExporter
 from nomad.config import config
 from nomad.config.models.plugins import ExampleUploadEntryPoint
@@ -2458,3 +2459,108 @@ async def test_post_upload_bundle(
         assert_processing(client, upload_id, user_auth, published=publish)
         upload = Upload.get(upload_id)
         assert upload.from_oasis and upload.oasis_deployment_url
+
+
+def _raw_path_exists(upload_id: str, path: str):
+    return Upload.get(upload_id).upload_files.raw_path_exists(path)
+
+
+async def _perform_move_or_copy(
+    client: TestClient,
+    user,
+    upload_id: str,
+    source_path: str,
+    new_file_name: str,
+    copy_or_move: Literal['copy', 'move'],
+    # This is the path of the parent folder where is supposed to end the file
+    # If empty string it will be stored in the raw directory
+    final_destination_folder_path: str,
+):
+    return await asyncio.to_thread(
+        lambda: client.put(
+            build_url(
+                f'uploads/{upload_id}/raw/{final_destination_folder_path}',
+                query_args={
+                    'copy_or_move': copy_or_move,
+                    'file_name': new_file_name,
+                    'copy_or_move_source_path': source_path,
+                },
+            ),
+            headers=user,
+        )
+    )
+
+
+@pytest.mark.parametrize(
+    'source_path, new_file_name, expected_status_code, expected_error_message, orignal_file_should_exist',
+    [
+        pytest.param(
+            'examples_template/0.aux',
+            'random_file_name.aux',
+            200,
+            None,
+            False,
+            id='success-rename-file',
+        ),
+        pytest.param(
+            'examples_template/0.aux',
+            '1.aux',
+            409,
+            'The provided path already exists',
+            True,
+            id='conflicting-file-rename',
+        ),
+        pytest.param(
+            'examples_template/non-existing-file.aux',
+            'random-name.aux',
+            409,
+            'No file or folder with that source path',
+            False,
+            id='renaming-a-non-existing-file',
+        ),
+    ],
+)
+@pytest.mark.asyncio
+async def test_rename_file_or_folder(
+    temporal_worker,
+    non_empty_processed_with_temporal: processing.Upload,
+    client: TestClient,
+    elastic_function,
+    auth_headers,
+    source_path: str,
+    new_file_name: str,
+    expected_status_code: int,
+    expected_error_message: None | str,
+    orignal_file_should_exist: bool,
+):
+    upload_id: str = non_empty_processed_with_temporal.upload_id
+    user = auth_headers['user1']
+    async with temporal_worker():
+        parent_folder = '/'.join(source_path.split('/')[:-1])
+        rename_result = await _perform_move_or_copy(
+            client,
+            user,
+            upload_id,
+            source_path=source_path,
+            new_file_name=new_file_name,
+            copy_or_move='move',
+            final_destination_folder_path=parent_folder,
+        )
+        assert rename_result.status_code == expected_status_code
+        if expected_status_code == 200:
+            await asyncio.to_thread(
+                lambda: block_until_completed(client, upload_id, user)
+            )
+            assert not _raw_path_exists(upload_id, source_path)
+            assert _raw_path_exists(upload_id, f'{parent_folder}/{new_file_name}')
+        else:
+            body = rename_result.json()
+            message = body.get('detail')
+            assert message is not None
+            if expected_error_message is not None:
+                assert expected_error_message in message
+
+            if orignal_file_should_exist:
+                assert _raw_path_exists(upload_id, source_path)
+            else:
+                assert not _raw_path_exists(upload_id, source_path)
