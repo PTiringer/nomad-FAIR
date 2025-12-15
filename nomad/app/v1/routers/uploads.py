@@ -1544,6 +1544,11 @@ async def put_upload_raw_path(
                     status.HTTP_404_NOT_FOUND,
                     detail='No file or folder with that path found.',
                 )
+            if not upload_files.raw_path_exists(copy_or_move_source_path):
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT,
+                    detail=f'No file or folder with that source path: {copy_or_move_source_path}',
+                )
             file_operations: Any = [
                 dict(
                     op=copy_or_move.upper(),
