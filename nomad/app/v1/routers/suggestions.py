@@ -94,7 +94,7 @@ async def get_suggestions(
         name_es = names_es[index]
         if quantity.name not in suggestable_quantities:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=[
                     dict(
                         msg=(

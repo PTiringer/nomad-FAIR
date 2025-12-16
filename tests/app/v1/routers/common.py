@@ -1171,7 +1171,7 @@ def assert_response(response, status_code: int | None = None) -> None:
         except Exception:
             pass
 
-        if actual_status == status.HTTP_422_UNPROCESSABLE_ENTITY:
+        if actual_status == status.HTTP_422_UNPROCESSABLE_CONTENT:
             pytest.fail(
                 f'Expected {status_code}, but got 422 Unprocessable Entity.\n'
                 f'Detail: {response.json()["detail"]}'
@@ -1182,7 +1182,7 @@ def assert_response(response, status_code: int | None = None) -> None:
                 f'Response JSON: {response.json()}'
             )
 
-    if status_code == status.HTTP_422_UNPROCESSABLE_ENTITY:
+    if status_code == status.HTTP_422_UNPROCESSABLE_CONTENT:
         response_json = response.json()
         details = response_json['detail']
         assert len(details) > 0
