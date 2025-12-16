@@ -20,9 +20,16 @@ import logging
 import os
 import warnings
 from enum import Enum
-from importlib.metadata import version
+from importlib.metadata import entry_points, version
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from nomad.config.models.pagination import PaginationBaseModel
+
+from .common import ConfigBaseModel, Options
+from .north import NORTH
+from .plugins import EntryPointType, PluginPackage, Plugins
+from .ui import UI
 
 _DEFAULT_API_KEY = 'default-api-secret-that-is-long-enough'
 
@@ -32,20 +39,11 @@ class ModeEnum(str, Enum):
     DEVELOPMENT = 'development'
 
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-
 try:
     __version__ = version('nomad-lab')
 except Exception:  # noqa
     # package is not installed
     pass
-
-from importlib.metadata import entry_points
-
-from .common import ConfigBaseModel, Options
-from .north import NORTH
-from .plugins import EntryPointType, PluginPackage, Plugins
-from .ui import UI
 
 warnings.filterwarnings('ignore', message='numpy.dtype size changed')
 warnings.filterwarnings('ignore', message='numpy.ufunc size changed')
@@ -313,7 +311,7 @@ class Meta(ConfigBaseModel):
     )
 
     maintainer_email: str = Field(
-        'markus.scheidgen@physik.hu-berlin.de',
+        'support@nomad-lab.eu',
         description='Email of the NOMAD deployment maintainer.',
     )
     beta: dict = Field(
@@ -849,15 +847,15 @@ class Normalize(ConfigBaseModel):
             ),
         )
     )
-    system_classification_with_clusters_threshold: float = Field(
+    system_classification_with_clusters_threshold: int = Field(
         64,
         description="""
             The system size limit for running the dimensionality analysis. For very
             large systems the dimensionality analysis will get too expensive.
         """,
     )
-    clustering_size_limit: float = Field(
-        600,
+    clustering_size_limit: int = Field(
+        1000,
         description="""
             The system size limit for running the system clustering. For very
             large systems the clustering will get too expensive.
@@ -881,7 +879,7 @@ class Normalize(ConfigBaseModel):
             changed before re-running the prototype detection.
         """,
     )
-    max_2d_single_cell_size: float = Field(
+    max_2d_single_cell_size: int = Field(
         7,
         description="""
             Maximum number of atoms in the single cell of a 2D material for it to be

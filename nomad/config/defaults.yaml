@@ -127,7 +127,7 @@ meta:
   commit: ''
   deployment: oasis
   homepage: https://nomad-lab.eu
-  maintainer_email: me@my-oasis.org
+  maintainer_email: support@nomad-lab.eu
   name: NOMAD
   service: unknown nomad service
   source_url: https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR
