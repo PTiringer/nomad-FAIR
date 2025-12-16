@@ -1055,7 +1055,7 @@ def _validate_required(required: ArchiveRequired, user) -> RequiredReader:
         return RequiredReader(required, user=user)
     except RequiredValidationError as e:
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=[dict(msg=e.msg, loc=['required'] + e.loc)],
         )
 

@@ -59,7 +59,7 @@ _bad_app_not_found = (
     },
 )
 _bad_search_quantity_parse = (
-    status.HTTP_422_UNPROCESSABLE_ENTITY,
+    status.HTTP_422_UNPROCESSABLE_CONTENT,
     {
         'model': HTTPExceptionModel,
         'description': 'Could not load or parse the requested search quantity.',
@@ -469,7 +469,7 @@ def _build_app_response(app: App) -> dict[str, Any]:
         data = parse_jmespath(name)
         if data['error']:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=f'Could not parse the app search quantity "{name}" used in {location}. Please verify that any JMESPath expressions are valid. Error: {data["error"]}',
             )
         for q in [data['quantity']] + data['extras']:
@@ -487,7 +487,7 @@ def _build_app_response(app: App) -> dict[str, Any]:
         sq = all_search_quantities.get(name)
         if sq is None:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=f'Could not load the app search quantity "{name}" used in {location}. Please check for typos and ensure that the corresponding schema package is installed and contains the requested definition. Note that currently only scalar quantities can be used in the apps, and data from e.g. lists or matrices cannot be accessed.',
             )
         search_quantities[name] = sq.model_dump()

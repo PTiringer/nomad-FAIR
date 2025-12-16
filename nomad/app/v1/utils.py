@@ -71,7 +71,7 @@ def parameter_dependency_from_model(
             errors = e.errors()
             for error in errors:
                 error['loc'] = ['query'] + list(error['loc'])
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, detail=errors)
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail=errors)
 
     """.format(
             name,

@@ -472,7 +472,7 @@ class QueryParameters:
             fragments = parameter.split('__')
             if len(fragments) == 1 or len(fragments) > 3:
                 raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail=[
                         {
                             'loc': ['query', 'q'],
@@ -489,7 +489,7 @@ class QueryParameters:
                     doc_type = material_entry_type
                 else:
                     raise HTTPException(
-                        status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        status.HTTP_422_UNPROCESSABLE_CONTENT,
                         detail=[
                             {
                                 'loc': ['query', parameter],
@@ -500,7 +500,7 @@ class QueryParameters:
 
             if quantity_name not in doc_type.quantities:
                 raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail=[
                         {
                             'loc': ['query', parameter],
@@ -551,7 +551,7 @@ class QueryParameters:
             elif op in ops:
                 if len(values) > 1:
                     raise HTTPException(
-                        status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        status.HTTP_422_UNPROCESSABLE_CONTENT,
                         detail=[
                             {
                                 'loc': ['query', key],
@@ -562,7 +562,7 @@ class QueryParameters:
                 query[quantity_name] = ops[op](**{op: values[0]})
             else:
                 raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail=[
                         {'loc': ['query', key], 'msg': f'operator {op} is unknown'}
                     ],
@@ -574,7 +574,7 @@ class QueryParameters:
                 query.update(**json.loads(json_query))
             except Exception:
                 raise HTTPException(
-                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail=[{'loc': ['json_query'], 'msg': 'cannot parse json_query'}],
                 )
 

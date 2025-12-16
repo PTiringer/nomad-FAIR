@@ -104,7 +104,7 @@ def validate_members_info(
         validate_members_info_util(members_info, owner_id)
     except ValueError as e:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=[{'loc': ['body', 'members_info'], 'msg': str(e)}],
         ) from e
 
@@ -159,7 +159,7 @@ def check_mutually_exclusive_members_fields(user_group_edit: UserGroupEdit):
             " Remove the deprecated 'members' field from your request."
         )
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=[{'loc': ['body'], 'msg': (msg)}],
         )
 
