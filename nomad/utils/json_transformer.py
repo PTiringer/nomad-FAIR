@@ -234,7 +234,7 @@ class Transformer:
         return target
 
     def dict_to_dict(
-        self, source: dict[str, Any], rules: 'Rules', target: Any | None = None
+        self, source: dict[str, Any], rules: 'Rules', target: Any = None
     ) -> Any:
         """
         Applies all rules in a Rules object to transform the source dictionary into the target.
@@ -257,7 +257,7 @@ class Transformer:
         self,
         source_data: dict[str, Any],
         mapping_name: str | None = None,
-        target_data: Any | None = None,
+        target_data: Any = None,
     ) -> Any:
         """
         Transforms the source data into the target data based on the specified mapping.

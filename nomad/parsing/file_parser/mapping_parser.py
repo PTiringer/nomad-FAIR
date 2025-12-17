@@ -1367,7 +1367,7 @@ class XMLParser(MappingParser):
             return string.strip()
 
         def data_to_element(
-            tag: str, data: Any, root: etree._Element = None
+            tag: str, data: Any, root: etree._Element | None = None
         ) -> etree._Element:
             if tag.startswith(self.attribute_prefix) and root is not None:
                 root.set(tag.lstrip(self.attribute_prefix), data)

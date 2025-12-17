@@ -169,7 +169,7 @@ class FileParser(ABC):
         self,
         key: str,
         default: Any = None,
-        unit: pint.Unit | pint.Quantity = None,
+        unit: pint.Unit | pint.Quantity | None = None,
         **kwargs,
     ):
         """
