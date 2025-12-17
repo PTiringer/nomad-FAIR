@@ -791,7 +791,7 @@ async def get_uploads(
     ],
     user: Annotated[User, Depends(get_current_user(required=True))],
     roles: Annotated[
-        list[UploadRole],
+        list[UploadRole] | None,
         FastApiQuery(
             description='Only return uploads where the user has one of the given roles.'
         ),
@@ -1348,12 +1348,12 @@ async def put_upload_raw_path(
     user: Annotated[
         User, Depends(get_current_user(required=True, allow_upload_token=True))
     ],
-    file: Annotated[list[UploadFile], File()] = None,
+    file: Annotated[list[UploadFile] | None, File()] = None,
     local_path: Annotated[
-        str, FastApiQuery(description=strip("""Internal/Admin use only."""))
+        str | None, FastApiQuery(description=strip("""Internal/Admin use only."""))
     ] = None,
     file_name: Annotated[
-        str,
+        str | None,
         FastApiQuery(
             description=strip(
                 """Specifies the name of the file, when using method 2."""
@@ -1369,7 +1369,7 @@ async def put_upload_raw_path(
         ),
     ] = True,
     copy_or_move: Annotated[
-        str,
+        str | None,
         FastApiQuery(
             description=strip(
                 """If moving or copying a file within the same upload, specify which operation to do: move or copy"""
@@ -1377,7 +1377,7 @@ async def put_upload_raw_path(
         ),
     ] = None,
     copy_or_move_source_path: Annotated[
-        str,
+        str | None,
         FastApiQuery(
             description=strip(
                 """If moving or copying a file within the same upload, specify the path to the source file."""
@@ -1401,7 +1401,7 @@ async def put_upload_raw_path(
         ),
     ] = False,
     entry_hash: Annotated[
-        str,
+        str | None,
         FastApiQuery(description=strip("""The hash code of the not modified entry.""")),
     ] = None,
     auto_decompress: Annotated[
@@ -1842,9 +1842,9 @@ async def post_upload(
     user: Annotated[
         User, Depends(get_current_user(required=True, allow_upload_token=True))
     ],
-    file: Annotated[list[UploadFile], File()] = None,
+    file: Annotated[list[UploadFile] | None, File()] = None,
     local_path: Annotated[
-        str,
+        str | None,
         FastApiQuery(
             description=strip(
                 """
@@ -1865,7 +1865,7 @@ async def post_upload(
         ),
     ] = None,
     file_name: Annotated[
-        str,
+        str | None,
         FastApiQuery(
             description=strip(
                 """
@@ -1892,7 +1892,7 @@ async def post_upload(
         ),
     ] = 0,
     publish_directly: Annotated[
-        bool,
+        bool | None,
         FastApiQuery(
             description=strip(
                 """
@@ -2154,7 +2154,7 @@ async def post_upload_action_publish(
         ),
     ],
     embargo_length: Annotated[
-        int,
+        int | None,
         FastApiQuery(
             description=strip(
                 """
@@ -2496,9 +2496,9 @@ async def post_upload_bundle(
     user: Annotated[
         User, Depends(get_current_user(required=True, allow_upload_token=True))
     ],
-    file: Annotated[list[UploadFile], File()] = None,
+    file: Annotated[list[UploadFile] | None, File()] = None,
     local_path: Annotated[
-        str,
+        str | None,
         FastApiQuery(
             description=strip(
                 """

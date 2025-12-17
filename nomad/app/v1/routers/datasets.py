@@ -281,12 +281,12 @@ class DatasetCreate(BaseModel):  # type: ignore
 async def get_datasets(
     request: Request,
     pagination: Annotated[DatasetPagination, Depends(dataset_pagination_parameters)],
-    dataset_id: Annotated[str, FastApiQuery()] = None,
-    dataset_name: Annotated[str, FastApiQuery()] = None,
-    user_id: Annotated[list[str], FastApiQuery()] = None,
-    dataset_type: Annotated[str, FastApiQuery()] = None,
-    doi: Annotated[str, FastApiQuery()] = None,
-    prefix: Annotated[str, FastApiQuery()] = None,
+    dataset_id: Annotated[str | None, FastApiQuery()] = None,
+    dataset_name: Annotated[str | None, FastApiQuery()] = None,
+    user_id: Annotated[list[str] | None, FastApiQuery()] = None,
+    dataset_type: Annotated[str | None, FastApiQuery()] = None,
+    doi: Annotated[str | None, FastApiQuery()] = None,
+    prefix: Annotated[str | None, FastApiQuery()] = None,
 ):
     """
     Retrieves all datasets that match the given criteria.

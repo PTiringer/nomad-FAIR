@@ -1075,7 +1075,7 @@ class Rule(BaseModel):
     conditions: list[Condition] | None = Field(
         None, description='Conditions to check prior to applying the transformation.'
     )
-    default_value: Any | None = Field(
+    default_value: Any = Field(
         None, description='Default value to set if source is not found.'
     )
     use_rule: str | None = Field(

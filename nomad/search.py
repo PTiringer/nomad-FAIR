@@ -115,7 +115,7 @@ class AggType(str, Enum):
 
 def update_by_query(
     update_script: str,
-    query: Any | None = None,
+    query: Any = None,
     owner: str | None = None,
     user_id: str | None = None,
     index: str | None = None,
@@ -1591,7 +1591,7 @@ def _and_clauses(query: Query) -> Generator[Query, None, None]:
 
 def _buckets_to_interval(
     owner: str = 'public',
-    query: Query | EsQuery = None,
+    query: Query | EsQuery | None = None,
     aggregations: dict[str, Aggregation] = {},
     user_id: str | None = None,
     index: Index = entry_index,
@@ -1700,7 +1700,7 @@ def _buckets_to_interval(
 
 def search(
     owner: str = 'public',
-    query: Query | EsQuery = None,
+    query: Query | EsQuery | None = None,
     pagination: MetadataPagination | None = None,
     required: MetadataRequired | None = None,
     aggregations: dict[str, Aggregation] = {},
@@ -1901,7 +1901,7 @@ def search(
 
 def search_iterator(
     owner: str = 'public',
-    query: Query | EsQuery = None,
+    query: Query | EsQuery | None = None,
     order_by: str = 'entry_id',
     required: MetadataRequired | None = None,
     aggregations: dict[str, Aggregation] = {},

@@ -99,10 +99,11 @@ async def get_dataset(
 )
 async def get_catalog(
     after: Annotated[
-        str, Query(description='return entries after the given entry_id')
+        str | None, Query(description='return entries after the given entry_id')
     ] = None,
     modified_since: Annotated[
-        datetime | date, Query(description='maximum entry time (e.g. upload time)')
+        datetime | date | None,
+        Query(description='maximum entry time (e.g. upload time)'),
     ] = None,
     rdf_respose=Depends(rdf_response),
 ):

@@ -2092,7 +2092,7 @@ class MSection(metaclass=MObjectMeta):
     @staticmethod
     def from_dict(
         dct: dict[str, Any],
-        cls: type[MSectionBound] = None,
+        cls: type[MSectionBound] | None = None,
         m_parent: MSection | None = None,
         m_context: Context | None = None,
         **kwargs,
