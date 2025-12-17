@@ -184,3 +184,7 @@ filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::SyntaxWarning",
 ]
+markers = [
+    "disable_health_check_patch: By default the health check is patched in the transfer bundle operations. This marker is useful in the transfer bundle context.",
+    "enable_target_deployment_url_validation: By default the target deployment url validation is patched in the transfer bundle operations. This marker is useful in the transfer bundle context."
+]
