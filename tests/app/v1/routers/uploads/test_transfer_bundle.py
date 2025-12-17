@@ -337,7 +337,7 @@ def test_token_not_provided(
 
 
 @pytest.mark.skip('REMOVE-CELERY')
-@pytest.mark.disable_health_check_patch(True)
+@pytest.mark.disable_health_check_patch
 def test_external_deployment_health_failed(
     auth_headers,
     client: TestClient,
@@ -360,7 +360,7 @@ def test_external_deployment_health_failed(
 
 
 @pytest.mark.skip('REMOVE-CELERY')
-@pytest.mark.enable_target_deployment_url_validation(True)
+@pytest.mark.enable_target_deployment_url_validation
 @pytest.mark.parametrize(
     'target_url, expected_message',
     [
