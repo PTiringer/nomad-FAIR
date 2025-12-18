@@ -134,9 +134,9 @@ def test_config_warning(
     'config_dict, error',
     [
         pytest.param(
-            {'celery': {'timeout': 'not_a_number'}},
+            {'services': {'api_timeout': 'not_a_number'}},
             (
-                '1 validation error for Config\ncelery.timeout\n  '
+                '1 validation error for Config\nservices.api_timeout\n  '
                 'Input should be a valid integer, unable to parse string as an '
                 "integer [type=int_parsing, input_value='not_a_number', input_type=str]"
             ),
@@ -215,9 +215,9 @@ def test_config_priority(conf_yaml, conf_env, value, mockopen, monkeypatch):
             id='list: overrides',
         ),
         pytest.param(
-            {'celery': {'timeout': 100}},
-            {'celery': {'timeout': 200}},
-            {'celery': {'timeout': 200}},
+            {'services': {'api_timeout': 100}},
+            {'services': {'api_timeout': 200}},
+            {'services': {'api_timeout': 200}},
             id='scalar: overrides',
         ),
     ],

@@ -372,57 +372,6 @@ class Oasis(ConfigBaseModel):
     )
 
 
-class RabbitMQ(ConfigBaseModel):
-    """
-    Configures how NOMAD is connecting to RabbitMQ.
-    """
-
-    host: str = Field(
-        'localhost', description='The name of the host that runs RabbitMQ.'
-    )
-    user: str = Field(
-        'rabbitmq', description='The RabbitMQ user that is used to connect.'
-    )
-    password: str = Field(
-        'rabbitmq', description='The password that is used to connect.'
-    )
-
-
-CELERY_WORKER_ROUTING = 'worker'
-CELERY_QUEUE_ROUTING = 'queue'
-
-
-class Celery(ConfigBaseModel):
-    max_memory: float = Field(
-        64e6,
-        description='Maximum memory (in bytes) that a Celery worker is allowed to use.',
-    )
-    timeout: int = Field(
-        1800,
-        description='Default hard timeout (in seconds) for Celery tasks.',
-    )
-    acks_late: bool = Field(
-        False,
-        description='If True, acknowledge tasks only after they have been executed (at-least-once semantics).',
-    )
-    routing: str = Field(
-        CELERY_QUEUE_ROUTING,
-        description=(
-            'Routing mode for Celery tasks. Typically either '
-            f'"{CELERY_WORKER_ROUTING}" for worker-based routing or '
-            f'"{CELERY_QUEUE_ROUTING}" for queue-based routing.'
-        ),
-    )
-    priorities: dict[str, int] = Field(
-        default_factory=lambda: {
-            'Upload.process_upload': 5,
-            'Upload.delete_upload': 9,
-            'Upload.publish_upload': 10,
-        },
-        description='Per-task priority mapping for Celery tasks. Lower numbers are scheduled earlier.',
-    )
-
-
 class FS(ConfigBaseModel):
     tmp: str = Field(
         '.volumes/fs/tmp',
@@ -1315,14 +1264,6 @@ class Config(ConfigBaseModel):
     north: NORTH = Field(
         default_factory=NORTH,
         description='Configuration for NORTH tools and the NORTH hub.',
-    )
-    rabbitmq: RabbitMQ = Field(
-        default_factory=RabbitMQ,
-        description='RabbitMQ connection settings used for task messaging.',
-    )
-    celery: Celery = Field(
-        default_factory=Celery,
-        description='Celery worker configuration and task routing settings.',
     )
     fs: FS = Field(
         default_factory=FS,
