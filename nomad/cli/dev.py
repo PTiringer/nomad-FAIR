@@ -341,7 +341,6 @@ def get_gui_config() -> str:
         'ui': config.ui.model_dump(exclude_none=True) if config.ui else {},
         'plugins': plugins,
         'dataciteEnabled': config.datacite.enabled,
-        'temporalProcessingEnabled': True,
         'termsOfServiceURL': config.oasis.terms_of_service_url,
         'footerLinks': [link.model_dump() for link in config.meta.footer_links],
         'description': config.meta.description,
