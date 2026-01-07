@@ -16,24 +16,27 @@
 # limitations under the License.
 #
 
-import datetime
-import hashlib
-import hmac
-import urllib
-import uuid
 from collections.abc import Callable
 from enum import Enum
 from inspect import Parameter, Signature
-from typing import Annotated, cast
+from typing import Annotated
 
 import jwt
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
 from fastapi import Query as FastApiQuery
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestFormStrict
-from pydantic import BaseModel
 
-from nomad import datamodel, infrastructure, utils
-from nomad._auth import check_api_secret
+from nomad import datamodel
+from nomad.auth import keycloak
+from nomad.auth.keycloak import KeycloakError, OIDCToken
+from nomad.auth.tokens import (
+    AppToken,
+    SignatureToken,
+    generate_simple_token,
+    get_user_from_keycloak_token,
+    get_user_from_simple_token,
+    get_user_from_upload_token,
+)
 from nomad.config import config
 from nomad.config.models.config import ModeEnum
 from nomad.utils import get_logger
@@ -92,15 +95,15 @@ def _resolve_user(
             # simple token only has `user/exp` in payload,
             # while the keycloak has much more (RFC 7519)
             if unverified_payload.keys() == {'user', 'exp'}:
-                user = _get_user_from_simple_token(simple_token)
+                user = get_user_from_simple_token(simple_token)
         except jwt.DecodeError as e:  # token could be non-JWT (for testing)
             logger.error('Failed to decode simple token', exc_info=e)
 
     if user is None and (keycloak_token or request):
-        user = _get_user_from_keycloak_token(keycloak_token, request=request)
+        user = get_user_from_keycloak_token(keycloak_token, request=request)
 
     if user is None and upload_token:
-        user = _get_user_from_upload_token(upload_token)
+        user = get_user_from_upload_token(upload_token)
 
     if user is None and config.tests.assume_auth_for_username:
         if config.services.mode == ModeEnum.PRODUCTION:
@@ -230,116 +233,6 @@ def get_current_user(
     return current_user
 
 
-def _get_user_from_keycloak_token(
-    keycloak_token: str | None, *, request: Request | None
-) -> User | None:
-    """
-    Verifies keycloak bearer token (header and cookie).
-
-    Returns:
-        The corresponding User object,
-        or None if no token provided.
-    """
-    if keycloak_token is None and request is None:
-        return None
-
-    # Get token from cookie if not in header
-    if keycloak_token is None:
-        auth_cookie = request.cookies.get('Authorization')
-        if auth_cookie is None:
-            return None
-
-        auth_cookie = urllib.parse.unquote(auth_cookie)
-        keycloak_token = auth_cookie.removeprefix('Bearer ')
-
-    try:
-        return cast(datamodel.User, infrastructure.keycloak.tokenauth(keycloak_token))
-    except infrastructure.KeycloakError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e),
-            headers={'WWW-Authenticate': 'Bearer'},
-        )
-
-
-def _get_user_from_simple_token(simple_token: str | None) -> User | None:
-    """
-    Verifies a simple token (throwing HTTPException if illegal value provided).
-
-    Returns:
-        The corresponding user object,
-        or None if no token was provided.
-    """
-    if simple_token is None:
-        return None
-
-    check_api_secret()
-
-    try:
-        decoded = jwt.decode(
-            simple_token, config.services.api_secret, algorithms=[JWT_ALGORITHM]
-        )
-        return datamodel.User.get(user_id=decoded['user'])
-
-    except KeyError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='Token with invalid/unexpected payload.',
-            headers={'WWW-Authenticate': 'Bearer'},
-        )
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='Expired token.',
-            headers={'WWW-Authenticate': 'Bearer'},
-        )
-    except jwt.InvalidTokenError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='Invalid token.',
-            headers={'WWW-Authenticate': 'Bearer'},
-        )
-
-
-def _get_user_from_upload_token(upload_token: str | None) -> User | None:
-    """
-    Verifies the upload token (throwing HTTPException if illegal value provided).
-
-    Returns:
-        The corresponding User object,
-        or None if no upload_token provided.
-    """
-    if upload_token is None:
-        return None
-
-    check_api_secret()
-
-    try:
-        payload, signature = upload_token.split('.', 1)
-        payload_bytes = utils.base64_decode(payload)
-        signature_bytes = utils.base64_decode(signature)
-
-        expected = hmac.new(
-            config.services.api_secret.encode('utf-8'),
-            msg=payload_bytes,
-            digestmod=HMAC_DIGESTMOD,
-        )
-
-        if not hmac.compare_digest(signature_bytes, expected.digest()):
-            raise ValueError('Invalid HMAC signature')
-
-        user_id = str(uuid.UUID(bytes=payload_bytes))
-        return cast(datamodel.User, infrastructure.user_management.get_user(user_id))
-
-    except Exception:
-        # Decode error, format error, user not found, etc.
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='An invalid upload token was supplied.',
-            headers={'WWW-Authenticate': 'Bearer'},
-        )
-
-
 # OpenID Connect (OIDC) endpoints
 
 
@@ -361,7 +254,7 @@ _bad_credentials_response = (
 async def get_token(
     response: Response,
     form_data: Annotated[OAuth2PasswordRequestFormStrict, Depends()],
-) -> infrastructure.OIDCToken:
+) -> OIDCToken:
     """
     Implements the OpenID Connect (OIDC) Resource Owner Password Credentials (ROPC) grant flow.
 
@@ -375,15 +268,13 @@ async def get_token(
     On the OpenAPI dashboard, you can use the *Authorize* button at the top.
     """
     try:
-        token = infrastructure.keycloak.basicauth(
-            form_data.username, form_data.password
-        )
+        token = keycloak.keycloak.basicauth(form_data.username, form_data.password)
         # Add mandatory headers (RFC 6749 §5.1)
         response.headers['Cache-Control'] = 'no-store'
         response.headers['Pragma'] = 'no-cache'
         return token
 
-    except infrastructure.KeycloakError:
+    except KeycloakError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail='Incorrect username or password',
@@ -392,18 +283,6 @@ async def get_token(
 
 
 # NOMAD custom token (endpoints and generation functions)
-
-
-JWT_ALGORITHM = 'HS256'
-HMAC_DIGESTMOD = hashlib.sha256
-
-
-class SignatureToken(BaseModel):
-    signature_token: str
-
-
-class AppToken(BaseModel):
-    app_token: str
 
 
 @router.get(
@@ -421,7 +300,7 @@ async def get_signature_token(
     Authentication has to be provided via access token.
     """
     return SignatureToken(
-        signature_token=_generate_simple_token(user.user_id, expires_in=10)
+        signature_token=generate_simple_token(user.user_id, expires_in=10)
     )
 
 
@@ -446,32 +325,4 @@ async def get_app_token(
     calls to authenticate you using the HTTP header `Authorization: Bearer <app token>`.
     It is provided for user convenience with a user-defined (probably longer) expiration time.
     """
-    return AppToken(app_token=_generate_simple_token(user.user_id, expires_in))
-
-
-def _generate_simple_token(user_id: str, expires_in: float) -> str:
-    """
-    Generate a simple token: JWT encoded user_id and expiration time,
-    signed with the API secret.
-    """
-    check_api_secret()
-    expires_at = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
-        seconds=expires_in
-    )
-    payload = dict(user=user_id, exp=expires_at)
-    return jwt.encode(
-        payload=payload, key=config.services.api_secret, algorithm=JWT_ALGORITHM
-    )
-
-
-def _generate_upload_token(user: User) -> str:
-    """Generate an upload token for user."""
-    check_api_secret()
-    payload = uuid.UUID(user.user_id).bytes
-    signature = hmac.new(
-        config.services.api_secret.encode('utf-8'),
-        msg=payload,
-        digestmod=HMAC_DIGESTMOD,
-    )
-
-    return f'{utils.base64_encode(payload)}.{utils.base64_encode(signature.digest())}'
+    return AppToken(app_token=generate_simple_token(user.user_id, expires_in))

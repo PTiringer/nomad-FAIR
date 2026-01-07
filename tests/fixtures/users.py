@@ -7,7 +7,8 @@ User fixtures:
 
 import pytest
 
-from nomad import infrastructure
+from nomad.auth import keycloak, user_manage
+from nomad.auth.keycloak import KeycloakError, OIDCToken
 from nomad.config import config
 from nomad.datamodel import User
 from tests.utils import fake_user_uuid, generate_convert_label
@@ -114,7 +115,7 @@ class KeycloakMock:
         if access_token in self.users:
             return User(**self.users[access_token])
 
-        raise infrastructure.KeycloakError('user does not exist')
+        raise KeycloakError('user does not exist')
 
     def add_user(self, user, *args, **kwargs):
         self.id_counter += 1
@@ -154,10 +155,10 @@ class KeycloakMock:
             if query in ' '.join([str(value) for value in user.values()])
         ]
 
-    def basicauth(self, username: str, password: str) -> infrastructure.OIDCToken:
+    def basicauth(self, username: str, password: str) -> OIDCToken:
         for user in self.users.values():
             if user['username'] == username or user['email'] == username:
-                return infrastructure.OIDCToken(
+                return OIDCToken(
                     access_token=f'fake-access-{user["user_id"]}',
                     token_type='Bearer',
                     expires_in=3600,
@@ -167,40 +168,40 @@ class KeycloakMock:
                     scope='openid profile email',
                 )
 
-        raise infrastructure.KeycloakError()
+        raise KeycloakError()
 
 
 config.keycloak.realm_name = 'fairdi_nomad_test'
 config.keycloak.password = 'password'
 
-_keycloak = infrastructure.keycloak
-_user_management = infrastructure.user_management
+_keycloak = keycloak.keycloak
+_user_management = user_manage.user_management
 
 
 # use a session fixture in addition to the function fixture, to ensure mocked keycloak
 # before other class, module, etc. scoped function are run
 @pytest.fixture(scope='session', autouse=True)
 def mocked_keycloak_session(monkeysession):
-    monkeysession.setattr('nomad.infrastructure.keycloak', KeycloakMock())
-    monkeysession.setattr('nomad.infrastructure.user_management', KeycloakMock())
+    monkeysession.setattr('nomad.auth.keycloak.keycloak', KeycloakMock())
+    monkeysession.setattr('nomad.auth.user_manage.user_management', KeycloakMock())
 
 
 @pytest.fixture(scope='function', autouse=True)
 def mocked_keycloak(monkeypatch):
-    monkeypatch.setattr('nomad.infrastructure.keycloak', KeycloakMock())
-    monkeypatch.setattr('nomad.infrastructure.user_management', KeycloakMock())
+    monkeypatch.setattr('nomad.auth.keycloak.keycloak', KeycloakMock())
+    monkeypatch.setattr('nomad.auth.user_manage.user_management', KeycloakMock())
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope='function')  # type: ignore[no-redef]
 def keycloak(monkeypatch):
-    monkeypatch.setattr('nomad.infrastructure.keycloak', _keycloak)
-    monkeypatch.setattr('nomad.infrastructure.user_management', _user_management)
+    monkeypatch.setattr('nomad.auth.keycloak.keycloak', _keycloak)
+    monkeypatch.setattr('nomad.auth.user_manage.user_management', _user_management)
 
 
 @pytest.fixture(scope='function')
 def with_oasis_user_management(monkeypatch):
-    from nomad.infrastructure import OasisUserManagement
+    from nomad.auth.user_manage import OasisUserManagement
 
-    monkeypatch.setattr('nomad.infrastructure.user_management', OasisUserManagement())
+    monkeypatch.setattr('nomad.auth.user_manage.user_management', OasisUserManagement())
     yield
-    monkeypatch.setattr('nomad.infrastructure.user_management', _user_management)
+    monkeypatch.setattr('nomad.auth.user_manage.user_management', _user_management)

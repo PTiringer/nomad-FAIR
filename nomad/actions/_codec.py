@@ -5,7 +5,7 @@ from cryptography.fernet import Fernet
 from temporalio.api.common.v1 import Payload
 from temporalio.converter import PayloadCodec
 
-from nomad._auth import check_api_secret
+from nomad.auth.tokens import check_api_secret
 from nomad.config import config
 
 

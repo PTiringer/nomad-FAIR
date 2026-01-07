@@ -25,54 +25,8 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from keycloak import KeycloakAuthenticationError
 
+from nomad.auth.keycloak import Keycloak, KeycloakError
 from nomad.datamodel import User
-from nomad.infrastructure import Keycloak, KeycloakError, UserManagement
-from tests.fixtures.users import fake_user_uuid
-
-# Tests for `OasisUserManagement`
-
-
-@pytest.fixture(scope='function')
-def user_management(api_v1):
-    from nomad.infrastructure import OasisUserManagement
-
-    return OasisUserManagement('users')
-
-
-@pytest.mark.parametrize(
-    'query,count',
-    [
-        pytest.param('Sheldon', 1, id='exists'),
-        pytest.param('Does not exist $%&#', 0, id='does-not-exist'),
-    ],
-)
-def test_search_user(user_management: UserManagement, query, count):
-    users = user_management.search_user(query)
-    assert len(users) == count
-
-
-@pytest.mark.parametrize(
-    'key,value',
-    [
-        pytest.param('username', 'scooper', id='username'),
-        pytest.param('email', 'sheldon.cooper@nomad-coe.eu', id='email'),
-        pytest.param('user_id', fake_user_uuid(1), id='user_id'),
-    ],
-)
-def test_get_user(user_management: UserManagement, key, value):
-    user = user_management.get_user(**{key: value})
-    assert user is not None
-    assert getattr(user, key) == (value if key != 'email' else None)
-
-
-def test_get_admin_user(monkeypatch, user_management: UserManagement):
-    user = user_management.get_user(username='scooper')
-    assert user is not None
-    monkeypatch.setattr('nomad.config.services.admin_user_id', user.user_id)
-    assert user.is_admin
-
-
-# Tests for `Keycloak`
 
 
 @pytest.fixture

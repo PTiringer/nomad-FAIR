@@ -32,7 +32,8 @@ def import_command(path_to_users_file):
     import datetime
     import json
 
-    from nomad import datamodel, infrastructure, utils
+    from nomad import datamodel, utils
+    from nomad.auth import user_manage
 
     with open(path_to_users_file) as f:
         users = json.load(f)
@@ -46,7 +47,7 @@ def import_command(path_to_users_file):
                 user_dict['created'] / 1000
             )
             user = datamodel.User(**user_dict)
-            infrastructure.user_management.add_user(
+            user_manage.user_management.add_user(
                 user, bcrypt_password=password, invite=False
             )
             print(f'Imported {user.name}')
