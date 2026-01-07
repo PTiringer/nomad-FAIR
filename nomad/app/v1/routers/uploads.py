@@ -46,6 +46,7 @@ from pydantic_core import PydanticCustomError
 
 from nomad import files, utils
 from nomad.app.v1.models.models import TransferBundleRequest
+from nomad.auth.tokens import generate_upload_token
 from nomad.bundles import BundleExporter, BundleImporter
 from nomad.common import get_compression_format, is_safe_basename, is_safe_relative_path
 from nomad.config import config
@@ -88,7 +89,7 @@ from ..utils import (
     create_stream_from_string,
     parameter_dependency_from_model,
 )
-from .auth import _generate_upload_token, get_current_user
+from .auth import get_current_user
 from .entries import EntryArchiveResponse, answer_entry_archive_request
 
 router = APIRouter()
@@ -749,7 +750,7 @@ async def get_command_examples(
     user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """Get URL and example command for shell based uploads."""
-    token = _generate_upload_token(user)
+    token = generate_upload_token(user)
     api_url = config.api_url(ssl=config.services.https_upload, api='api/v1')
     upload_url = f'{api_url}/uploads'
     header_flag = f"-H 'Upload-Token: {token}'"

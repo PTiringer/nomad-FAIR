@@ -488,11 +488,12 @@ def update_parser_readmes(parser):
 @click.option('--username', '-u', type=str, help='The main author username.')
 def example_data(username: str):
     from nomad import infrastructure, utils
+    from nomad.auth import user_manage
     from nomad.utils.exampledata import ExampleData
 
     infrastructure.setup()
 
-    main_author = infrastructure.user_management.get_user(username=username)
+    main_author = user_manage.user_management.get_user(username=username)
     if main_author is None:
         print(f'The user {username} does not exist.')
         sys.exit(1)

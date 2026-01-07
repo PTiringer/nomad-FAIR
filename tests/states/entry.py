@@ -19,6 +19,7 @@
 import json
 
 from nomad import files, infrastructure
+from nomad.auth import user_manage
 from nomad.processing import Upload
 from nomad.utils.exampledata import ExampleData, create_entry_archive
 
@@ -31,7 +32,7 @@ def dft():
     entry tabs.
     """
     infrastructure.setup()
-    main_author = infrastructure.user_management.get_user(username='test')
+    main_author = user_manage.user_management.get_user(username='test')
     data = ExampleData(main_author=main_author)
     upload_id = 'dft_upload'
     entry_id = 'dft_bulk'
@@ -52,9 +53,9 @@ def dft():
 
 def eln():
     infrastructure.setup()
-    main_author = infrastructure.user_management.get_user(username='test').user_id
-    coauthors = [infrastructure.user_management.get_user(username='scooper').user_id]
-    reviewers = [infrastructure.user_management.get_user(username='ttester').user_id]
+    main_author = user_manage.user_management.get_user(username='test').user_id
+    coauthors = [user_manage.user_management.get_user(username='scooper').user_id]
+    reviewers = [user_manage.user_management.get_user(username='ttester').user_id]
     upload = Upload(
         upload_id='eln_upload_id',
         main_author=main_author,
@@ -70,8 +71,8 @@ def eln():
 
 def eln_properties():
     infrastructure.setup()
-    main_author = infrastructure.user_management.get_user(username='test').user_id
-    reviewers = [infrastructure.user_management.get_user(username='ttester').user_id]
+    main_author = user_manage.user_management.get_user(username='test').user_id
+    reviewers = [user_manage.user_management.get_user(username='ttester').user_id]
     upload = Upload(
         upload_id='eln_upload_id', main_author=main_author, reviewers=reviewers
     )
@@ -84,9 +85,9 @@ def eln_properties():
 
 def references():
     infrastructure.setup()
-    main_author = infrastructure.user_management.get_user(username='test').user_id
-    coauthors = [infrastructure.user_management.get_user(username='scooper').user_id]
-    reviewers = [infrastructure.user_management.get_user(username='ttester').user_id]
+    main_author = user_manage.user_management.get_user(username='test').user_id
+    coauthors = [user_manage.user_management.get_user(username='scooper').user_id]
+    reviewers = [user_manage.user_management.get_user(username='ttester').user_id]
 
     upload1 = Upload(
         upload_id='references_upload_id1',
@@ -149,7 +150,7 @@ def material():
     Entry that contains a material.
     """
     infrastructure.setup()
-    main_author = infrastructure.user_management.get_user(username='test')
+    main_author = user_manage.user_management.get_user(username='test')
     data = ExampleData(main_author=main_author)
     upload_id = 'dft_upload'
     entry_id = 'dft_bulk'
@@ -174,7 +175,7 @@ def dos_electronic():
     Entry that contains an electronic DOS.
     """
     infrastructure.setup()
-    main_author = infrastructure.user_management.get_user(username='test')
+    main_author = user_manage.user_management.get_user(username='test')
     data = ExampleData(main_author=main_author)
     upload_id = 'dft_upload'
     entry_id = 'dft_bulk'
@@ -242,7 +243,7 @@ def bulk_modulus():
     Entry that contains a bulk modulus.
     """
     infrastructure.setup()
-    main_author = infrastructure.user_management.get_user(username='test')
+    main_author = user_manage.user_management.get_user(username='test')
     data = ExampleData(main_author=main_author)
     upload_id = 'dft_upload'
     entry_id = 'dft_bulk'
@@ -293,7 +294,7 @@ def trajectory():
     Entry that contains a trajectory.
     """
     infrastructure.setup()
-    main_author = infrastructure.user_management.get_user(username='test')
+    main_author = user_manage.user_management.get_user(username='test')
     data = ExampleData(main_author=main_author)
     upload_id = 'dft_upload'
     entry_id = 'dft_bulk'
@@ -371,7 +372,7 @@ def dos_phonon():
     Entry that contains a phonon DOS.
     """
     infrastructure.setup()
-    main_author = infrastructure.user_management.get_user(username='test')
+    main_author = user_manage.user_management.get_user(username='test')
     data = ExampleData(main_author=main_author)
     upload_id = 'dft_upload'
     entry_id = 'dft_bulk'
@@ -434,7 +435,7 @@ def rdf():
     Entry that contains an RDF.
     """
     infrastructure.setup()
-    main_author = infrastructure.user_management.get_user(username='test')
+    main_author = user_manage.user_management.get_user(username='test')
     data = ExampleData(main_author=main_author)
     upload_id = 'dft_upload'
     entry_id = 'dft_bulk'
@@ -484,7 +485,7 @@ def rdf():
 
 def plotly():
     infrastructure.setup()
-    main_author = infrastructure.user_management.get_user(username='test').user_id
+    main_author = user_manage.user_management.get_user(username='test').user_id
     upload = Upload(upload_id='plotly_upload_id', main_author=main_author)
     upload.save()
     files.StagingUploadFiles(upload_id=upload.upload_id, create=True)

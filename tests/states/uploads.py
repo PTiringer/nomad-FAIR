@@ -17,6 +17,7 @@
 #
 
 from nomad import files, infrastructure
+from nomad.auth import user_manage
 from nomad.processing import Upload
 from nomad.utils.exampledata import ExampleData
 
@@ -42,7 +43,7 @@ def _build_example_data(
     """
     Helper function to set access fields for example data
     """
-    get_user = infrastructure.user_management.get_user
+    get_user = user_manage.user_management.get_user
     main_author = get_user(username=main_author)
     coauthors = [get_user(username=name).user_id for name in coauthors or []]
     reviewers = [get_user(username=name).user_id for name in reviewers or []]
@@ -188,7 +189,7 @@ def multiple_entries():
     State published upload containing multiple entries
     """
     infrastructure.setup()
-    main_author = infrastructure.user_management.get_user(username='test')
+    main_author = user_manage.user_management.get_user(username='test')
     data = ExampleData(main_author=main_author)
 
     upload_id = 'dft_upload_1'
@@ -209,7 +210,7 @@ def multiple_uploads():
     State published upload containing multiple entries
     """
     infrastructure.setup()
-    main_author = infrastructure.user_management.get_user(username='test')
+    main_author = user_manage.user_management.get_user(username='test')
     data = ExampleData(main_author=main_author)
 
     for i in range(1, 12):
@@ -231,7 +232,7 @@ def maximum_unpublished():
     State published upload containing multiple entries
     """
     infrastructure.setup()
-    main_author = infrastructure.user_management.get_user(username='test')
+    main_author = user_manage.user_management.get_user(username='test')
     data = ExampleData(main_author=main_author)
 
     for i in range(1, 11):
@@ -273,9 +274,9 @@ def browser_test_unpublished():
 
 def archive_browser_test():
     infrastructure.setup()
-    main_author = infrastructure.user_management.get_user(username='test').user_id
-    coauthors = [infrastructure.user_management.get_user(username='scooper').user_id]
-    reviewers = [infrastructure.user_management.get_user(username='ttester').user_id]
+    main_author = user_manage.user_management.get_user(username='test').user_id
+    coauthors = [user_manage.user_management.get_user(username='scooper').user_id]
+    reviewers = [user_manage.user_management.get_user(username='ttester').user_id]
     upload = Upload(
         upload_id='archive_browser_test',
         main_author=main_author,

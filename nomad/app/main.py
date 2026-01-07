@@ -32,8 +32,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from temporalio.client import Client
 
-from nomad._auth import check_api_secret
 from nomad.actions.client import get_client
+from nomad.auth.tokens import check_api_secret
 from nomad.config import config
 from nomad.config.models.plugins import APIEntryPoint
 from nomad.mongo.cache import MongoBackend

@@ -25,7 +25,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from mongoengine.queryset.visitor import Q
 from pydantic import BaseModel
 
-from nomad.app.v1.routers.auth import _generate_simple_token, get_current_user
+from nomad.app.v1.routers.auth import get_current_user
+from nomad.auth.tokens import generate_simple_token
 from nomad.config import config
 from nomad.config.models.north import NORTHTool
 from nomad.config.models.plugins import NorthToolEntryPoint
@@ -315,7 +316,7 @@ async def start_tool(
             )
 
     url = f'{config.hub_url()}/api/users/{user.username}/servers/{tool.name}'
-    access_token = _generate_simple_token(
+    access_token = generate_simple_token(
         user_id=user.user_id, expires_in=config.north.nomad_access_token_expiry_time
     )
     body: dict[str, Any] = {

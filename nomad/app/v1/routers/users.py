@@ -22,7 +22,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic.main import BaseModel
 
-from nomad import datamodel, infrastructure
+from nomad import datamodel
+from nomad.auth import user_manage
 from nomad.config import config
 from nomad.utils import strip
 
@@ -154,7 +155,7 @@ async def get_users(
                 pass
 
     if prefix:
-        for user in infrastructure.user_management.search_user(prefix):
+        for user in user_manage.user_management.search_user(prefix):
             user_dict = user.m_to_dict(include_derived=True)
             user_dict['email'] = None
             users.append(user_dict)
@@ -221,7 +222,7 @@ async def invite_user(
         )
 
     try:
-        error = infrastructure.user_management.add_user(user, invite=True)
+        error = user_manage.user_management.add_user(user, invite=True)
     except KeyError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

@@ -28,7 +28,7 @@ from starlette.routing import Mount, Route
 from starlette.testclient import TestClient
 
 from nomad.app.main import OASIS_AUTH_WHITELIST, OasisAuthenticationMiddleware
-from nomad.infrastructure import KeycloakError
+from nomad.auth.keycloak import KeycloakError
 from tests import ORIGINAL_API_BASE_PATH
 
 # Tests for `OasisAuthenticationMiddleware`
@@ -144,7 +144,7 @@ def test_oasis_auth_middleware_valid_keycloak_token(
 ):
     monkeypatch.setattr('nomad.config.oasis.require_authentication', True)
     monkeypatch.setattr(
-        'nomad.infrastructure.keycloak.tokenauth', lambda token: mock_user
+        'nomad.auth.keycloak.keycloak.tokenauth', lambda token: mock_user
     )
     monkeypatch.setattr('nomad.config.oasis.allowed_users', {mock_user.email})
     monkeypatch.setattr(
@@ -172,7 +172,7 @@ def test_oasis_auth_middleware_invalid_keycloak_token(
     def mock_tokenauth(token):
         raise KeycloakError('Invalid token')
 
-    monkeypatch.setattr('nomad.infrastructure.keycloak.tokenauth', mock_tokenauth)
+    monkeypatch.setattr('nomad.auth.keycloak.keycloak.tokenauth', mock_tokenauth)
 
     response = app_middleware_client.get(
         '/protected', headers={'Authorization': 'Bearer invalid'}
@@ -185,8 +185,8 @@ def test_oasis_auth_middleware_invalid_keycloak_token(
 @pytest.mark.parametrize(
     'token_auth, token_param',
     [
-        ('_get_user_from_upload_token', 'Upload-Token'),
-        ('_get_user_from_simple_token', 'Authorization'),
+        ('get_user_from_upload_token', 'Upload-Token'),
+        ('get_user_from_simple_token', 'Authorization'),
     ],
 )
 def test_oasis_auth_middleware_upload_simple_token(
@@ -217,12 +217,12 @@ def test_oasis_auth_middleware_upload_simple_token(
             headers={token_param: 'abc'},
         )
     else:
-        # Need to patch `_get_user_from_keycloak_token` because middleware
+        # Need to patch `get_user_from_keycloak_token` because middleware
         # cannot differentiate keycloak token from simple token,
-        # and would try simple token in `_get_user_from_keycloak_token`
+        # and would try simple token in `get_user_from_keycloak_token`
         # first as it's enabled by default
         monkeypatch.setattr(
-            'nomad.app.v1.routers.auth._get_user_from_keycloak_token',
+            'nomad.app.v1.routers.auth.get_user_from_keycloak_token',
             lambda *args, **kwargs: None,
         )
         monkeypatch.setattr(
@@ -245,7 +245,7 @@ def test_oasis_auth_middleware_user_not_allowed(
 ):
     monkeypatch.setattr('nomad.config.oasis.require_authentication', True)
     monkeypatch.setattr(
-        'nomad.infrastructure.keycloak.tokenauth', lambda token: mock_user
+        'nomad.auth.keycloak.keycloak.tokenauth', lambda token: mock_user
     )
     monkeypatch.setattr('nomad.config.oasis.allowed_users', {})
     response = app_middleware_client.get(

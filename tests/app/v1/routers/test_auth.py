@@ -114,16 +114,16 @@ def allowed_user():
 @pytest.mark.parametrize('allow_keycloak_token', [True, False])
 @pytest.mark.parametrize('allow_simple_token', [True, False])
 @pytest.mark.parametrize('allow_upload_token', [True, False])
-@pytest.mark.parametrize('_get_user_from_keycloak_token', [True, False])
-@pytest.mark.parametrize('_get_user_from_simple_token', [True, False])
-@pytest.mark.parametrize('_get_user_from_upload_token', [True, False])
+@pytest.mark.parametrize('get_user_from_keycloak_token', [True, False])
+@pytest.mark.parametrize('get_user_from_simple_token', [True, False])
+@pytest.mark.parametrize('get_user_from_upload_token', [True, False])
 def test_get_current_user_auth_methods(
     allow_keycloak_token: bool,
     allow_simple_token: bool,
     allow_upload_token: bool,
-    _get_user_from_keycloak_token: bool,
-    _get_user_from_simple_token: bool,
-    _get_user_from_upload_token: bool,
+    get_user_from_keycloak_token: bool,
+    get_user_from_simple_token: bool,
+    get_user_from_upload_token: bool,
     allowed_user,
     monkeypatch,
 ):
@@ -133,16 +133,16 @@ def test_get_current_user_auth_methods(
             lambda *args, **kwargs: {'user': allowed_user.user_id, 'exp': 600},
         )
     monkeypatch.setattr(
-        'nomad.app.v1.routers.auth._get_user_from_keycloak_token',
-        lambda *args, **kwargs: allowed_user if _get_user_from_keycloak_token else None,
+        'nomad.app.v1.routers.auth.get_user_from_keycloak_token',
+        lambda *args, **kwargs: allowed_user if get_user_from_keycloak_token else None,
     )
     monkeypatch.setattr(
-        'nomad.app.v1.routers.auth._get_user_from_simple_token',
-        lambda *args, **kwargs: allowed_user if _get_user_from_simple_token else None,
+        'nomad.app.v1.routers.auth.get_user_from_simple_token',
+        lambda *args, **kwargs: allowed_user if get_user_from_simple_token else None,
     )
     monkeypatch.setattr(
-        'nomad.app.v1.routers.auth._get_user_from_upload_token',
-        lambda *_: allowed_user if _get_user_from_upload_token else None,
+        'nomad.app.v1.routers.auth.get_user_from_upload_token',
+        lambda *_: allowed_user if get_user_from_upload_token else None,
     )
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth.datamodel.User.get',
@@ -158,9 +158,9 @@ def test_get_current_user_auth_methods(
 
     if any(
         [
-            allow_keycloak_token and _get_user_from_keycloak_token,
-            allow_simple_token and _get_user_from_simple_token,
-            allow_upload_token and _get_user_from_upload_token,
+            allow_keycloak_token and get_user_from_keycloak_token,
+            allow_simple_token and get_user_from_simple_token,
+            allow_upload_token and get_user_from_upload_token,
         ]
     ):
         assert (
@@ -191,7 +191,7 @@ def test_get_current_user_rejects_query_token():
 
 def test_get_current_user_keycloak_token_from_cookie(monkeypatch, allowed_user):
     monkeypatch.setattr(
-        'nomad.app.v1.routers.auth.infrastructure.keycloak.tokenauth',
+        'nomad.auth.keycloak.keycloak.tokenauth',
         lambda token: allowed_user,
     )
     monkeypatch.setattr(
@@ -238,7 +238,7 @@ def test_get_current_user_required(required):
 
 def test_get_current_user_unknown_user(allowed_user, monkeypatch):
     monkeypatch.setattr(
-        'nomad.app.v1.routers.auth._get_user_from_keycloak_token',
+        'nomad.app.v1.routers.auth.get_user_from_keycloak_token',
         lambda *args, **kwargs: allowed_user,
     )
 
@@ -306,7 +306,7 @@ def test_get_current_user_oasis_allowed_users(
         'nomad.app.v1.routers.auth.config.oasis.allowed_users', ['tester']
     )
     monkeypatch.setattr(
-        'nomad.app.v1.routers.auth._get_user_from_keycloak_token',
+        'nomad.app.v1.routers.auth.get_user_from_keycloak_token',
         lambda *args, **kwargs: auth_user,
     )
 

@@ -1,7 +1,7 @@
 from collections.abc import Iterable
 
-from nomad import infrastructure
 from nomad.app.v1.models.groups import UserGroupMember
+from nomad.auth import user_manage
 from nomad.mongo.groups import create_mongo_user_group_for_test, get_mongo_user_group
 from tests.utils import list_without
 
@@ -28,10 +28,10 @@ def delete_group(group_id):
 
 
 def init_gui_test_groups():
-    user0 = infrastructure.user_management.get_user(username='admin').user_id
-    user1 = infrastructure.user_management.get_user(username='test').user_id
-    user2 = infrastructure.user_management.get_user(username='scooper').user_id
-    user3 = infrastructure.user_management.get_user(username='ttester').user_id
+    user0 = user_manage.user_management.get_user(username='admin').user_id
+    user1 = user_manage.user_management.get_user(username='test').user_id
+    user2 = user_manage.user_management.get_user(username='scooper').user_id
+    user3 = user_manage.user_management.get_user(username='ttester').user_id
 
     groups = {
         'group0': (

@@ -20,7 +20,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from nomad.app.main import app
-from nomad.app.v1.routers.auth import _generate_simple_token, _generate_upload_token
+from nomad.auth.tokens import generate_simple_token, generate_upload_token
 from nomad.datamodel import User
 
 
@@ -30,7 +30,7 @@ def create_auth_header(token: str):
 
 @pytest.fixture(scope='module')
 def app_token_auth(user1: User):
-    app_token = _generate_simple_token(user1.user_id, expires_in=3600)
+    app_token = generate_simple_token(user1.user_id, expires_in=3600)
     return create_auth_header(app_token)
 
 
@@ -43,10 +43,11 @@ def auth_headers(users_dict):
     The key None contains None.
     """
     headers = {
-        label: create_auth_header(user.user_id) for label, user in users_dict.items()
+        label: create_auth_header(token=user.user_id)
+        for label, user in users_dict.items()
     }
     headers['empty'] = {}
-    headers['invalid'] = create_auth_header('invalid.bearer.token')
+    headers['invalid'] = create_auth_header(token='invalid.bearer.token')
     headers[None] = None
     return headers
 
@@ -59,9 +60,7 @@ def upload_tokens(users_dict):
     The key 'empty' contains an empty token.
     The key None contains None.
     """
-    headers = {
-        label: _generate_upload_token(user) for label, user in users_dict.items()
-    }
+    headers = {label: generate_upload_token(user) for label, user in users_dict.items()}
     headers['empty'] = {}
     headers['invalid'] = 'invalid.upload.token'
     headers[None] = None
