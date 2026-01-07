@@ -7,7 +7,7 @@ User fixtures:
 
 import pytest
 
-from nomad.auth import keycloak, user_manage
+from nomad.auth import keycloak, user_management
 from nomad.auth.keycloak import KeycloakError, OIDCToken
 from nomad.config import config
 from nomad.datamodel import User
@@ -175,7 +175,7 @@ config.keycloak.realm_name = 'fairdi_nomad_test'
 config.keycloak.password = 'password'
 
 _keycloak = keycloak.keycloak
-_user_management = user_manage.user_management
+_user_management = user_management.user_management
 
 
 # use a session fixture in addition to the function fixture, to ensure mocked keycloak
@@ -183,25 +183,27 @@ _user_management = user_manage.user_management
 @pytest.fixture(scope='session', autouse=True)
 def mocked_keycloak_session(monkeysession):
     monkeysession.setattr('nomad.auth.keycloak.keycloak', KeycloakMock())
-    monkeysession.setattr('nomad.auth.user_manage.user_management', KeycloakMock())
+    monkeysession.setattr('nomad.auth.user_management.user_management', KeycloakMock())
 
 
 @pytest.fixture(scope='function', autouse=True)
 def mocked_keycloak(monkeypatch):
     monkeypatch.setattr('nomad.auth.keycloak.keycloak', KeycloakMock())
-    monkeypatch.setattr('nomad.auth.user_manage.user_management', KeycloakMock())
+    monkeypatch.setattr('nomad.auth.user_management.user_management', KeycloakMock())
 
 
 @pytest.fixture(scope='function')  # type: ignore[no-redef]
 def keycloak(monkeypatch):
     monkeypatch.setattr('nomad.auth.keycloak.keycloak', _keycloak)
-    monkeypatch.setattr('nomad.auth.user_manage.user_management', _user_management)
+    monkeypatch.setattr('nomad.auth.user_management.user_management', _user_management)
 
 
 @pytest.fixture(scope='function')
 def with_oasis_user_management(monkeypatch):
-    from nomad.auth.user_manage import OasisUserManagement
+    from nomad.auth.user_management import OasisUserManagement
 
-    monkeypatch.setattr('nomad.auth.user_manage.user_management', OasisUserManagement())
+    monkeypatch.setattr(
+        'nomad.auth.user_management.user_management', OasisUserManagement()
+    )
     yield
-    monkeypatch.setattr('nomad.auth.user_manage.user_management', _user_management)
+    monkeypatch.setattr('nomad.auth.user_management.user_management', _user_management)
