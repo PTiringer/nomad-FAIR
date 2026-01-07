@@ -19,7 +19,7 @@
 
 import pytest
 
-from nomad.auth.user_manage import OasisUserManagement
+from nomad.auth.user_management import OasisUserManagement
 from tests.fixtures.users import fake_user_uuid
 
 

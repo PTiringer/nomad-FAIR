@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING, cast
 from pydantic import BaseModel
 
 from nomad import datamodel, utils
-from nomad.auth import keycloak, user_manage
+from nomad.auth import keycloak, user_management
 from nomad.auth.keycloak import KeycloakError
 from nomad.config import config
 from nomad.config.models.config import _DEFAULT_API_KEY, ModeEnum
@@ -197,7 +197,7 @@ def get_user_from_upload_token(upload_token: str | None) -> User | None:
             raise ValueError('Invalid HMAC signature')
 
         user_id = str(uuid.UUID(bytes=payload_bytes))
-        return cast(datamodel.User, user_manage.user_management.get_user(user_id))
+        return cast(datamodel.User, user_management.user_management.get_user(user_id))
 
     except Exception:
         # Decode error, format error, user not found, etc.

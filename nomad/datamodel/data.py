@@ -182,16 +182,16 @@ class User(Author):
     @staticmethod
     @cached(TTLCache(maxsize=2048, ttl=24 * 3600))
     def get(*args, **kwargs) -> 'User | None':
-        from nomad.auth import user_manage
+        from nomad.auth import user_management
 
-        return user_manage.user_management.get_user(*args, **kwargs)
+        return user_management.user_management.get_user(*args, **kwargs)
 
     def full_user(self) -> 'User':
         """Returns a User object with all attributes loaded from the user management system."""
-        from nomad.auth import user_manage
+        from nomad.auth import user_management
 
         assert self.user_id is not None
-        return user_manage.user_management.get_user(user_id=self.user_id)
+        return user_management.user_management.get_user(user_id=self.user_id)
 
 
 class UserReference(Reference):
