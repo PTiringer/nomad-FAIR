@@ -76,6 +76,7 @@ infrastructure = [
     'structlog',
     'tabulate',
     'temporalio>=1.12.0',
+    'cryptography',
     'uvicorn[standard]',
     'validators',
     'zipstream-ng',
