@@ -2957,9 +2957,15 @@ class Upload(Proc):
                     # exception will be raised.
                     entry.process_entry_local()
                 else:
-                    # temporal child workflows can't be spawned within an activitiy
-                    # so we just process this from the current activity
-                    if self.parser_level >= parser.level:
+                    # NOTE: Temporal child workflows can't be spawned within an activitiy
+                    # so we just process this from the current activity.
+                    # NOTE: If this function is called by a parser, we only process the
+                    # updated data if it is of smaller or equal level: this way we don't
+                    # process entries that should be only processed at a later stage. When
+                    # files are updated e.g. by a schema normalizer which is not
+                    # associated with a parser, the parser level is not set, and thus we
+                    # skip the check.
+                    if self.parser_level is None or self.parser_level >= parser.level:
                         try:
                             entry._process_entry_local()
                             entry.process_status = ProcessStatus.SUCCESS
