@@ -62,8 +62,9 @@ from temporalio.common import RetryPolicy
 from temporalio.service import RPCError
 
 from nomad import client, datamodel, infrastructure, metainfo, parsing, search, utils
-from nomad.actions import TaskQueue, activity_utils
+from nomad.actions import TaskQueue
 from nomad.actions.client import get_client
+from nomad.actions.heartbeat import activity_heartbeat
 from nomad.app.v1.models import (
     Aggregation,
     MetadataEditRequest,
@@ -1339,7 +1340,7 @@ class Entry(Proc):
         heartbeat_frequency = (
             config.temporal.processing_timeouts.entry_processing_heartbeat_timeout / 3
         )
-        with activity_utils.with_activity_heartbeat(heartbeat_frequency):
+        with activity_heartbeat(heartbeat_frequency):
             logger = self.get_logger()
             assert self.upload is not None, 'upload does not exist'
             assert self.mainfile_key is None, (

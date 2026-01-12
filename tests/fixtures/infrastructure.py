@@ -16,8 +16,8 @@ from xdist.scheduler.loadscope import LoadScopeScheduling
 
 from nomad import infrastructure
 from nomad.actions import TaskQueue
-from nomad.actions.activities.util import get_nomad_internal_activities
-from nomad.actions.workflows.util import get_nomad_internal_workflows
+from nomad.actions.activities.utils import get_nomad_internal_activities
+from nomad.actions.workflows.utils import get_nomad_internal_workflows
 from nomad.config import config
 from nomad.infrastructure import index_builtin_packages
 

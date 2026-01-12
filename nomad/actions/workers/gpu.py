@@ -6,9 +6,9 @@ from datetime import timedelta
 from temporalio.worker import Worker
 
 from nomad.actions import TaskQueue
-from nomad.actions.activities.util import get_all_activities
+from nomad.actions.activities.utils import get_all_activities
 from nomad.actions.client import get_client
-from nomad.actions.workflows.util import get_all_workflows
+from nomad.actions.workflows.utils import get_all_workflows
 from nomad.config import config
 from nomad.infrastructure import setup
 from nomad.utils.structlogging import get_logger
