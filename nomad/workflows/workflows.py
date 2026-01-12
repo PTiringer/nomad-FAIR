@@ -56,7 +56,7 @@ class DeleteUploadWorkflow:
     @workflow.run
     async def run(self, input: DeleteUploadWorkflowInput):
         retry_policy = RetryPolicy(
-            maximum_attempts=1,
+            maximum_attempts=3,
         )
         timeout = timedelta(
             seconds=config.temporal.processing_timeouts.delete_upload_timeout
@@ -92,7 +92,7 @@ class ProcessEntryWorkflow:
     @workflow.run
     async def run(self, input: ProcessEntryActivityInput):
         retry_policy = RetryPolicy(
-            maximum_attempts=1,
+            maximum_attempts=3,
         )
         try:
             # Process the entry
@@ -137,7 +137,7 @@ class BatchProcessEntriesWorkflow:
     @workflow.run
     async def run(self, next_level_entries_result: EntriesToBeProcessedResult):
         retry_policy = RetryPolicy(
-            maximum_attempts=1,
+            maximum_attempts=3,
         )
         timeout = timedelta(
             seconds=config.temporal.processing_timeouts.process_upload_timeout
@@ -215,7 +215,7 @@ class ProcessUploadWorkflow:
     @workflow.run
     async def run(self, input: UploadProcessingWorkflowInput):
         retry_policy = RetryPolicy(
-            maximum_attempts=1,
+            maximum_attempts=3,
         )
         timeout = timedelta(
             seconds=config.temporal.processing_timeouts.process_upload_timeout
@@ -460,7 +460,7 @@ class ImportBundleWorkflow:
     @workflow.run
     async def run(self, input: ImportBundleWorkflowInput):
         retry_policy = RetryPolicy(
-            maximum_attempts=1,
+            maximum_attempts=3,
         )
         timeout = timedelta(
             seconds=config.temporal.processing_timeouts.import_bundle_timeout
@@ -595,7 +595,7 @@ class PublishExternallyWorkflow:
     @workflow.run
     async def run(self, input: PublishExternallyWorkflowInput):
         retry_policy = RetryPolicy(
-            maximum_attempts=1,
+            maximum_attempts=3,
         )
         timeout = timedelta(
             seconds=config.temporal.processing_timeouts.publish_externally_timeout
