@@ -24,7 +24,7 @@ from temporalio import activity
 
 
 @contextlib.contextmanager
-def with_activity_heartbeat(delay: float):
+def activity_heartbeat(delay: float):
     """
     A context manager that sends temporal heartbeats in a background thread.
 
