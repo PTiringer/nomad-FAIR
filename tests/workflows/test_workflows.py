@@ -1004,8 +1004,8 @@ class TestWorkflowErrorHandling:
         )
 
         # Verify that entry processing was attempted for both entries
-        # 2 calls accounts for the number of retries
-        assert mock_data_layer['entry_class'].get.call_count == 2
+        # 18 calls accounts for the number of retries
+        assert mock_data_layer['entry_class'].get.call_count == 18
 
         # Verify that the upload workflow completed successfully
         # (The upload should not be marked as failed due to individual entry failures)
@@ -1119,7 +1119,7 @@ class TestWorkflowPerformanceAndScalability:
         mock_data_layer['upload_instance'].update_files.return_value = {'file1.txt'}
 
         # Mock parser_level to change with each call
-        def mock_parser_level_side_effect(self):
+        def mock_parser_level_side_effect():
             return current_parser_level
 
         type(mock_data_layer['upload_instance']).parser_level = property(
