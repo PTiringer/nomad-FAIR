@@ -15,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 from datetime import timezone
 
 import nomad.mongo.cache as cache_module
@@ -33,7 +34,9 @@ def assert_info(client):
 
 def get_cached():
     mongo_backend = cache_module.MongoBackend()
-    return mongo_backend._get_cached('::087b452df0dbc495df6fcbe9466c55d8')
+    return mongo_backend._get_cached(
+        cache_module.MongoCache.objects.order_by('-create_time').first().key
+    )
 
 
 def test_info(monkeypatch, client, mongo_function, elastic_function):
