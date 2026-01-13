@@ -598,6 +598,10 @@ class Temporal(ConfigBaseModel):
         1,
         description='Graceful shutdown timeout (in seconds) for Temporal workers.',
     )
+    prometheus_bind_address: str | None = Field(
+        None,
+        description='The bind address for the Prometheus metrics server. If not set, the runtime will not be configured with Prometheus metrics.',
+    )
     processing_timeouts: ProcessingTimeouts = Field(
         default_factory=ProcessingTimeouts,
         description='Timeout configuration for individual processing workflows and activities.',
