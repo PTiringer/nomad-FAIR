@@ -383,15 +383,17 @@ class WithQuery(BaseModel):
         None,
         embed=True,
         description=query_documentation,
-        example={
-            'upload_create_time:gt': '2020-01-01',
-            'results.material.elements': ['Ti', 'O'],
-            'results.method.simulation.program_name': 'VASP',
-            'results.properties.geometry_optimization.final_energy_difference:lte': 1.23e-18,
-            'results.properties.available_properties': 'section_dos',
-            'results.material.type_structural:any': ['bulk', '2d'],
-            'optimade_filter': 'nelements >= 2 AND elements HAS ALL "Ti", "O"',
-        },
+        examples=[
+            {
+                'upload_create_time:gt': '2020-01-01',
+                'results.material.elements': ['Ti', 'O'],
+                'results.method.simulation.program_name': 'VASP',
+                'results.properties.geometry_optimization.final_energy_difference:lte': 1.23e-18,
+                'results.properties.available_properties': 'section_dos',
+                'results.material.type_structural:any': ['bulk', '2d'],
+                'optimade_filter': 'nelements >= 2 AND elements HAS ALL "Ti", "O"',
+            }
+        ],
     )
 
     @field_validator('query')
@@ -1133,53 +1135,60 @@ class Aggregation(BaseModel):
 
 class WithQueryAndPagination(WithQuery):
     pagination: MetadataPagination | None = Body(
-        None, example={'page_size': 5, 'order_by': 'upload_create_time'}
+        None, example=[{'page_size': 5, 'order_by': 'upload_create_time'}]
     )
 
 
 class Metadata(WithQueryAndPagination):
     required: MetadataRequired | None = Body(
         None,
-        example={
-            'include': [
-                'entry_id',
-                'mainfile',
-                'upload_id',
-                'authors',
-                'upload_create_time',
-            ]
-        },
+        examples=[
+            {
+                'include': [
+                    'entry_id',
+                    'mainfile',
+                    'upload_id',
+                    'authors',
+                    'upload_create_time',
+                ]
+            }
+        ],
     )
     aggregations: dict[str, Aggregation] | None = Body(
         {},
-        example={
-            'all_codes': {
-                'terms': {
-                    'quantity': 'results.method.simulation.program_name',
-                    'entries': {'size': 1, 'required': {'include': ['mainfile']}},
+        examples=[
+            {
+                'all_codes': {
+                    'terms': {
+                        'quantity': 'results.method.simulation.program_name',
+                        'entries': {'size': 1, 'required': {'include': ['mainfile']}},
+                    },
                 },
-            },
-            'all_datasets': {
-                'terms': {
-                    'quantity': 'datasets.dataset_name',
-                    'pagination': {'page_size': 100},
-                }
-            },
-            'system_size': {
-                'min_max': {
-                    'quantity': 'results.properties.structures.structure_conventional.n_sites'
-                }
-            },
-            'upload_create_times': {
-                'date_histogram': {'quantity': 'upload_create_time', 'interval': '1M'}
-            },
-            'calculations_per_entry': {
-                'histogram': {
-                    'quantity': 'results.properties.n_calculations',
-                    'interval': 5,
-                }
-            },
-        },
+                'all_datasets': {
+                    'terms': {
+                        'quantity': 'datasets.dataset_name',
+                        'pagination': {'page_size': 100},
+                    }
+                },
+                'system_size': {
+                    'min_max': {
+                        'quantity': 'results.properties.structures.structure_conventional.n_sites'
+                    }
+                },
+                'upload_create_times': {
+                    'date_histogram': {
+                        'quantity': 'upload_create_time',
+                        'interval': '1M',
+                    }
+                },
+                'calculations_per_entry': {
+                    'histogram': {
+                        'quantity': 'results.properties.n_calculations',
+                        'interval': 5,
+                    }
+                },
+            }
+        ],
         description=strip(
             """
             Defines additional aggregations to return. There are different types of
