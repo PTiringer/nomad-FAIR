@@ -1135,7 +1135,7 @@ class Aggregation(BaseModel):
 
 class WithQueryAndPagination(WithQuery):
     pagination: MetadataPagination | None = Body(
-        None, example=[{'page_size': 5, 'order_by': 'upload_create_time'}]
+        None, examples=[{'page_size': 5, 'order_by': 'upload_create_time'}]
     )
 
 
