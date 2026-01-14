@@ -205,10 +205,12 @@ _archive_required_field = Body(
     '*',
     embed=True,
     description=archive_required_documentation,
-    example={
-        'run': {'calculation[-1]': {'energy': '*'}, 'system[-1]': '*'},
-        'metadata': '*',
-    },
+    examples=[
+        {
+            'run': {'calculation[-1]': {'energy': '*'}, 'system[-1]': '*'},
+            'metadata': '*',
+        }
+    ],
 )
 
 
@@ -229,7 +231,7 @@ class EntriesRawDir(WithQuery):
 
 
 class EntriesRaw(WithQuery):
-    files: Files | None = Body(None, example={'glob_pattern': 'vasp*.xml*'})
+    files: Files | None = Body(None, examples=[{'glob_pattern': 'vasp*.xml*'}])
 
 
 class EntryRawDirFile(BaseModel):

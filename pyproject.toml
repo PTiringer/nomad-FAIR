@@ -61,7 +61,7 @@ infrastructure = [
     'beautifulsoup4>=4,<=4.12.3', # 4.13 introduced breaking changes
     'blinker', # mongoengine needs this for signals
     'dockerspawner',
-    'fastapi',
+    'fastapi>=0.99.0',
     'starlette>=0.48.0', # see MR !2813, `HTTP_422_UNPROCESSABLE_CONTENT`
     'fastapi-cache2',
     'gunicorn',

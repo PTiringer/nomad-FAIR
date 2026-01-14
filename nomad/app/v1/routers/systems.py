@@ -310,7 +310,7 @@ async def get_entry_raw_file(
     path: Annotated[
         str,
         Query(
-            example='run/0/system/0',
+            examples=['run/0/system/0'],
             description=strip(
                 """
             Path to a NOMAD System inside the archive. The targeted path should
