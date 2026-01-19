@@ -432,3 +432,162 @@ def test_plugin_polymorphism(mockopen, monkeypatch):
 def test_pagination(conf_yaml, conf_expected, mockopen, monkeypatch):
     config = load_test_config(conf_yaml, None, mockopen, monkeypatch)
     assert_config(config, conf_expected)
+
+
+@pytest.mark.parametrize(
+    'entry_point_id, custom_id_url_safe, expected_id_url_safe, should_raise',
+    [
+        pytest.param(
+            'nomad_parser_vasp.parsers:VASPRunParser',
+            None,
+            'nomad_parser_vasp.parsers-VASPRunParser',
+            False,
+            id='auto-generate: typical entry point id',
+        ),
+        pytest.param(
+            'simple_id',
+            None,
+            'simple_id',
+            False,
+            id='auto-generate: simple id unchanged',
+        ),
+        pytest.param(
+            'some.entry:point',
+            'my_custom_id',
+            'my_custom_id',
+            False,
+            id='custom: valid with underscores',
+        ),
+        pytest.param(
+            'some.entry:point',
+            'my-custom-id',
+            'my-custom-id',
+            False,
+            id='custom: valid with hyphens',
+        ),
+        pytest.param(
+            'some.entry:point',
+            'test%20string',
+            'test%20string',
+            False,
+            id='custom: valid with percent-encoding',
+        ),
+        pytest.param(
+            'some.entry:point',
+            '_private_id',
+            '_private_id',
+            False,
+            id='custom: valid starting with underscore',
+        ),
+        pytest.param(
+            'some.entry:point',
+            'id123',
+            'id123',
+            False,
+            id='custom: valid with numbers',
+        ),
+        pytest.param(
+            'some.entry:point',
+            'valid.id',
+            'valid.id',
+            False,
+            id='custom: valid with dots',
+        ),
+        pytest.param(
+            'some.entry:point',
+            'invalid id',
+            None,
+            True,
+            id='custom: invalid with spaces',
+        ),
+        pytest.param(
+            'some.entry:point',
+            'invalid:id',
+            None,
+            True,
+            id='custom: invalid with colons',
+        ),
+    ],
+)
+def test_id_url_safe(
+    entry_point_id,
+    custom_id_url_safe,
+    expected_id_url_safe,
+    should_raise,
+    mockopen,
+    monkeypatch,
+):
+    """Tests URL-safe identifier generation, validation, and assignment."""
+    config_dict = {
+        'plugins': {
+            'options': {
+                entry_point_id: {
+                    'entry_point_type': 'parser',
+                    'id_url_safe': custom_id_url_safe,
+                }
+            },
+        }
+    }
+    conf_yaml, conf_env = load_format(config_dict, 'yaml')
+    config = load_test_config(conf_yaml, conf_env, mockopen, monkeypatch)
+
+    if should_raise:
+        with pytest.raises(ValueError):
+            config.load_plugins()
+    else:
+        config.load_plugins()
+        assert (
+            config.plugins.entry_points.options[entry_point_id].id_url_safe
+            == expected_id_url_safe
+        )
+
+
+@pytest.mark.parametrize(
+    'options, collides',
+    [
+        pytest.param(
+            {
+                'pkg.mod:Class': {
+                    'id_url_safe': 'A',
+                    'entry_point_type': 'schema_package',
+                },
+                'pkg-mod_Class': {
+                    'id_url_safe': 'A',
+                    'entry_point_type': 'schema_package',
+                },
+            },
+            True,
+            id='same custom id_url_safe and entry point type',
+        ),
+        pytest.param(
+            {
+                'pkg.mod:Class': {
+                    'id_url_safe': 'A',
+                    'entry_point_type': 'parser',
+                },
+                'pkg-mod_Class': {
+                    'id_url_safe': 'A',
+                    'entry_point_type': 'schema_package',
+                },
+            },
+            False,
+            id='same custom id_url_safe, different entry point types',
+        ),
+    ],
+)
+def test_id_url_safe_collision(options, collides, mockopen, monkeypatch):
+    """Tests that URL-safe identifier collisions are detected."""
+    config_dict = {
+        'plugins': {
+            'options': options,
+        }
+    }
+
+    conf_yaml, conf_env = load_format(config_dict, 'yaml')
+    config = load_test_config(conf_yaml, conf_env, mockopen, monkeypatch)
+
+    if collides:
+        with pytest.raises(ValueError):
+            config.load_plugins()
+    else:
+        config.load_plugins()

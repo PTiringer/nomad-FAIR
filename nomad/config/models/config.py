@@ -21,6 +21,7 @@ import os
 import warnings
 from enum import Enum
 from importlib.metadata import entry_points, version
+from urllib.parse import quote
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -1418,8 +1419,8 @@ class Config(ConfigBaseModel):
         contain also any overrides included through nomad.yaml.
 
         Args:
-            id: The entry point identifier. Use the identifier given in the
-            plugin package pyproject.toml.
+            id: The entry point identifier. Use the identifier given in the plugin
+            package pyproject.toml.
         """
         try:
             return self.plugins.entry_points.options[id]
@@ -1542,4 +1543,60 @@ class Config(ConfigBaseModel):
                                 f'Failed loading {key} plugin. Old style plugins are no longer supported.'
                             )
 
+            # Assign URL-safe identifiers to all entry points and check for collisions
+            self._assign_url_safe_ids(_plugins['entry_points']['options'])
+
             self.plugins = Plugins.model_validate(_plugins)
+
+    def _assign_url_safe_ids(self, entry_points_options: dict) -> None:
+        """Assigns URL-safe identifiers to all entry points.
+
+        For each entry point, if a custom id_url_safe is provided, it is validated
+        for URL-safety. Otherwise, one is generated from the entry point id.
+        Also checks for collisions among all id_url_safe values.
+
+        Args:
+            entry_points_options: Dictionary of entry point id to entry point config.
+
+        Raises:
+            ValueError: If a custom id_url_safe is not URL-safe or if there are
+                collisions among id_url_safe values.
+        """
+        url_safe_ids: dict[
+            str, tuple[str, str]
+        ] = {}  # Maps url_safe_id -> original entry_point_id
+
+        for entry_point_id, config in entry_points_options.items():
+            # Get id_url_safe, and plugin_type from config (dict or BaseModel)
+            if isinstance(config, dict):
+                custom_url_safe_id = config.get('id_url_safe')
+                entry_point_type = config.get('entry_point_type')
+            else:
+                custom_url_safe_id = getattr(config, 'id_url_safe', None)
+                entry_point_type = getattr(config, 'entry_point_type', None)
+
+            # Assign the custom id, or generate it from the id. Custom id_url_safe is
+            # validated by Pydantic field_validator
+            if custom_url_safe_id:
+                url_safe_id = custom_url_safe_id
+            else:
+                url_safe_id = quote(entry_point_id.replace(':', '-'), safe='')
+
+            # Check for id collisions within the same entry point type
+            if (
+                url_safe_id in url_safe_ids
+                and url_safe_ids[url_safe_id][1] == entry_point_type
+            ):
+                raise ValueError(
+                    f'URL-safe identifier collision: "{url_safe_id}" is used by both '
+                    f'entry points "{url_safe_ids[url_safe_id]}" and "{entry_point_id}". '
+                    'Please provide a custom id_url_safe for one of them to resolve '
+                    'the collision.'
+                )
+            url_safe_ids[url_safe_id] = (entry_point_id, entry_point_type)
+
+            # Assign the url_safe_id to the config
+            if isinstance(config, dict):
+                config['id_url_safe'] = url_safe_id
+            else:
+                config.id_url_safe = url_safe_id

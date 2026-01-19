@@ -109,7 +109,7 @@ export const NorthURL = React.memo(({ action, data }) => {
     ? Object.keys(northTools)
         .filter(tool => tool === action.tool_name)
         .map(key => {
-          const { with_path, mount_path, icon, path_prefix } = northTools[key]
+          const { with_path, mount_path, icon, path_prefix } = northTools[key].north_tool
           return {
             name: key,
             title: key,

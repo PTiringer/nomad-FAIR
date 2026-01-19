@@ -592,7 +592,7 @@ function RawFileContent({deploymentUrl, uploadId, path, data, editable}) {
     const fileExtension = path.split('.').pop().toLowerCase()
     return Object.keys(allNorthTools)
       .filter(key => {
-        const tool = allNorthTools[key]
+        const tool = allNorthTools[key].north_tool
         return tool?.file_extensions && tool.file_extensions.includes(fileExtension)
       })
   }, [allNorthTools, path])

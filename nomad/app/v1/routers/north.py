@@ -129,9 +129,10 @@ async def get_tools(user: Annotated[User, Depends(get_current_user())]):
         data=[
             _get_status(
                 ToolModel(
-                    name=tool.north_tool.display_name
-                    if tool.north_tool.display_name is not None
-                    else tool.id,
+                    name=tool.id_url_safe,
+                    # name=tool.north_tool.display_name
+                    # if tool.north_tool.display_name is not None
+                    # else tool.id,
                     **tool.north_tool.dict(),
                 ),
                 user,
@@ -142,13 +143,18 @@ async def get_tools(user: Annotated[User, Depends(get_current_user())]):
 
 
 async def tool(name: str) -> ToolModel:
-    try:
-        plugin = config.get_plugin_entry_point(name)
-        if getattr(plugin, 'entry_point_type', None) != 'north_tool':
-            raise KeyError
-    except KeyError:
+    config.plugins.entry_points.options
+    plugin = None
+    for value in config.plugins.entry_points.options.values():
+        if (
+            getattr(value, 'id_url_safe', None) == name
+            and getattr(value, 'entry_point_type', None) == 'north_tool'
+        ):
+            plugin = value
+            break
+    if plugin is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail='The tools does not exist.'
+            status_code=status.HTTP_404_NOT_FOUND, detail='The tool does not exist.'
         )
 
     north_tool = cast(NorthToolEntryPoint, plugin).north_tool

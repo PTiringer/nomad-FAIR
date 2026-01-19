@@ -184,9 +184,9 @@ const NorthPage = React.memo(() => {
         {Object
           .keys(tools)
           .map(key => ({
-            name: key,
-            title: tools[key].display_name ?? key,
-            ...tools[key]
+            name: tools[key].id_url_safe,
+            title: tools[key].north_tool.display_name ?? key,
+            ...tools[key].north_tool
           })).map((tool, index) => (
             <NorthTool key={index} tool={tool}>
               <NorthToolAccordion
