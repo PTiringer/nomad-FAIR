@@ -161,7 +161,7 @@ def get_gui_artifacts_js() -> str:
         'metainfo': _generate_metainfo(all_metainfo_packages),
         'parserMetadata': code_metadata,
         'northTools': {
-            plugin.id: plugin.north_tool.dict()
+            plugin.id: plugin.dict()
             for plugin in config.plugins.entry_points.filtered_values()
             if plugin.entry_point_type == 'north_tool'
         }

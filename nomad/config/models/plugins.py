@@ -17,10 +17,11 @@
 #
 
 import os
+import re
 import shutil
 from typing import TYPE_CHECKING, Literal, Union, cast
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from nomad.actions.shared.constant import TaskQueue
 from nomad.common import download_file, get_package_path, is_safe_relative_path, is_url
@@ -47,11 +48,35 @@ class EntryPoint(BaseModel):
         None,
         description='Unique identifier corresponding to the entry point name. Automatically set to the plugin entry point name in pyproject.toml.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
+    id_url_safe: str | None = Field(
+        None,
+        description="""URL-safe identifier for the plugin entry point. If no custom name
+        is provided, one is automatically generated from the entry point id. Any custom
+        identifier is checked for URL-safety and for collisions with other entry points
+        with the same type within the same NOMAD deployment.""",
+    )
+
+    @field_validator('id_url_safe')
+    @classmethod
+    def validate_url_safe(cls, v: str | None) -> str | None:
+        """Validates that id_url_safe is URL-safe.
+
+        A URL-safe identifier contains only lowercase alphanumeric characters, dots,
+        underscores, tildes, percent-encoded symbols or hyphens.
+        """
+        if v is not None and not re.match(r'^[a-zA-Z0-9\.~%_-]*$', v):
+            raise ValueError(
+                f'id_url_safe "{v}" is not URL-safe. URL-safe identifiers must contain '
+                'only letters, numbers, underscores, percent-encoded characters, tildes '
+                'and hyphens.'
+            )
+        return v
+
     entry_point_type: str = Field(
         description='Determines the entry point type.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
     name: str | None = Field(None, description='Name of the plugin entry point.')
     description: str | None = Field(
         None, description='A human readable description of the plugin entry point.'
@@ -60,7 +85,7 @@ class EntryPoint(BaseModel):
         None,
         description='The plugin package from which this entry points comes from.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
 
     def dict_safe(self):
         """Used to serialize the non-confidential parts of a plugin model. This
@@ -78,7 +103,7 @@ class AppEntryPoint(EntryPoint):
         'app',
         description='Determines the entry point type.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
     app: App = Field(description='The app configuration.')
 
     def dict_safe(self):
@@ -94,7 +119,7 @@ class SchemaPackageEntryPoint(EntryPoint):
         'schema_package',
         description='Specifies the entry point type.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
 
     def load(self) -> 'SchemaPackage':
         """Used to lazy-load a schema package instance. You should override this
@@ -110,7 +135,7 @@ class NormalizerEntryPoint(EntryPoint):
         'normalizer',
         description='Determines the entry point type.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
     level: int = Field(
         0,
         description="""
@@ -134,7 +159,7 @@ class ParserEntryPoint(EntryPoint):
         'parser',
         description='Determines the entry point type.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
     level: int = Field(
         0,
         description="""
@@ -304,7 +329,7 @@ class ExampleUploadEntryPoint(EntryPoint):
         'example_upload',
         description='Determines the entry point type.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
     category: str | None = Field(description='Category for the example upload.')
     title: str | None = Field(description='Title of the example upload.')
     description: str | None = Field(
@@ -328,7 +353,7 @@ class ExampleUploadEntryPoint(EntryPoint):
         False,
         description='Whether this example upload should be read from the "examples" directory.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
 
     def get_package_path(self):
         """Once all built-in example uploads have been removed, this function
@@ -486,7 +511,7 @@ class APIEntryPoint(EntryPoint):
         'api',
         description='Specifies the entry point type.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
 
     prefix: str | None = Field(
         None,
@@ -526,7 +551,7 @@ class ActionEntryPoint(EntryPoint):
         'action',
         description='Determines the entry point type.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
     task_queue: str = Field(
         default=TaskQueue.CPU, description='Determines the task queue for this action'
     )
