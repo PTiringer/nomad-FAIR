@@ -18,6 +18,7 @@
 
 import re
 import urllib
+from tempfile import NamedTemporaryFile
 from unittest.mock import MagicMock
 
 import pytest
@@ -279,22 +280,28 @@ def test_alive_health(monkeypatch, client, require_auth):
 @pytest.mark.parametrize('path', ['env.js', 'artifacts.js'])
 def test_gui(client, path, monkeypatch):
     monkeypatch.setattr('nomad.app.main.GuiFiles.gui_env_data', 'env.js')
-    monkeypatch.setattr('nomad.app.main.GuiFiles.gui_artifacts_data', 'artifacts.js')
     monkeypatch.setattr('nomad.app.main.GuiFiles.gui_data_etag', 'etag')
 
-    rv = client.get(f'/gui/{path}')
-    assert rv.status_code == 200
-    assert rv.text == path
-    assert rv.headers.get('Etag') == '"etag"'
+    with NamedTemporaryFile(delete=True) as tmp:
+        monkeypatch.setattr('nomad.app.main.GuiFiles.gui_artifacts_path', tmp.name)
 
-    rv = client.get(f'/gui/{path}', headers={'if-none-match': 'etag'})
-    assert rv.status_code == 304
+        rv = client.get(f'/gui/{path}')
+        assert rv.status_code == 200
+        if path == 'env.js':
+            assert rv.text == path
+        else:
+            # empty file
+            assert rv.text == ''
+        assert rv.headers.get('Etag') == '"etag"'
 
-    rv = client.get(f'/gui/{path}', headers={'if-none-match': 'W/"etag"'})
-    assert rv.status_code == 304
+        rv = client.get(f'/gui/{path}', headers={'if-none-match': 'etag'})
+        assert rv.status_code == 304
 
-    rv = client.get(f'/gui/{path}', headers={'if-none-match': 'different-etag'})
-    assert rv.status_code == 200
+        rv = client.get(f'/gui/{path}', headers={'if-none-match': 'W/"etag"'})
+        assert rv.status_code == 304
+
+        rv = client.get(f'/gui/{path}', headers={'if-none-match': 'different-etag'})
+        assert rv.status_code == 200
 
 
 # Verify `OasisAuthenticationMiddleware` is applied correctly in NOMAD

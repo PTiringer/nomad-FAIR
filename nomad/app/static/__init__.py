@@ -1,3 +1,4 @@
+import hashlib
 import re
 import os
 
@@ -9,7 +10,7 @@ from starlette.staticfiles import (
     StaticFiles as StarletteStaticFiles,
     NotModifiedResponse,
 )
-from starlette.responses import PlainTextResponse
+from starlette.responses import PlainTextResponse, FileResponse
 from starlette.datastructures import Headers
 
 from nomad.config import config
@@ -55,7 +56,7 @@ app.mount('/docs', StaticFiles(directory=docs_folder, check_dir=False), name='do
 
 
 class GuiFiles(StaticFiles):
-    gui_artifacts_data: str | None = None
+    gui_artifacts_path: str | None = None
     gui_env_data: str | None = None
     gui_data_etag: str | None = None
 
@@ -66,18 +67,34 @@ class GuiFiles(StaticFiles):
             assert GuiFiles.gui_data_etag is not None, (
                 'Etag for gui data was not initialized'
             )
-            response = PlainTextResponse(
-                GuiFiles.gui_env_data
-                if path == 'env.js'
-                else GuiFiles.gui_artifacts_data,
-                media_type='application/javascript',
-                headers=dict(etag=GuiFiles.gui_data_etag),
-            )
+            if path == 'env.js':
+                response = PlainTextResponse(
+                    GuiFiles.gui_env_data,
+                    media_type='application/javascript',
+                    headers=dict(etag=GuiFiles.gui_data_etag),
+                )
+            else:
+                response = FileResponse(
+                    GuiFiles.gui_artifacts_path,
+                    media_type='application/javascript',
+                    headers=dict(etag=GuiFiles.gui_data_etag),
+                )
 
         request_headers = Headers(scope=scope)
         if self.is_not_modified(response.headers, request_headers):
             return NotModifiedResponse(response.headers)
         return response
+
+    @classmethod
+    def bootstrap(cls, artifacts_path, env_data):
+        cls.gui_artifacts_path = artifacts_path
+        cls.gui_env_data = env_data
+
+        hash_obj = hashlib.md5(env_data.encode(), usedforsecurity=False)
+        with open(cls.gui_artifacts_path, 'rb') as f:
+            while chunk := f.read(2**20):
+                hash_obj.update(chunk)
+        cls.gui_data_etag = hash_obj.hexdigest()
 
 
 gui_files_app = GuiFiles(directory=gui_folder, check_dir=False)

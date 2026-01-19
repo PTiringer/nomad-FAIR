@@ -34,6 +34,7 @@ from urllib.parse import urldefrag
 import docstring_parser
 import jmespath
 import pint
+from json_stream import streamable_dict, streamable_list
 from pydantic import BaseModel, TypeAdapter, ValidationError
 from typing_extensions import deprecated
 
@@ -1634,6 +1635,7 @@ class MSection(metaclass=MObjectMeta):
         exclude: TypingCallable[[Definition, MSection], bool] | None = None,
         transform: TypingCallable[[Definition, MSection, Any, str], Any] | None = None,
         subsection_as_dict: bool = False,
+        return_as_generator: bool = False,
     ) -> dict:
         """
         Returns the data of this section as a (json serializable) dictionary.
@@ -1684,6 +1686,7 @@ class MSection(metaclass=MObjectMeta):
                 type.
             subsection_as_dict: If true, try to serialize subsections as dictionaries.
                 Only possible when the keys are unique. Otherwise, serialize as list.
+            return_as_generator: If true, return as a generator instead of a dict.
         """
         if isinstance(self, Definition) and not with_out_meta:
             with_meta = True
@@ -1702,6 +1705,7 @@ class MSection(metaclass=MObjectMeta):
             exclude=exclude,
             transform=transform,
             subsection_as_dict=subsection_as_dict,
+            return_as_generator=return_as_generator,
         )
 
         assert not (include is not None and exclude is not None), (
@@ -1941,6 +1945,16 @@ class MSection(metaclass=MObjectMeta):
                                 if item is not None
                             }
                             yield name, serialised_dict
+                        elif return_as_generator:
+
+                            def _subsection_gen():
+                                for item in subsections:
+                                    if item is None:
+                                        yield None
+                                    else:
+                                        yield item.m_to_dict(**kwargs)
+
+                            yield name, streamable_list(_subsection_gen())
                         else:
                             serialised_list: list = [
                                 None if item is None else item.m_to_dict(**kwargs)
@@ -1952,7 +1966,10 @@ class MSection(metaclass=MObjectMeta):
                 ) is not None:
                     yield name, sub_section.m_to_dict(**kwargs)
 
-        return {key: value for key, value in items()}
+        if not return_as_generator:
+            return {key: value for key, value in items()}
+
+        return streamable_dict(items())
 
     def m_update(self, **kwargs):
         """
@@ -2799,9 +2816,18 @@ class Definition(MSection):
 
     def m_to_dict(self, **kwargs) -> dict:  # type: ignore[override]
         value: dict = super().m_to_dict(**kwargs)
-        if kwargs.get('with_def_id', False):
-            value['definition_id'] = self.definition_id
-        return value
+
+        if not kwargs.get('return_as_generator', False):
+            if kwargs.get('with_def_id', False):
+                value['definition_id'] = self.definition_id
+            return value
+
+        def nested():
+            yield from value.items()
+            if kwargs.get('with_def_id', False):
+                yield 'definition_id', self.definition_id
+
+        return streamable_dict(nested())
 
     def m_to_json_schema(self) -> dict[str, Any]:
         """

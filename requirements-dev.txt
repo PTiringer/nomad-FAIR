@@ -59,6 +59,8 @@ isodate==0.7.2            # via rdflib, -r requirements.txt
 jinja2==3.1.6             # via jupyterhub, -r requirements.txt
 jmespath==1.0.1           # via -r requirements.txt, nomad-lab (pyproject.toml)
 joblib==1.5.3             # via pymatgen, scikit-learn, -r requirements.txt
+json-stream==2.4.1        # via -r requirements.txt, nomad-lab (pyproject.toml)
+json-stream-rs-tokenizer==0.5.0  # via json-stream, -r requirements.txt
 jsonpath-ng==1.7.0        # via -r requirements.txt, nomad-lab (pyproject.toml)
 jsonschema==4.26.0        # via jupyter-telemetry, oauthenticator, -r requirements.txt
 jsonschema-specifications==2025.9.1  # via jsonschema, -r requirements.txt
