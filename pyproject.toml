@@ -24,6 +24,7 @@ dependencies = [
     'httpx>=0.23.3,<0.28',  # breaking change in 0.28 breaks keycloak compatibility
     'jmespath>=0.10.0',
     'jsonpath-ng',
+    'json_stream',
     'kaleido<=0.2.1', # v1.0.0 not compatible with plotly < 6.0.0
     'lxml>=5.2',
     'matid>=2.1.3',

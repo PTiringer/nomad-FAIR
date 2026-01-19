@@ -18,9 +18,12 @@
 import json
 import os
 import sys
+from pathlib import Path
+from tempfile import mkstemp
 from typing import Any, cast
 
 import click
+from json_stream import streamable_dict
 from pint import Unit
 from pint.errors import UndefinedUnitError
 
@@ -172,6 +175,61 @@ def get_gui_artifacts_js() -> str:
     }
 
     return f'window.nomadArtifacts = {json.dumps(artifactsDict, indent=2)};\n'
+
+
+def generate_gui_artifacts_js() -> str:
+    from nomad.datamodel import all_metainfo_packages
+    from nomad.parsing.parsers import code_metadata
+
+    all_packages = all_metainfo_packages()
+    unit_list_json, prefixes_json = _generate_units_json()
+
+    def generator():
+        yield 'searchQuantities', _generate_search_quantities()
+        yield (
+            'metainfo',
+            all_packages.m_to_dict(
+                with_meta=True, with_def_id=True, return_as_generator=True
+            ),
+        )
+        yield 'parserMetadata', json.loads(json.dumps(code_metadata, sort_keys=True))
+        yield (
+            'northTools',
+            {
+                plugin.id: plugin.north_tool.dict()
+                for plugin in config.plugins.entry_points.filtered_values()
+                if plugin.entry_point_type == 'north_tool'
+            }
+            if config.plugins
+            else {},
+        )
+        yield 'unitList', unit_list_json
+        yield 'unitPrefixes', prefixes_json
+
+    os.makedirs(config.fs.tmp, exist_ok=True)
+
+    try:
+        for item in Path(config.fs.tmp).iterdir():
+            if (
+                item.is_file()
+                and item.name.startswith('tmp')
+                and item.name.endswith('.js')
+            ):
+                try:
+                    item.unlink()
+                except Exception:  # noqa
+                    pass
+    except Exception:  # noqa
+        pass
+
+    fd, path = mkstemp('.js', 'tmp', dir=config.fs.tmp)
+
+    with os.fdopen(fd, 'w') as f:
+        f.write('window.nomadArtifacts = ')
+        json.dump(streamable_dict(generator()), f, indent=2)
+        f.write(';\n')
+
+    return path
 
 
 @dev.command(help=('Generates all python-based GUI artifacts into javascript code.'))

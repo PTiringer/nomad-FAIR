@@ -15,9 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-import hashlib
-import json
+import os
 import re
 from contextlib import asynccontextmanager
 
@@ -108,7 +106,7 @@ OASIS_AUTH_WHITELIST: dict[str, set[str]] = {
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from nomad import infrastructure
-    from nomad.cli.dev import get_gui_artifacts_js, get_gui_config
+    from nomad.cli.dev import generate_gui_artifacts_js, get_gui_config
     from nomad.metainfo.elasticsearch_extension import entry_type
     from nomad.parsing.parsers import import_all_parsers
 
@@ -124,16 +122,8 @@ async def lifespan(app: FastAPI):
         pass
 
     entry_type.reload_quantities_dynamic()
-    GuiFiles.gui_artifacts_data = get_gui_artifacts_js()
-    GuiFiles.gui_env_data = get_gui_config()
 
-    data = {
-        'artifacts': GuiFiles.gui_artifacts_data,
-        'gui_config': GuiFiles.gui_env_data,
-    }
-    GuiFiles.gui_data_etag = hashlib.md5(
-        json.dumps(data).encode(), usedforsecurity=False
-    ).hexdigest()
+    GuiFiles.bootstrap(generate_gui_artifacts_js(), get_gui_config())
 
     infrastructure.setup()
 
@@ -153,6 +143,9 @@ async def lifespan(app: FastAPI):
 
         logger.error(f'Failed to connect to temporal', exc_info=e)
         raise
+    finally:
+        if os.path.exists(GuiFiles.gui_artifacts_path):
+            os.remove(GuiFiles.gui_artifacts_path)
 
 
 app = FastAPI(lifespan=lifespan)
