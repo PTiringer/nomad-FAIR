@@ -549,6 +549,16 @@ class EntryMetadata(MSection):
         a_elasticsearch=Elasticsearch(material_entry_type),
     )
 
+    description = Quantity(
+        type=str,
+        categories=[MongoUploadMetadata, EditableUserMetadata],
+        description='Further information about the upload.',
+        a_elasticsearch=[
+            Elasticsearch(material_entry_type),
+            Elasticsearch(suggestion='default'),
+        ],
+    )
+
     entry_id = Quantity(
         type=str,
         description='A persistent and globally unique identifier for the entry',
