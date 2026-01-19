@@ -1766,6 +1766,7 @@ class Upload(Proc):
     upload_id = StringField(primary_key=True)
     upload_name: str | None = StringField(default=None)
     upload_create_time = DateTimeField(required=True)
+    description: str | None = StringField(default=None)
     external_db = StringField()
     main_author = StringField(required=True)
     coauthors = ListField(StringField())

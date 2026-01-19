@@ -30,6 +30,7 @@ from nomad.search import search
 all_coauthor_metadata = dict(
     # All attributes which a coauthor+ can edit
     upload_name='a humble upload name',
+    description='a humble description',
     embargo_length=14,
     coauthors=['lhofstadter'],
     external_id='31415926536',

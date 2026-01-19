@@ -371,6 +371,7 @@ def example_data(
             data.create_upload(
                 upload_id=upload_id,
                 upload_name=upload_name,
+                description=f'Descripton for upload {upload_id}',
                 coauthors=coauthors,
                 reviewers=reviewers,
                 published=published,
@@ -668,8 +669,12 @@ def example_data_writeable(mongo_function, user1, normalized, elastic_function):
     }
 
     # one upload with one entry, published
+    uid = upload_id_map['id_published_w']
     data.create_upload(
-        upload_id=upload_id_map['id_published_w'], published=True, embargo_length=12
+        upload_id=uid,
+        description=f'Description for writable upload {uid}',
+        published=True,
+        embargo_length=12,
     )
     data.create_entry(
         upload_id=upload_id_map['id_published_w'],
@@ -678,8 +683,12 @@ def example_data_writeable(mongo_function, user1, normalized, elastic_function):
     )
 
     # one upload with one entry, unpublished
+    uid = upload_id_map['id_unpublished_w']
     data.create_upload(
-        upload_id=upload_id_map['id_unpublished_w'], published=False, embargo_length=12
+        upload_id=uid,
+        description=f'Description for writable upload {uid}',
+        published=False,
+        embargo_length=12,
     )
     data.create_entry(
         upload_id=upload_id_map['id_unpublished_w'],
@@ -688,15 +697,22 @@ def example_data_writeable(mongo_function, user1, normalized, elastic_function):
     )
 
     # one upload, no entries, running a blocking processing
+    uid = upload_id_map['id_processing_w']
     data.create_upload(
-        upload_id=upload_id_map['id_processing_w'],
+        upload_id=uid,
+        description=f'Description for writable upload {uid}',
         published=False,
         process_status=ProcessStatus.RUNNING,
         current_process='publish_upload',
     )
 
     # one upload, no entries, unpublished
-    data.create_upload(upload_id=upload_id_map['id_empty_w'], published=False)
+    uid = upload_id_map['id_empty_w']
+    data.create_upload(
+        upload_id=uid,
+        description=f'Description for writable upload {uid}',
+        published=False,
+    )
 
     data.save()
 

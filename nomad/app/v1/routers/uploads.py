@@ -156,6 +156,9 @@ class UploadProcData(ProcData):
     upload_create_time: datetime | None = Field(
         None, description='Date and time of the creation of the upload.'
     )
+    description: str | None = Field(
+        None, description='Further information about the upload.'
+    )
     main_author: str | None = Field(
         None, description=strip('The main author of the upload.')
     )
