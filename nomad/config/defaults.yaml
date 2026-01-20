@@ -515,7 +515,7 @@ plugins:
           process data, access existing data with NOMAD's API for analysis, and how to
           add visualization to your data.
       north-tools-1-jupyter:
-        id_url_safe: jupyter-notebook
+        id_url_safe: jupyter
         entry_point_type: north_tool
         north_tool:
           display_name: Jupyter Notebook
@@ -565,7 +565,7 @@ plugins:
           short_description: Jupyterlab with pyiron installed.
           with_path: true
       north-tools-3-nionswift:
-        id_url_safe: nion-swift
+        id_url_safe: nionswift
         entry_point_type: north_tool
         north_tool:
           display_name: Nion Swift
@@ -596,7 +596,7 @@ plugins:
             series reconstructions in NOMAD.
           with_path: false
       north-tools-4-nexustools:
-        id_url_safe: nexus
+        id_url_safe: nexustools
         entry_point_type: north_tool
         north_tool:
           display_name: NeXus
@@ -717,7 +717,7 @@ plugins:
             electron microscopy.
           with_path: true
       north-tools-8-ellips:
-        id_url_safe: ellipsometry
+        id_url_safe: ellips
         entry_point_type: north_tool
         north_tool:
           display_name: Ellipsometry
@@ -804,7 +804,7 @@ plugins:
           short_description: An example for analyzing SPM (STS / STM / AFM) experiment.
           with_path: true
       north-tools-11-apmtools:
-        id_url_safe: apm-tools
+        id_url_safe: apmtools
         entry_point_type: north_tool
         north_tool:
           display_name: APM tools
