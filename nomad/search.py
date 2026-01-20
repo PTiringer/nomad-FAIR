@@ -1645,7 +1645,7 @@ def _buckets_to_interval(
         data = response.aggregations[agg_name].min_max.data  # pylint: disable=no-member
         min_value = data[0]
         max_value = data[1]
-        interval = None
+        interval: int | float | None = None
         extended_bounds = agg.extended_bounds
         if agg.extended_bounds:
             if min_value is not None and extended_bounds.min is not None:
@@ -1657,26 +1657,27 @@ def _buckets_to_interval(
             else:
                 max_value = extended_bounds.max if max_value is None else max_value
         if min_value is not None and max_value is not None:
-            interval = (
-                0
-                if max_value == min_value
-                else ((1 + 1e-8) * max_value - min_value) / agg.buckets
-            )
             quantity = validate_quantity(agg.quantity, doc_type=index.doc_type)
+
             # Discretized fields require a 'ceiled' interval in order to not
             # return bins with floating point values and in order to prevent
             # binning inaccuracies
             if quantity.annotation.mapping['type'] in ['integer', 'long', 'date']:
                 interval = math.ceil((max_value - min_value) / agg.buckets)
-            # The interval for floating point fields is made artificially a bit
-            # bigger. This prevents binning issues arising from floating point
-            # inaccuracy.
+            # The interval calculation for floating point numbers needs to be done
+            # carefully due to limited precision. We need to make the whole interval
+            # slightly bigger by multiplying with a number that is slightly above 1
+            # (cannot add a small value as we don't know the scale). This mames sure
+            # that the interval covers all values. Also note we may not actually
+            # receive as many buckets as are requested, because ES returns the bucket
+            # values in floating point precision, and with too many buckets these
+            # numbers may not be representable as floating point numbers.
             else:
-                interval = (
-                    0
-                    if max_value == min_value
-                    else ((1 + 1e-12) * max_value - min_value) / agg.buckets
-                )
+                value_range = max_value - min_value
+                if value_range <= 0:
+                    interval = 0
+                else:
+                    interval = (1 + 1e-12) * value_range / agg.buckets
 
         # If no interval can be defined, the query interval is set to a dummy
         # value of 1. ES requires a non-empty value.
@@ -1689,10 +1690,10 @@ def _buckets_to_interval(
             quantity=agg.quantity,
             interval=response_interval,
             buckets=agg.buckets,
-            offset=min_value,
+            offset=0,
         )
         aggregations[agg_name].histogram = agg.copy(
-            update={'interval': interval, 'offset': min_value, 'buckets': None}
+            update={'interval': interval, 'offset': 0, 'buckets': None}
         )
 
     return aggregations, histogram_responses, bucket_values
