@@ -507,9 +507,9 @@ class Elastic(ConfigBaseModel):
 
 
 class ProcessingTimeouts(ConfigBaseModel):
-    entry_processing_heartbeat_timeout: int = Field(
+    internal_processing_heartbeat_timeout: int = Field(
         600,  # ten minutes
-        description='The maximum interval in seconds that an entry processing activity can run without reporting progress (sending a heartbeat) before Temporal considers it failed.',
+        description='The maximum interval in seconds that an internal processing activity (e.g. entry processing) can run without reporting progress (sending a heartbeat) before Temporal considers it failed.',
     )
     delete_upload_timeout: int = Field(
         3600,  # 1 hour

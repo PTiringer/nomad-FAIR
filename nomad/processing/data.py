@@ -64,7 +64,6 @@ from temporalio.service import RPCError
 from nomad import client, datamodel, infrastructure, metainfo, parsing, search, utils
 from nomad.actions import TaskQueue
 from nomad.actions.client import get_client
-from nomad.actions.heartbeat import activity_heartbeat
 from nomad.app.v1.models import (
     Aggregation,
     MetadataEditRequest,
@@ -1336,118 +1335,113 @@ class Entry(Proc):
         self._process_entry_local()
 
     def _process_entry_local(self):
-        # if the heartbeat timeout is 10 mins, this would send a heartbeat every 200 seconds.
-        heartbeat_frequency = (
-            config.temporal.processing_timeouts.entry_processing_heartbeat_timeout / 3
+        logger = self.get_logger()
+        assert self.upload is not None, 'upload does not exist'
+        assert self.mainfile_key is None, (
+            'cannot process a child entry, only the parent entry'
         )
-        with activity_heartbeat(heartbeat_frequency):
-            logger = self.get_logger()
-            assert self.upload is not None, 'upload does not exist'
-            assert self.mainfile_key is None, (
-                'cannot process a child entry, only the parent entry'
+
+        # Get child entries, if any
+        self._child_entries = list(
+            Entry.objects(  # type: ignore
+                upload_id=self.upload_id,
+                mainfile=self.mainfile,
+                mainfile_key__ne=None,
+            )
+        )
+        if self._child_entries:
+            for child_entry in self._child_entries:
+                # Set status of child entries to running and do some optimizations
+                child_entry._upload = self.upload
+                child_entry._perform_index = False
+                child_entry.process_status = ProcessStatus.RUNNING
+            Entry._collection.update_many(
+                {
+                    'upload_id': self.upload_id,
+                    'mainfile': self.mainfile,
+                    'mainfile_key': {'$exists': True},
+                },
+                {
+                    '$set': {
+                        'process_status': ProcessStatus.RUNNING,
+                        'last_status_message': 'Parent entry processing',
+                    }
+                },
             )
 
-            # Get child entries, if any
-            self._child_entries = list(
-                Entry.objects(  # type: ignore
-                    upload_id=self.upload_id,
-                    mainfile=self.mainfile,
-                    mainfile_key__ne=None,
-                )
-            )
-            if self._child_entries:
-                for child_entry in self._child_entries:
-                    # Set status of child entries to running and do some optimizations
-                    child_entry._upload = self.upload
-                    child_entry._perform_index = False
-                    child_entry.process_status = ProcessStatus.RUNNING
-                Entry._collection.update_many(
-                    {
-                        'upload_id': self.upload_id,
-                        'mainfile': self.mainfile,
-                        'mainfile_key': {'$exists': True},
-                    },
-                    {
-                        '$set': {
-                            'process_status': ProcessStatus.RUNNING,
-                            'last_status_message': 'Parent entry processing',
-                        }
-                    },
-                )
+        # Load the reprocess settings from the upload, and apply defaults
+        settings = config.reprocess.customize(self.upload.reprocess_settings)
 
-            # Load the reprocess settings from the upload, and apply defaults
-            settings = config.reprocess.customize(self.upload.reprocess_settings)
-
-            self.set_last_status_message('Determining action')
-            # If this entry has been processed before, or imported from a bundle, nomad_version
-            # should be set. If not, this is the initial processing.
-            self._is_initial_processing = self.nomad_version is None
-            self._perform_index = (
-                self._is_initial_processing or settings.index_individual_entries
-            )
-            if not self.upload.published or self._is_initial_processing:
-                should_parse = True
-            elif not settings.reprocess_existing_entries:
-                should_parse = False
+        self.set_last_status_message('Determining action')
+        # If this entry has been processed before, or imported from a bundle, nomad_version
+        # should be set. If not, this is the initial processing.
+        self._is_initial_processing = self.nomad_version is None
+        self._perform_index = (
+            self._is_initial_processing or settings.index_individual_entries
+        )
+        if not self.upload.published or self._is_initial_processing:
+            should_parse = True
+        elif not settings.reprocess_existing_entries:
+            should_parse = False
+        else:
+            if settings.rematch_published and not settings.use_original_parser:
+                with utils.timer(logger, 'parser matching executed'):
+                    parser, _mainfile_keys = match_parser(
+                        self.mainfile_file.os_path, strict=False
+                    )
             else:
-                if settings.rematch_published and not settings.use_original_parser:
-                    with utils.timer(logger, 'parser matching executed'):
-                        parser, _mainfile_keys = match_parser(
-                            self.mainfile_file.os_path, strict=False
-                        )
-                else:
-                    parser = parser_dict[self.parser_name]
+                parser = parser_dict[self.parser_name]
 
-                if parser is None:
-                    # Should only be possible if the upload is published and we have
-                    logger.warn('no parser matches during process')
-                    self.warnings = ['no matching parser found during processing']
-                    parser = parser_dict[self.parser_name]
+            if parser is None:
+                # Should only be possible if the upload is published and we have
+                logger.warn('no parser matches during process')
+                self.warnings = ['no matching parser found during processing']
+                parser = parser_dict[self.parser_name]
 
-                assert parser is not None, 'could not determine a parser for this entry'
-                should_parse = True
-                parser_changed = (
-                    self.parser_name != parser.name
-                    and parser_dict[self.parser_name].name != parser.name
+            assert parser is not None, 'could not determine a parser for this entry'
+            should_parse = True
+            parser_changed = (
+                self.parser_name != parser.name
+                and parser_dict[self.parser_name].name != parser.name
+            )
+            if parser_changed:
+                if not settings.use_original_parser:
+                    logger.info(
+                        'different parser matches during process, use new parser',
+                        parser=parser.name,
+                    )
+                    self.parser_name = parser.name  # Parser renamed
+
+        if should_parse:
+            self.set_last_status_message('Initializing metadata')
+            for entry in self._main_and_child_entries():
+                entry._initialize_metadata_for_processing()
+
+            if len(self._entry_metadata.files) >= config.process.auxfile_cutoff:
+                self.warning(
+                    'This entry has many aux files in its directory. '
+                    'Have you placed many mainfiles in the same directory?'
                 )
-                if parser_changed:
-                    if not settings.use_original_parser:
-                        logger.info(
-                            'different parser matches during process, use new parser',
-                            parser=parser.name,
-                        )
-                        self.parser_name = parser.name  # Parser renamed
 
-            if should_parse:
-                self.set_last_status_message('Initializing metadata')
-                for entry in self._main_and_child_entries():
-                    entry._initialize_metadata_for_processing()
+            self.parsing()
+            for entry in self._main_and_child_entries():
+                entry.normalizing()
+                entry.archiving()
 
-                if len(self._entry_metadata.files) >= config.process.auxfile_cutoff:
-                    self.warning(
-                        'This entry has many aux files in its directory. '
-                        'Have you placed many mainfiles in the same directory?'
+        elif self.upload.published:
+            self.set_last_status_message('Preserving entry data')
+            try:
+                upload_files = PublicUploadFiles(self.upload_id)
+                with upload_files.read_archive(self.entry_id) as archive:
+                    self.upload_files.write_archive(
+                        self.entry_id, to_json(archive[self.entry_id])
                     )
 
-                self.parsing()
-                for entry in self._main_and_child_entries():
-                    entry.normalizing()
-                    entry.archiving()
-
-            elif self.upload.published:
-                self.set_last_status_message('Preserving entry data')
-                try:
-                    upload_files = PublicUploadFiles(self.upload_id)
-                    with upload_files.read_archive(self.entry_id) as archive:
-                        self.upload_files.write_archive(
-                            self.entry_id, to_json(archive[self.entry_id])
-                        )
-
-                except Exception as e:
-                    logger.error(
-                        'could not copy archive for non-reprocessed entry', exc_info=e
-                    )
-                    raise
+            except Exception as e:
+                logger.error(
+                    'could not copy archive for non-reprocessed entry', exc_info=e
+                )
+                raise
 
     def _main_and_child_entries(self) -> Iterable['Entry']:
         yield self
