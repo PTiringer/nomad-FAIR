@@ -196,7 +196,7 @@ def generate_gui_artifacts_js() -> str:
         yield (
             'northTools',
             {
-                plugin.id: plugin.north_tool.dict()
+                plugin.id: plugin.dict()
                 for plugin in config.plugins.entry_points.filtered_values()
                 if plugin.entry_point_type == 'north_tool'
             }
