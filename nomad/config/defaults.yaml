@@ -79,7 +79,7 @@ temporal:
   port: 7233
   graceful_shutdown_timeout: 1
   processing_timeouts:
-    entry_processing_heartbeat_timeout: 600
+    internal_processing_heartbeat_timeout: 600
     delete_upload_timeout: 7200
     process_entry_timeout: 7200
     process_upload_timeout: 7200

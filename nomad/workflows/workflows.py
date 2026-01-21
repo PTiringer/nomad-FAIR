@@ -61,28 +61,35 @@ class DeleteUploadWorkflow:
         timeout = timedelta(
             seconds=config.temporal.processing_timeouts.delete_upload_timeout
         )
+        heartbeat_timeout = timedelta(
+            seconds=config.temporal.processing_timeouts.internal_processing_heartbeat_timeout
+        )
         await workflow.execute_activity(
             delete_upload_search_activity,
             input,
             schedule_to_close_timeout=timeout,
+            heartbeat_timeout=heartbeat_timeout,
             retry_policy=retry_policy,
         )
         await workflow.execute_activity(
             delete_upload_files_activity,
             input,
             schedule_to_close_timeout=timeout,
+            heartbeat_timeout=heartbeat_timeout,
             retry_policy=retry_policy,
         )
         await workflow.execute_activity(
             delete_upload_entries_activity,
             input,
             schedule_to_close_timeout=timeout,
+            heartbeat_timeout=heartbeat_timeout,
             retry_policy=retry_policy,
         )
         await workflow.execute_activity(
             delete_upload_record_activity,
             input,
             schedule_to_close_timeout=timeout,
+            heartbeat_timeout=heartbeat_timeout,
             retry_policy=retry_policy,
         )
 
@@ -103,7 +110,7 @@ class ProcessEntryWorkflow:
                     seconds=config.temporal.processing_timeouts.process_entry_timeout
                 ),
                 heartbeat_timeout=timedelta(
-                    seconds=config.temporal.processing_timeouts.entry_processing_heartbeat_timeout
+                    seconds=config.temporal.processing_timeouts.internal_processing_heartbeat_timeout
                 ),
                 retry_policy=retry_policy,
             )
@@ -220,6 +227,9 @@ class ProcessUploadWorkflow:
         timeout = timedelta(
             seconds=config.temporal.processing_timeouts.process_upload_timeout
         )
+        heartbeat_timeout = timedelta(
+            seconds=config.temporal.processing_timeouts.internal_processing_heartbeat_timeout
+        )
         workflow_info = workflow.info()
         upload_workflow_input = UploadWorkflowIdInput(
             upload_id=input.upload_id,
@@ -244,6 +254,7 @@ class ProcessUploadWorkflow:
                 schedule_to_close_timeout=timedelta(
                     seconds=config.temporal.processing_timeouts.update_files_timeout
                 ),
+                heartbeat_timeout=heartbeat_timeout,
                 retry_policy=retry_policy,
             )
 
@@ -266,6 +277,7 @@ class ProcessUploadWorkflow:
                 schedule_to_close_timeout=timedelta(
                     seconds=config.temporal.processing_timeouts.match_all_timeout
                 ),
+                heartbeat_timeout=heartbeat_timeout,
                 retry_policy=retry_policy,
             )
 
@@ -277,6 +289,7 @@ class ProcessUploadWorkflow:
                     schedule_to_close_timeout=timedelta(
                         seconds=config.temporal.processing_timeouts.next_level_entries_timeout
                     ),
+                    heartbeat_timeout=heartbeat_timeout,
                     retry_policy=retry_policy,
                 )
 
@@ -307,6 +320,7 @@ class ProcessUploadWorkflow:
                 schedule_to_close_timeout=timedelta(
                     seconds=config.temporal.processing_timeouts.cleanup_timeout
                 ),
+                heartbeat_timeout=heartbeat_timeout,
                 retry_policy=retry_policy,
             )
 
@@ -364,10 +378,14 @@ class ProcessExampleUploadWorkflow:
         timeout = timedelta(
             seconds=config.temporal.processing_timeouts.process_example_upload_timeout
         )
+        heartbeat_timeout = timedelta(
+            seconds=config.temporal.processing_timeouts.internal_processing_heartbeat_timeout
+        )
         await workflow.execute_activity(
             setup_example_upload_activity,
             input,
             schedule_to_close_timeout=timeout,
+            heartbeat_timeout=heartbeat_timeout,
         )
         current_workflow_id = workflow.info().workflow_id
 
@@ -398,6 +416,9 @@ class EditUploadMetadataWorkflow:
         timeout = timedelta(
             seconds=config.temporal.processing_timeouts.edit_upload_metadata_timeout
         )
+        heartbeat_timeout = timedelta(
+            seconds=config.temporal.processing_timeouts.internal_processing_heartbeat_timeout
+        )
         workflow_info = workflow.info()
         upload_workflow_input = UploadWorkflowIdInput(
             upload_id=input.upload_id,
@@ -419,6 +440,7 @@ class EditUploadMetadataWorkflow:
                 edit_upload_metadata_activity,
                 input,
                 schedule_to_close_timeout=timeout,
+                heartbeat_timeout=heartbeat_timeout,
                 retry_policy=retry_policy,
             )
 
@@ -465,6 +487,9 @@ class ImportBundleWorkflow:
         timeout = timedelta(
             seconds=config.temporal.processing_timeouts.import_bundle_timeout
         )
+        heartbeat_timeout = timedelta(
+            seconds=config.temporal.processing_timeouts.internal_processing_heartbeat_timeout
+        )
         workflow_info = workflow.info()
         upload_workflow_input = UploadWorkflowIdInput(
             upload_id=input.upload_id,
@@ -486,6 +511,7 @@ class ImportBundleWorkflow:
                 import_bundle_activity,
                 input,
                 schedule_to_close_timeout=timeout,
+                heartbeat_timeout=heartbeat_timeout,
                 retry_policy=retry_policy,
             )
 
@@ -532,6 +558,9 @@ class PublishUploadWorkflow:
         timeout = timedelta(
             seconds=config.temporal.processing_timeouts.publish_upload_timeout
         )
+        heartbeat_timeout = timedelta(
+            seconds=config.temporal.processing_timeouts.internal_processing_heartbeat_timeout
+        )
         workflow_info = workflow.info()
         upload_workflow_input = UploadWorkflowIdInput(
             upload_id=input.upload_id,
@@ -553,6 +582,7 @@ class PublishUploadWorkflow:
                 publish_upload_activity,
                 input,
                 schedule_to_close_timeout=timeout,
+                heartbeat_timeout=heartbeat_timeout,
                 retry_policy=retry_policy,
             )
 
@@ -600,6 +630,9 @@ class PublishExternallyWorkflow:
         timeout = timedelta(
             seconds=config.temporal.processing_timeouts.publish_externally_timeout
         )
+        heartbeat_timeout = timedelta(
+            seconds=config.temporal.processing_timeouts.internal_processing_heartbeat_timeout
+        )
         workflow_info = workflow.info()
         upload_workflow_input = UploadWorkflowIdInput(
             upload_id=input.upload_id,
@@ -621,6 +654,7 @@ class PublishExternallyWorkflow:
                 publish_externally_activity,
                 input,
                 schedule_to_close_timeout=timeout,
+                heartbeat_timeout=heartbeat_timeout,
                 retry_policy=retry_policy,
             )
 

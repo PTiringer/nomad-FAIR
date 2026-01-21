@@ -139,7 +139,7 @@ def mock_data_layer(monkeypatch):
     mock_temporal_config = Mock()
     mock_reprocess.customize.return_value = {}
     mock_processing_timeouts = Mock()
-    mock_processing_timeouts.entry_processing_heartbeat_timeout = 30
+    mock_processing_timeouts.internal_processing_heartbeat_timeout = 30
     mock_processing_timeouts.delete_upload_timeout = 7200
     mock_processing_timeouts.process_entry_timeout = 7200
     mock_processing_timeouts.process_upload_timeout = 7200
@@ -285,7 +285,7 @@ class TestProcessEntryWorkflow:
         mock_processing_timeouts = mock_data_layer[
             'config'
         ].temporal.processing_timeouts
-        mock_processing_timeouts.entry_processing_heartbeat_timeout = 1
+        mock_processing_timeouts.internal_processing_heartbeat_timeout = 1
 
         # Mock the process_entry_activity to sleep for 2 seconds
         def mock_process_entry_side_effect():
