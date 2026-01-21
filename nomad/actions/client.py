@@ -17,16 +17,15 @@ async def get_client() -> Client:
         if config.services.mode == ModeEnum.DEVELOPMENT
         else EncryptionCodec(),
     )
-    runtime = (
-        Runtime(
-            telemetry=TelemetryConfig(
-                metrics=PrometheusConfig(
-                    bind_address=config.temporal.prometheus_bind_address
-                )
+    runtime = Runtime(
+        telemetry=TelemetryConfig(
+            metrics=PrometheusConfig(
+                bind_address=config.temporal.prometheus_bind_address
             )
-        )
-        if config.temporal.prometheus_bind_address is not None
-        else None
+            if config.temporal.prometheus_bind_address is not None
+            else None
+        ),
+        worker_heartbeat_interval=None,
     )
     client = await Client.connect(
         host,
