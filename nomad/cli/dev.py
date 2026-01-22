@@ -18,7 +18,6 @@
 import json
 import os
 import sys
-from pathlib import Path
 from tempfile import mkstemp
 from typing import Any, cast
 
@@ -207,20 +206,6 @@ def generate_gui_artifacts_js() -> str:
         yield 'unitPrefixes', prefixes_json
 
     os.makedirs(config.fs.tmp, exist_ok=True)
-
-    try:
-        for item in Path(config.fs.tmp).iterdir():
-            if (
-                item.is_file()
-                and item.name.startswith('tmp')
-                and item.name.endswith('.js')
-            ):
-                try:
-                    item.unlink()
-                except Exception:  # noqa
-                    pass
-    except Exception:  # noqa
-        pass
 
     fd, path = mkstemp('.js', 'tmp', dir=config.fs.tmp)
 
