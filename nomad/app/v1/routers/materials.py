@@ -24,6 +24,8 @@ from fastapi.exception_handlers import RequestValidationError
 from pydantic import BaseModel, Field
 
 from nomad import utils
+from nomad.app.v1.routers.auth import get_current_user
+from nomad.auth.scopes import Scope
 from nomad.metainfo.elasticsearch_extension import material_index, material_type
 from nomad.search import (
     AuthenticationRequiredError,
@@ -48,7 +50,6 @@ from ..models import (
     metadata_required_parameters,
 )
 from ..utils import create_responses
-from .auth import get_current_user
 
 router = APIRouter()
 
@@ -122,7 +123,9 @@ def perform_search(*args, **kwargs) -> MetadataResponse:
     response_model_exclude_none=True,
 )
 async def post_entries_metadata_query(
-    request: Request, data: Metadata, user: Annotated[User, Depends(get_current_user())]
+    request: Request,
+    data: Metadata,
+    user: Annotated[User, Depends(get_current_user([Scope.MATERIALS_READ]))],
 ):
     """
     Executes a *query* and returns a *page* of the results with *required* result data
@@ -165,7 +168,7 @@ async def get_entries_metadata(
     with_query: Annotated[WithQuery, Depends(query_parameters)],
     pagination: Annotated[MetadataPagination, Depends(metadata_pagination_parameters)],
     required: Annotated[MetadataRequired, Depends(metadata_required_parameters)],
-    user: Annotated[User, Depends(get_current_user())],
+    user: Annotated[User, Depends(get_current_user([Scope.MATERIALS_READ]))],
 ):
     """
     Executes a *query* and returns a *page* of the results with *required* result data.
@@ -207,7 +210,7 @@ async def get_material_metadata(
         ),
     ],
     required: Annotated[MetadataRequired, Depends(metadata_required_parameters)],
-    user: Annotated[User, Depends(get_current_user())],
+    user: Annotated[User, Depends(get_current_user([Scope.MATERIALS_READ]))],
 ):
     """
     Retrives the material metadata for the given id.

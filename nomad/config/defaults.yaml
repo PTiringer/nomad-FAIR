@@ -159,7 +159,6 @@ oasis:
   central_nomad_deployment_url: https://nomad-lab.eu/prod/v1/api
   is_oasis: false
   uses_central_user_management: false
-  require_authentication: false
 process:
   auxfile_cutoff: 100
   index_materials: false
@@ -207,6 +206,15 @@ services:
   optimade_enabled: true
   unavailable_value: unavailable
   upload_limit: 10
+auth:
+  anonymous_user_permission:
+    - "*:read"
+  keycloak_token_scopes:
+    - "*:*"
+  simple_token_scopes:
+    - "*:*"
+  upload_token_scopes:
+    - "uploads:*"
 tests:
   default_timeout: 60
 north:

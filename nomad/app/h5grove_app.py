@@ -34,6 +34,7 @@ from nomad import utils
 from nomad.app.v1.models import User
 from nomad.app.v1.routers.auth import get_current_user
 from nomad.app.v1.routers.uploads import get_upload_with_read_access
+from nomad.auth.scopes import Scope
 from nomad.files import PublicUploadFiles, UploadFiles
 
 logger = utils.get_logger(__name__)
@@ -90,7 +91,12 @@ def open_zipped_h5_file(
 h5grove_utils.open_file_with_error_fallback.__code__ = open_zipped_h5_file.__code__
 
 
-async def check_user_access(upload_id: str, user: User = Depends(get_current_user())):
+async def check_user_access(
+    upload_id: str,
+    user: User = Depends(
+        get_current_user([Scope.UPLOADS_READ, Scope.EXTERNAL_H5GROVE_READ])
+    ),
+):
     get_upload_with_read_access(upload_id, user, include_others=True)
 
 

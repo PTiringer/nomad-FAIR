@@ -21,6 +21,8 @@ from fastapi import HTTPException, Request
 
 from nomad.app.v1.models.models import User
 from nomad.app.v1.routers.auth import get_current_user
+from nomad.auth.scopes import Scope
+from nomad.auth.tokens import AuthResult
 from nomad.config.models.config import ModeEnum
 
 # Tests for OIDC authentication endpoints
@@ -111,6 +113,25 @@ def allowed_user():
     return User(user_id='123', email='test@example.com', username='tester')
 
 
+@pytest.fixture
+def patch_user_get(monkeypatch):
+    """
+    Patch datamodel.User.get.
+
+    Usage:
+        patch_user_get(user)   -> User.get(...) returns user
+        patch_user_get(None)   -> User.get(...) returns None
+    """
+
+    def _patch(user: User | None) -> None:
+        monkeypatch.setattr(
+            'nomad.app.v1.routers.auth.datamodel.User.get',
+            lambda *args, **kwargs: user,
+        )
+
+    return _patch
+
+
 @pytest.mark.parametrize('allow_keycloak_token', [True, False])
 @pytest.mark.parametrize('allow_simple_token', [True, False])
 @pytest.mark.parametrize('allow_upload_token', [True, False])
@@ -125,6 +146,7 @@ def test_get_current_user_auth_methods(
     get_user_from_simple_token: bool,
     get_user_from_upload_token: bool,
     allowed_user,
+    patch_user_get,
     monkeypatch,
 ):
     if allow_simple_token:  # ensure dummy simple token could decode as JWT
@@ -132,25 +154,31 @@ def test_get_current_user_auth_methods(
             'nomad.app.v1.routers.auth.jwt.decode',
             lambda *args, **kwargs: {'user': allowed_user.user_id, 'exp': 600},
         )
+
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth.get_user_from_keycloak_token',
-        lambda *args, **kwargs: allowed_user if get_user_from_keycloak_token else None,
+        lambda _token: AuthResult(allowed_user, set())
+        if get_user_from_keycloak_token
+        else None,
     )
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth.get_user_from_simple_token',
-        lambda *args, **kwargs: allowed_user if get_user_from_simple_token else None,
+        lambda _token: AuthResult(allowed_user, set())
+        if get_user_from_simple_token
+        else None,
     )
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth.get_user_from_upload_token',
-        lambda *_: allowed_user if get_user_from_upload_token else None,
-    )
-    monkeypatch.setattr(
-        'nomad.app.v1.routers.auth.datamodel.User.get',
-        lambda *args, **kwargs: allowed_user,
+        lambda _token: AuthResult(allowed_user, set())
+        if get_user_from_upload_token
+        else None,
     )
 
+    patch_user_get(allowed_user)
+
     dep = get_current_user(
-        required=True,
+        required_scopes=[],
+        allow_anonymous=False,
         allow_keycloak_token=allow_keycloak_token,
         allow_simple_token=allow_simple_token,
         allow_upload_token=allow_upload_token,
@@ -180,27 +208,29 @@ def test_get_current_user_auth_methods(
 def test_get_current_user_rejects_query_token():
     """Ensure that passing upload token via query param is rejected."""
 
-    dep = get_current_user(allow_upload_token=True)
+    dep = get_current_user(
+        required_scopes=[Scope.UPLOADS_READ], allow_upload_token=True
+    )
 
     with pytest.raises(
         HTTPException, match='Passing upload token via query parameter'
-    ) as excinfo:
+    ) as exc:
         dep(upload_token_query_param='abc123')
-    assert excinfo.value.status_code == 400
+    assert exc.value.status_code == 400
 
 
-def test_get_current_user_keycloak_token_from_cookie(monkeypatch, allowed_user):
+def test_get_current_user_keycloak_token_from_cookie(
+    monkeypatch, allowed_user, patch_user_get
+):
     monkeypatch.setattr(
         'nomad.auth.keycloak.keycloak.tokenauth',
-        lambda token: allowed_user,
+        lambda _token: allowed_user,
     )
-    monkeypatch.setattr(
-        'nomad.app.v1.routers.auth.datamodel.User.get',
-        lambda *args, **kwargs: allowed_user,
-    )
+    patch_user_get(allowed_user)
 
     dep = get_current_user(
-        required=True,
+        required_scopes=[],
+        allow_anonymous=False,
         allow_keycloak_token=True,
     )
 
@@ -223,26 +253,28 @@ def test_get_current_user_keycloak_token_from_cookie(monkeypatch, allowed_user):
     assert exc.value.status_code == 401
 
 
-@pytest.mark.parametrize('required', [True, False])
-def test_get_current_user_required(required):
-    dep = get_current_user(required=required)
+@pytest.mark.parametrize('allow_anonymous', [True, False])
+def test_get_current_user_allow_anonymous(allow_anonymous):
+    dep = get_current_user(
+        required_scopes=[Scope.ENTRIES_READ], allow_anonymous=allow_anonymous
+    )
 
-    if required:
+    if allow_anonymous:
+        assert dep() is None
+
+    else:
         with pytest.raises(HTTPException, match='Authentication required.') as exc:
             dep()
         assert exc.value.status_code == 401
-
-    else:
-        assert dep() is None
 
 
 def test_get_current_user_unknown_user(allowed_user, monkeypatch):
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth.get_user_from_keycloak_token',
-        lambda *args, **kwargs: allowed_user,
+        lambda _token: AuthResult(allowed_user, set()),
     )
 
-    dep = get_current_user()
+    dep = get_current_user(required_scopes=[])
     with pytest.raises(HTTPException, match='logged in with an unknown user') as exc:
         dep(keycloak_token='abc')
     assert exc.value.status_code == 403
@@ -251,19 +283,16 @@ def test_get_current_user_unknown_user(allowed_user, monkeypatch):
 @pytest.mark.parametrize('tester', [None, 'tester'])
 @pytest.mark.parametrize('mode', [ModeEnum.PRODUCTION, ModeEnum.DEVELOPMENT])
 def test_get_current_user_assume_auth_for_username(
-    tester, mode, allowed_user, monkeypatch
+    tester, mode, allowed_user, patch_user_get, monkeypatch
 ):
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth.config.tests.assume_auth_for_username', tester
     )
     monkeypatch.setattr('nomad.app.v1.routers.auth.config.services.mode', mode)
 
-    monkeypatch.setattr(
-        'nomad.app.v1.routers.auth.datamodel.User.get',
-        lambda *args, **kwargs: allowed_user,
-    )
+    patch_user_get(allowed_user)
 
-    dep = get_current_user(required=True)
+    dep = get_current_user(required_scopes=[], allow_anonymous=False)
 
     if tester is None:
         with pytest.raises(HTTPException, match='Authentication required.') as exc:
@@ -271,7 +300,9 @@ def test_get_current_user_assume_auth_for_username(
         assert exc.value.status_code == 401
 
     elif mode == ModeEnum.PRODUCTION:
-        with pytest.raises(ValueError, match='assume_auth_for_username is test-only'):
+        with pytest.raises(
+            ValueError, match='assume_auth_for_username is development-only'
+        ):
             dep()
 
     else:
@@ -281,7 +312,7 @@ def test_get_current_user_assume_auth_for_username(
 @pytest.mark.parametrize(
     'user, status_code, exc_msg',
     [
-        (None, 401, 'Authentication is required for this Oasis'),
+        (None, 401, 'Authentication required'),
         ('not_allowed', 403, 'not authorized to access this Oasis'),
         ('allowed', 200, None),
     ],
@@ -291,6 +322,7 @@ def test_get_current_user_oasis_allowed_users(
     status_code: int,
     exc_msg: str,
     allowed_user,
+    patch_user_get,
     monkeypatch,
 ):
     if user == 'allowed':
@@ -307,10 +339,12 @@ def test_get_current_user_oasis_allowed_users(
     )
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth.get_user_from_keycloak_token',
-        lambda *args, **kwargs: auth_user,
+        lambda _token: AuthResult(auth_user, set()),
     )
+    if auth_user is not None:
+        patch_user_get(auth_user)
 
-    dep = get_current_user(required=False)
+    dep = get_current_user(required_scopes=[])
 
     if status_code != 200:
         with pytest.raises(HTTPException, match=exc_msg) as exc:
@@ -318,8 +352,203 @@ def test_get_current_user_oasis_allowed_users(
         assert exc.value.status_code == status_code
 
     else:
-        monkeypatch.setattr(
-            'nomad.app.v1.routers.auth.datamodel.User.get',
-            lambda *args, **kwargs: allowed_user,
-        )
+        patch_user_get(allowed_user)
         assert dep(keycloak_token='abc') == allowed_user
+
+
+# Tests for scope enforcing (`_resolve_user_with_scopes`)
+
+# Anonymous users
+
+
+def test_scopes_anonymous_allowed_with_permission(monkeypatch):
+    """
+    Anonymous user should be allowed when allow_anonymous=True and
+    anonymous_user_permission contains the required scopes.
+    """
+
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.config.auth.anonymous_user_permission',
+        {Scope.BASIC_READ},
+    )
+
+    dep = get_current_user(required_scopes=[Scope.BASIC_READ], allow_anonymous=True)
+
+    assert dep() is None
+
+
+def test_scopes_anonymous_missing_scope(monkeypatch):
+    """
+    Anonymous user should be forbidden (403) when allow_anonymous but missing scopes.
+    """
+
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.config.auth.anonymous_user_permission',
+        set(),
+    )
+
+    dep = get_current_user(required_scopes=[Scope.BASIC_READ], allow_anonymous=True)
+
+    with pytest.raises(HTTPException, match='Missing scopes') as exc:
+        dep()
+    assert exc.value.status_code == 403
+    assert Scope.BASIC_READ in str(exc.value.detail)
+
+
+def test_scopes_anonymous_not_allowed(monkeypatch):
+    """
+    Anonymous user should be rejected when not allow_anonymous.
+    """
+
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.config.auth.anonymous_user_permission',
+        {Scope.BASIC_READ},
+    )
+
+    dep = get_current_user(required_scopes=[Scope.BASIC_READ], allow_anonymous=False)
+
+    with pytest.raises(HTTPException, match='Authentication required') as exc:
+        dep()
+    assert exc.value.status_code == 401
+
+
+# Authenticated user
+
+
+def test_scopes_authenticated_missing_scope(monkeypatch, allowed_user, patch_user_get):
+    """
+    Authenticated user should be forbidden (403) when scopes do not include required scopes.
+    """
+    patch_user_get(allowed_user)
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.get_user_from_keycloak_token',
+        lambda _token: AuthResult(allowed_user, {Scope.BASIC_READ}),
+    )
+
+    dep = get_current_user(
+        required_scopes=[Scope.GROUPS_READ],
+        allow_anonymous=False,
+        allow_keycloak_token=True,
+    )
+
+    with pytest.raises(HTTPException, match='Missing scopes') as exc:
+        dep(keycloak_token='abc')
+    assert exc.value.status_code == 403
+    assert Scope.GROUPS_READ in str(exc.value.detail)
+
+
+def test_scopes_authenticated_success(monkeypatch, allowed_user, patch_user_get):
+    """
+    Authenticated user should succeed when required scopes are present.
+    """
+    patch_user_get(allowed_user)
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.get_user_from_keycloak_token',
+        lambda _token: AuthResult(allowed_user, {Scope.GROUPS_READ}),
+    )
+
+    dep = get_current_user(
+        required_scopes=[Scope.GROUPS_READ],
+        allow_anonymous=False,
+        allow_keycloak_token=True,
+    )
+
+    assert dep(keycloak_token='abc') == allowed_user
+
+
+# Scopes for simple/upload tokens
+
+
+def test_scopes_simple_token_missing_scope(monkeypatch, allowed_user, patch_user_get):
+    patch_user_get(allowed_user)
+
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.jwt.decode',
+        lambda *args, **kwargs: {'user': allowed_user.user_id, 'exp': 600},
+    )
+
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.get_user_from_simple_token',
+        lambda _token: AuthResult(allowed_user, {Scope.BASIC_READ}),
+    )
+
+    dep = get_current_user(
+        required_scopes=[Scope.TOKENS_CREATE],
+        allow_anonymous=False,
+        allow_keycloak_token=False,
+        allow_simple_token=True,
+        allow_upload_token=False,
+    )
+
+    with pytest.raises(HTTPException, match='Missing scopes') as exc:
+        dep(simple_token='dummy-simple-token')
+    assert exc.value.status_code == 403
+    assert Scope.TOKENS_CREATE in str(exc.value.detail)
+
+
+def test_scopes_simple_token_success(monkeypatch, allowed_user, patch_user_get):
+    patch_user_get(allowed_user)
+
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.jwt.decode',
+        lambda *args, **kwargs: {'user': allowed_user.user_id, 'exp': 600},
+    )
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.get_user_from_simple_token',
+        lambda _token: AuthResult(allowed_user, {Scope.GROUPS_READ}),
+    )
+
+    dep = get_current_user(
+        required_scopes=[Scope.GROUPS_READ],
+        allow_anonymous=False,
+        allow_keycloak_token=False,
+        allow_simple_token=True,
+        allow_upload_token=False,
+    )
+
+    assert dep(simple_token='dummy-simple-token') == allowed_user
+
+
+def test_scopes_upload_token_allows_uploads_read(
+    monkeypatch, allowed_user, patch_user_get
+):
+    patch_user_get(allowed_user)
+
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.get_user_from_upload_token',
+        lambda _token: AuthResult(allowed_user, {Scope.UPLOADS_READ}),
+    )
+
+    dep = get_current_user(
+        required_scopes=[Scope.UPLOADS_READ],
+        allow_anonymous=False,
+        allow_keycloak_token=False,
+        allow_simple_token=False,
+        allow_upload_token=True,
+    )
+
+    assert dep(upload_token='dummy-upload-token') == allowed_user
+
+
+def test_scopes_upload_token_missing_non_upload_scope(
+    monkeypatch, allowed_user, patch_user_get
+):
+    patch_user_get(allowed_user)
+
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.get_user_from_upload_token',
+        lambda _token: AuthResult(allowed_user, {Scope.UPLOADS_READ}),
+    )
+
+    dep = get_current_user(
+        required_scopes=[Scope.GROUPS_READ],
+        allow_anonymous=False,
+        allow_keycloak_token=False,
+        allow_simple_token=False,
+        allow_upload_token=True,
+    )
+
+    with pytest.raises(HTTPException, match='Missing scopes') as exc:
+        dep(upload_token='dummy-upload-token')
+    assert exc.value.status_code == 403
+    assert Scope.GROUPS_READ in str(exc.value.detail)
