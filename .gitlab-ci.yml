@@ -133,6 +133,8 @@ check python dependencies:
         - ES_JAVA_OPTS="-Xms512m -Xmx512m" docker-entrypoint.sh elasticsearch -Ediscovery.type=single-node -Expack.security.enabled=false
     - name: mongo:5
       alias: mongo
+    - name: ghcr.io/fairmat-nfdi/temporal-dev-server:v1.3.0
+      alias: temporal
   variables:
     NOMAD_ELASTIC_HOST: elastic
     NOMAD_MONGO_HOST: mongo
@@ -143,7 +145,6 @@ check python dependencies:
     - scripts/check_elastic.sh
     - uv pip install -e ".[dev]"
     - uv pip install -r requirements-plugins.txt -c requirements-dev.txt # remove this after moving to distro
-
 generate pytest timings:
   extends: .base_test
   script:
