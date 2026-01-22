@@ -5,8 +5,19 @@ import os.path
 import pytest
 
 from nomad import config, utils
+from nomad.auth.scopes import _resolve_scopes
 from nomad.logtransfer import transfer_logs
 from nomad.utils import structlogging
+
+
+@pytest.fixture(scope='module')
+def api_v1(monkeysession, api_v1):
+    # TODO: why logtransfer need federation permission?
+    monkeysession.setattr(
+        'nomad.config.config.auth.anonymous_user_permission',
+        _resolve_scopes({'*:read', 'federation:*'}),
+    )
+    return api_v1
 
 
 @pytest.fixture(scope='function')

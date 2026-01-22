@@ -271,6 +271,7 @@ def api_v1(monkeysession, user_molds):
     connect to the NOMAD v1 at ``nomad.config.client.url``, the patch will redirect to the
     fast api under test.
     """
+
     test_client = TestClient(app, base_url='http://testserver/api/v1/')
 
     def call_test_client(method, url, *args, **kwargs):

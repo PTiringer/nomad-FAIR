@@ -21,22 +21,19 @@ from __future__ import annotations
 import datetime
 import hashlib
 import hmac
-import urllib
 import uuid
-from typing import TYPE_CHECKING, cast
+from dataclasses import dataclass
+from typing import cast
 
 from pydantic import BaseModel
 
 from nomad import datamodel, utils
 from nomad.auth import keycloak, user_management
 from nomad.auth.keycloak import KeycloakError
+from nomad.auth.scopes import Scope
 from nomad.config import config
 from nomad.config.models.config import _DEFAULT_API_KEY, ModeEnum
 from nomad.datamodel import User
-
-if TYPE_CHECKING:
-    from fastapi import Request
-
 
 JWT_ALGORITHM = 'HS256'
 HMAC_DIGESTMOD = hashlib.sha256
@@ -91,32 +88,29 @@ def generate_upload_token(user: User) -> str:
     return f'{utils.base64_encode(payload)}.{utils.base64_encode(signature.digest())}'
 
 
-def get_user_from_keycloak_token(
-    keycloak_token: str | None, *, request: Request | None
-) -> User | None:
+@dataclass(frozen=True)
+class AuthResult:
+    user: User
+    scopes: set[str]
+
+
+def get_user_from_keycloak_token(keycloak_token: str | None) -> AuthResult | None:
     """
-    Verifies keycloak bearer token (header and cookie).
+    Verifies keycloak bearer token.
 
     Returns:
-        The corresponding User object,
-        or None if no token provided.
+        The corresponding AuthResult object,
+        or None if cannot resolve.
     """
     from fastapi import HTTPException, status
 
-    if keycloak_token is None and request is None:
+    if keycloak_token is None:
         return None
 
-    # Get token from cookie if not in header
-    if keycloak_token is None:
-        auth_cookie = request.cookies.get('Authorization')
-        if auth_cookie is None:
-            return None
-
-        auth_cookie = urllib.parse.unquote(auth_cookie)
-        keycloak_token = auth_cookie.removeprefix('Bearer ')
-
     try:
-        return cast(datamodel.User, keycloak.keycloak.tokenauth(keycloak_token))
+        user = cast(datamodel.User, keycloak.keycloak.tokenauth(keycloak_token))
+        return AuthResult(user, config.auth.keycloak_token_scopes)
+
     except KeycloakError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -125,13 +119,13 @@ def get_user_from_keycloak_token(
         )
 
 
-def get_user_from_simple_token(simple_token: str | None) -> User | None:
+def get_user_from_simple_token(simple_token: str | None) -> AuthResult | None:
     """
     Verifies a simple token (throwing HTTPException if illegal value provided).
 
     Returns:
-        The corresponding user object,
-        or None if no token was provided.
+        The corresponding AuthResult object,
+        or None if cannot resolve.
     """
     import jwt
     from fastapi import HTTPException, status
@@ -145,7 +139,10 @@ def get_user_from_simple_token(simple_token: str | None) -> User | None:
         decoded = jwt.decode(
             simple_token, config.services.api_secret, algorithms=[JWT_ALGORITHM]
         )
-        return User.get(user_id=decoded['user'])
+        user = User.get(user_id=decoded['user'])
+        # TODO: better way to exclude AUTH permission
+        scopes = config.auth.simple_token_scopes - {Scope.TOKENS_CREATE}
+        return AuthResult(user, scopes)
 
     except KeyError:
         raise HTTPException(
@@ -167,13 +164,13 @@ def get_user_from_simple_token(simple_token: str | None) -> User | None:
         )
 
 
-def get_user_from_upload_token(upload_token: str | None) -> User | None:
+def get_user_from_upload_token(upload_token: str | None) -> AuthResult | None:
     """
     Verifies the upload token (throwing HTTPException if illegal value provided).
 
     Returns:
-        The corresponding User object,
-        or None if no upload_token provided.
+        The corresponding AuthResult object,
+        or None if cannot resolve.
     """
     from fastapi import HTTPException, status
 
@@ -197,7 +194,8 @@ def get_user_from_upload_token(upload_token: str | None) -> User | None:
             raise ValueError('Invalid HMAC signature')
 
         user_id = str(uuid.UUID(bytes=payload_bytes))
-        return cast(datamodel.User, user_management.user_management.get_user(user_id))
+        user = cast(datamodel.User, user_management.user_management.get_user(user_id))
+        return AuthResult(user, config.auth.upload_token_scopes)
 
     except Exception:
         # Decode error, format error, user not found, etc.

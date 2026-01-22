@@ -46,6 +46,8 @@ from pydantic_core import PydanticCustomError
 
 from nomad import files, utils
 from nomad.app.v1.models.models import TransferBundleRequest
+from nomad.app.v1.routers.auth import get_current_user
+from nomad.auth.scopes import Scope
 from nomad.auth.tokens import generate_upload_token
 from nomad.bundles import BundleExporter, BundleImporter
 from nomad.common import get_compression_format, is_safe_basename, is_safe_relative_path
@@ -750,7 +752,10 @@ and publish your data."""
     response_model_exclude_none=True,
 )
 async def get_command_examples(
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.TOKENS_CREATE], allow_anonymous=False)),
+    ],
 ):
     """Get URL and example command for shell based uploads."""
     token = generate_upload_token(user)
@@ -793,7 +798,10 @@ async def get_uploads(
     pagination: Annotated[
         UploadProcDataPagination, Depends(upload_proc_data_pagination_parameters)
     ],
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.UPLOADS_READ], allow_anonymous=False)),
+    ],
     roles: Annotated[
         list[UploadRole] | None,
         FastApiQuery(
@@ -860,7 +868,7 @@ async def get_upload(
     upload_id: Annotated[
         str, Path(description='The unique id of the upload to retrieve.')
     ],
-    user: Annotated[User, Depends(get_current_user())],
+    user: Annotated[User, Depends(get_current_user([Scope.UPLOADS_READ]))],
 ):
     """
     Fetches a specific upload by its upload_id.
@@ -890,7 +898,7 @@ async def get_upload_entries(
     pagination: Annotated[
         EntryProcDataPagination, Depends(entry_proc_data_pagination_parameters)
     ],
-    user: Annotated[User, Depends(get_current_user())],
+    user: Annotated[User, Depends(get_current_user([Scope.UPLOADS_READ]))],
 ):
     """
     Fetches the entries of a specific upload. Pagination is used to browse through the
@@ -966,7 +974,10 @@ async def get_upload_entry(
             description='The unique id of the entry, belonging to the specified upload.'
         ),
     ],
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.UPLOADS_READ], allow_anonymous=False)),
+    ],
 ):
     """
     Fetches a specific entry for a specific upload.
@@ -1003,7 +1014,7 @@ async def get_upload_rawdir_path(
     upload_id: Annotated[str, Path(description='The unique id of the upload.')],
     path: Annotated[str, Path(description='The path within the upload raw files.')],
     pagination: Annotated[RawDirPagination, Depends(rawdir_pagination_parameters)],
-    user: Annotated[User, Depends(get_current_user())],
+    user: Annotated[User, Depends(get_current_user([Scope.UPLOADS_READ]))],
     include_entry_info: Annotated[
         bool,
         FastApiQuery(
@@ -1120,7 +1131,7 @@ async def get_upload_rawdir_path(
 )
 async def get_upload_raw(
     upload_id: Annotated[str, Path(description='The unique id of the upload.')],
-    user: Annotated[User, Depends(get_current_user())],
+    user: Annotated[User, Depends(get_current_user([Scope.UPLOADS_READ]))],
 ):
     """
     NOMAD manages the raw files of published uploads as a .zip file. This endpoint
@@ -1168,7 +1179,7 @@ async def get_upload_raw_path(
     upload_id: Annotated[str, Path(description='The unique id of the upload.')],
     path: Annotated[str, Path(description='The path within the upload raw files.')],
     files_params: Annotated[Files, Depends(files_parameters)],
-    user: Annotated[User, Depends(get_current_user())],
+    user: Annotated[User, Depends(get_current_user([Scope.UPLOADS_READ]))],
     offset: Annotated[
         int | None,
         FastApiQuery(
@@ -1350,7 +1361,12 @@ async def put_upload_raw_path(
     upload_id: Annotated[str, Path(description='The unique id of the upload.')],
     path: Annotated[str, Path(description='The path within the upload raw files.')],
     user: Annotated[
-        User, Depends(get_current_user(required=True, allow_upload_token=True))
+        User,
+        Depends(
+            get_current_user(
+                [Scope.UPLOADS_WRITE], allow_anonymous=False, allow_upload_token=True
+            )
+        ),
     ],
     file: Annotated[list[UploadFile] | None, File()] = None,
     local_path: Annotated[
@@ -1696,7 +1712,12 @@ async def delete_upload_raw_path(
     upload_id: Annotated[str, Path(description='The unique id of the upload.')],
     path: Annotated[str, Path(description='The path within the upload raw files.')],
     user: Annotated[
-        User, Depends(get_current_user(required=True, allow_upload_token=True))
+        User,
+        Depends(
+            get_current_user(
+                [Scope.UPLOADS_WRITE], allow_anonymous=False, allow_upload_token=True
+            )
+        ),
     ],
 ):
     """
@@ -1745,7 +1766,12 @@ async def post_upload_raw_create_dir_path(
     upload_id: Annotated[str, Path(description='The unique id of the upload.')],
     path: Annotated[str, Path(description='The path within the upload raw files.')],
     user: Annotated[
-        User, Depends(get_current_user(required=True, allow_upload_token=True))
+        User,
+        Depends(
+            get_current_user(
+                [Scope.UPLOADS_WRITE], allow_anonymous=False, allow_upload_token=True
+            )
+        ),
     ],
 ):
     """
@@ -1787,7 +1813,7 @@ async def post_upload_raw_create_dir_path(
     responses=create_responses(_upload_or_path_not_found, _not_authorized_to_upload),
 )
 async def get_upload_entry_archive_mainfile(
-    user: Annotated[User, Depends(get_current_user())],
+    user: Annotated[User, Depends(get_current_user([Scope.UPLOADS_READ]))],
     upload_id: Annotated[str, Path(description='The unique id of the upload.')],
     mainfile: Annotated[
         str, Path(description="The mainfile path within the upload's raw files.")
@@ -1820,7 +1846,7 @@ async def get_upload_entry_archive_mainfile(
 async def get_upload_entry_archive(
     upload_id: Annotated[str, Path(description='The unique id of the upload.')],
     entry_id: Annotated[str, Path(description='The unique entry id.')],
-    user: Annotated[User, Depends(get_current_user())],
+    user: Annotated[User, Depends(get_current_user([Scope.UPLOADS_READ]))],
 ):
     """
     For the upload specified by `upload_id`, gets the full archive of a single entry that
@@ -1844,7 +1870,12 @@ async def get_upload_entry_archive(
 async def post_upload(
     request: Request,
     user: Annotated[
-        User, Depends(get_current_user(required=True, allow_upload_token=True))
+        User,
+        Depends(
+            get_current_user(
+                [Scope.UPLOADS_WRITE], allow_anonymous=False, allow_upload_token=True
+            )
+        ),
     ],
     file: Annotated[list[UploadFile] | None, File()] = None,
     local_path: Annotated[
@@ -2055,7 +2086,10 @@ async def post_upload_edit(
     request: Request,
     data: MetadataEditRequest,
     upload_id: Annotated[str, Path(description='The unique id of the upload.')],
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.UPLOADS_WRITE], allow_anonymous=False)),
+    ],
 ):
     """
     Updates the metadata of the specified upload and entries. An optional `query` can be
@@ -2102,7 +2136,10 @@ async def delete_upload(
     upload_id: Annotated[
         str, Path(description='The unique id of the upload to delete.')
     ],
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.UPLOADS_WRITE], allow_anonymous=False)),
+    ],
 ):
     """
     Delete an existing upload.
@@ -2147,7 +2184,10 @@ async def delete_upload(
     response_model_exclude_none=True,
 )
 async def post_upload_action_publish(
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.UPLOADS_PUBLISH], allow_anonymous=False)),
+    ],
     upload_id: Annotated[
         str,
         Path(
@@ -2265,7 +2305,10 @@ async def post_upload_action_process(
     upload_id: Annotated[
         str, Path(description='The unique id of the upload to process.')
     ],
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.UPLOADS_PROCESS], allow_anonymous=False)),
+    ],
 ):
     """
     Processes an upload, i.e. parses the files and updates the NOMAD archive. Only admins
@@ -2300,7 +2343,10 @@ async def post_upload_action_delete_entry_files(
             description='The unique id of the upload within which to delete entry files.'
         ),
     ],
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.UPLOADS_WRITE], allow_anonymous=False)),
+    ],
 ):
     """Deletes the files of the entries specified by the provided query."""
 
@@ -2369,7 +2415,10 @@ async def post_upload_action_lift_embargo(
     upload_id: Annotated[
         str, Path(description='The unique id of the upload to lift the embargo for.')
     ],
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.UPLOADS_PUBLISH], allow_anonymous=False)),
+    ],
 ):
     """Lifts the embargo of an upload."""
     upload = _get_upload_with_write_access(
@@ -2421,7 +2470,10 @@ async def post_upload_action_lift_embargo(
     response_model_exclude_none=True,
 )
 async def get_upload_bundle(
-    user: Annotated[User, Depends(get_current_user())],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.UPLOADS_BUNDLE_READ])),
+    ],
     upload_id: Annotated[str, Path(description='The unique id of the upload.')],
     include_raw_files: Annotated[
         bool | None,
@@ -2498,7 +2550,14 @@ async def get_upload_bundle(
 async def post_upload_bundle(
     request: Request,
     user: Annotated[
-        User, Depends(get_current_user(required=True, allow_upload_token=True))
+        User,
+        Depends(
+            get_current_user(
+                [Scope.UPLOADS_BUNDLE_WRITE],
+                allow_anonymous=False,
+                allow_upload_token=True,
+            )
+        ),
     ],
     file: Annotated[list[UploadFile] | None, File()] = None,
     local_path: Annotated[
@@ -2704,7 +2763,10 @@ async def transfer_upload_bundle(
             )
         ),
     ],
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.UPLOADS_BUNDLE_READ], allow_anonymous=False)),
+    ],
 ):
     """
     Start a transfer of an upload to another NOMAD deployment.
@@ -3170,7 +3232,10 @@ def _check_external_deployment_status(deployment_url: str):
 )
 async def stop_upload_processing(
     upload_id: Annotated[str, Path(description='The unique id of the upload.')],
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.UPLOADS_PROCESS], allow_anonymous=False)),
+    ],
 ):
     """
     Stops the processing of the specified upload.

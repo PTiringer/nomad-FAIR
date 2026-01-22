@@ -26,6 +26,7 @@ from mongoengine.queryset.visitor import Q
 from pydantic import BaseModel
 
 from nomad.app.v1.routers.auth import get_current_user
+from nomad.auth.scopes import Scope
 from nomad.auth.tokens import generate_simple_token
 from nomad.config import config
 from nomad.config.models.north import NORTHTool
@@ -118,7 +119,9 @@ def _get_status(tool: ToolModel, user: User) -> ToolModel:
     response_model_exclude_unset=True,
     response_model_exclude_none=True,
 )
-async def get_tools(user: Annotated[User, Depends(get_current_user())]):
+async def get_tools(
+    user: Annotated[User, Depends(get_current_user([Scope.NORTH_READ]))],
+):
     north_tools: list[NorthToolEntryPoint] = []
     for plugin in config.plugins.entry_points.filtered_values():
         if plugin.entry_point_type == 'north_tool':
@@ -173,7 +176,10 @@ async def tool(name: str) -> ToolModel:
 )
 async def get_tool(
     tool: Annotated[ToolModel, Depends(tool)],
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.NORTH_READ], allow_anonymous=False)),
+    ],
     upload_id: str | None = None,
 ):
     if upload_id:
@@ -222,7 +228,10 @@ def _check_uploadid_is_mounted(
 )
 async def start_tool(
     tool: Annotated[ToolModel, Depends(tool)],
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.NORTH_RUN], allow_anonymous=False)),
+    ],
     upload_id: str | None = None,
 ):
     tool.state = ToolStateEnum.stopped
@@ -397,7 +406,10 @@ async def start_tool(
 )
 async def stop_tool(
     tool: Annotated[ToolModel, Depends(tool)],
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.NORTH_RUN], allow_anonymous=False)),
+    ],
 ):
     url = f'{config.hub_url()}/api/users/{user.username}/servers/{tool.name}'
     response = requests.delete(url, json={'remove': True}, headers=hub_api_headers)

@@ -16,7 +16,8 @@
 # limitations under the License.
 #
 
-from collections.abc import Callable
+import urllib
+from collections.abc import Callable, Collection
 from enum import Enum
 from inspect import Parameter, Signature
 from typing import Annotated
@@ -27,10 +28,11 @@ from fastapi import Query as FastApiQuery
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestFormStrict
 
 from nomad import datamodel
-from nomad.auth import keycloak
-from nomad.auth.keycloak import KeycloakError, OIDCToken
+from nomad.auth.keycloak import KeycloakError, OIDCToken, keycloak
+from nomad.auth.scopes import Scope
 from nomad.auth.tokens import (
     AppToken,
+    AuthResult,
     SignatureToken,
     generate_simple_token,
     get_user_from_keycloak_token,
@@ -55,23 +57,26 @@ class APITag(str, Enum):
     CUSTOM = 'NOMAD Custom Token Endpoints'
 
 
-# Functions for resolving User from tokens
+# Authentication (resolve user) and authorization (enforce scopes)
+
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl=f'{root_path}/auth/token', auto_error=False
 )
 
 
-def _resolve_user(
+def _resolve_user_with_scopes(
     *,
-    required: bool = False,
+    required_scopes: set[str],
+    allow_anonymous: bool,
     request: Request | None = None,
     keycloak_token: str | None = None,
     simple_token: str | None = None,
     upload_token: str | None = None,
     upload_token_query_param: str | None = None,  # DEPRECATED: via query parameters
 ) -> User | None:
-    # Require upload token via header instead of query parameter
+    """Resolve User/scopes from token and validate."""
+    # Require upload token via header (reject query parameter)
     if upload_token_query_param is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -81,12 +86,11 @@ def _resolve_user(
             ),
         )
 
-    # `config.oasis.require_authentication` would require authentication globally
-    required = required or config.oasis.require_authentication
+    # Resolve user and extract scopes from (simple->keycloak->upload) token
+    auth_result: AuthResult | None = None
 
-    # Resolve user from token
-    user: User | None = None
-    if user is None and simple_token:
+    # Resolve user from simple token
+    if auth_result is None and simple_token:
         try:
             unverified_payload = jwt.decode(
                 simple_token, options={'verify_signature': False}
@@ -95,53 +99,58 @@ def _resolve_user(
             # simple token only has `user/exp` in payload,
             # while the keycloak has much more (RFC 7519)
             if unverified_payload.keys() == {'user', 'exp'}:
-                user = get_user_from_simple_token(simple_token)
+                auth_result = get_user_from_simple_token(simple_token)
         except jwt.DecodeError as e:  # token could be non-JWT (for testing)
             logger.error('Failed to decode simple token', exc_info=e)
 
-    if user is None and (keycloak_token or request):
-        user = get_user_from_keycloak_token(keycloak_token, request=request)
+    # Resolve user from keycloak token (cookie or header)
+    if auth_result is None and (keycloak_token or request):
+        # Get token from cookie
+        if keycloak_token is None and request is not None:
+            auth_cookie = request.cookies.get('Authorization')
+            if auth_cookie is not None:
+                auth_cookie = urllib.parse.unquote(auth_cookie)
+                keycloak_token = auth_cookie.removeprefix('Bearer ')
 
-    if user is None and upload_token:
-        user = get_user_from_upload_token(upload_token)
+        if keycloak_token is not None:
+            auth_result = get_user_from_keycloak_token(keycloak_token)
 
-    if user is None and config.tests.assume_auth_for_username:
-        if config.services.mode == ModeEnum.PRODUCTION:
-            raise ValueError(
-                'assume_auth_for_username is test-only and not allowed in production mode'
-            )
+    # Resolve user from upload token
+    if auth_result is None and upload_token:
+        auth_result = get_user_from_upload_token(upload_token)
+
+    if auth_result is None:  # user resolving failed: anonymous user
+        user = None
+        scopes = config.auth.anonymous_user_permission
+    else:
+        user = auth_result.user
+        scopes = auth_result.scopes
+
+    # [DEV ONLY] allow tester to bypass auth
+    if config.tests.assume_auth_for_username:
+        if config.services.mode != ModeEnum.DEVELOPMENT:
+            raise ValueError('assume_auth_for_username is development-only')
+
         user = datamodel.User.get(username=config.tests.assume_auth_for_username)
+        scopes = Scope.all_values()  # full permission for tester
 
-    # Check if user is resolved only when required
-    if required and user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='Authentication required.',
-            headers={'WWW-Authenticate': 'Bearer'},
-        )
-
-    # `allowed_users` would enforce an explicit whitelist of users
-    if config.oasis.allowed_users is not None:
-        if user is None:
+    # Handle anonymous user
+    if user is None:
+        # `allowed_users` would imply login required
+        if not allow_anonymous or config.oasis.allowed_users is not None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail='Authentication is required for this Oasis',
+                detail='Authentication required.',
                 headers={'WWW-Authenticate': 'Bearer'},
             )
-        if (
-            user.email not in config.oasis.allowed_users
-            and user.username not in config.oasis.allowed_users
-        ):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail='You are not authorized to access this Oasis',
-            )
 
-    # Validate user against recording
-    if user is not None:
+    # Non-anonymous user
+    else:
+        # Validate against recording
         try:
             if datamodel.User.get(user.user_id) is None:
                 raise ValueError('User not found in database')
+
         except Exception as e:
             logger.error('API usage by unknown user.', exc_info=e)
             raise HTTPException(
@@ -149,23 +158,52 @@ def _resolve_user(
                 detail='You are logged in with an unknown user',
             ) from e
 
+        # Check user whitelist (via `allowed_users`)
+        if (
+            config.oasis.allowed_users is not None
+            and user.email not in config.oasis.allowed_users
+            and user.username not in config.oasis.allowed_users
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail='You are not authorized to access this Oasis',
+            )
+
+    # Enforce backend scopes
+    if missing_scopes := required_scopes - set(scopes):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f'Missing scopes: {sorted(missing_scopes)}',
+        )
+
     return user
 
 
 def get_current_user(
+    required_scopes: Collection[str] | str,
     *,
-    required: bool = False,
+    allow_anonymous: bool = True,
     allow_keycloak_token: bool = True,
     allow_simple_token: bool = True,
     allow_upload_token: bool = False,
 ) -> Callable:
     """
-    Resolve the authenticated user from keycloak/simple/upload tokens.
+    Build a FastAPI dependency that resolves User and enforces scopes.
+
+    Args:
+        required_scopes: scope(s) this endpoint needs.
+        allow_anonymous: whether to allow anonymous (no-login) access.
+        allow_*_token: toggle which tokens are accepted.
     """
+    if isinstance(required_scopes, str):
+        required_scopes = {required_scopes}
+    else:
+        required_scopes = set(required_scopes)
 
     def current_user(**kwargs) -> User | None:
-        return _resolve_user(
-            required=required,
+        return _resolve_user_with_scopes(
+            required_scopes=required_scopes,
+            allow_anonymous=allow_anonymous,
             request=kwargs.get('request'),
             keycloak_token=kwargs.get('keycloak_token'),
             simple_token=kwargs.get('simple_token'),
@@ -173,21 +211,22 @@ def get_current_user(
             upload_token_query_param=kwargs.get('upload_token_query_param'),
         )
 
+    # Build signature
     parameters: list[Parameter] = []
 
     if allow_keycloak_token:
         parameters.append(
             Parameter(
-                name='keycloak_token',
-                annotation=str,
-                default=Depends(oauth2_scheme),
-                kind=Parameter.KEYWORD_ONLY,
+                name='request',
+                annotation=Request,  # for getting keycloak token from cookie
+                kind=Parameter.POSITIONAL_OR_KEYWORD,
             )
         )
         parameters.append(
             Parameter(
-                name='request',
-                annotation=Request,  # for getting keycloak token from cookie
+                name='keycloak_token',
+                annotation=str | None,
+                default=Depends(oauth2_scheme),
                 kind=Parameter.KEYWORD_ONLY,
             )
         )
@@ -196,7 +235,7 @@ def get_current_user(
         parameters.append(
             Parameter(
                 name='simple_token',
-                annotation=str,
+                annotation=str | None,
                 default=Depends(oauth2_scheme),
                 kind=Parameter.KEYWORD_ONLY,
             )
@@ -268,7 +307,7 @@ async def get_token(
     On the OpenAPI dashboard, you can use the *Authorize* button at the top.
     """
     try:
-        token = keycloak.keycloak.basicauth(form_data.username, form_data.password)
+        token = keycloak.basicauth(form_data.username, form_data.password)
         # Add mandatory headers (RFC 6749 §5.1)
         response.headers['Cache-Control'] = 'no-store'
         response.headers['Pragma'] = 'no-cache'
@@ -292,7 +331,8 @@ async def get_token(
 )
 async def get_signature_token(
     user: Annotated[
-        User, Depends(get_current_user(required=True, allow_simple_token=False))
+        User,
+        Depends(get_current_user([Scope.TOKENS_CREATE], allow_anonymous=False)),
     ],
 ) -> SignatureToken:
     """
@@ -314,7 +354,8 @@ async def get_app_token(
         int, FastApiQuery(gt=0, le=config.services.app_token_max_expires_in)
     ],
     user: Annotated[
-        User, Depends(get_current_user(required=True, allow_simple_token=False))
+        User,
+        Depends(get_current_user([Scope.TOKENS_CREATE], allow_anonymous=False)),
     ],
 ) -> AppToken:
     """

@@ -32,6 +32,7 @@ from nomad.app.v1.models.groups import (
     UserGroupResponse,
 )
 from nomad.app.v1.models.pagination import PaginationResponse
+from nomad.app.v1.routers.auth import get_current_user
 from nomad.app.v1.routers.groups_utils import (
     convert_members_to_info,
     get_user_role,
@@ -41,6 +42,7 @@ from nomad.app.v1.routers.groups_utils import (
     validate_members_info as validate_members_info_util,
 )
 from nomad.app.v1.utils import parameter_dependency_from_model
+from nomad.auth.scopes import Scope
 from nomad.datamodel import User as UserDataModel
 from nomad.mongo.groups import (
     MongoUserGroup,
@@ -49,7 +51,6 @@ from nomad.mongo.groups import (
 )
 
 from ..models import User
-from .auth import get_current_user
 
 router = APIRouter()
 
@@ -213,7 +214,10 @@ async def get_user_group(group_id: str):
 )
 async def create_user_group(
     user_group_edit: UserGroupEdit,
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.GROUPS_WRITE], allow_anonymous=False)),
+    ],
 ):
     """Create user group."""
     check_mutually_exclusive_members_fields(user_group_edit)
@@ -238,7 +242,10 @@ async def create_user_group(
 async def update_user_group(
     group_id: str,
     user_group_edit: UserGroupEdit,
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.GROUPS_WRITE], allow_anonymous=False)),
+    ],
 ):
     """Update user group."""
     mongo_user_group = get_user_group_or_404(group_id)
@@ -268,7 +275,11 @@ async def update_user_group(
     summary='Delete user group.',
 )
 async def delete_user_group(
-    group_id: str, user: Annotated[User, Depends(get_current_user(required=True))]
+    group_id: str,
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.GROUPS_DELETE], allow_anonymous=False)),
+    ],
 ):
     """Delete user group."""
     mongo_user_group = get_user_group_or_404(group_id)

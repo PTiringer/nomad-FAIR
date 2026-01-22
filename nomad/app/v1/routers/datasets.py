@@ -26,6 +26,8 @@ from fastapi import Query as FastApiQuery
 from pydantic import BaseModel, Field, field_validator
 
 from nomad import datamodel, processing, utils
+from nomad.app.v1.routers.auth import get_current_user
+from nomad.auth.scopes import Scope
 from nomad.config import config
 from nomad.datamodel import Dataset as DatasetDefinitionCls
 from nomad.metainfo.elasticsearch_extension import entry_type
@@ -46,7 +48,6 @@ from ..models import (
     User,
 )
 from ..utils import create_responses, parameter_dependency_from_model
-from .auth import get_current_user
 from .entries import _do_exhaustive_search
 
 router = APIRouter()
@@ -281,12 +282,16 @@ class DatasetCreate(BaseModel):  # type: ignore
 async def get_datasets(
     request: Request,
     pagination: Annotated[DatasetPagination, Depends(dataset_pagination_parameters)],
-    dataset_id: Annotated[str | None, FastApiQuery()] = None,
-    dataset_name: Annotated[str | None, FastApiQuery()] = None,
-    user_id: Annotated[list[str] | None, FastApiQuery()] = None,
-    dataset_type: Annotated[str | None, FastApiQuery()] = None,
-    doi: Annotated[str | None, FastApiQuery()] = None,
-    prefix: Annotated[str | None, FastApiQuery()] = None,
+    _user: Annotated[
+        User,
+        Depends(get_current_user([Scope.DATASETS_READ])),
+    ],
+    dataset_id: Annotated[str, FastApiQuery()] = None,
+    dataset_name: Annotated[str, FastApiQuery()] = None,
+    user_id: Annotated[list[str], FastApiQuery()] = None,
+    dataset_type: Annotated[str, FastApiQuery()] = None,
+    doi: Annotated[str, FastApiQuery()] = None,
+    prefix: Annotated[str, FastApiQuery()] = None,
 ):
     """
     Retrieves all datasets that match the given criteria.
@@ -330,6 +335,10 @@ async def get_dataset(
     dataset_id: Annotated[
         str, Path(description='The unique dataset id of the dataset to retrieve.')
     ],
+    _user: Annotated[
+        User,
+        Depends(get_current_user([Scope.DATASETS_READ])),
+    ],
 ):
     """
     Retrieves the dataset with the given id.
@@ -357,7 +366,10 @@ async def get_dataset(
 )
 async def post_datasets(
     create: DatasetCreate,
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.DATASETS_WRITE], allow_anonymous=False)),
+    ],
 ):
     """
     Create a new dataset.
@@ -454,7 +466,10 @@ async def delete_dataset(
     dataset_id: Annotated[
         str, Path(description='The unique dataset id of the dataset to delete.')
     ],
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.DATASETS_DELETE], allow_anonymous=False)),
+    ],
 ):
     """
     Delete an dataset.
@@ -502,9 +517,12 @@ async def delete_dataset(
 )
 async def assign_doi(
     dataset_id: Annotated[
-        str, Path(description='The unique dataset id of the dataset to delete.')
+        str, Path(description='The unique dataset id of the dataset to assign DOI.')
     ],
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.DATASETS_ASSIGN_DOI], allow_anonymous=False)),
+    ],
 ):
     """
     Assign a DOI to a dataset.

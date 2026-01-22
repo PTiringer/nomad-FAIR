@@ -23,13 +23,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic.main import BaseModel
 
 from nomad import datamodel
+from nomad.app.v1.routers.auth import get_current_user
 from nomad.auth import user_management
+from nomad.auth.scopes import Scope
 from nomad.config import config
 from nomad.utils import strip
 
 from ..models import HTTPExceptionModel, User
 from ..utils import create_responses
-from .auth import get_current_user
 
 router = APIRouter()
 
@@ -75,7 +76,10 @@ class Users(BaseModel):
     response_model=User,
 )
 async def read_users_me(
-    current_user: Annotated[User, Depends(get_current_user(required=True))],
+    current_user: Annotated[
+        User,
+        Depends(get_current_user([Scope.USERS_READ], allow_anonymous=False)),
+    ],
 ):
     current_user_dict: dict = current_user.m_to_dict(
         with_out_meta=True, include_derived=True
@@ -198,7 +202,11 @@ async def get_user(user_id: str):
     response_model=User,
 )
 async def invite_user(
-    user: User, current_user: Annotated[User, Depends(get_current_user(required=True))]
+    user: User,
+    _current_user: Annotated[
+        User,
+        Depends(get_current_user([Scope.USERS_INVITE], allow_anonymous=False)),
+    ],
 ):
     if config.oasis.is_oasis:
         raise HTTPException(

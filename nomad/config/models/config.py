@@ -25,6 +25,7 @@ from urllib.parse import quote
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from nomad.auth.scopes import _resolve_scopes
 from nomad.config.models.pagination import PaginationBaseModel
 
 from .common import ConfigBaseModel, Options
@@ -250,6 +251,43 @@ class Services(ConfigBaseModel):
         return f'{protocol}://{host_and_port}/{base_path}/{api}'
 
 
+class Auth(ConfigBaseModel):
+    """
+    Authentication/authorization-related configurations.
+    """
+
+    anonymous_user_permission: set[str] = Field(
+        default_factory=lambda: {'*:read'},
+        description='Backend scopes that would be granted to anonymous users.',
+    )
+
+    keycloak_token_scopes: set[str] = Field(
+        default_factory=lambda: {'*:*'},
+        description='Backend scopes that would be granted to the keycloak token.',
+    )
+
+    simple_token_scopes: set[str] = Field(
+        default_factory=lambda: {'*:*'},
+        description='Backend scopes that would be granted to the simple token.',
+    )
+
+    upload_token_scopes: set[str] = Field(
+        default_factory=lambda: {'uploads:*'},
+        description='Backend scopes that would be granted to the upload token.',
+    )
+
+    @field_validator(
+        'anonymous_user_permission',
+        'keycloak_token_scopes',
+        'simple_token_scopes',
+        'upload_token_scopes',
+        mode='after',
+    )
+    @classmethod
+    def _resolve_scopes_for_all_tokens(cls, scopes: set[str]) -> set[str]:
+        return _resolve_scopes(scopes)
+
+
 class FooterLink(ConfigBaseModel):
     """
     A model for links to be displayed in the footer.
@@ -363,12 +401,23 @@ class Oasis(ConfigBaseModel):
         The URL of the terms of service.
     """,
     )
-    require_authentication: bool = Field(
-        False,
+
+    require_authentication: bool | None = Field(
+        None,
         description="""
-        If True, authentication is required to access sensitive API endpoints.
+        [Deprecated] Use `Auth.anonymous_user_permission` to set default permission.
     """,
     )
+
+    @field_validator('require_authentication', mode='before')
+    @classmethod
+    def _deprecate_require_authentication(cls, v):
+        if v is not None:
+            raise ValueError(
+                '`Oasis.require_authentication` has been removed. '
+                'Use `Auth.anonymous_user_permission` to set the default permission.'
+            )
+        return v
 
 
 class FS(ConfigBaseModel):
@@ -1255,6 +1304,10 @@ class Config(ConfigBaseModel):
     services: Services = Field(
         default_factory=Services,
         description='Settings for core NOMAD services (API, worker, north).',
+    )
+    auth: Auth = Field(
+        default_factory=Auth,
+        description='Authentication/authorization-related configurations.',
     )
     meta: Meta = Field(
         default_factory=Meta,

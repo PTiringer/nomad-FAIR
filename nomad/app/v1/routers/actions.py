@@ -21,9 +21,10 @@ from nomad.actions.manager import (
 )
 from nomad.app.v1.models import User
 from nomad.app.v1.routers.auth import get_current_user
+from nomad.auth.scopes import Scope
 from nomad.utils import strip
 
-from ..models import HTTPExceptionModel, User
+from ..models import HTTPExceptionModel
 from ..utils import create_responses
 
 router = APIRouter()
@@ -49,7 +50,10 @@ SCHEMA_CACHE_TTL: Final[int] = 1 * 24 * 60 * 60  # 1 day in seconds
 async def action_start(
     action_id: str,
     start_data: ActionStart,
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(get_current_user([Scope.ACTIONS_RUN], allow_anonymous=False)),
+    ],
 ):
     """
     Starts a new action.
@@ -83,7 +87,12 @@ async def action_start(
 )
 async def action_stop(
     action_instance_id: str,
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(
+            get_current_user([Scope.ACTIONS_RUN], allow_anonymous=False),
+        ),
+    ],
 ):
     """
     Stops an action.
@@ -113,7 +122,12 @@ async def action_stop(
 )
 async def action_status(
     action_instance_id: str,
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(
+            get_current_user([Scope.ACTIONS_READ], allow_anonymous=False),
+        ),
+    ],
 ):
     """
     Gets the status of an action.
@@ -146,7 +160,12 @@ async def action_status(
 )
 async def action_result(
     action_instance_id: str,
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(
+            get_current_user([Scope.ACTIONS_READ], allow_anonymous=False),
+        ),
+    ],
 ):
     """
     Gets the result of an action.
@@ -180,7 +199,12 @@ async def action_result(
 )
 @cache(expire=SCHEMA_CACHE_TTL)
 async def action_input_schemas(
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    _user: Annotated[
+        User,
+        Depends(
+            get_current_user([Scope.ACTIONS_READ], allow_anonymous=False),
+        ),
+    ],
 ):
     """
     Gets the input schemas for all available actions.
@@ -223,7 +247,12 @@ _not_authorized = (
 )
 async def action(
     action_instance_id: str,
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(
+            get_current_user([Scope.ACTIONS_READ], allow_anonymous=False),
+        ),
+    ],
 ):
     """
     Gets a specific action for the authenticated user.
@@ -261,7 +290,12 @@ async def action(
     response_model_exclude_none=True,
 )
 async def actions(
-    user: Annotated[User, Depends(get_current_user(required=True))],
+    user: Annotated[
+        User,
+        Depends(
+            get_current_user([Scope.ACTIONS_READ], allow_anonymous=False),
+        ),
+    ],
 ):
     """
     Lists all actions for the authenticated user.

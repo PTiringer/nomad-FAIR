@@ -18,13 +18,17 @@
 from enum import Enum
 from typing import Annotated
 
-from fastapi import APIRouter, Path, status
+from fastapi import APIRouter, Depends, Path, status
 from pydantic import BaseModel, Field
 
 from nomad.app.v1.models import HTTPExceptionModel
+from nomad.app.v1.routers.auth import get_current_user
 from nomad.app.v1.utils import create_responses
+from nomad.auth.scopes import Scope
 from nomad.mongo.package import PackageDefinition
 from nomad.utils import strip
+
+from ..models import User
 
 #
 # FastAPI router for the metainfo API.
@@ -86,6 +90,7 @@ async def get_package_definition(
             description='The section definition id to be used to retrieve package.',
         ),
     ],
+    _user: Annotated[User, Depends(get_current_user([Scope.METAINFO_READ]))],
 ):
     """
     Retrieve the package that contains the target section.
