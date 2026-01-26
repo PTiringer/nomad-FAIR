@@ -660,7 +660,7 @@ class Temporal(ConfigBaseModel):
 
 class Keycloak(ConfigBaseModel):
     server_url: str = Field(
-        'https://nomad-lab.eu/fairdi/keycloak/auth/',
+        'https://nomad-lab.eu/fairdi/keycloak/auth',
         description='Internal base URL of the Keycloak server used by NOMAD.',
     )
     public_server_url: str | None = Field(
@@ -691,6 +691,8 @@ class Keycloak(ConfigBaseModel):
     @model_validator(mode='after')
     @classmethod
     def __validate(cls, values):
+        values.server_url = values.server_url.rstrip('/')
+
         if values.public_server_url is None:
             values.public_server_url = values.server_url
         return values

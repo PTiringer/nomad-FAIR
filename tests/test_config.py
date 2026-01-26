@@ -591,3 +591,23 @@ def test_id_url_safe_collision(options, collides, mockopen, monkeypatch):
             config.load_plugins()
     else:
         config.load_plugins()
+
+
+@pytest.mark.parametrize(
+    'conf_yaml, conf_expected',
+    [
+        pytest.param(
+            {'keycloak': {'server_url': 'http://example.com/auth'}},
+            {'keycloak': {'server_url': 'http://example.com/auth'}},
+            id='keycloak-no-slash',
+        ),
+        pytest.param(
+            {'keycloak': {'server_url': 'http://example.com/auth/'}},
+            {'keycloak': {'server_url': 'http://example.com/auth'}},
+            id='keycloak-with-slash',
+        ),
+    ],
+)
+def test_normalized_url(conf_yaml, conf_expected, mockopen, monkeypatch):
+    config = load_test_config(conf_yaml, None, mockopen, monkeypatch)
+    assert_config(config, conf_expected)
