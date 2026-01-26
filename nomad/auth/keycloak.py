@@ -61,7 +61,7 @@ class Keycloak:
     def _oidc_client(self) -> KeycloakOpenID:
         if self.__oidc_client is None:
             self.__oidc_client = KeycloakOpenID(
-                server_url=config.keycloak.server_url,
+                server_url=config.keycloak.server_url + '/',
                 client_id=config.keycloak.client_id,
                 realm_name=config.keycloak.realm_name,
                 client_secret_key=config.keycloak.client_secret,
