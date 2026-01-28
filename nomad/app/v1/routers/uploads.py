@@ -2874,7 +2874,7 @@ async def _get_files_if_provided(
     no_file_name_info_provided = not file_name
 
     for _, source_file_name in sources:
-        if not files.is_safe_basename(source_file_name):
+        if not is_safe_basename(source_file_name):
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST, detail='Bad file name provided.'
             )
@@ -2899,7 +2899,7 @@ async def _get_files_if_provided(
                     upload_paths.append(file_path)
                     upload_folders.append(folder)
     else:
-        tmp_dir = files.create_tmp_dir(tmp_dir_prefix)
+        tmp_dir = files.mkdtemp(tmp_dir_prefix)
         upload_paths = []
         uploaded_bytes = 0
         upload_folders = []

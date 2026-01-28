@@ -37,6 +37,8 @@ from nomad.files import (
     PublicUploadFiles,
     StagingUploadFiles,
     UploadFiles,
+    _archive_msg_fp,
+    _zip_fp,
     empty_archive_file_size,
     empty_zip_file_size,
 )
@@ -267,12 +269,9 @@ class UploadFilesContract(UploadFilesFixtures):
             for file_path in entry.files:
                 assert upload_files.raw_file_size(file_path) > 0
 
-    @pytest.mark.parametrize('prefix', [None, 'examples'])
-    def test_raw_directory_list_prefix(self, test_upload: UploadWithFiles, prefix: str):
+    def test_raw_directory_list_prefix(self, test_upload: UploadWithFiles):
         _, _, upload_files = test_upload
-        path_infos = upload_files.raw_directory_list(
-            recursive=True, files_only=True, path_prefix=prefix
-        )
+        path_infos = upload_files.raw_directory_list(recursive=True, files_only=True)
         raw_files = list(path_info.path for path_info in path_infos)
         assert_example_files(raw_files)
 
@@ -523,12 +522,8 @@ class TestPublicUploadFiles(UploadFilesContract):
             # Artificially create an empty archive files and raw zip file with the opposite access
             # TODO: This should only be needed for an interim period
             other_access = 'public' if embargo_length else 'restricted'
-            other_raw_zip_file_object = PublicUploadFiles._create_raw_zip_file_object(
-                public_upload_files, other_access
-            )
-            other_msg_file_object = PublicUploadFiles._create_msg_file_object(
-                public_upload_files, other_access
-            )
+            other_raw_zip_file_object = _zip_fp(public_upload_files, other_access)
+            other_msg_file_object = _archive_msg_fp(public_upload_files, other_access)
             # Fill them with dummy content (we should never try to open them)
             with open(other_raw_zip_file_object.os_path, mode='wb') as f:
                 f.write(b'-' * empty_zip_file_size)
@@ -654,10 +649,10 @@ class TestPublicUploadFiles(UploadFilesContract):
         upload_files.delete()
 
         public_upload_files = PublicUploadFiles(test_upload_id)
-        v2_file = PublicUploadFiles._create_msg_file_object(
+        v2_file = _archive_msg_fp(
             public_upload_files, public_upload_files.access, fallback=False
         )
-        v1_file = PublicUploadFiles._create_msg_file_object(
+        v1_file = _archive_msg_fp(
             public_upload_files, public_upload_files.access, fallback=True
         )
         assert not v2_file.exists()

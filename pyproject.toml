@@ -20,6 +20,7 @@ dependencies = [
     'click>=7.1.2',
     'docstring-parser>=0.12',
     'elasticsearch-dsl>=7,<8',
+    'fsspec',
     'h5py>=3.6.0',
     'httpx>=0.23.3,<0.28',  # breaking change in 0.28 breaks keycloak compatibility
     'jmespath>=0.10.0',
@@ -34,6 +35,7 @@ dependencies = [
     'openpyxl',
     'orjson>=1.0',
     'pandas>=2',
+    'pathvalidate',
     'pint>=0.23',
     'plotly<6', # version 6.0.0 not fully compatible with our GUI
     'py-spy', # for on-server profiling

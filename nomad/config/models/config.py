@@ -464,6 +464,7 @@ class FS(ConfigBaseModel):
     )
     prefix_size: int = Field(
         2,
+        ge=0,
         description='Number of characters from upload/entry IDs used as directory prefixes in storage.',
     )
     archive_version_suffix: str | list[str] = Field(

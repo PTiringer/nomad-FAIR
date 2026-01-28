@@ -930,7 +930,7 @@ def integrity(
 ):
     from nomad.app.v1.models import MetadataPagination, MetadataRequired
     from nomad.archive.storage_v2 import ArchiveWriter
-    from nomad.files import PublicUploadFiles, StagingUploadFiles
+    from nomad.files import PublicUploadFiles, StagingUploadFiles, _archive_msg_fp
     from nomad.processing import Entry, Upload
     from nomad.search import search
 
@@ -1000,9 +1000,7 @@ def integrity(
             upload_files = PublicUploadFiles(upload.upload_id)
 
             return _check_file_exist(
-                PublicUploadFiles._create_msg_file_object(  # noqa
-                    upload_files, upload_files.access, True
-                ).os_path
+                _archive_msg_fp(upload_files, upload_files.access, True).os_path
             )
 
         upload_files = StagingUploadFiles(upload.upload_id)  # type: ignore
@@ -1087,9 +1085,7 @@ def integrity(
             upload_files = PublicUploadFiles(upload.upload_id)
 
             return _check_magic(
-                PublicUploadFiles._create_msg_file_object(  # noqa
-                    upload_files, upload_files.access, True
-                ).os_path
+                _archive_msg_fp(upload_files, upload_files.access, True).os_path
             )
 
         upload_files = StagingUploadFiles(upload.upload_id)  # type: ignore
@@ -1123,9 +1119,7 @@ def integrity(
             upload_files = PublicUploadFiles(upload.upload_id)
 
             return _check_suffix(
-                PublicUploadFiles._create_msg_file_object(  # noqa
-                    upload_files, upload_files.access, True
-                ).os_path
+                _archive_msg_fp(upload_files, upload_files.access, True).os_path
             )
 
         upload_files = StagingUploadFiles(upload.upload_id)  # type: ignore

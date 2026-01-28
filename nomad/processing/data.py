@@ -94,7 +94,7 @@ from nomad.files import (
     RawPathInfo,
     StagingUploadFiles,
     UploadFiles,
-    create_tmp_dir,
+    mkdtemp,
 )
 from nomad.metainfo.data_type import Datatype, Datetime
 from nomad.mongo.groups import MongoUserGroup, user_group_exists
@@ -2113,7 +2113,7 @@ class Upload(Proc):
         if target_deployment_url is None:
             target_deployment_url = config.oasis.central_nomad_deployment_url
 
-        tmp_dir = create_tmp_dir('export_' + self.upload_id)
+        tmp_dir = mkdtemp('export_' + self.upload_id)
         bundle_path = os.path.join(tmp_dir, self.upload_id + '.zip')
         try:
             self.set_last_status_message('Creating bundle.')
@@ -2206,7 +2206,7 @@ class Upload(Proc):
                     example_upload_id=entry_point_id,
                     file_operations=file_operations,
                     publish_directly=self.publish_directly,
-                    workflow_tmp_dir=create_tmp_dir(f'{self.upload_id}_{workflow_id}'),
+                    workflow_tmp_dir=mkdtemp(f'{self.upload_id}_{workflow_id}'),
                 ),
                 id=workflow_id,
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS.value,
@@ -2294,7 +2294,7 @@ class Upload(Proc):
             path_filter=path_filter,
             only_updated_files=only_updated_files,
             workflow_id=workflow_id,
-            workflow_tmp_dir=create_tmp_dir(f'{self.upload_id}_{workflow_id}'),
+            workflow_tmp_dir=mkdtemp(f'{self.upload_id}_{workflow_id}'),
         )
         try:
             handle = await client.start_workflow(
