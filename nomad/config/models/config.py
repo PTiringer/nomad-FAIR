@@ -1524,12 +1524,17 @@ class Config(ConfigBaseModel):
                 plugin_entry_point_ids.add(key)
             _plugins['plugin_packages'] = plugin_packages
 
-            # Handle NORTH tools defined in nomad.yaml
-            for key, tool in self.north.tools.options.items():
+            # Handle NORTH tools defined in nomad.yaml TODO: This can be removed when we
+            # fully migrate to using entry points for the NORTH tools.
+            for key, tool in self.north.tools.filtered_items():
                 if key not in plugin_entry_point_ids:
                     _plugins['entry_points']['options'][key] = NorthToolEntryPoint(
                         id=key, north_tool=tool
                     )
+                    # If a list of includes is given, add the activated north tools into
+                    # it.
+                    if entry_points_config.get('include') is not None:
+                        entry_points_config['include'].append(key)
 
             for key, plugin in _plugins['entry_points']['options'].items():
                 if key not in plugin_entry_point_ids:

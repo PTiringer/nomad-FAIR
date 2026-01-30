@@ -182,13 +182,15 @@ def test_config_priority(conf_yaml, conf_env, value, mockopen, monkeypatch):
     [
         pytest.param(
             {
+                # TODO: the NORTH part is only needed to reset the tool
+                'north': {'tools': {'include': []}},
                 'plugins': {
                     'options': {
                         'dosnormalizer:dos_normalizer_entry_point': {
                             'name': 'yaml',
                         }
                     }
-                }
+                },
             },
             {'plugins': {'include': ['dosnormalizer:dos_normalizer_entry_point']}},
             {
@@ -209,7 +211,7 @@ def test_config_priority(conf_yaml, conf_env, value, mockopen, monkeypatch):
             id='dictionary: merges',
         ),
         pytest.param(
-            {'plugins': {'include': ['a']}},
+            {'north': {'tools': {'include': []}}, 'plugins': {'include': ['a']}},
             {'plugins': {'include': ['b']}},
             {'plugins': {'entry_points': {'include': ['b']}}},
             id='list: overrides',
@@ -237,6 +239,7 @@ def test_config_merge(conf_yaml, conf_env, conf_expected, mockopen, monkeypatch)
     [
         pytest.param(
             {
+                'north': {'tools': {'include': []}},
                 'plugins': {
                     'include': ['a'],
                     'exclude': ['a'],
@@ -247,6 +250,7 @@ def test_config_merge(conf_yaml, conf_env, conf_expected, mockopen, monkeypatch)
         ),
         pytest.param(
             {
+                'north': {'tools': {'include': []}},
                 'plugins': {
                     'entry_points': {'include': ['b'], 'exclude': ['b']},
                 },
@@ -256,6 +260,7 @@ def test_config_merge(conf_yaml, conf_env, conf_expected, mockopen, monkeypatch)
         ),
         pytest.param(
             {
+                'north': {'tools': {'include': []}},
                 'plugins': {
                     'include': ['a'],
                     'exclude': ['a'],
@@ -267,6 +272,7 @@ def test_config_merge(conf_yaml, conf_env, conf_expected, mockopen, monkeypatch)
         ),
         pytest.param(
             {
+                'north': {'tools': {'include': []}},
                 'plugins': {
                     'include': [],
                     'exclude': [],
@@ -278,6 +284,7 @@ def test_config_merge(conf_yaml, conf_env, conf_expected, mockopen, monkeypatch)
         ),
         pytest.param(
             {
+                'north': {'tools': {'include': []}},
                 'plugins': {
                     'include': None,
                     'exclude': None,
@@ -289,6 +296,7 @@ def test_config_merge(conf_yaml, conf_env, conf_expected, mockopen, monkeypatch)
         ),
         pytest.param(
             {
+                'north': {'tools': {'include': []}},
                 'plugins': {
                     'options': {
                         'electronicparsers:vasp_parser_entry_point': {
@@ -305,6 +313,7 @@ def test_config_merge(conf_yaml, conf_env, conf_expected, mockopen, monkeypatch)
                 },
             },
             {
+                'north': {'tools': {'include': []}},
                 'plugins': {
                     'entry_points': {
                         'options': {
@@ -314,7 +323,7 @@ def test_config_merge(conf_yaml, conf_env, conf_expected, mockopen, monkeypatch)
                             }
                         }
                     }
-                }
+                },
             },
             id='old, new and default options are merged with old config having precendence over new values.',
         ),
