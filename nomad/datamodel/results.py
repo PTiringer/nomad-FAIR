@@ -2949,22 +2949,21 @@ class HeatCapacityConstantVolume(MSection):
         volume) heat capacity at different temperatures.
         """
     )
-    heat_capacities = Quantity(
-        type=np.float64,
-        shape=['*'],
-        unit='joule / kelvin',
-        description="""
-        Specific heat capacity values at constant volume.
-        """,
-    )
-    temperatures = Quantity(
-        type=np.float64,
-        shape=['*'],
-        unit='kelvin',
-        description="""
-        The temperatures at which heat capacities are calculated.
-        """,
-    )
+    if simulationworkflowschema:
+        heat_capacities = Quantity(
+            type=simulationworkflowschema.thermodynamics.ThermodynamicsResults.heat_capacity_c_v,
+            shape=[],
+            description="""
+            Specific heat capacity values at constant volume.
+            """,
+        )
+
+        temperatures = Quantity(
+            type=simulationworkflowschema.thermodynamics.ThermodynamicsResults.temperature,
+            description="""
+            The temperatures at which heat capacities are calculated.
+            """,
+        )
 
 
 class EnergyFreeHelmholtz(MSection):
@@ -2974,22 +2973,20 @@ class EnergyFreeHelmholtz(MSection):
         volume and at different temperatures.
         """
     )
-    energies = Quantity(
-        type=np.float64,
-        shape=['*'],
-        unit='joule',
-        description="""
-        The Helmholtz free energies per atom at constant volume.
-        """,
-    )
-    temperatures = Quantity(
-        type=np.float64,
-        shape=['*'],
-        unit='kelvin',
-        description="""
-       The temperatures at which Helmholtz free energies are calculated.
-        """,
-    )
+    if simulationworkflowschema:
+        energies = Quantity(
+            type=simulationworkflowschema.thermodynamics.ThermodynamicsResults.vibrational_free_energy_at_constant_volume,
+            shape=[],
+            description="""
+            The Helmholtz free energies per atom at constant volume.
+            """,
+        )
+        temperatures = Quantity(
+            type=simulationworkflowschema.thermodynamics.ThermodynamicsResults.temperature,
+            description="""
+            The temperatures at which Helmholtz free energies are calculated.
+            """,
+        )
 
 
 class VibrationalProperties(MSection):
@@ -3034,30 +3031,16 @@ class EnergyVolumeCurve(MSection):
             Elasticsearch(suggestion='default'),
         ],
     )
-    volumes = Quantity(
-        type=np.float64,
-        shape=['*'],
-        unit='m ** 3',
-        description="""
-        Array of volumes per atom for which the energies are evaluated.
-        """,
-    )
-    energies_raw = Quantity(
-        type=np.float64,
-        shape=['*'],
-        unit='joule',
-        description="""
-        Array of energies corresponding to each volume.
-        """,
-    )
-    energies_fit = Quantity(
-        type=np.float64,
-        shape=['*'],
-        unit='joule',
-        description="""
-        Array of the fitted energies corresponding to each volume.
-        """,
-    )
+    if simulationworkflowschema:
+        volumes = Quantity(
+            type=simulationworkflowschema.equation_of_state.EquationOfStateResults.volumes
+        )
+        energies_raw = Quantity(
+            type=simulationworkflowschema.equation_of_state.EquationOfStateResults.energies
+        )
+        energies_fit = Quantity(
+            type=simulationworkflowschema.equation_of_state.EOSFit.fitted_energies
+        )
 
 
 class BulkModulus(MSection):
@@ -3142,16 +3125,14 @@ class GeometryOptimization(MSection):
             Contains the optimized geometry that is the result of a geometry optimization.
             """,
         )
-
-    energies = Quantity(
-        type=np.float64,
-        unit='joule',
-        shape=['*'],
-        description="""
-        List of energy_total values gathered from the single configuration
-        calculations that are a part of the optimization trajectory.
-        """,
-    )
+    if simulationworkflowschema:
+        energies = Quantity(
+            type=simulationworkflowschema.geometry_optimization.GeometryOptimizationResults.energies,
+            description="""
+            List of energy_total values gathered from the single configuration
+            calculations that are a part of the optimization trajectory.
+            """,
+        )
     type = Quantity(type=str)
     convergence_tolerance_energy_difference = Quantity(
         type=np.float64,
