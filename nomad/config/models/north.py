@@ -182,7 +182,12 @@ class NORTH(ConfigBaseModel):
 
     tools: NORTHTools = Field(
         NORTHTools(),
-        description='The available north tools. Either the tools definitions as dict or a path to a .json file.',
+        description="""
+            The available north tools. Primarily you should install NORTH tools via
+            plugins from v1.4.1 onwards, but for backwards-compatibility you can also
+            define them here. Note that any tools included through this configuration will
+            be added and included in the `plugins.entry_points` configuration.
+        """,
     )
 
     hub_service_api_token: str = Field(
