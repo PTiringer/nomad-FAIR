@@ -1,7 +1,8 @@
 ## 1.4.1 (2026-02-06)
 
-### Added (12 changes)
+### Added (13 changes)
 
+- [Added possibility to defined NORTH tools as plugin entry points](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/2f36175d21b0f33f07edb86854df186bd09cf7ed) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2655))
 - [Added temporal heartbeats and timeouts to internal processing activities.](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/e1ef72272cbe3483d2141e99bb7f88127560f7f0) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2832))
 - [Added description field for uploads.](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/ee8688af3dea2f5b19fc50525295a9d3fd8efb47) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2840))
 - [Added new plugin entry point attribute for setting up an identifier that can...](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/8f35654c73eff8f7c0bd314ac1943747b3090bcf) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2835))
@@ -29,12 +30,11 @@
 - [Fix links to docs API page](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/a0e3f56716374780ffc328b56be4b8f600a2f624) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2749))
 - [Fixed issue with display annotations.](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/3ef6d267d5d40cac2008bf7199e9a290d41a7be5) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2718))
 
-### Changed (9 changes)
+### Changed (8 changes)
 
 - [Moved the possibly large GUI static file from RAM to the fs.tmp folder.](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/8826cb544748c7aefe562397f1df13d201e7261e) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2826))
 - [Declare starlette min to ensure availability of HTTP_422_UNPROCESSABLE_CONTENT](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/a24e3ab773713e513ca0cac3661d862183e7705f) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2828))
 - [Remove dependency of results datamodel on simulationworkflowschema.](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/0f9d5b978e3b4897533d8d7154eb6ee14fcf7cd2) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2767))
-- [Refactor NORTH tools as plugin entry points](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/2f36175d21b0f33f07edb86854df186bd09cf7ed) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2655))
 - [Changed the processing to use dynamic search document bulk ingest batching based on document sizes.](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/612690004773f289621f41f6a8df83f7b95ff99e) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2771))
 - [Set individual timeouts for upload processing activities](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/ed75818e35f7537331df05fb8e425d9b36b04bfc) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2781))
 - [Improve text parser](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/commit/d360595bfbfe28a8aca7489fd03a46ec820515f6) ([merge request](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR/-/merge_requests/2739))
