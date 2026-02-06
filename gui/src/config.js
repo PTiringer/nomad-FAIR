@@ -114,7 +114,6 @@ export const globalLoginRequired = window.nomadEnv.globalLoginRequired || false
 export const appTokenMaxExpiresIn = window.nomadEnv.appTokenMaxExpiresIn || "2023-10-25"
 export const uploadMembersGroupSearchEnabled = window.nomadEnv.uploadMembersGroupSearchEnabled || false
 export const dataciteEnabled = window.nomadEnv.dataciteEnabled || false
-export const temporalProcessingEnabled = window.nomadEnv.temporalProcessingEnabled || false
 export const termsOfServiceURL = window.nomadEnv.termsOfServiceURL
 export const footerLinks = window.nomadEnv.footerLinks
 export const email = 'support@nomad-lab.eu'
@@ -122,6 +121,8 @@ export const maxLogsToShow = 50
 export const schemaSeparator = '#'
 export const dtypeSeparator = '#'
 export const yamlSchemaPrefix = 'entry_id:'
+export const uploadPagination = window.nomadEnv.uploadPagination
+export const entryPagination = window.nomadEnv.entryPagination
 
 window.nomadArtifacts = window.nomadArtifacts || {}
 export const searchQuantities = window.nomadArtifacts.searchQuantities

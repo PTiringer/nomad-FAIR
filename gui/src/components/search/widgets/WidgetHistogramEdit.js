@@ -110,6 +110,7 @@ export const WidgetHistogramEdit = React.memo(({widget}) => {
         open={widget.editing}
         visible={widget.visible}
         title="Edit histogram widget"
+        description={widget.description}
         onClose={handleClose}
         onAccept={handleEditAccept}
       >
@@ -176,6 +177,16 @@ export const WidgetHistogramEdit = React.memo(({widget}) => {
           />
         </WidgetEditOption>
         <WidgetEditOption>
+          <InputTextField
+            label="Description"
+            fullWidth
+            value={settings?.description}
+            multiline
+            maxRows={10}
+            onChange={(event) => handleChange('description', event.target.value)}
+          />
+        </WidgetEditOption>
+        <WidgetEditOption>
           <TextField
             select
             fullWidth
@@ -191,7 +202,6 @@ export const WidgetHistogramEdit = React.memo(({widget}) => {
             <MenuItem value={50}>50</MenuItem>
           </TextField>
         </WidgetEditOption>
-
         <WidgetEditOption>
           <FormControlLabel
             control={<Checkbox checked={settings.autorange} onChange={(event, value) => handleChange('autorange', value)}/>}

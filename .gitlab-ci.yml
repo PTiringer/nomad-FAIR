@@ -1,13 +1,5 @@
 # Syntax reference: https://docs.gitlab.com/ci/yaml/
 
-# Overview:
-# Pipelines run only on merge requests, schedules, tags, or the develop branch (default).
-# - A schedule pipeline (e.g. nightly build) runs all the jobs.
-# - A tag pipeline runs most of the jobs but skips some (also, v#.#.# tags are special).
-# - Merge requests and pushes to develop will run
-#   - few jobs if only `docs/` files changed,
-#   - all jobs if any other files changed.
-
 .anchors:
   .manual-allow_failure: &manual-allow_failure
     when: manual
@@ -24,8 +16,8 @@ variables:
   DOCKER_TAG: ${CI_COMMIT_REF_SLUG}
   DOCKER_HOST: tcp://docker-dind:2375
   DOCKER_TLS_CERTDIR: ""
-  UV_VERSION: 0.6
-  PYTHON_VERSION: 3.12
+  UV_VERSION: 0.9
+  PYTHON_VERSION: 3.13
 
 workflow:
   rules:
@@ -96,9 +88,9 @@ python linting:
   stage: test
   image: ${CI_REGISTRY_IMAGE}/dev_python:${DOCKER_TAG}
   script:
-    - ruff check nomad tests
-    - ruff format nomad tests --check
-    - ruff check nomad tests --output-format gitlab > $CI_PROJECT_DIR/gl-code-quality-report.json
+    - ruff check
+    - ruff format --check
+    - ruff check --output-format gitlab > $CI_PROJECT_DIR/gl-code-quality-report.json
     - mypy nomad tests
   rules:
     - if: $CI_COMMIT_TAG
@@ -133,8 +125,6 @@ check python dependencies:
   image: ${CI_REGISTRY_IMAGE}/dev_python:${DOCKER_TAG}
   stage: test
   services:
-    - name: rabbitmq:4
-      alias: rabbitmq
     - name: elasticsearch:7.17.24
       alias: elastic
       command:
@@ -143,14 +133,7 @@ check python dependencies:
         - ES_JAVA_OPTS="-Xms512m -Xmx512m" docker-entrypoint.sh elasticsearch -Ediscovery.type=single-node -Expack.security.enabled=false
     - name: mongo:5
       alias: mongo
-    - name: ghcr.io/fairmat-nfdi/temporal-dev-server:v1.3.0
-      alias: temporal
   variables:
-    RABBITMQ_ERLANG_COOKIE: SWQOKODSQALRPCLNMEQG
-    RABBITMQ_DEFAULT_USER: rabbitmq
-    RABBITMQ_DEFAULT_PASS: rabbitmq
-    RABBITMQ_DEFAULT_VHOST: /
-    NOMAD_RABBITMQ_HOST: rabbitmq
     NOMAD_ELASTIC_HOST: elastic
     NOMAD_MONGO_HOST: mongo
     NOMAD_KEYCLOAK_PASSWORD: ${CI_KEYCLOAK_ADMIN_PASSWORD}
@@ -160,6 +143,7 @@ check python dependencies:
     - scripts/check_elastic.sh
     - uv pip install -e ".[dev]"
     - uv pip install -r requirements-plugins.txt -c requirements-dev.txt # remove this after moving to distro
+
 generate pytest timings:
   extends: .base_test
   script:
@@ -177,7 +161,7 @@ python tests:
   parallel: 4
   extends: .base_test
   script:
-    - python -m pytest --cov=nomad --cov-report term --cov-config=.coveragerc -sv tests --splits $CI_NODE_TOTAL --group=$CI_NODE_INDEX
+    - python -m pytest -n=3 --dist=loadscope --cov=nomad --cov-report term --cov-config=.coveragerc -sv tests --splits $CI_NODE_TOTAL --group=$CI_NODE_INDEX --splitting-algorithm least_duration
   after_script:
     - cp .coverage .coverage_${CI_NODE_INDEX}
   artifacts:
@@ -227,7 +211,7 @@ generate gui artifacts:
   stage: test
   image: ${CI_REGISTRY_IMAGE}/dev_python:${DOCKER_TAG}
   script:
-    - uv pip install ".[dev,parsing,infrastructure]"
+    - uv pip install ".[dev,infrastructure]"
     - uv pip install -r requirements-plugins.txt -c requirements-dev.txt # remove this after moving to distro
     - scripts/generate_gui_test_artifacts.sh
   rules:
@@ -310,7 +294,7 @@ python package install tests:
     GIT_STRATEGY: none
   script:
     - |
-      for PYTHON_VERSION in 3.10 3.11 3.12; do
+      for PYTHON_VERSION in 3.10 3.11 3.12 3.13; do
         echo "Running for Python $PYTHON_VERSION"
 
         uv venv -p $PYTHON_VERSION

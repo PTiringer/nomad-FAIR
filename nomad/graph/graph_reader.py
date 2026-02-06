@@ -92,6 +92,7 @@ from nomad.metainfo.data_type import JSON, Datatype
 from nomad.metainfo.data_type import Any as AnyType
 from nomad.metainfo.util import MSubSectionList, split_python_definition
 from nomad.mongo.groups import MongoUserGroup, get_mongo_user_group
+from nomad.mongo.package import PackageDefinition
 from nomad.processing import Entry, ProcessStatus, Upload
 
 logger = utils.get_logger(__name__)
@@ -485,11 +486,16 @@ async def _populate_result(
         """
         if isinstance(container, dict):
             assert isinstance(k_or_i, str)
-            container.setdefault(k_or_i, value_type())
+            if overwrite_existing_str and isinstance(container.get(k_or_i, None), str):
+                container[k_or_i] = value_type()
+            else:
+                container.setdefault(k_or_i, value_type())
             return container[k_or_i]
 
         assert isinstance(k_or_i, int)
         if container[k_or_i] is None:
+            container[k_or_i] = value_type()
+        elif overwrite_existing_str and isinstance(container[k_or_i], str):
             container[k_or_i] = value_type()
         return container[k_or_i]
 
@@ -956,6 +962,9 @@ class GeneralReader:
         group_dict['members'] = [
             LazyUserWrapper(member) for member in group_dict['members']
         ]
+        # add user field next to user_id
+        for member in group_dict['members_info']:
+            member['user'] = LazyUserWrapper(member['user_id'])
 
         return group_dict
 
@@ -1217,7 +1226,6 @@ class ArchiveLikeReader(GeneralReader):
     An abstract class for `ArchiveReader` and `DefinitionReader`.
     """
 
-    # noinspection PyUnusedLocal
     async def _retrieve_definition(
         self,
         m_def: str | None,
@@ -1239,6 +1247,8 @@ class ArchiveLikeReader(GeneralReader):
         def new_context(_id):
             return ServerContext(
                 get_upload_with_read_access(_id, self.user, include_others=True)
+                if _id
+                else None
             )
 
         async def __resolve_definition_in_archive(
@@ -1274,8 +1284,10 @@ class ArchiveLikeReader(GeneralReader):
             return custom_package.m_resolve_path(_path_stack)
 
         if m_def_id is not None:
-            if new_def := new_context(node.upload_id).fetch_section(m_def, m_def_id):
-                return new_def.m_def
+            if new_def := new_context(node.upload_id if node else None).fetch_section(
+                m_def, m_def_id
+            ):
+                return new_def
 
         if m_def is not None:
             if m_def.startswith(('#/', '/')):
@@ -1316,10 +1328,13 @@ class MongoReader(GeneralReader):
 
     @functools.cached_property
     def uploads(self):
+        group_ids = MongoUserGroup.get_ids_by_user_id(self.auth_user_id)
         return Upload.objects(  # type: ignore
             Q(main_author=self.auth_user_id)
             | Q(reviewers=self.auth_user_id)
             | Q(coauthors=self.auth_user_id)
+            | Q(reviewer_groups__in=group_ids)
+            | Q(coauthor_groups__in=group_ids)
         )
 
     @functools.cached_property
@@ -2153,17 +2168,23 @@ class UserReader(MongoReader):
 
     @functools.cached_property
     def uploads(self):
+        target_group_ids = MongoUserGroup.get_ids_by_user_id(self.target_user_id)
         mongo_query = (
             Q(main_author=self.target_user_id)
             | Q(reviewers=self.target_user_id)
             | Q(coauthors=self.target_user_id)
+            | Q(reviewer_groups__in=target_group_ids)
+            | Q(coauthor_groups__in=target_group_ids)
         )
         # self.user must have access to the upload
         if self.target_user_id != self.auth_user_id and not self.auth_user_is_admin:
+            auth_group_ids = MongoUserGroup.get_ids_by_user_id(self.auth_user_id)
             mongo_query &= (
                 Q(main_author=self.auth_user_id)
                 | Q(reviewers=self.auth_user_id)
                 | Q(coauthors=self.auth_user_id)
+                | Q(reviewer_groups__in=auth_group_ids)
+                | Q(coauthor_groups__in=auth_group_ids)
             )
 
         return Upload.objects(mongo_query)  # type: ignore
@@ -3107,7 +3128,9 @@ class DefinitionReader(ArchiveLikeReader):
             await self._resolve(node, current_config, omit_keys=required.keys())
 
         def __convert(m_def):
-            return _convert_ref_to_path_string(m_def.strict_reference())
+            return _convert_ref_to_path_string(
+                m_def.m_path(package_path=True, reference_like=True)
+            )
 
         for key, value in required.items():
             if key == GeneralReader.__CONFIG__:
@@ -3247,7 +3270,9 @@ class DefinitionReader(ArchiveLikeReader):
             )
 
         def __convert(m_def):
-            return _convert_ref_to_path_string(m_def.strict_reference())
+            return _convert_ref_to_path_string(
+                m_def.m_path(package_path=True, reference_like=True)
+            )
 
         def __override_path(q, s, v, p):
             """
@@ -3340,7 +3365,7 @@ class DefinitionReader(ArchiveLikeReader):
         if isinstance(node.archive, Quantity):
             if isinstance(ref := node.archive.type, Reference):
                 target = __unwrap_ref(ref)
-                ref_str: str = target.strict_reference()
+                ref_str: str = target.m_path(package_path=True, reference_like=True)
                 path_stack: list = _convert_ref_to_path(ref_str)
                 # check if it has been populated
                 if ref_str not in node.visited_path and not await _if_exists(
@@ -3381,7 +3406,7 @@ class DefinitionReader(ArchiveLikeReader):
             for _name in _items:
                 for _index, _base in enumerate(getattr(_definition, _name, [])):
                     _section = _unwrap_subsection(_base)
-                    _ref_str = _section.strict_reference()
+                    _ref_str = _section.m_path(package_path=True, reference_like=True)
                     _path_stack = _convert_ref_to_path(_ref_str)
                     if _section is _definition or self._check_cache(
                         _path_stack, config.hash
@@ -3402,11 +3427,11 @@ class DefinitionReader(ArchiveLikeReader):
 
         if isinstance(node.archive, Package):
             for section in node.archive.section_definitions:
-                await __visit(section, ('extending_sections', 'base_sections'))
+                await __visit(section, ('base_sections',))
         else:
             await __visit(
                 node.archive,
-                ('extending_sections', 'base_sections', 'sub_sections', 'quantities'),
+                ('base_sections', 'sub_sections', 'quantities'),
             )
 
     @staticmethod
@@ -3439,7 +3464,7 @@ class DefinitionReader(ArchiveLikeReader):
         # we always put a reference string at the current location
         # since the section may belong to another package
         # its definition may be placed in at the current location, or another location
-        ref_str: str = node.archive.strict_reference()
+        ref_str: str = node.archive.m_path(package_path=True, reference_like=True)
         if not isinstance(node.archive, Quantity):
             await _populate_result(
                 node.result_root,
@@ -3540,11 +3565,23 @@ class MetainfoBrowser(DefinitionReader):
 
                 if key in Package.registry:
                     yield key, Package.registry[key], value
+                elif PackageDefinition.has_definition(key):
+                    # looks like a valid existing definition ID
+                    try:
+                        target = await self._retrieve_definition(None, key)
+                        yield target.qualified_name(), target, value
+                    except Exception as e:
+                        self._log(f'Failed to retrieve definition: {e}')
                 elif key.startswith('entry_id:'):
                     try:
                         yield key, await self._retrieve_definition(key), value
                     except Exception as e:
                         self._log(f'Failed to retrieve definition: {e}')
+                else:
+                    self._log(
+                        f'Cannot identify definition format: {key}',
+                        error_type=QueryError.NOTFOUND,
+                    )
 
     async def read(self) -> dict:  # type: ignore # noqa
         with self._prepare_reading() as response:

@@ -24,6 +24,7 @@ import re
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import final
 from urllib.parse import urlsplit, urlunsplit
 
 import requests
@@ -53,7 +54,12 @@ def _opener_and_dumper(file_name: str) -> tuple:
 
 
 # use to cache packages that are retrieved from MongoDB
-_mongo_package_cache = LRUCache(1024)
+_mongo_package_cache = LRUCache(128)
+
+
+def populate_builtin_packages():
+    for package in Package.registry.values():
+        _mongo_package_cache[package.definition_id] = package
 
 
 class Context:
@@ -113,11 +119,7 @@ class Context:
         return fragment
 
     def create_reference(
-        self,
-        section: MSection,
-        quantity_def: Quantity,
-        value: MSection,
-        global_reference: bool = False,
+        self, section: MSection, quantity_def: Quantity, value: MSection
     ) -> str:
         """
         Returns a reference for the given target section (value) based on the given context.
@@ -127,9 +129,6 @@ class Context:
             section: The containing section.
             quantity_def: The definition of the quantity.
             value: The reference value.
-            global_reference: A boolean flag that forces references with upload_ids.
-                Should be used if the reference needs to be used outside the context
-                of the own upload.
 
         Raises: MetainfoReferenceError
         """
@@ -142,11 +141,6 @@ class Context:
         # we distinguish between the two cases by checking if the target_root is a package
         if isinstance(target_root, Package) and target_root.m_is_custom_package:
             return f'../uploads/{target_root.upload_id}/archive/{target_root.entry_id}#definitions/{fragment}'
-
-        if global_reference:
-            upload_id, entry_id = self._get_ids(target_root, required=True)
-
-            return f'../uploads/{upload_id}/archive/{entry_id}#{fragment}'
 
         source_root: MSection = section.m_root()
 
@@ -341,12 +335,19 @@ class Context:
         """
         raise NotImplementedError
 
-    def fetch_package(self, def_ref: str, def_id: str) -> dict:
+    def _fetch_package(self, def_ref: str | None, def_id: str) -> dict:
+        """
+        Fetch a package by the reference name and ID of one of its section definitions.
+        """
         raise NotImplementedError()
 
-    def fetch_section(self, def_ref: str, def_id: str):
+    @final
+    def fetch_section(self, def_ref: str | None, def_id: str):
+        """
+        Fetch a section definition by its reference name and ID.
+        """
         try:
-            mongo_package = self.fetch_package(def_ref, def_id)
+            mongo_package = self._fetch_package(def_ref, def_id)
         except Exception:  # noqa
             return None
 
@@ -362,6 +363,7 @@ class Context:
 
             pkg.init_metainfo()
             pkg.snapshot_id = snapshot_package_id
+            pkg.loaded_from_mongodb = True
             for snapshot, section in zip(
                 mongo_package['snapshot_section_ids'], pkg.section_definitions
             ):
@@ -369,9 +371,12 @@ class Context:
 
             _mongo_package_cache[snapshot_package_id] = pkg
 
+        if def_id == snapshot_package_id:
+            return pkg
+
         for section in pkg.section_definitions:
             if section.snapshot_id == def_id:
-                return section.section_cls
+                return section
 
         return None
 
@@ -514,8 +519,8 @@ class ServerContext(Context):
     def process_updated_raw_file(self, path, allow_modify=False):
         self.upload.process_updated_raw_file(path, allow_modify)
 
-    def fetch_package(self, def_ref: str, def_id: str) -> dict:
-        if '://' not in def_ref:
+    def _fetch_package(self, def_ref: str | None, def_id: str) -> dict:
+        if def_ref is None or '://' not in def_ref:
             # not a valid url, may be just a plain python name or reference name
             # use information on the current server
             from nomad.mongo.package import PackageDefinition
@@ -523,8 +528,8 @@ class ServerContext(Context):
             mong_package = PackageDefinition.get_by(def_id)
 
             return {
-                'entry_id': mong_package['entry_id'],
-                'upload_id': mong_package['upload_id'],
+                'entry_id': mong_package.get('entry_id', None),
+                'upload_id': mong_package.get('upload_id', None),
                 'snapshot_package_id': mong_package['snapshot_package_id'],
                 'snapshot_section_id': def_id,
                 'snapshot_section_ids': mong_package['snapshot_section_ids'],
@@ -727,21 +732,15 @@ class ClientContext(Context):
         return os.path.exists(file_path)
 
     def create_reference(
-        self,
-        section: MSection,
-        quantity_def: Quantity,
-        value: MSection,
-        global_reference: bool = False,
+        self, section: MSection, quantity_def: Quantity, value: MSection
     ) -> str:
         try:
-            return super().create_reference(
-                section, quantity_def, value, global_reference
-            )
+            return super().create_reference(section, quantity_def, value)
         except AssertionError:
             return f'<unavailable url>/#{value.m_path()}'
 
-    def fetch_package(self, def_ref: str, def_id: str) -> dict:
-        if def_ref.startswith('http'):
+    def _fetch_package(self, def_ref: str | None, def_id: str) -> dict:
+        if def_ref and def_ref.startswith('http'):
             try:
                 url_parts = urlsplit(def_ref)
                 # it appears to be a valid remote url

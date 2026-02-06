@@ -30,11 +30,11 @@ from pydantic.fields import Field
 from pydantic.main import BaseModel
 
 from nomad import normalizing
-from nomad.app.v1.models import Aggregation, StatisticsAggregation
 from nomad.config import config
+from nomad.config.models.plugins import EntryPoint, PluginPackage
 from nomad.parsing import parsers
 from nomad.parsing.parsers import code_metadata
-from nomad.search import search
+from nomad.search import get_statistics
 from nomad.utils import strip
 
 INFO_CACHE_TTL: Final[int] = 1 * 24 * 60 * 60  # 1 day in seconds
@@ -92,11 +92,11 @@ class InfoModel(BaseModel):
     metainfo_packages: list[str]
     codes: list[CodeInfoModel]
     normalizers: list[str]
-    plugin_entry_points: list[dict] | None = Field(
+    plugin_entry_points: list[EntryPoint] | None = Field(
         None,
         description='List of plugin entry points that are activated in this deployment.',
     )
-    plugin_packages: list[dict] | None = Field(
+    plugin_packages: list[PluginPackage] | None = Field(
         None,
         description='List of plugin packages that are installed in this deployment.',
     )
@@ -111,6 +111,7 @@ class InfoModel(BaseModel):
     # should have switched to a new GUI version.
     git: dict | None = Field(
         None,
+        deprecated=True,
         description=strip(
             """
         A deprecated field that always contains an empty value to retain some compatibility
@@ -118,26 +119,6 @@ class InfoModel(BaseModel):
     """
         ),
     )
-
-
-def get_statistics():
-    search_response = search(
-        aggregations=dict(
-            statistics=Aggregation(
-                statistics=StatisticsAggregation(
-                    metrics=[
-                        'n_entries',
-                        'n_materials',
-                        'n_uploads',
-                        'n_quantities',
-                        'n_calculations',
-                    ]
-                )
-            )
-        )
-    )
-    statistics = search_response.aggregations['statistics'].statistics.data
-    return statistics
 
 
 @router.get(

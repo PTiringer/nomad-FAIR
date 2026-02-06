@@ -4,43 +4,40 @@ from nomad.graph.graph_reader import ArchiveReader
 
 # assume this is our archive
 archive = {
-    "metadata": {
-        "upload_id": "test_upload",
-        "entry_id": "test_entry"
-    },
-    "results": {
-        "properties": {
-            "electronic": {
-                "dos_electronic": [{"energies": "/run/0/calculation/0/dos_electronic/0/energies"}]
+    'metadata': {'upload_id': 'test_upload', 'entry_id': 'test_entry'},
+    'results': {
+        'properties': {
+            'electronic': {
+                'dos_electronic': [
+                    {'energies': '/run/0/calculation/0/dos_electronic/0/energies'}
+                ]
             }
         }
     },
-    "run": [
+    'run': [
         {
-            "system": [
+            'system': [
                 {
-                    "atoms": {
-                        "labels": ["He", "Ca", "Fn", "Cu"],
-                        "atomic_numbers": 12,
-                        "periodic": True
+                    'atoms': {
+                        'labels': ['He', 'Ca', 'Fn', 'Cu'],
+                        'atomic_numbers': 12,
+                        'periodic': True,
                     },
-                    "symmetry": [{"space_group_number": 221}],
-                    "unknown": "unknown"
+                    'symmetry': [{'space_group_number': 221}],
+                    'unknown': 'unknown',
                 }
             ],
-            "calculation": [
+            'calculation': [
                 {
-                    "system_ref": "/run/0/system/0",
-                    "energy": {
-                        "total": {"value": 0.2}
-                    },
-                    "dos_electronic": [{"energies": [0, 1, 2, 3, 4, 5]}],
-                    "eigenvalues": []
+                    'system_ref': '/run/0/system/0',
+                    'energy': {'total': {'value': 0.2}},
+                    'dos_electronic': [{'energies': [0, 1, 2, 3, 4, 5]}],
+                    'eigenvalues': [],
                 }
-            ]
+            ],
         }
     ],
-    "workflow": [{"calculation_result_ref": "/run/0/calculation/0"}]
+    'workflow': [{'calculation_result_ref': '/run/0/calculation/0'}],
 }
 
 # read all resolved under results
@@ -49,7 +46,7 @@ query = {
         'm_request': {
             'directive': 'resolved',
             'include': ['*'],
-            'resolve_inplace': True
+            'resolve_inplace': True,
         }
     }
 }
@@ -79,19 +76,19 @@ print(json.dumps(ArchiveReader.read_required(archive, query)))
 # }
 
 query = {
-    "workflow[0]": {
+    'workflow[0]': {
         'calculation_result_ref': {
             'm_request': {
                 'resolve-inplace': True,
-                "depth": 0,  # read keys only at parent level
+                'depth': 0,  # read keys only at parent level
             },
             'system_ref': {
                 'm_request': {
                     'directive': 'resolved',
                     'include': ['*'],  # read all under system_ref
-                    'depth': None  # override parent's setting
+                    'depth': None,  # override parent's setting
                 }
-            }
+            },
         }
     }
 }
@@ -129,12 +126,15 @@ print(json.dumps(ArchiveReader.read_required(archive, query)))
 # }
 
 query = {
-    "workflow[0]": {
+    'workflow[0]': {
         'calculation_result_ref': {
             'm_request': {
                 'resolve-inplace': True,
                 'directive': 'resolved',
-                'include': ['e*', 's*'],  # patter matching, this pattern does not propagate to children
+                'include': [
+                    'e*',
+                    's*',
+                ],  # patter matching, this pattern does not propagate to children
             }
         }
     }
@@ -179,12 +179,14 @@ print(json.dumps(ArchiveReader.read_required(archive, query)))
 
 
 query = {
-    "workflow[0]": {
+    'workflow[0]': {
         'calculation_result_ref': {
             'm_request': {
                 'resolve-inplace': True,
                 'directive': 'resolved',
-                'include': ['s*'],  # patter matching, this pattern does not propagate to children
+                'include': [
+                    's*'
+                ],  # patter matching, this pattern does not propagate to children
                 'max_list_size': 2,  # limit list size to 2
             }
         }
@@ -216,7 +218,7 @@ print(json.dumps(ArchiveReader.read_required(archive, query)))
 # }
 
 query = {
-    "workflow[0]": {
+    'workflow[0]': {
         'calculation_result_ref': {
             'm_request': {
                 'resolve-inplace': True,  # parent resolve inplace
@@ -227,7 +229,7 @@ query = {
                 'm_request': {
                     'resolve-inplace': False,  # but child does not
                 }
-            }
+            },
         }
     }
 }

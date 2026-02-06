@@ -18,24 +18,24 @@
 
 import os
 from enum import Enum
+from typing import Annotated, Any, cast
 
 import requests
 from fastapi import APIRouter, Depends, HTTPException, status
 from mongoengine.queryset.visitor import Q
 from pydantic import BaseModel
 
-from nomad.app.v1.routers.auth import generate_simple_token
+from nomad.app.v1.routers.auth import get_current_user
+from nomad.auth.tokens import generate_simple_token
 from nomad.config import config
 from nomad.config.models.north import NORTHTool
+from nomad.config.models.plugins import NorthToolEntryPoint
 from nomad.mongo.groups import MongoUserGroup
 from nomad.processing import Upload
 from nomad.utils import get_logger, slugify, strip
 
 from ..models import HTTPExceptionModel, User
 from ..utils import create_responses
-from .auth import create_user_dependency
-
-TOOLS = {k: v for k, v in config.north.tools.filtered_items()}
 
 router = APIRouter()
 
@@ -118,23 +118,48 @@ def _get_status(tool: ToolModel, user: User) -> ToolModel:
     response_model_exclude_unset=True,
     response_model_exclude_none=True,
 )
-async def get_tools(user: User = Depends(create_user_dependency())):
+async def get_tools(user: Annotated[User, Depends(get_current_user())]):
+    north_tools: list[NorthToolEntryPoint] = []
+    for plugin in config.plugins.entry_points.filtered_values():
+        if plugin.entry_point_type == 'north_tool':
+            if isinstance(plugin, NorthToolEntryPoint):
+                north_tools.append(plugin)
+
     return ToolsResponseModel(
         data=[
-            _get_status(ToolModel(name=name, **tool.dict()), user)
-            for name, tool in TOOLS.items()
+            _get_status(
+                ToolModel(
+                    name=tool.id_url_safe,
+                    # name=tool.north_tool.display_name
+                    # if tool.north_tool.display_name is not None
+                    # else tool.id,
+                    **tool.north_tool.dict(),
+                ),
+                user,
+            )
+            for tool in north_tools
         ]
     )
 
 
 async def tool(name: str) -> ToolModel:
-    if name not in TOOLS:
+    config.plugins.entry_points.options
+    plugin = None
+    for value in config.plugins.entry_points.options.values():
+        if (
+            getattr(value, 'id_url_safe', None) == name
+            and getattr(value, 'entry_point_type', None) == 'north_tool'
+        ):
+            plugin = value
+            break
+    if plugin is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail='The tools does not exist.'
+            status_code=status.HTTP_404_NOT_FOUND, detail='The tool does not exist.'
         )
 
-    tool = TOOLS[name]
-    return ToolModel(name=name, **tool.dict())
+    north_tool = cast(NorthToolEntryPoint, plugin).north_tool
+
+    return ToolModel(name=name, **north_tool.dict())
 
 
 @router.get(
@@ -147,8 +172,8 @@ async def tool(name: str) -> ToolModel:
     response_model_exclude_none=True,
 )
 async def get_tool(
-    tool: ToolModel = Depends(tool),
-    user: User = Depends(create_user_dependency(required=True)),
+    tool: Annotated[ToolModel, Depends(tool)],
+    user: Annotated[User, Depends(get_current_user(required=True))],
     upload_id: str | None = None,
 ):
     if upload_id:
@@ -196,8 +221,8 @@ def _check_uploadid_is_mounted(
     response_model_exclude_none=True,
 )
 async def start_tool(
-    tool: ToolModel = Depends(tool),
-    user: User = Depends(create_user_dependency(required=True)),
+    tool: Annotated[ToolModel, Depends(tool)],
+    user: Annotated[User, Depends(get_current_user(required=True))],
     upload_id: str | None = None,
 ):
     tool.state = ToolStateEnum.stopped
@@ -300,7 +325,7 @@ async def start_tool(
     access_token = generate_simple_token(
         user_id=user.user_id, expires_in=config.north.nomad_access_token_expiry_time
     )
-    body = {
+    body: dict[str, Any] = {
         'tool': {
             'image': tool.image,
             'cmd': tool.cmd,
@@ -327,7 +352,13 @@ async def start_tool(
         'external_mounts': external_mounts,
     }
 
-    logger.info('post tool start to jupyterhub', body=body)
+    logger.info(
+        'post tool start to jupyterhub',
+        body={
+            **body,
+            'environment': {**body['environment'], 'NOMAD_CLIENT_ACCESS_TOKEN': '***'},
+        },
+    )
 
     response = requests.post(url, json=body, headers=hub_api_headers)
 
@@ -365,8 +396,8 @@ async def start_tool(
     response_model_exclude_none=True,
 )
 async def stop_tool(
-    tool: ToolModel = Depends(tool),
-    user: User = Depends(create_user_dependency(required=True)),
+    tool: Annotated[ToolModel, Depends(tool)],
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     url = f'{config.hub_url()}/api/users/{user.username}/servers/{tool.name}'
     response = requests.delete(url, json={'remove': True}, headers=hub_api_headers)

@@ -20,6 +20,7 @@ import json
 from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 
@@ -317,25 +318,25 @@ class TestsWithGroups:
         [
             pytest.param('admin', None, ARE, id='admin-none'),
             pytest.param('admin', 'user1', PermissionDeniedError, id='admin-user1'),
-            pytest.param('admin', 'user0', 11, id='admin-user0'),
+            pytest.param('admin', 'user0', 15, id='admin-user0'),
             pytest.param('user', None, ARE, id='user-none'),
-            pytest.param('user', 'user1', 10, id='user-user1'),
+            pytest.param('user', 'user1', 14, id='user-user1'),
             pytest.param('user', 'user2', 1, id='user-user2'),
             pytest.param('shared', None, ARE, id='shared-none'),
-            pytest.param('shared', 'user1', 10, id='shared-user1'),
-            pytest.param('shared', 'user2', 6, id='shared'),
+            pytest.param('shared', 'user1', 14, id='shared-user1'),
+            pytest.param('shared', 'user2', 10, id='shared-user2'),
             pytest.param('staging', None, ARE, id='staging-none'),
-            pytest.param('staging', 'user1', 8, id='staging-user1'),
-            pytest.param('staging', 'user2', 6, id='staging-user2'),
+            pytest.param('staging', 'user1', 12, id='staging-user1'),
+            pytest.param('staging', 'user2', 10, id='staging-user2'),
             pytest.param('visible', None, 2, id='visible-none'),
-            pytest.param('visible', 'user1', 10, id='visible-user1'),
-            pytest.param('visible', 'user2', 7, id='visible-user2'),
+            pytest.param('visible', 'user1', 14, id='visible-user1'),
+            pytest.param('visible', 'user2', 11, id='visible-user2'),
             pytest.param('public', None, 1, id='public-none'),
             pytest.param('public', 'user1', 1, id='public-user1'),
             pytest.param('public', 'user2', 1, id='public-user2'),
             pytest.param('all', None, 3, id='all-none'),
-            pytest.param('all', 'user1', 10, id='all-user1'),
-            pytest.param('all', 'user2', 8, id='all-user2'),
+            pytest.param('all', 'user1', 14, id='all-user1'),
+            pytest.param('all', 'user2', 12, id='all-user2'),
         ],
     )
     def test_search_query_groups(
@@ -382,6 +383,45 @@ def test_quantity_values(indices, example_data):
         'test_entry_id_2',
         'test_entry_id_3',
     ]
+
+
+def test_index_large_payload(indices, elastic_function, user1, monkeypatch):
+    monkeypatch.setattr('nomad.config.elastic.max_payload_size', 10)
+
+    data = ExampleData(main_author=user1)
+
+    upload_id = 'test_large_upload_id'
+
+    data.create_upload(upload_id=upload_id, published=True, embargo_length=0)
+
+    num_entries = 10  # A number large enough to trigger batching
+
+    for i in range(num_entries):
+        data.create_entry(
+            upload_id=upload_id,
+            entry_id=f'test_entry_id_{i}',
+        )
+
+    # Call the index function, which should now handle batching internally
+    from nomad import search
+    from nomad.metainfo import elasticsearch_extension
+
+    with patch(
+        'nomad.metainfo.elasticsearch_extension._generate_entry_batches',
+        wraps=elasticsearch_extension._generate_entry_batches,
+    ) as mock_generate_entry_batches:
+        search.index(list(data.archives.values()), refresh=True)
+        assert mock_generate_entry_batches.called
+
+    # Verify that all entries are indexed
+    results = search.search(owner='all', query={'upload_id': upload_id})
+
+    assert results.pagination.total == num_entries
+
+    for i in range(num_entries):
+        entry_id = f'test_entry_id_{i}'
+
+        assert search.entry_index.get(id=entry_id) is not None
 
 
 @pytest.mark.parametrize(

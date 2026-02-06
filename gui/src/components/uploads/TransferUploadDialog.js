@@ -224,7 +224,7 @@ const TransferUploadDialog = ({ open, setOpen }) => {
                 size="small"
                 heading="Access Token Help"
                 text={`
-The access token is a temporary credential used to securely authorize the publish action to an external OASIS${oasis ? ' or the central NOMAD' : ''}. It is generated using the authenticated user's credentials, ensuring that the upload is performed on behalf of that specific user. Check the [documentation](https://nomad-lab.eu/prod/v1/docs/howto/programmatic/api.html#authentication) to know how to get an access token from the transfer target.
+The access token is a temporary credential used to securely authorize the publish action to an external OASIS${oasis ? ' or the central NOMAD' : ''}. It is generated using the authenticated user's credentials, ensuring that the upload is performed on behalf of that specific user. Check the [documentation](https://nomad-lab.eu/prod/v1/docs/howto/manage/program/api.html#authentication) to know how to get an access token from the transfer target.
 `}
               />
             </Tooltip>

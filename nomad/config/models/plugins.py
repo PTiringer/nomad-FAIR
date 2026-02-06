@@ -16,16 +16,16 @@
 # limitations under the License.
 #
 
-import importlib
 import os
+import re
 import shutil
-import sys
 from typing import TYPE_CHECKING, Literal, Union, cast
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from nomad.actions.shared.constant import TaskQueue
 from nomad.common import download_file, get_package_path, is_safe_relative_path, is_url
+from nomad.config.models.north import NORTHTool
 
 from .common import Options
 from .ui import App
@@ -48,11 +48,35 @@ class EntryPoint(BaseModel):
         None,
         description='Unique identifier corresponding to the entry point name. Automatically set to the plugin entry point name in pyproject.toml.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
+    id_url_safe: str | None = Field(
+        None,
+        description="""URL-safe identifier for the plugin entry point. If no custom name
+        is provided, one is automatically generated from the entry point id. Any custom
+        identifier is checked for URL-safety and for collisions with other entry points
+        with the same type within the same NOMAD deployment.""",
+    )
+
+    @field_validator('id_url_safe')
+    @classmethod
+    def validate_url_safe(cls, v: str | None) -> str | None:
+        """Validates that id_url_safe is URL-safe.
+
+        A URL-safe identifier contains only lowercase alphanumeric characters, dots,
+        underscores, tildes, percent-encoded symbols or hyphens.
+        """
+        if v is not None and not re.match(r'^[a-zA-Z0-9\.~%_-]*$', v):
+            raise ValueError(
+                f'id_url_safe "{v}" is not URL-safe. URL-safe identifiers must contain '
+                'only letters, numbers, underscores, percent-encoded characters, tildes '
+                'and hyphens.'
+            )
+        return v
+
     entry_point_type: str = Field(
         description='Determines the entry point type.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
     name: str | None = Field(None, description='Name of the plugin entry point.')
     description: str | None = Field(
         None, description='A human readable description of the plugin entry point.'
@@ -61,7 +85,7 @@ class EntryPoint(BaseModel):
         None,
         description='The plugin package from which this entry points comes from.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
 
     def dict_safe(self):
         """Used to serialize the non-confidential parts of a plugin model. This
@@ -79,7 +103,7 @@ class AppEntryPoint(EntryPoint):
         'app',
         description='Determines the entry point type.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
     app: App = Field(description='The app configuration.')
 
     def dict_safe(self):
@@ -95,7 +119,7 @@ class SchemaPackageEntryPoint(EntryPoint):
         'schema_package',
         description='Specifies the entry point type.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
 
     def load(self) -> 'SchemaPackage':
         """Used to lazy-load a schema package instance. You should override this
@@ -111,7 +135,7 @@ class NormalizerEntryPoint(EntryPoint):
         'normalizer',
         description='Determines the entry point type.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
     level: int = Field(
         0,
         description="""
@@ -135,7 +159,7 @@ class ParserEntryPoint(EntryPoint):
         'parser',
         description='Determines the entry point type.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
     level: int = Field(
         0,
         description="""
@@ -193,7 +217,32 @@ class ParserEntryPoint(EntryPoint):
     mainfile_contents_dict: dict | None = Field(
         None,
         description="""
-        Is used to match structured data files like JSON or HDF5.
+        Used to check the contents of structured data files like JSON, HDF5 or
+        csv/excel files. Parser will match the file if the dictionary provided matches
+        the contents of the file. One can also use the following reserved keys for
+        special queries:
+
+            - `__has_key: str`
+
+                Plain string or regular expression of a key in the data to match
+
+            - `__has_all_keys: list[str]`
+
+                List of keys that must be present in the data to match
+
+            - `__has_only_keys: list[str]`
+
+                List of keys that must exclusively be present in the data
+
+            - `__has_comment: str` (only for csv/xlsx files)
+
+                Comments that are ignored, must be at the top level of the dictionary
+
+        In case of a csv/excel file for example, one can set this attribute to
+        `{'__has_all_keys': [<column names>]}` in order to check if certain columns
+        exist in a given sheet. Also in order to check if a certain
+        sheet name with specific column names exist, one may set this attribute to:
+        `{'<sheet name>': {'__has_all_keys': [<column names>]}}`.
     """,
     )
     supported_compressions: list[str] = Field(
@@ -280,7 +329,7 @@ class ExampleUploadEntryPoint(EntryPoint):
         'example_upload',
         description='Determines the entry point type.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
     category: str | None = Field(description='Category for the example upload.')
     title: str | None = Field(description='Title of the example upload.')
     description: str | None = Field(
@@ -304,7 +353,7 @@ class ExampleUploadEntryPoint(EntryPoint):
         False,
         description='Whether this example upload should be read from the "examples" directory.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
 
     def get_package_path(self):
         """Once all built-in example uploads have been removed, this function
@@ -462,7 +511,7 @@ class APIEntryPoint(EntryPoint):
         'api',
         description='Specifies the entry point type.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
 
     prefix: str | None = Field(
         None,
@@ -502,7 +551,7 @@ class ActionEntryPoint(EntryPoint):
         'action',
         description='Determines the entry point type.',
         json_schema_extra={'hidden': True},
-    )  # type: ignore[call-overload]
+    )
     task_queue: str = Field(
         default=TaskQueue.CPU, description='Determines the task queue for this action'
     )
@@ -553,219 +602,26 @@ class PluginBase(BaseModel):
         )
 
 
-class PythonPluginBase(PluginBase):
-    """
-    A base model for NOMAD plugins that are implemented in Python.
-    """
+class NorthToolEntryPoint(EntryPoint):
+    """Base model for NORTH tool plugin entry points."""
 
-    python_package: str = Field(
-        description="""
-        Name of the python package that contains the plugin code and a
-        plugin metadata file called `nomad_plugin.yaml`.
-    """
+    entry_point_type: Literal['north_tool'] = Field(
+        'north_tool',
+        description='Determines the entry point type.',
+        json_schema_extra={'hidden': True},
     )
+    north_tool: NORTHTool
 
-    def import_python_package(self):
-        if not self.python_package:
-            raise ValueError('Python plugins must provide a python_package.')
-        importlib.import_module(self.python_package)
+    def load(self) -> NORTHTool:
+        return self.north_tool
 
-
-class Schema(PythonPluginBase):
-    """
-    A Schema describes a NOMAD Python schema that can be loaded as a plugin.
-    """
-
-    package_path: str | None = Field(
-        None,
-        description='Path of the plugin package. Will be determined using python_package if not explicitly defined.',
-    )
-    key: str | None = Field(None, description='Key used to identify this plugin.')
-    plugin_type: Literal['schema'] = Field(
-        'schema',
-        description="""
-        The type of the plugin. This has to be the string `schema` for schema plugins.
-    """,
-    )
-
-
-class Normalizer(PythonPluginBase):
-    """
-    A Normalizer describes a NOMAD normalizer that can be loaded as a plugin.
-    """
-
-    normalizer_class_name: str = Field(
-        description="""
-        The fully qualified name of the Python class that implements the normalizer.
-        This class must have a function `def normalize(self, logger)`.
-    """
-    )
-    plugin_type: Literal['normalizer'] = Field(
-        'normalizer',
-        description="""
-        The type of the plugin. This has to be the string `normalizer` for normalizer plugins.
-    """,
-    )
-
-
-class Parser(PythonPluginBase):
-    """
-    A Parser describes a NOMAD parser that can be loaded as a plugin.
-
-    The parser itself is referenced via `python_name`. For Parser instances `python_name`
-    must refer to a Python class that has a `parse` function. The other properties are
-    used to create a `MatchingParserInterface`. This comprises general metadata that
-    allows users to understand what the parser is, and metadata used to decide if a
-    given file "matches" the parser.
-    """
-
-    # TODO the nomad_plugin.yaml for each parser needs some cleanup. The way parser metadata
-    #      is presented in the UIs should be rewritten
-    # TODO ideally we can somehow load parser plugin models lazily. Right now importing
-    #      config will open all `nomad_plugin.yaml` files. But at least there is no python import
-    #      happening.
-    # TODO this should fully replace MatchingParserInterface
-    # TODO most actual parser do not implement any abstract class. The Parser class has an
-    #      abstract is_mainfile, which does not allow to separate parser implementation and plugin
-    #      definition.
-
-    plugin_type: Literal['parser'] = Field(
-        'parser',
-        description="""
-        The type of the plugin. This has to be the string `parser` for parser plugins.
-        """,
-    )
-    parser_class_name: str = Field(
-        description="""
-        The fully qualified name of the Python class that implements the parser.
-        This class must have a function `def parse(self, mainfile, archive, logger)`.
-        """
-    )
-    parser_as_interface: bool = Field(
-        False,
-        description="""
-        By default the parser metadata from this config (and the loaded nomad_plugin.yaml)
-        is used to instantiate a parser interface that is lazy loading the actual parser
-        and performs the mainfile matching. If the parser interface matching
-        based on parser metadata is not sufficient and you implemented your own
-        is_mainfile parser method, this setting can be used to use the given
-        parser class directly for parsing and matching.
-        """,
-    )
-    mainfile_contents_re: str | None = Field(
-        None,
-        description="""
-        A regular expression that is applied the content of a potential mainfile.
-        If this expression is given, the parser is only considered for a file, if the
-        expression matches.
-        """,
-    )
-    mainfile_name_re: str = Field(
-        r'.*',
-        description="""
-        A regular expression that is applied the name of a potential mainfile.
-        If this expression is given, the parser is only considered for a file, if the
-        expression matches.
-        """,
-    )
-    mainfile_mime_re: str = Field(
-        r'text/.*',
-        description="""
-        A regular expression that is applied the mime type of a potential mainfile.
-        If this expression is given, the parser is only considered for a file, if the
-        expression matches.
-        """,
-    )
-    mainfile_binary_header: bytes | None = Field(
-        None,
-        description="""
-        Matches a binary file if the given bytes are included in the file.
-        """,
-    )
-    mainfile_binary_header_re: bytes | None = Field(
-        None,
-        description="""
-        Matches a binary file if the given binary regular expression bytes matches the
-        file contents.
-        """,
-    )
-    mainfile_alternative: bool = Field(
-        False,
-        description="""
-        If True, the parser only matches a file, if no other file in the same directory
-        matches a parser.
-        """,
-    )
-    mainfile_contents_dict: dict | None = Field(
-        None,
-        description="""
-        Is used to match structured data files like JSON, HDF5 or csv/excel files. In case of a csv/excel file
-        for example, in order to check if certain columns exist in a given sheet, one can set this attribute to
-        `'__has_all_keys': [<column names>]`. In case the csv/excel file contains comments that
-        are supposed to be ignored, use this reserved key-value pair
-        `'__has_comment': '<symbol>'` at the top level of the dictionary. Also in order to check if a certain
-        sheet name with specific column names exist, one may set this attribute to:
-        {'<sheet name>': {'__has_all_keys': [<column names>]}}.
-        Available options are:
-        <i>__has_key: str<i>
-        <i>__has_all_keys: List[str]<i>
-        <i>__has_only_keys: List[str]<i>
-        <i>__has_comment: str<i> (only for csv/xlsx files)
-        """,
-    )
-    supported_compressions: list[str] = Field(
-        [],
-        description="""
-        Files compressed with the given formats (e.g. xz, gz) are uncompressed and
-        matched like normal files.
-        """,
-    )
-    domain: str = Field(
-        'dft',
-        description="""
-        The domain value `dft` will apply all normalizers for atomistic codes. Deprecated.
-        """,
-    )
-    level: int = Field(
-        0,
-        description="""
-        The order by which the parser is executed with respect to other parsers.
-        """,
-    )
-    code_name: str | None = None
-    code_homepage: str | None = None
-    code_category: str | None = None
-    metadata: dict | None = Field(
-        None,
-        description="""
-        Metadata passed to the UI. Deprecated.""",
-    )
-
-    def create_matching_parser_interface(self):
-        if self.parser_as_interface:
-            from nomad.parsing.parser import import_class
-
-            Parser = import_class(self.parser_class_name)
-            return Parser()
-
-        from nomad.parsing.parser import MatchingParserInterface
-
-        data = self.model_dump()
-        del data['id']
-        del data['description']
-        del data['python_package']
-        del data['plugin_type']
-        del data['parser_as_interface']
-        del data['plugin_source_code_url']
-        del data['plugin_documentation_url']
-
-        return MatchingParserInterface(**data)
+    def dict_safe(self):
+        return self.model_dump(
+            include=NorthToolEntryPoint.model_fields.keys(), exclude_none=True
+        )
 
 
 EntryPointType = Union[  # noqa
-    Schema,
-    Normalizer,
-    Parser,
     SchemaPackageEntryPoint,
     ParserEntryPoint,
     NormalizerEntryPoint,
@@ -773,6 +629,7 @@ EntryPointType = Union[  # noqa
     ExampleUploadEntryPoint,
     APIEntryPoint,
     ActionEntryPoint,
+    NorthToolEntryPoint,
 ]
 
 
@@ -819,62 +676,3 @@ class Plugins(BaseModel):
         used as a key. This is autogenerated and should not be modified.
         """
     )
-
-
-def add_plugin(plugin: Schema) -> None:
-    """Function for dynamically adding a plugin."""
-    from nomad.config import config
-    from nomad.metainfo.elasticsearch_extension import entry_type
-
-    if plugin.package_path not in sys.path:
-        sys.path.insert(0, plugin.package_path)
-
-    # Add plugin to config
-    if (
-        config.plugins is not None
-        and config.plugins.entry_points is not None
-        and config.plugins.entry_points.options is not None
-        and plugin.key is not None
-    ):
-        config.plugins.entry_points.options[plugin.key] = plugin
-
-    # Add plugin to Package registry
-    package = importlib.import_module(plugin.python_package)
-    package.m_package.__init_metainfo__()  # type: ignore
-
-    # Reload the dynamic quantities so that API is aware of the plugin
-    # quantities.
-    entry_type.reload_quantities_dynamic()
-
-
-def remove_plugin(plugin) -> None:
-    """Function for removing a plugin."""
-    from nomad.config import config
-    from nomad.metainfo import Package
-    from nomad.metainfo.elasticsearch_extension import entry_type
-
-    # Remove from path
-    try:
-        sys.path.remove(plugin.package_path)
-    except Exception:
-        pass
-
-    # Remove package as plugin
-    if (
-        config.plugins is not None
-        and config.plugins.entry_points is not None
-        and config.plugins.entry_points.options is not None
-        and plugin.key is not None
-    ):
-        del config.plugins.entry_points.options[plugin.key]
-
-    # Remove plugin from Package registry
-    package = importlib.import_module(plugin.python_package).m_package  # type: ignore
-    for key, i_package in Package.registry.items():
-        if i_package is package:
-            del Package.registry[key]
-            break
-
-    # Reload the dynamic quantities so that API is aware of the plugin
-    # quantities.
-    entry_type.reload_quantities_dynamic()

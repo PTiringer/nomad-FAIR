@@ -30,6 +30,7 @@ from nomad.app.v1.utils import create_responses
 from nomad.config import config
 from nomad.config.models.plugins import AppEntryPoint
 from nomad.config.models.ui import (
+    App,
     Menu,
     MenuItemHistogram,
     MenuItemNestedObject,
@@ -58,7 +59,7 @@ _bad_app_not_found = (
     },
 )
 _bad_search_quantity_parse = (
-    status.HTTP_422_UNPROCESSABLE_ENTITY,
+    status.HTTP_422_UNPROCESSABLE_CONTENT,
     {
         'model': HTTPExceptionModel,
         'description': 'Could not load or parse the requested search quantity.',
@@ -82,7 +83,7 @@ _init_lock = Lock()
 _initialized = False
 
 
-class DataType(Enum):
+class DataType(str, Enum):
     INT = 'int'
     FLOAT = 'float'
     TIMESTAMP = 'timestamp'
@@ -385,7 +386,7 @@ def match_search_quantities(
     filtered = [
         sq
         for sq in search_quantities
-        if (dtypes is None or sq.dtype in dtypes)
+        if (dtypes is None or (sq.dtype.value if sq.dtype else None) in dtypes)
         and (query.aggregatable is None or query.aggregatable == sq.aggregatable)
         and (input_norm is None or input_norm in sq.quantity_normalized)
     ]
@@ -461,15 +462,14 @@ async def get_entry_points():
     return {'data': apps}
 
 
-def _build_app_response(entry_point: AppEntryPoint) -> dict[str, Any]:
+def _build_app_response(app: App) -> dict[str, Any]:
     search_quantities: dict[str, Any] = {}
-    app = entry_point.app
 
     def add_jmespath(name: str, location: str | None = None):
         data = parse_jmespath(name)
         if data['error']:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=f'Could not parse the app search quantity "{name}" used in {location}. Please verify that any JMESPath expressions are valid. Error: {data["error"]}',
             )
         for q in [data['quantity']] + data['extras']:
@@ -487,7 +487,7 @@ def _build_app_response(entry_point: AppEntryPoint) -> dict[str, Any]:
         sq = all_search_quantities.get(name)
         if sq is None:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=f'Could not load the app search quantity "{name}" used in {location}. Please check for typos and ensure that the corresponding schema package is installed and contains the requested definition. Note that currently only scalar quantities can be used in the apps, and data from e.g. lists or matrices cannot be accessed.',
             )
         search_quantities[name] = sq.model_dump()
@@ -552,7 +552,7 @@ def _build_app_response(entry_point: AppEntryPoint) -> dict[str, Any]:
         add_search(key, 'filters_locked')
 
     return {
-        'app': entry_point.app.model_dump(),
+        'app': app.model_dump(),
         'search_quantities': search_quantities,
     }
 
@@ -579,9 +579,26 @@ async def get_entry_point(app_path: str):
 
     # Check the cache, if not found populate it
     if app_path not in app_cache:
-        app_cache[app_path] = _build_app_response(entry_point)
+        app_cache[app_path] = _build_app_response(entry_point.app)
 
     return app_cache[app_path]
+
+
+@router.post(
+    '/validate',
+    tags=[APITag.DEFAULT],
+    summary='Validate an app setup',
+    response_model=dict[str, Any],
+    response_model_exclude_none=True,
+    responses=create_responses(_bad_search_quantity_parse),
+)
+async def validate(app: App):
+    """Validates the given app configuration and return the validated version together
+    with the search quantities that are used in it.
+    """
+    initialize_search_quantities()
+
+    return _build_app_response(app)
 
 
 @router.post(

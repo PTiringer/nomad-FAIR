@@ -959,15 +959,22 @@ InheritingSections.propTypes = ({
 
 export function getAllVisibleProperties(sectionDef) {
   const properties = sectionDef?.m_annotations?.eln?.[0]?.properties
+  const display = sectionDef?.m_annotations?.display?.[0]
   const hide = sectionDef?.m_annotations?.eln?.[0]?.hide || []
   const allProperties = sectionDef._allProperties?.map(property => property.name)
   const visible = getOptions(properties?.visible, allProperties)
   const editable = getOptions(properties?.editable, allProperties)
   let filteredProperties = sectionDef._allProperties
   filteredProperties = filteredProperties.filter(property => visible.includes(property.name))
-  filteredProperties = filteredProperties.filter(property => !hide.includes(property.name))
-  const order = properties?.order || []
-  const visibleProperties = filteredProperties.map(property => ({...property, _isEditable: editable.includes(property.name)}))
+  filteredProperties = filteredProperties.filter(property => !(hide.includes(property.name) || property?.m_annotations?.display?.[0]?.visible === false))
+  const order = properties?.order || display?.order || []
+  const visibleProperties = filteredProperties.map(property => {
+    if (properties?.editable) {
+      return {...property, _isEditable: editable.includes(property.name)}
+    } else {
+      return {...property, _isEditable: property?.m_annotations?.display?.[0]?.editable !== false}
+    }
+  })
   const reversedOrder = [...order].reverse()
   visibleProperties.sort((a, b) => reversedOrder.indexOf(b.name) - reversedOrder.indexOf(a.name) || a.m_parent_index - b.m_parent_index)
   const quantities = visibleProperties.filter(property => property.m_parent_sub_section === "quantities")

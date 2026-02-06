@@ -157,6 +157,9 @@ class ExampleData:
         if entry_archive is None:
             entry_archive = EntryArchive()
 
+        entry_metadata = entry_archive.m_setdefault('metadata')
+        entry_metadata.m_update(entry_id=entry_id, upload_id=upload_id)
+
         mainfile_path = os.path.abspath(mainfile)
         parser, _ = parsers.match_parser(
             mainfile_path, strict=True, parser_name=parser_name
@@ -169,21 +172,15 @@ class ExampleData:
         assert parser is not None, f'there is no parser matching {mainfile}'
         parser.parse(mainfile=mainfile, archive=entry_archive)
 
-        entry_metadata = entry_archive.metadata
-        if entry_metadata is None:
-            entry_metadata = entry_archive.m_create(EntryMetadata)
-
         entry_metadata.m_update(
-            entry_id=entry_id,
-            upload_id=upload_id,
             mainfile=mainfile,
             entry_hash='dummy_hash_' + entry_id,
             domain='dft',
             entry_create_time=self._next_time_stamp(),
             processed=True,
             parser_name=parser_name,
+            **self.entry_defaults,
         )
-        entry_metadata.m_update(**self.entry_defaults)
 
         for normalizer_class in normalizers:
             normalizer = normalizer_class(entry_archive)
@@ -236,7 +233,7 @@ class ExampleData:
         archive: dict | None = None,
         **kwargs,
     ) -> EntryArchive:
-        assert upload_id in self.uploads, 'Must create the upload first'
+        assert upload_id in self.uploads, f'Must create the upload {upload_id} first'
         upload_dict = self.uploads[upload_id]
 
         if entry_id is None:

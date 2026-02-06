@@ -26,7 +26,11 @@ const NorthLaunchButton = React.memo(function NorthLaunchButton({tools, ...props
   const northTools = useTools()
   const toolsData = Object.keys(northTools)
     .filter(tool => tools.includes(tool))
-    .map(key => ({name: key, title: key, ...northTools[key]}))
+    .map(key => ({
+      name: northTools[key].id_url_safe,
+      title: northTools[key].north_tool.display_name,
+      ...northTools[key].north_tool
+    }))
 
   if (toolsData.length === 0) {
     return null

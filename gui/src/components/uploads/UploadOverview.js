@@ -35,7 +35,7 @@ import SendIcon from '@material-ui/icons/Send'
 import PropTypes from 'prop-types'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { appBase, temporalProcessingEnabled } from '../../config'
+import {appBase} from '../../config'
 import { formatTimestamp } from '../../utils'
 import { CodeList } from '../About'
 import { useDataStore } from "../DataStore"
@@ -480,14 +480,14 @@ function UploadOverview(props) {
                 </IconButton>
               </span>
             </Tooltip>
-            {temporalProcessingEnabled &&
-              <Tooltip title="Stop processing">
-                <span>
-                  <IconButton disabled={isPublished || !isWriter || upload.process_status !== 'PENDING'} onClick={handleStopProcessing} data-testid='upload-stop-processing-action'>
-                    <StopIcon />
-                  </IconButton>
-                </span>
-              </Tooltip>}
+            <Tooltip title="Stop processing">
+              <span>
+                <IconButton disabled={isPublished || !isWriter || upload.process_status !== 'PENDING'}
+                            onClick={handleStopProcessing} data-testid='upload-stop-processing-action'>
+                  <StopIcon/>
+                </IconButton>
+              </span>
+            </Tooltip>
             <Tooltip title={isPublished ? "Transfer upload" : "The upload must be published before it can be transferred"}>
               <span>
                 <IconButton disabled={!isPublished} onClick={() => setOpenTransferDialog(true)}>

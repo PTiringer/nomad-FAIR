@@ -1,6 +1,6 @@
 import asyncio
 from enum import Enum
-from typing import Final
+from typing import Annotated, Final
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi_cache.decorator import cache
@@ -20,7 +20,7 @@ from nomad.actions.manager import (
     validate_action_arg,
 )
 from nomad.app.v1.models import User
-from nomad.app.v1.routers.auth import create_user_dependency
+from nomad.app.v1.routers.auth import get_current_user
 from nomad.utils import strip
 
 from ..models import HTTPExceptionModel, User
@@ -49,7 +49,7 @@ SCHEMA_CACHE_TTL: Final[int] = 1 * 24 * 60 * 60  # 1 day in seconds
 async def action_start(
     action_id: str,
     start_data: ActionStart,
-    user: User = Depends(create_user_dependency(required=True)),
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """
     Starts a new action.
@@ -83,7 +83,7 @@ async def action_start(
 )
 async def action_stop(
     action_instance_id: str,
-    user: User = Depends(create_user_dependency(required=True)),
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """
     Stops an action.
@@ -112,7 +112,8 @@ async def action_stop(
     description='Retrieves the current status of a specific action instance.',
 )
 async def action_status(
-    action_instance_id: str, user: User = Depends(create_user_dependency(required=True))
+    action_instance_id: str,
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """
     Gets the status of an action.
@@ -144,7 +145,8 @@ async def action_status(
     description='Retrieves the result of a specific action instance.',
 )
 async def action_result(
-    action_instance_id: str, user: User = Depends(create_user_dependency(required=True))
+    action_instance_id: str,
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """
     Gets the result of an action.
@@ -178,7 +180,7 @@ async def action_result(
 )
 @cache(expire=SCHEMA_CACHE_TTL)
 async def action_input_schemas(
-    user: User = Depends(create_user_dependency(required=True)),
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """
     Gets the input schemas for all available actions.
@@ -221,7 +223,7 @@ _not_authorized = (
 )
 async def action(
     action_instance_id: str,
-    user: User = Depends(create_user_dependency(required=True)),
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """
     Gets a specific action for the authenticated user.
@@ -259,7 +261,7 @@ async def action(
     response_model_exclude_none=True,
 )
 async def actions(
-    user: User = Depends(create_user_dependency(required=True)),
+    user: Annotated[User, Depends(get_current_user(required=True))],
 ):
     """
     Lists all actions for the authenticated user.

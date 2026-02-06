@@ -19,7 +19,6 @@
 import importlib
 import json
 import os
-import os.path
 import re
 from abc import ABCMeta, abstractmethod
 from collections.abc import Iterable
@@ -301,15 +300,43 @@ class MatchingParser(Parser):
                 return False
 
             directory = os.path.dirname(filename)
-            for sibling in self._ls(directory):
+            basename = os.path.basename(filename)
+            siblings = [
+                s
+                for s in self._ls(directory)
+                if s != basename and os.path.isfile(os.path.join(directory, s))
+            ]
+            matched_siblings = []
+            for sibling in siblings:
                 sibling = os.path.join(directory, sibling)
                 sibling_is_mainfile = (
-                    sibling != filename
-                    and self._mainfile_name_re.fullmatch(sibling) is not None
-                    and os.path.isfile(sibling)
+                    self._mainfile_name_re.fullmatch(sibling) is not None
                 )
                 if sibling_is_mainfile:
-                    return False
+                    # not mainfile if sibling matches current basename
+                    sibling_basename = os.path.basename(sibling)
+                    if sibling_basename.rsplit('.', 1)[0] == basename.rsplit('.', 1)[0]:
+                        return False
+                    matched_siblings.append(
+                        len(
+                            [
+                                s
+                                for s in siblings
+                                if s != sibling_basename
+                                and sibling_basename.rsplit('.', 1)[0]
+                                == s.rsplit('.', 1)[0]
+                            ]
+                        )
+                        > 0
+                    )
+
+            # not mainfile if there are no other files with the same basename as any
+            # of the mainfile siblings
+            # e.g. for primary .out files with secondary .xml files:
+            #     main.out main.xml aux.out another.xml
+            # only main.out, aux.out and another.xml should match
+            if matched_siblings and True not in matched_siblings:
+                return False
 
         if self._mainfile_contents_dict is not None:
             import h5py
@@ -359,6 +386,12 @@ class MatchingParser(Parser):
                 and not re.match(r'.+\.(?:csv|xlsx?)$', filename)
             ):
                 try:
+                    if filename.endswith('.son'):
+                        with open(filename) as f:
+                            text = re.search(r'([\s\S]+?)[\-\=]{3}', f.read())
+                        is_match = match(
+                            self._mainfile_contents_dict, json.loads(text.group(1))
+                        )
                     is_match = match(
                         self._mainfile_contents_dict, json.load(open(filename))
                     )

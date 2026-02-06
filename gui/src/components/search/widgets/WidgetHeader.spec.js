@@ -23,13 +23,17 @@ test.each([
   [
     'label without unit',
     { quantity: 'results.material.n_elements' },
-    { quantity: 'results.material.n_elements' }
+    {
+      quantity: 'results.material.n_elements',
+      label: 'N elements'
+    }
   ],
   [
     'label with unit',
     { quantity: 'results.method.simulation.dft.hubbard_kanamori_model.u_effective'},
     {
       quantity: 'results.method.simulation.dft.hubbard_kanamori_model.u_effective',
+      label: 'U effective',
       unit: 'eV'
     }
   ],
@@ -45,7 +49,7 @@ test.each([
 ])('%s', async (name, input, output) => {
     renderSearchEntry(<WidgetHeader id="0" {...input}/>)
     await expectFilterTitle(
-      output.quantity,
+      undefined,
       output.label,
       output.description,
       output.unit,

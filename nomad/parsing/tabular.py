@@ -195,7 +195,13 @@ class TableData(ArchiveSection):
                             and getattr(self, quantity_name) is None
                             and quantity.m_get_annotations('tabular') is not None
                         ):
-                            col_data = quantity.m_get_annotations('tabular').name
+                            tab = (
+                                quantity.m_get_annotations('tabular', as_list=True)
+                                or []
+                            )
+                            if not tab or tab[0] is None:
+                                continue
+                            col_data = tab[0].name
                             if '/' in col_data:
                                 # extract the sheet & col names if there is a '/' in the 'name'
                                 sheet_name, col_name = col_data.split('/')
@@ -221,6 +227,11 @@ class TableData(ArchiveSection):
                                     )
                                 except Exception:
                                     continue
+                    if column_sections and root_mapping['root'] in column_sections:
+                        parse_columns(data, self)
+                        column_sections = [
+                            s for s in column_sections if s != root_mapping['root']
+                        ]
                     if column_sections:
                         _parse_column_mode(self, column_sections, data, logger=logger)
                     if row_sections:

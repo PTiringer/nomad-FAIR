@@ -782,7 +782,7 @@ class Substance(System):
     lab_id = Quantity(
         type=str,
         description="""
-        A human human readable substance ID that is at least unique for the lab.
+        A human readable substance ID that is at least unique for the lab.
         """,
         a_eln=dict(component='StringEditQuantity', label='substance ID'),
     )

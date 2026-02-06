@@ -135,7 +135,7 @@ class DisplayAnnotation(BaseModel):
     """The display settings defined by an include list or an exclude list of the quantities and subsections."""
 
     visible: Filter | None = Field(  # type: ignore
-        1,
+        None,
         description=strip(
             """
             Defines the visible quantities and subsections.
@@ -152,14 +152,14 @@ class DisplayAnnotation(BaseModel):
     )
 
 
-class QuantityDisplayAnnotation(DisplayAnnotation):
+class QuantityDisplayAnnotation(BaseModel):
     """
     This annotations control how quantities are displayed in the GUI. Use the
     key `display` to add this annotation. For example in Python:
 
     ```python
     class Example(EntryData):
-        sample_weight = Quantity(type=float, unit='g', a_display={'unit': 'kg'})
+        sample_weight = Quantity(type=float, unit='g', a_display={'unit': 'kg', 'editable': False})
     ```
 
     or in YAML:
@@ -173,9 +173,27 @@ class QuantityDisplayAnnotation(DisplayAnnotation):
             m_annotations:
               display:
                 unit: kg
+                visible: true
+                editable: false
     ```
     """
 
+    visible: bool | None = Field(  # type: ignore
+        None,
+        description=strip(
+            """
+            Defines the visibility of a quantity.
+        """
+        ),
+    )
+    editable: bool | None = Field(
+        None,
+        description=strip(
+            """
+            Defines the editablity of a quantity.
+        """
+        ),
+    )
     unit: str | None = Field(
         None,
         description=strip(
@@ -1057,7 +1075,7 @@ class Rule(BaseModel):
     conditions: list[Condition] | None = Field(
         None, description='Conditions to check prior to applying the transformation.'
     )
-    default_value: Any | None = Field(
+    default_value: Any = Field(
         None, description='Default value to set if source is not found.'
     )
     use_rule: str | None = Field(

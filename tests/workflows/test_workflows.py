@@ -136,8 +136,29 @@ def mock_data_layer(monkeypatch):
     # Mock config
     mock_config = Mock()
     mock_reprocess = Mock()
+    mock_temporal_config = Mock()
     mock_reprocess.customize.return_value = {}
+    mock_processing_timeouts = Mock()
+    mock_processing_timeouts.internal_processing_heartbeat_timeout = 30
+    mock_processing_timeouts.delete_upload_timeout = 7200
+    mock_processing_timeouts.process_entry_timeout = 7200
+    mock_processing_timeouts.process_upload_timeout = 7200
+    mock_processing_timeouts.edit_upload_metadata_timeout = 7200
+    mock_processing_timeouts.import_bundle_timeout = 7200
+    mock_processing_timeouts.publish_upload_timeout = 7200
+    mock_processing_timeouts.publish_externally_timeout = 7200
+    mock_processing_timeouts.process_example_upload_timeout = 7200
+    mock_processing_timeouts.setup_upload_timeout = 7200
+    mock_processing_timeouts.update_files_timeout = 7200
+    mock_processing_timeouts.match_all_timeout = 7200
+    mock_processing_timeouts.next_level_entries_timeout = 7200
+    mock_processing_timeouts.cleanup_timeout = 7200
+    mock_processing_timeouts.process_upload_success_timeout = 7200
+    mock_processing_timeouts.remove_workflow_id_timeout = 7200
+    mock_processing_timeouts.cleanup_workflow_tmp_dir_timeout = 7200
+    mock_temporal_config.processing_timeouts = mock_processing_timeouts
     mock_config.reprocess = mock_reprocess
+    mock_config.temporal = mock_temporal_config
     monkeypatch.setattr('nomad.config.config', mock_config)
 
     return {
@@ -151,6 +172,7 @@ def mock_data_layer(monkeypatch):
         'public_files': mock_public_files,
         'public_files_instance': mock_public_files_instance,
         'delete_upload': mock_delete_upload,
+        'config': mock_config,
     }
 
 
@@ -249,6 +271,48 @@ class TestProcessEntryWorkflow:
                 == ProcessStatus.SUCCESS
             )
             mock_data_layer['entry_instance'].save.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_heartbeat_timeout(
+        self,
+        mock_data_layer,
+        temporal_worker,
+    ):
+        """Test heartbeat timeout."""
+        import time
+
+        # Set heartbeat timeout to 1 second
+        mock_processing_timeouts = mock_data_layer[
+            'config'
+        ].temporal.processing_timeouts
+        mock_processing_timeouts.internal_processing_heartbeat_timeout = 1
+
+        # Mock the process_entry_activity to sleep for 2 seconds
+        def mock_process_entry_side_effect():
+            time.sleep(2)
+            return 'success'
+
+        entry_instance = mock_data_layer['entry_instance']
+
+        entry_instance._process_entry_local.side_effect = mock_process_entry_side_effect
+
+        async with temporal_worker() as env:
+            input_data = TestFixtures.process_entry_input()
+
+            with pytest.raises(Exception):
+                await env.client.execute_workflow(
+                    'ProcessEntryWorkflow',
+                    input_data,
+                    id='test-heartbeat-timeout-workflow',
+                    task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
+                )
+
+        # Verify that handle_heartbeat_failure_activity was called
+        entry_instance.process_status = ProcessStatus.FAILURE
+        entry_instance.errors = [
+            'Process entry failed due to a heartbeat timeout. '
+            'If this keeps happening contact NOMAD/ your oasis admin for support.'
+        ]
 
 
 class TestBatchProcessEntriesWorkflow:

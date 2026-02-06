@@ -454,7 +454,7 @@ def test_archive_with_id_in_reference(json_dict, m_def, m_def_id, monkeypatch):
     """
 
     def _fetch_section(self, definition: str, definition_id: str):  # pylint: disable=unused-argument
-        return EntryArchive
+        return EntryArchive.m_def
 
     monkeypatch.setattr('nomad.datamodel.context.Context.fetch_section', _fetch_section)
 
@@ -963,6 +963,7 @@ def test_required_reader_with_remote_reference(
     json_dict,
     remote_reference_required,
     resolve_inplace,
+    elastic_function,
     example_data_with_reference,
     user1,
     entry_id,

@@ -20,7 +20,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from nomad.app.main import app
-from nomad.app.v1.routers.auth import generate_simple_token, generate_upload_token
+from nomad.auth.tokens import generate_simple_token, generate_upload_token
 from nomad.datamodel import User
 
 
@@ -43,10 +43,11 @@ def auth_headers(users_dict):
     The key None contains None.
     """
     headers = {
-        label: create_auth_header(user.user_id) for label, user in users_dict.items()
+        label: create_auth_header(token=user.user_id)
+        for label, user in users_dict.items()
     }
     headers['empty'] = {}
-    headers['invalid'] = create_auth_header('invalid.bearer.token')
+    headers['invalid'] = create_auth_header(token='invalid.bearer.token')
     headers[None] = None
     return headers
 

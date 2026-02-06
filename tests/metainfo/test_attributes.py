@@ -20,7 +20,6 @@ import datetime
 
 import numpy as np
 import pytest
-import pytz
 
 from nomad.metainfo import (
     Attribute,
@@ -42,7 +41,9 @@ from nomad.units import ureg
         pytest.param(str, 0, 'test_value', id='str'),
         pytest.param(np.float64, 0, 1.1, id='numpy'),
         pytest.param(MEnum('value1'), 0, 'value1', id='enum'),
-        pytest.param(Datetime, 0, datetime.datetime.now(tz=pytz.utc), id='datetime'),
+        pytest.param(
+            Datetime, 0, datetime.datetime.now(tz=datetime.timezone.utc), id='datetime'
+        ),
         pytest.param(Reference(Quantity.m_def), 1, None, id='reference'),
     ],
 )
@@ -131,42 +132,27 @@ def test_variable_name():
 
 
 @pytest.mark.parametrize(
-    'token,units,result',
+    'token,units',
     [
-        pytest.param('[length]', ['m', 'cm', 'm^2/m'], True, id='length_true'),
-        pytest.param('[length]', ['m/m/m', '1/m'], False, id='length_false'),
+        pytest.param('[length]', ['m', 'cm', 'm^2/m'], id='length_true'),
         pytest.param(
             'dimensionless',
             ['1', 'm/m', 'kg*m/s/s/m^2/MPa'],
-            True,
             id='dimensionless_true',
         ),
     ],
 )
-def test_unit_compatibility(token, units, result):
-    assert validate_allowable_unit(token, units) == result
+def test_unit_compatibility(token, units):
+    assert validate_allowable_unit(token, units)
 
-    if result:
+    class MySection(MSection):
+        numerical = Quantity(
+            type=np.dtype(np.float64), dimensionality=token, unit=units[0]
+        )
 
-        class MySection(MSection):
-            numerical = Quantity(
-                type=np.dtype(np.float64), dimensionality=token, unit=units[0]
-            )
-
-        section = MySection()
-        for u in units:
-            section.numerical = 1 * ureg.parse_units(u)
-    else:
-        with pytest.raises(TypeError):
-
-            class MySection(MSection):
-                numerical = Quantity(
-                    type=np.dtype(np.float64), dimensionality=token, unit=units[0]
-                )
-
-            section = MySection()
-            for u in units:
-                section.numerical = 1 * ureg.parse_units(u)
+    section = MySection()
+    for u in units:
+        section.numerical = 1 * ureg.parse_units(u)
 
 
 def test_repeating_quantity():

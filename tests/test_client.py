@@ -141,27 +141,27 @@ async def many_uploads(
     yield
 
 
-@pytest.fixture(scope='module')
-def async_api_v1(monkeysession):
+@pytest.fixture(scope='function')
+def async_api_v1(monkeypatch):
     """
     This fixture provides an HTTP client with AsyncClient that accesses
     the fast api. The patch will redirect all requests to the fast api under test.
     """
     test_client = AsyncClient(app=app)
 
-    monkeysession.setattr(
+    monkeypatch.setattr(
         'nomad.client.archive.ArchiveQuery._fetch_url',
         'http://testserver/api/v1/entries/query',
     )
-    monkeysession.setattr(
+    monkeypatch.setattr(
         'nomad.client.archive.ArchiveQuery._download_url',
         'http://testserver/api/v1/entries/archive/query',
     )
 
-    monkeysession.setattr('httpx.AsyncClient.get', getattr(test_client, 'get'))
-    monkeysession.setattr('httpx.AsyncClient.put', getattr(test_client, 'put'))
-    monkeysession.setattr('httpx.AsyncClient.post', getattr(test_client, 'post'))
-    monkeysession.setattr('httpx.AsyncClient.delete', getattr(test_client, 'delete'))
+    monkeypatch.setattr('httpx.AsyncClient.get', getattr(test_client, 'get'))
+    monkeypatch.setattr('httpx.AsyncClient.put', getattr(test_client, 'put'))
+    monkeypatch.setattr('httpx.AsyncClient.post', getattr(test_client, 'post'))
+    monkeypatch.setattr('httpx.AsyncClient.delete', getattr(test_client, 'delete'))
 
     def mocked_auth_headers(self) -> dict:
         for user in users.values():
@@ -169,7 +169,7 @@ def async_api_v1(monkeysession):
                 return dict(Authorization=f'Bearer {user["user_id"]}')
         return {}
 
-    monkeysession.setattr('nomad.client.api.Auth.headers', mocked_auth_headers)
+    monkeypatch.setattr('nomad.client.api.Auth.headers', mocked_auth_headers)
 
     return test_client
 
@@ -198,7 +198,7 @@ async def test_async_query_basic(async_api_v1, published_wo_user_metadata):
     ],
 )
 async def test_async_query_required(
-    async_api_v1, published_wo_user_metadata, q_required, sub_sections
+    elastic_function, async_api_v1, published_wo_user_metadata, q_required, sub_sections
 ):
     async_query = ArchiveQuery(required=q_required)
 
@@ -206,7 +206,9 @@ async def test_async_query_required(
 
 
 @pytest.mark.asyncio
-async def test_async_query_auth(async_api_v1, published, user2, user1):
+async def test_async_query_auth(
+    elastic_function, async_api_v1, published, user2, user1
+):
     async_query = ArchiveQuery(username=user2.username, password='password')
 
     assert_results(async_query.download(), total=0)
@@ -217,7 +219,9 @@ async def test_async_query_auth(async_api_v1, published, user2, user1):
 
 
 @pytest.mark.asyncio
-async def test_async_query_parallel(async_api_v1, many_uploads, monkeypatch):
+async def test_async_query_parallel(
+    elastic_function, async_api_v1, many_uploads, monkeypatch
+):
     async_query = ArchiveQuery(required=dict(run='*'))
 
     assert_results(async_query.download(), total=4)

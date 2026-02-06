@@ -26,7 +26,7 @@ jest.mock('react-resize-detector', () => {
   }}
 })
 
-describe.only('test custom axis titles', () => {
+describe('test custom axis titles', () => {
   test.each([
     ['no unit', {x: {title: 'My Title', search_quantity: 'results.material.n_elements'}}, 'My Title'],
     ['with unit', {x: {title: 'My Title', search_quantity: 'results.properties.geometry_optimization.final_energy_difference'}}, 'My Title (eV)']

@@ -19,7 +19,7 @@ import React, { useContext, useRef, useState, useCallback, useEffect } from 'rea
 import PropTypes from 'prop-types'
 import { useApi, DoesNotExist } from './api'
 import { useErrors } from './errors'
-import { apiBase, metainfo as currentSystemMetainfoData } from '../config'
+import { apiBase, metainfo as currentSystemMetainfoData, entryPagination } from '../config'
 import { refType, parseNomadUrl, createEntryUrl, systemMetainfoUrl, isUploadVisibleForAll } from '../utils'
 import { getMetainfoFromDefinition, getUrlFromDefinition, Metainfo } from './archive/metainfo'
 import YAML from 'yaml'
@@ -99,7 +99,7 @@ const DataStore = React.memo(({children}) => {
         entries: undefined, // ReadOnly - The last list of entries fetched by the store (when subscribing to an entry page).
         apiData: undefined, // ReadOnly - Object with the last api request and response fetched by the store (when subscribing to an entry page).
         pagination: {
-          page_size: 5, page: 1, order: 'asc', order_by: 'process_status'
+          ...entryPagination, page: 1
         }, // Writeable - Value for pagination to use when an entries page is requested
 
         // ReadOnly - Derived values (computed when calling updateUpload)

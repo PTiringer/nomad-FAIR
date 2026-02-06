@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
@@ -5,33 +6,74 @@ from pydantic_core import PydanticCustomError
 
 from .pagination import Direction, Pagination, PaginationResponse
 
-GROUP_NAME_DESCRIPTION = 'Name of the group.'
-GROUP_MEMBERS_DESCRIPTION = 'User ids of the group members (includes owner).'
+
+class UserGroupMemberRole(Enum):
+    MEMBER = 'member'
+    MAINTAINER = 'maintainer'
+    OWNER = 'owner'
+
+
+class UserGroupMember(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    user_id: str = Field(description='User id of the member.')
+    role: UserGroupMemberRole = Field(
+        default=UserGroupMemberRole.MEMBER,
+        description=f'Role of the member in the group.',
+    )
+
+
+# API models
 
 
 class UserGroupEdit(BaseModel):
+    """
+    Model for creating or editing user groups.
+    To modify members, use the 'members_info' field containing a
+    full list of all members with their user_id and role.
+
+    For backward compatibility, the deprecated 'members' field can be used instead.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
     group_name: (
         Annotated[str, StringConstraints(min_length=1, strip_whitespace=True)] | None
     ) = Field(
         default=None,
-        description=GROUP_NAME_DESCRIPTION,
+        description='Displayed name of the group.',
+    )
+    members_info: list[UserGroupMember] | None = Field(
+        default=None,
+        description='Group members with user_id and role.',
     )
     members: set[str] | None = Field(
-        default=None, description=GROUP_MEMBERS_DESCRIPTION
+        default=None,
+        description='User ids of the group members (includes owner).'
+        " Deprecated: Use 'members_info' instead.",
+        deprecated=True,
     )
 
 
 class UserGroup(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     group_id: str = Field(description='Unique id of the group.')
     group_name: str = Field(
-        default='Default Group Name', description=GROUP_NAME_DESCRIPTION
+        default='Default Group Name', description='Displayed name of the group.'
     )
-    owner: str = Field(description='User id of the group owner.')
+    owner: str = Field(
+        description="User id of the group owner. Mirrored from 'members_info'."
+    )
     members: list[str] = Field(
-        default_factory=list, description=GROUP_MEMBERS_DESCRIPTION
+        default_factory=list,
+        description='User ids of the group members (includes owner).'
+        " Mirrored from 'members_info'.",
     )
-
-    model_config = ConfigDict(from_attributes=True)
+    members_info: list[UserGroupMember] = Field(
+        default_factory=list,
+        description='Group members with user ids and roles.',
+    )
 
 
 class UserGroupResponse(BaseModel):
@@ -44,7 +86,7 @@ class UserGroupQuery(BaseModel):
         None, description='Search groups by their full id (scalar or list).'
     )
     user_id: str | None = Field(
-        None, description="Search groups by their owner's or members' ids."
+        None, description="Search groups by their members' ids."
     )
     search_terms: str | None = Field(
         None, description='Search groups by parts of their name.'

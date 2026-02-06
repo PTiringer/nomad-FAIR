@@ -3,12 +3,13 @@ This is a brief example demonstrating the public nomad@FAIRDI API for doing oper
 that might be necessary to integrate external project data.
 """
 
-import requests
 import os.path
 import time
 
-from nomad.config import config
+import requests
+
 from nomad.client import Auth
+from nomad.config import config
 
 nomad_url = config.client.url
 user = 'youruser'
@@ -35,13 +36,12 @@ while upload['process_running']:
     upload = response.json()['data']
     time.sleep(5)
     print(
-        'processed: %d, failures: %d'
-        % (upload['processed_entries_count'], upload['failed_entries_count'])
+        f'processed: {upload["processed_entries_count"]}, failures: {upload["failed_entries_count"]}'
     )
 
 # check if processing was a success
 if upload['process_status'] != 'SUCCESS':
     print('something went wrong')
-    print('errors: %s' % str(upload.errors))
+    print(f'errors: {str(upload.errors)}')
     # try to delete the unsuccessful upload
     requests.delete(f'{nomad_url}/v1/uploads/{upload["upload_id"]}', auth=auth)

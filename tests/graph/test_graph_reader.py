@@ -25,6 +25,7 @@ import pytest_asyncio
 import yaml
 
 from nomad.datamodel import EntryArchive, ServerContext
+from nomad.datamodel.metainfo.simulation import run
 from nomad.graph.graph_reader import (
     EntryReader,
     FileSystemReader,
@@ -86,19 +87,21 @@ def assert_dict(observed, expected):
     expected.pop('definition_id', None)
     assert set(observed.keys()) == set(expected.keys())
     for k, v in observed.items():
+        if k == 'categories':
+            continue
+        if k == 'upload_files_server_path':
+            continue
         if isinstance(v, LazyWrapper):
             v = v.to_json()
         if isinstance(v, dict):
             assert_dict(v, expected[k])
         elif isinstance(v, list):
             assert_list(v, expected[k])
-        elif k == 'upload_files_server_path':
-            continue
         else:
             assert_time(v, expected[k])
 
 
-user_dict = {
+user1_dict = {
     'name': 'Sheldon Cooper',
     'first_name': 'Sheldon',
     'last_name': 'Cooper',
@@ -107,6 +110,26 @@ user_dict = {
     'username': 'scooper',
     'is_admin': False,
     'is_oasis_admin': True,
+}
+
+user2_dict = {
+    'name': 'Leonard Hofstadter',
+    'first_name': 'Leonard',
+    'last_name': 'Hofstadter',
+    'email': 'leonard.hofstadter@nomad-fairdi.tests.de',
+    'user_id': '00000000-0000-0000-0000-000000000002',
+    'username': 'lhofstadter',
+    'is_admin': False,
+}
+
+user3_dict = {
+    'name': 'Howard Wolowitz',
+    'first_name': 'Howard',
+    'last_name': 'Wolowitz',
+    'email': 'howard.wolowitz@nomad-fairdi.tests.de',
+    'user_id': '00000000-0000-0000-0000-000000000003',
+    'username': 'hwolowitz',
+    'is_admin': False,
 }
 
 
@@ -211,13 +234,14 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                     'upload_id': 'id_published_with_ref',
                     'upload_name': 'name_published',
                     'upload_create_time': '2023-03-05T21:24:22.171000',
-                    'main_author': user_dict,
+                    'description': 'Test Description',
+                    'main_author': user1_dict,
                     'coauthors': [],
                     'reviewers': [],
                     'coauthor_groups': [],
                     'reviewer_groups': [],
-                    'writers': [user_dict],
-                    'viewers': [user_dict],
+                    'writers': [user1_dict],
+                    'viewers': [user1_dict],
                     'writer_groups': [],
                     'viewer_groups': [],
                     'published': False,
@@ -268,13 +292,14 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                     'upload_id': 'id_published_with_ref',
                     'upload_name': 'name_published',
                     'upload_create_time': '2023-03-05T21:30:22.806000',
-                    'main_author': user_dict,
+                    'description': 'Test Description',
+                    'main_author': user1_dict,
                     'coauthors': [],
                     'reviewers': [],
                     'coauthor_groups': [],
                     'reviewer_groups': [],
-                    'writers': [user_dict],
-                    'viewers': [user_dict],
+                    'writers': [user1_dict],
+                    'viewers': [user1_dict],
                     'writer_groups': [],
                     'viewer_groups': [],
                     'published': False,
@@ -472,13 +497,14 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                     'upload_id': 'id_published_with_ref',
                     'upload_name': 'name_published',
                     'upload_create_time': '2023-03-05T21:31:56.872000',
-                    'main_author': user_dict,
+                    'description': 'Test Description',
+                    'main_author': user1_dict,
                     'coauthors': [],
                     'reviewers': [],
                     'coauthor_groups': [],
                     'reviewer_groups': [],
-                    'writers': [user_dict],
-                    'viewers': [user_dict],
+                    'writers': [user1_dict],
+                    'viewers': [user1_dict],
                     'writer_groups': [],
                     'viewer_groups': [],
                     'published': False,
@@ -634,13 +660,14 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                     'upload_id': 'id_published_with_ref',
                     'upload_name': 'name_published',
                     'upload_create_time': '2023-03-05T21:31:56.872000',
-                    'main_author': user_dict,
+                    'description': 'Test Description',
+                    'main_author': user1_dict,
                     'coauthors': [],
                     'reviewers': [],
                     'coauthor_groups': [],
                     'reviewer_groups': [],
-                    'writers': [user_dict],
-                    'viewers': [user_dict],
+                    'writers': [user1_dict],
+                    'viewers': [user1_dict],
                     'writer_groups': [],
                     'viewer_groups': [],
                     'published': False,
@@ -744,13 +771,14 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                                 'upload_id': 'id_published_with_ref',
                                 'upload_name': 'name_published',
                                 'upload_create_time': '2023-03-05T21:31:56.872000',
-                                'main_author': user_dict,
+                                'description': 'Test Description',
+                                'main_author': user1_dict,
                                 'coauthors': [],
                                 'reviewers': [],
                                 'coauthor_groups': [],
                                 'reviewer_groups': [],
-                                'writers': [user_dict],
-                                'viewers': [user_dict],
+                                'writers': [user1_dict],
+                                'viewers': [user1_dict],
                                 'writer_groups': [],
                                 'viewer_groups': [],
                                 'published': False,
@@ -872,13 +900,14 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
             'upload_id': 'id_published_with_ref',
             'upload_name': 'name_published',
             'upload_create_time': '2023-03-05T22:12:08.420000',
-            'main_author': user_dict,
+            'description': 'Test Description',
+            'main_author': user1_dict,
             'coauthors': [],
             'reviewers': [],
             'coauthor_groups': [],
             'reviewer_groups': [],
-            'writers': [user_dict],
-            'viewers': [user_dict],
+            'writers': [user1_dict],
+            'viewers': [user1_dict],
             'writer_groups': [],
             'viewer_groups': [],
             'published': False,
@@ -918,13 +947,14 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
             'upload_id': 'id_published_with_ref',
             'upload_name': 'name_published',
             'upload_create_time': '2023-03-05T22:16:52.435000',
-            'main_author': user_dict,
+            'description': 'Test Description',
+            'main_author': user1_dict,
             'coauthors': [],
             'reviewers': [],
             'coauthor_groups': [],
             'reviewer_groups': [],
-            'writers': [user_dict],
-            'viewers': [user_dict],
+            'writers': [user1_dict],
+            'viewers': [user1_dict],
             'writer_groups': [],
             'viewer_groups': [],
             'published': False,
@@ -1011,12 +1041,13 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
             'upload_id': 'id_published_with_ref',
             'upload_name': 'name_published',
             'upload_create_time': '2023-03-05T22:16:52.435000',
-            'main_author': user_dict,
+            'description': 'Test Description',
+            'main_author': user1_dict,
             'coauthors': [],
             'reviewers': [],
             'coauthor_groups': [],
             'reviewer_groups': [],
-            'writers': [user_dict],
+            'writers': [user1_dict],
             'writer_groups': [],
             'viewer_groups': [],
             'published': False,
@@ -1029,7 +1060,7 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
             'processing_failed': 0,
             'processing_successful': 6,
             'upload_files_server_path': 'id_published_with_ref',
-            'viewers': [user_dict],
+            'viewers': [user1_dict],
         },
     )
 
@@ -1053,13 +1084,14 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
             'complete_time': '2023-03-05T22:16:52.436000',
             'upload_name': 'name_published',
             'upload_create_time': '2023-03-05T22:16:52.435000',
-            'main_author': user_dict,
+            'description': 'Test Description',
+            'main_author': user1_dict,
             'coauthors': [],
             'reviewers': [],
             'coauthor_groups': [],
             'reviewer_groups': [],
-            'writers': [user_dict],
-            'viewers': [user_dict],
+            'writers': [user1_dict],
+            'viewers': [user1_dict],
             'writer_groups': [],
             'viewer_groups': [],
             'published': False,
@@ -1083,13 +1115,14 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                 'upload_id': 'id_published_with_ref',
                 'upload_name': 'name_published',
                 'upload_create_time': '2023-03-05T22:16:52.435000',
-                'main_author': user_dict,
+                'description': 'Test Description',
+                'main_author': user1_dict,
                 'coauthors': [],
                 'reviewers': [],
                 'coauthor_groups': [],
                 'reviewer_groups': [],
-                'writers': [user_dict],
-                'viewers': [user_dict],
+                'writers': [user1_dict],
+                'viewers': [user1_dict],
                 'writer_groups': [],
                 'viewer_groups': [],
                 'published': False,
@@ -1135,13 +1168,14 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                 'complete_time': '2023-03-05T22:16:52.436000',
                 'upload_name': 'name_published',
                 'upload_create_time': '2023-03-05T22:16:52.435000',
-                'main_author': user_dict,
+                'description': 'Test Description',
+                'main_author': user1_dict,
                 'coauthors': [],
                 'reviewers': [],
                 'coauthor_groups': [],
                 'reviewer_groups': [],
-                'writers': [user_dict],
-                'viewers': [user_dict],
+                'writers': [user1_dict],
+                'viewers': [user1_dict],
                 'writer_groups': [],
                 'viewer_groups': [],
                 'published': False,
@@ -1205,13 +1239,14 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
             'complete_time': '2023-03-05T22:16:52.436000',
             'upload_name': 'name_published',
             'upload_create_time': '2023-03-05T22:16:52.435000',
-            'main_author': user_dict,
+            'description': 'Test Description',
+            'main_author': user1_dict,
             'coauthors': [],
             'reviewers': [],
             'coauthor_groups': [],
             'reviewer_groups': [],
-            'writers': [user_dict],
-            'viewers': [user_dict],
+            'writers': [user1_dict],
+            'viewers': [user1_dict],
             'writer_groups': [],
             'viewer_groups': [],
             'published': False,
@@ -1462,7 +1497,7 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                     'license': 'CC BY 4.0',
                     'main_author': '00000000-0000-0000-0000-000000000001',
                     'mainfile': 'mainfile_for_id_03',
-                    'n_quantities': 66,
+                    'n_quantities': 67,
                     'parser_name': 'parsers/vasp',
                     'processed': True,
                     'published': False,
@@ -1473,6 +1508,7 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                     'upload_create_time': '2024-05-28T19:14:10.749059+00:00',
                     'upload_id': 'id_published_with_ref',
                     'upload_name': 'name_published',
+                    'description': 'Test Description',
                     'with_embargo': False,
                 }
             }
@@ -1610,13 +1646,14 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                 'upload_id': 'id_published_with_ref',
                 'upload_name': 'name_published',
                 'upload_create_time': '2023-03-05T22:16:52.435000',
-                'main_author': user_dict,
+                'description': 'Test Description',
+                'main_author': user1_dict,
                 'coauthors': [],
                 'reviewers': [],
                 'coauthor_groups': [],
                 'reviewer_groups': [],
-                'writers': [user_dict],
-                'viewers': [user_dict],
+                'writers': [user1_dict],
+                'viewers': [user1_dict],
                 'writer_groups': [],
                 'viewer_groups': [],
                 'published': False,
@@ -1672,12 +1709,13 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                 'upload_id': 'id_published_with_ref',
                 'upload_name': 'name_published',
                 'upload_create_time': '2023-03-05T22:16:52.435000',
+                'description': 'Test Description',
                 'coauthors': [],
                 'reviewers': [],
                 'coauthor_groups': [],
                 'reviewer_groups': [],
-                'writers': [user_dict],
-                'viewers': [user_dict],
+                'writers': [user1_dict],
+                'viewers': [user1_dict],
                 'writer_groups': [],
                 'viewer_groups': [],
                 'published': False,
@@ -1690,7 +1728,7 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                 'processing_failed': 0,
                 'processing_successful': 6,
                 'upload_files_server_path': 'id_published_with_ref',
-                'main_author': user_dict,
+                'main_author': user1_dict,
             },
         },
     )
@@ -2020,13 +2058,14 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                         'upload_id': 'id_published_with_ref',
                         'upload_name': 'name_published',
                         'upload_create_time': '2023-03-05T22:16:52.435000',
-                        'main_author': user_dict,
+                        'description': 'Test Description',
+                        'main_author': user1_dict,
                         'coauthors': [],
                         'reviewers': [],
                         'coauthor_groups': [],
                         'reviewer_groups': [],
-                        'writers': [user_dict],
-                        'viewers': [user_dict],
+                        'writers': [user1_dict],
+                        'viewers': [user1_dict],
                         'writer_groups': [],
                         'viewer_groups': [],
                         'published': False,
@@ -2109,13 +2148,14 @@ def test_remote_reference(json_dict, example_data_with_reference, user1):
                         'upload_id': 'id_published_with_ref',
                         'upload_name': 'name_published',
                         'upload_create_time': '2023-03-05T22:16:52.435000',
-                        'main_author': user_dict,
+                        'description': 'Test Description',
+                        'main_author': user1_dict,
                         'coauthors': [],
                         'reviewers': [],
                         'coauthor_groups': [],
                         'reviewer_groups': [],
-                        'writers': [user_dict],
-                        'viewers': [user_dict],
+                        'writers': [user1_dict],
+                        'viewers': [user1_dict],
                         'writer_groups': [],
                         'viewer_groups': [],
                         'published': False,
@@ -2179,14 +2219,14 @@ def test_group_reader(groups_function, user1):
         'general start from group; id: *',
         {
             Token.GROUP: {
-                'GGGGGGGGGGGGGGGGGGGG14': '*',
+                'GGGGGGGGGGGGGGGGGG12m3': '*',
             }
         },
         result={
             'group': {
-                'GGGGGGGGGGGGGGGGGGGG14': {
-                    'group_id': 'GGGGGGGGGGGGGGGGGGGG14',
-                    'group_name': 'Group 14',
+                'GGGGGGGGGGGGGGGGGG12m3': {
+                    'group_id': 'GGGGGGGGGGGGGGGGGG12m3',
+                    'group_name': 'Group 12m3',
                     'owner': {
                         'name': 'Sheldon Cooper',
                         'first_name': 'Sheldon',
@@ -2200,15 +2240,6 @@ def test_group_reader(groups_function, user1):
                     'members': ListWithSortKey(
                         (
                             {
-                                'name': 'Rajesh Koothrappali',
-                                'first_name': 'Rajesh',
-                                'last_name': 'Koothrappali',
-                                'email': 'rajesh.koothrappali@nomad-fairdi.tests.de',
-                                'user_id': '00000000-0000-0000-0000-000000000004',
-                                'username': 'rkoothrappali',
-                                'is_admin': False,
-                            },
-                            {
                                 'name': 'Sheldon Cooper',
                                 'first_name': 'Sheldon',
                                 'last_name': 'Cooper',
@@ -2217,6 +2248,69 @@ def test_group_reader(groups_function, user1):
                                 'username': 'scooper',
                                 'is_admin': False,
                                 'is_oasis_admin': True,
+                            },
+                            {
+                                'name': 'Leonard Hofstadter',
+                                'first_name': 'Leonard',
+                                'last_name': 'Hofstadter',
+                                'email': 'leonard.hofstadter@nomad-fairdi.tests.de',
+                                'user_id': '00000000-0000-0000-0000-000000000002',
+                                'username': 'lhofstadter',
+                                'is_admin': False,
+                            },
+                            {
+                                'name': 'Howard Wolowitz',
+                                'first_name': 'Howard',
+                                'last_name': 'Wolowitz',
+                                'email': 'howard.wolowitz@nomad-fairdi.tests.de',
+                                'user_id': '00000000-0000-0000-0000-000000000003',
+                                'username': 'hwolowitz',
+                                'is_admin': False,
+                            },
+                        ),
+                        sort_key=lambda x: x['user_id'],
+                    ),
+                    'members_info': ListWithSortKey(
+                        (
+                            {
+                                'user_id': '00000000-0000-0000-0000-000000000001',
+                                'user': {
+                                    'name': 'Sheldon Cooper',
+                                    'first_name': 'Sheldon',
+                                    'last_name': 'Cooper',
+                                    'email': 'sheldon.cooper@nomad-coe.eu',
+                                    'user_id': '00000000-0000-0000-0000-000000000001',
+                                    'username': 'scooper',
+                                    'is_admin': False,
+                                    'is_oasis_admin': True,
+                                },
+                                'role': 'owner',
+                            },
+                            {
+                                'user_id': '00000000-0000-0000-0000-000000000002',
+                                'user': {
+                                    'name': 'Leonard Hofstadter',
+                                    'first_name': 'Leonard',
+                                    'last_name': 'Hofstadter',
+                                    'email': 'leonard.hofstadter@nomad-fairdi.tests.de',
+                                    'user_id': '00000000-0000-0000-0000-000000000002',
+                                    'username': 'lhofstadter',
+                                    'is_admin': False,
+                                },
+                                'role': 'maintainer',
+                            },
+                            {
+                                'user_id': '00000000-0000-0000-0000-000000000003',
+                                'user': {
+                                    'name': 'Howard Wolowitz',
+                                    'first_name': 'Howard',
+                                    'last_name': 'Wolowitz',
+                                    'email': 'howard.wolowitz@nomad-fairdi.tests.de',
+                                    'user_id': '00000000-0000-0000-0000-000000000003',
+                                    'username': 'hwolowitz',
+                                    'is_admin': False,
+                                },
+                                'role': 'member',
                             },
                         ),
                         sort_key=lambda x: x['user_id'],
@@ -2268,9 +2362,11 @@ def test_group_reader(groups_function, user1):
                 'GGGGGGGGGGGGGGGGGGGG18': {'group_name': 'Group 18'},
                 'GGGGGGGGGGGGGGGGGGGG19': {'group_name': 'Group 19'},
                 'GGGGGGGGGGGGGGGGGGG123': {'group_name': 'Group 123'},
+                'GGGGGGGGGGGGGGGGGG12m3': {'group_name': 'Group 12m3'},
                 'GGGGGGGGGGGGGGGGGGUniq': {'group_name': 'Group Uniq'},
                 'GGGGGGGGGGGGGGTwin One': {'group_name': 'Group Twin One'},
                 'GGGGGGGGGGGGGGTwin Two': {'group_name': 'Group Twin Two'},
+                'GGGGGGGGGGGGGGdirty234': {'group_name': 'Group Dirty 234'},
                 'GGGGGGGGGOne Two Three': {'group_name': 'Group One Two Three'},
             }
         },
@@ -2575,13 +2671,14 @@ def test_general_reader(json_dict, example_data_with_reference, user1):
                     'upload_id': 'id_published_with_ref',
                     'upload_name': 'name_published',
                     'upload_create_time': '2023-03-05T22:20:46.583000',
-                    'main_author': user_dict,
+                    'description': 'Test Description',
+                    'main_author': user1_dict,
                     'coauthors': [],
                     'reviewers': [],
                     'coauthor_groups': [],
                     'reviewer_groups': [],
-                    'writers': [user_dict],
-                    'viewers': [user_dict],
+                    'writers': [user1_dict],
+                    'viewers': [user1_dict],
                     'writer_groups': [],
                     'viewer_groups': [],
                     'published': False,
@@ -2647,13 +2744,14 @@ def test_general_reader(json_dict, example_data_with_reference, user1):
                     'upload_id': 'id_published_with_ref',
                     'upload_name': 'name_published',
                     'upload_create_time': '2023-03-05T22:20:46.583000',
-                    'main_author': user_dict,
+                    'description': 'Test Description',
+                    'main_author': user1_dict,
                     'coauthors': [],
                     'reviewers': [],
                     'coauthor_groups': [],
                     'reviewer_groups': [],
-                    'writers': [user_dict],
-                    'viewers': [user_dict],
+                    'writers': [user1_dict],
+                    'viewers': [user1_dict],
                     'writer_groups': [],
                     'viewer_groups': [],
                     'published': False,
@@ -2730,7 +2828,7 @@ def test_general_reader(json_dict, example_data_with_reference, user1):
 
 
 # noinspection DuplicatedCode,SpellCheckingInspection
-def test_metainfo_reader(mongo_infra, user1):
+def test_metainfo_reader(mongo_function_with_indexed_def, user1):
     def __ge_print(msg, required, *, to_file: bool = False, result: dict = None):
         with MongoReader(required, user=user1) as reader:
             if result:
@@ -2787,12 +2885,53 @@ def test_metainfo_reader(mongo_infra, user1):
     )
 
     __ge_print(
+        'general start from metainfo definition id',
+        {
+            Token.METAINFO: {
+                run.m_package.definition_id: {
+                    'section_definitions[2]': {
+                        'm_request': {'directive': 'plain'},
+                    }
+                }
+            }
+        },
+        result={
+            'metainfo': {
+                'nomad.datamodel.metainfo.simulation.run': {
+                    'section_definitions': [
+                        None,
+                        None,
+                        {
+                            'name': 'MessageRun',
+                            'description': 'Contains warning, error, and info messages of the run.',
+                            'quantities': [
+                                {
+                                    'name': 'type',
+                                    'description': 'Type of the message. Can be one of warning, error, info, debug.',
+                                    'type': {'type_kind': 'python', 'type_data': 'str'},
+                                    'shape': [],
+                                },
+                                {
+                                    'name': 'value',
+                                    'description': 'Value of the message of the computational program, given by type.',
+                                    'type': {'type_kind': 'python', 'type_data': 'str'},
+                                    'shape': [],
+                                },
+                            ],
+                        },
+                    ]
+                }
+            },
+        },
+    )
+
+    __ge_print(
         'general start from metainfo',
         {
             Token.METAINFO: {
                 'm_request': {
                     'include': ['*nomad.datamodel.metainfo.simulation.run'],
-                    'pagination': {'page_size': 50},
+                    'pagination': {'page_size': 500},
                 },
                 '*': {'m_request': {'index': [2]}},
             }
@@ -3116,148 +3255,47 @@ def test_metainfo_reader(mongo_infra, user1):
         {
             Token.METAINFO: {
                 'm_request': {
-                    'include': ['*test_data'],
-                    'pagination': {'page_size': 50},
+                    'include': ['*tabular'],
+                    'pagination': {'page_size': 500},
                 }
             }
         },
         result={
             'metainfo': {
-                'tests.processing.test_data': {
-                    'name': 'tests.processing.test_data',
+                'nomad.parsing.tabular': {
+                    'name': 'nomad.parsing.tabular',
                     'section_definitions': [
                         {
-                            'name': 'TestBatchSample',
-                            'base_sections': [
-                                'metainfo/nomad.datamodel.data/section_definitions/1'
-                            ],
-                            'quantities': [
-                                {
-                                    'name': 'batch_id',
-                                    'description': 'Id for the batch',
-                                    'type': {'type_kind': 'python', 'type_data': 'str'},
-                                    'definition_id': 'ab97d22656cf0a0ecb66d2a1fed731ff348bd36e',
-                                },
-                                {
-                                    'name': 'sample_number',
-                                    'description': 'Sample index',
-                                    'type': {'type_kind': 'python', 'type_data': 'int'},
-                                    'definition_id': '580b7f342b82756ba61055fd0a7afe3e31dc7a2a',
-                                },
-                                {
-                                    'm_annotations': {
-                                        'eln': [{'component': 'RichTextEditQuantity'}]
-                                    },
-                                    'name': 'comments',
-                                    'description': 'Comments',
-                                    'type': {'type_kind': 'python', 'type_data': 'str'},
-                                    'definition_id': '2d9da4304e21f57e9e13ed1cd62d73f17a3e3b90',
-                                },
-                            ],
-                            'definition_id': '723dfa01c734e2d65672a88e74ae78b97f020688',
-                        },
-                        {
-                            'name': 'TestBatch',
-                            'base_sections': [
-                                'metainfo/nomad.datamodel.data/section_definitions/1'
-                            ],
-                            'quantities': [
-                                {
-                                    'm_annotations': {
-                                        'eln': [{'component': 'StringEditQuantity'}]
-                                    },
-                                    'name': 'batch_id',
-                                    'description': 'Id for the batch',
-                                    'type': {'type_kind': 'python', 'type_data': 'str'},
-                                    'definition_id': 'ab97d22656cf0a0ecb66d2a1fed731ff348bd36e',
-                                },
-                                {
-                                    'm_annotations': {
-                                        'eln': [{'component': 'NumberEditQuantity'}]
-                                    },
-                                    'name': 'n_samples',
-                                    'description': 'Number of samples in batch',
-                                    'type': {'type_kind': 'python', 'type_data': 'int'},
-                                    'definition_id': '3773a00da942383951ed578523597f69995712b7',
-                                },
-                                {
-                                    'name': 'sample_refs',
-                                    'more': {
-                                        'descriptions': 'The samples in the batch.',
-                                        'type_data': 'metainfo/tests.processing.test_data/section_definitions/0',
-                                    },
-                                    'type': {
-                                        'type_kind': 'reference',
-                                        'type_data': 'metainfo/tests.processing.test_data/section_definitions/0',
-                                    },
-                                    'shape': ['*'],
-                                    'definition_id': '06d47745bc4686a621c00a6e415c0ca01a87c2ec',
-                                },
-                            ],
-                            'definition_id': '1c329de8e9782db195a26c1cdfff654a5f257bbc',
-                        },
-                        {
-                            'name': 'TestSection',
-                            'base_sections': [
-                                'metainfo/nomad.datamodel.data/section_definitions/0'
-                            ],
-                            'definition_id': 'fd796b8c043cf8115485a071370d5efe97688b65',
-                        },
-                        {
-                            'name': 'TestReferenceSection',
+                            'name': 'TableData',
+                            'description': 'Table data',
                             'base_sections': [
                                 'metainfo/nomad.datamodel.data/section_definitions/0'
                             ],
                             'quantities': [
                                 {
-                                    'name': 'reference',
-                                    'type': {
-                                        'type_kind': 'reference',
-                                        'type_data': 'metainfo/tests.processing.test_data/section_definitions/2',
+                                    'm_annotations': {
+                                        'eln': [{'component': 'BoolEditQuantity'}]
                                     },
-                                    'definition_id': '8e09d7e2df986896143a45632c8c268094dff7f0',
+                                    'name': 'fill_archive_from_datafile',
+                                    'description': 'While checked, it allows the parser to fill all the Quantities from the data file.\nBe cautious though! as checking this box will cause overwriting your fields with data parsed from the data file',
+                                    'type': {
+                                        'type_kind': 'python',
+                                        'type_data': 'bool',
+                                    },
+                                    'default': True,
+                                    'definition_id': '407156f00219b56a347be07e11cca722381693a5',
                                 }
                             ],
-                            'definition_id': '30592c350af4ff5aa13ddfe97b6e7c24d86f55a3',
-                        },
-                        {
-                            'name': 'TestData',
-                            'base_sections': [
-                                'metainfo/nomad.datamodel.data/section_definitions/1'
-                            ],
-                            'sub_sections': [
-                                {
-                                    'name': 'test_section',
-                                    'sub_section': 'metainfo/tests.processing.test_data/section_definitions/2',
-                                    'repeats': True,
-                                    'definition_id': '961d4377ddeba1be81b8f0fbf72bb116fb72fe6b',
-                                },
-                                {
-                                    'name': 'reference_section',
-                                    'sub_section': 'metainfo/tests.processing.test_data/section_definitions/3',
-                                    'definition_id': 'c0d6cfa5bcdb46b08bf7a33f947a17885acf70a6',
-                                },
-                            ],
-                            'definition_id': 'c41b5c05c1df1c53ef66d09c1eb214820d6c1100',
-                        },
+                            'definition_id': '01444576adb49e3e8f9228c5db694f3194c4228e',
+                        }
                     ],
-                    'definition_id': '849dc023023aefedc3d4a94dc151a28eee81d3ff',
+                    'definition_id': 'c2d1ed505653e17dab8ee7e41608aaedab63211d',
                     'all_quantities': {
-                        'TestBatchSample.batch_id': 'metainfo/tests.processing.test_data/section_definitions/0/quantities/0',
-                        'TestBatchSample.sample_number': 'metainfo/tests.processing.test_data/section_definitions/0/quantities/1',
-                        'TestBatchSample.comments': 'metainfo/tests.processing.test_data/section_definitions/0/quantities/2',
-                        'TestBatch.batch_id': 'metainfo/tests.processing.test_data/section_definitions/1/quantities/0',
-                        'TestBatch.n_samples': 'metainfo/tests.processing.test_data/section_definitions/1/quantities/1',
-                        'TestBatch.sample_refs': 'metainfo/tests.processing.test_data/section_definitions/1/quantities/2',
-                        'TestReferenceSection.reference': 'metainfo/tests.processing.test_data/section_definitions/3/quantities/0',
+                        'TableData.fill_archive_from_datafile': 'metainfo/nomad.parsing.tabular/section_definitions/0/quantities/0'
                     },
-                    'all_sub_sections': {
-                        'TestSection': 'metainfo/tests.processing.test_data/section_definitions/2',
-                        'TestReferenceSection': 'metainfo/tests.processing.test_data/section_definitions/3',
-                    },
+                    'all_sub_sections': {},
                     'all_base_sections': {
-                        'ArchiveSection': 'metainfo/nomad.datamodel.data/section_definitions/0',
-                        'EntryData': 'metainfo/nomad.datamodel.data/section_definitions/1',
+                        'ArchiveSection': 'metainfo/nomad.datamodel.data/section_definitions/0'
                     },
                 }
             },
@@ -3354,6 +3392,102 @@ def test_general_reader_search(json_dict, example_data_with_reference, user1):
                 },
             }
         },
+    )
+
+
+def test_general_reader_access_via_group(
+    json_dict, uploads_graph_access_via_group, user2, user3
+):
+    def __ge_print(
+        msg, required, *, to_file: bool = False, result: dict = None, user: dict = None
+    ):
+        with MongoReader(required, user=user) as reader:
+            if result:
+                assert_dict(reader.sync_read(), result)
+            else:
+                rprint(f'\n\nExample: {next(counter)} -> {msg}:')
+                rprint(required)
+                if not to_file:
+                    rprint('output:')
+                    rprint(reader.sync_read())
+                else:
+                    with open('archive_reader_test.json', 'w') as f:
+                        f.write(json.dumps(reader.sync_read()))
+
+    __ge_print(
+        'user2 has upload access via coauthor group and reviewer group (as group owner)',
+        {
+            Token.UPLOADS: {
+                '*': {
+                    'm_request': {
+                        'include': [
+                            'upload_id',
+                            'main_author',
+                            'coauthors',
+                            'reviewers',
+                            'coauthor_groups',
+                            'reviewer_groups',
+                        ]
+                    },
+                }
+            }
+        },
+        user=user2,
+        result={
+            Token.UPLOADS: {
+                'id_CGg2': {
+                    'upload_id': 'id_CGg2',
+                    'main_author': user1_dict,
+                    'coauthors': [],
+                    'reviewers': [],
+                    'coauthor_groups': ['GGGGGGGGGGGGGGGGGGGGG2'],
+                    'reviewer_groups': [],
+                },
+                'id_RGg2': {
+                    'upload_id': 'id_RGg2',
+                    'main_author': user1_dict,
+                    'coauthors': [],
+                    'reviewers': [],
+                    'coauthor_groups': [],
+                    'reviewer_groups': ['GGGGGGGGGGGGGGGGGGGGG2'],
+                },
+            }
+        },
+    )
+
+    __ge_print(
+        'user2 has entry access via coauthor group and reviewer group (as group owner)',
+        {
+            Token.ENTRIES: {
+                '*': {
+                    'm_request': {
+                        'directive': 'resolved',
+                        'include': ['upload_id', 'entry_id'],
+                    },
+                }
+            }
+        },
+        user=user2,
+        result={
+            Token.ENTRIES: {
+                'id_CGg2_1': {'upload_id': 'id_CGg2', 'entry_id': 'id_CGg2_1'},
+                'id_RGg2_1': {'upload_id': 'id_RGg2', 'entry_id': 'id_RGg2_1'},
+            }
+        },
+    )
+
+    __ge_print(
+        'user3 does not have upload access',
+        {Token.UPLOADS: {}},
+        user=user3,
+        result={Token.UPLOADS: {}},
+    )
+
+    __ge_print(
+        'user3 does not have entry access',
+        {Token.ENTRIES: {}},
+        user=user3,
+        result={Token.ENTRIES: {}},
     )
 
 
@@ -3974,7 +4108,10 @@ def example_data_with_reference(
     data = ExampleData(main_author=user1)
 
     data.create_upload(
-        upload_id='id_published_with_ref', upload_name='name_published', published=False
+        upload_id='id_published_with_ref',
+        upload_name='name_published',
+        description='Test Description',
+        published=False,
     )
 
     ref_list = [

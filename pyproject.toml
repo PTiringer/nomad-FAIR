@@ -9,7 +9,7 @@ readme = "README.md"
 authors = [
     { name = "NOMAD Laboratory", email = 'markus.scheidgen@physik.hu-berlin.de' },
 ]
-version = '1.4.0'
+version = '1.4.1'
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
 
@@ -21,15 +21,16 @@ dependencies = [
     'docstring-parser>=0.12',
     'elasticsearch-dsl>=7,<8',
     'h5py>=3.6.0',
-    'httpx>=0.23.3,<0.28',
+    'httpx>=0.23.3,<0.28',  # breaking change in 0.28 breaks keycloak compatibility
     'jmespath>=0.10.0',
     'jsonpath-ng',
+    'json_stream',
     'kaleido<=0.2.1', # v1.0.0 not compatible with plotly < 6.0.0
     'lxml>=5.2',
     'matid>=2.1.3',
     'msgpack>=1',
     'msgspec',
-    'numpy>=1.22.4',
+    'numpy>=1.22.4,<2.4.0',  # TODO: fix casting ndim>0 array to scalar
     'openpyxl',
     'orjson>=1.0',
     'pandas>=2',
@@ -39,13 +40,11 @@ dependencies = [
     'pydantic>=2',
     'pyinstrument', # for endpoint profiling
     'pymatgen>=2025.10.7',
-    'python-keycloak>=0.26.1',
+    'python-keycloak>=5.0',
     'python-magic-bin;sys_platform=="win32"',
     'python-magic;sys_platform!="win32"',
-    'python-magic',
-    'pytz>=2022.7.1',
     'pyyaml>=6.0',
-    'requests>=2.27.1,<2.32.0',
+    'requests>=2.27.1',
     'rfc3161ng>=2.1.3',
     'scipy>=1.7.1',
     'unidecode',
@@ -62,9 +61,9 @@ parsing = []
 infrastructure = [
     'beautifulsoup4>=4,<=4.12.3', # 4.13 introduced breaking changes
     'blinker', # mongoengine needs this for signals
-    'celery>=5',
     'dockerspawner',
-    'fastapi',
+    'fastapi>=0.99.0',
+    'starlette>=0.48.0', # see MR !2813, `HTTP_422_UNPROCESSABLE_CONTENT`
     'fastapi-cache2',
     'gunicorn',
     'h5grove[fastapi]',
@@ -78,14 +77,14 @@ infrastructure = [
     'rdflib==5', # breaking changes in DCT.dataset in later versions
     'structlog',
     'tabulate',
-    'temporalio>=1.12.0',
+    'temporalio>=1.21.1',
+    'cryptography',
     'uvicorn[standard]',
     'validators',
     'zipstream-ng',
 ]
 dev = [
     'aiosmtpd>=1',
-    'devtools',
     'essential_generators',
     'mypy>=1.15',
     'pytest-asyncio',
@@ -96,7 +95,6 @@ dev = [
     'pytest',
     'python-gitlab',
     'ruff',
-    'setuptools>=70', # py3.12 doesn't bundle in setuptools, but this is required by mongomock lib
 ]
 
 
@@ -104,10 +102,8 @@ dev = [
 nomad = "nomad.cli:run_cli"
 
 [tool.ruff]
-include = ["nomad/*.py", "tests/*.py"]
-exclude = ["dependencies"]
+include = ["nomad/**/*.py", "tests/**/*.py", "examples/**/*.py", "ops/**/*.py"]
 
-# Same as Black.
 line-length = 88
 indent-width = 4
 
@@ -115,6 +111,7 @@ indent-width = 4
 select = [
     "E", # pycodestyle
     "F401", # remove unused import
+    "FAST", # FastAPI
     "I001", # sort imports
     "PL", # pylint
     "UP", # pyupgrade
@@ -179,9 +176,6 @@ plugins = ["pydantic.mypy"]
 extra-index-url = [
     "https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple",
 ]
-override-dependencies = [
-    "numpy>=2"
-]
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
@@ -189,4 +183,8 @@ testpaths = ["tests"]
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::SyntaxWarning",
+]
+markers = [
+    "disable_health_check_patch: By default the health check is patched in the transfer bundle operations. This marker is useful in the transfer bundle context.",
+    "enable_target_deployment_url_validation: By default the target deployment url validation is patched in the transfer bundle operations. This marker is useful in the transfer bundle context."
 ]

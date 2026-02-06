@@ -53,7 +53,7 @@ from tests.utils import create_template_upload_file, set_upload_entry_metadata
 m_package = Package(name='test_schemas')
 
 
-class TestBatchSample(EntryData):
+class BatchSampleForTest(EntryData):
     batch_id = Quantity(type=str, description='Id for the batch')
     sample_number = Quantity(type=int, description='Sample index')
     comments = Quantity(
@@ -61,7 +61,7 @@ class TestBatchSample(EntryData):
     )
 
 
-class TestBatch(EntryData):
+class BatchForTest(EntryData):
     batch_id = Quantity(
         type=str,
         description='Id for the batch',
@@ -73,7 +73,7 @@ class TestBatch(EntryData):
         a_eln=dict(component='NumberEditQuantity'),
     )
     sample_refs = Quantity(
-        type=Reference(TestBatchSample.m_def),
+        type=Reference(BatchSampleForTest.m_def),
         shape=['*'],
         descriptions='The samples in the batch.',
     )
@@ -87,7 +87,7 @@ class TestBatch(EntryData):
             file_name = f'{self.batch_id}_{idx}.archive.json'
             if not archive.m_context.raw_path_exists(file_name):
                 # Create new sample file
-                sample = TestBatchSample(batch_id=self.batch_id, sample_number=idx)
+                sample = BatchSampleForTest(batch_id=self.batch_id, sample_number=idx)
                 sample_entry = sample.m_to_dict(with_root_def=True)
                 with archive.m_context.raw_file(file_name, 'w') as outfile:
                     json.dump({'data': sample_entry}, outfile)
@@ -97,17 +97,17 @@ class TestBatch(EntryData):
         self.sample_refs = sample_refs
 
 
-class TestSection(ArchiveSection):
+class SectionForTest(ArchiveSection):
     pass
 
 
-class TestReferenceSection(ArchiveSection):
-    reference = Quantity(type=Reference(TestSection))
+class ReferenceSectionForTest(ArchiveSection):
+    reference = Quantity(type=Reference(SectionForTest))
 
 
-class TestData(EntryData):
-    test_section = SubSection(sub_section=TestSection, repeats=True)
-    reference_section = SubSection(sub_section=TestReferenceSection)
+class DataForTest(EntryData):
+    test_section = SubSection(sub_section=SectionForTest, repeats=True)
+    reference_section = SubSection(sub_section=ReferenceSectionForTest)
 
 
 m_package.__init_metainfo__()
@@ -281,6 +281,7 @@ async def test_processing_with_large_dir(user1, temporal_worker, tmp):
 
 @pytest.mark.asyncio
 async def test_publish(
+    elastic_function,
     non_empty_processed_with_temporal: Upload,
     no_warn,
     internal_example_user_metadata,
@@ -315,7 +316,7 @@ async def test_publish(
 
 @pytest.mark.asyncio
 async def test_publish_directly(
-    non_empty_uploaded, user1, temporal_worker, no_warn, monkeypatch
+    non_empty_uploaded, user1, temporal_worker, no_warn, monkeypatch, elastic_function
 ):
     async with temporal_worker():
         processed = await asyncio.to_thread(
@@ -332,7 +333,30 @@ async def test_publish_directly(
 
 
 @pytest.mark.asyncio
+async def test_unpublish(
+    non_empty_uploaded, user1, temporal_worker, no_warn, elastic_function
+):
+    async with temporal_worker():
+        processed = await asyncio.to_thread(
+            lambda: run_processing(non_empty_uploaded, user1, publish_directly=True)
+        )
+
+    assert_processing(Upload.get(processed.upload_id), published=True)
+    with processed.entries_metadata() as entries:
+        assert_upload_files(processed.upload_id, entries, PublicUploadFiles)
+        assert_search_upload(entries, published=True)
+
+    processed.unpublish_upload()
+
+    assert_processing(Upload.get(processed.upload_id), published=False)
+    with processed.entries_metadata() as entries:
+        assert_upload_files(processed.upload_id, entries, StagingUploadFiles)
+        assert_search_upload(entries, published=False)
+
+
+@pytest.mark.asyncio
 async def test_republish(
+    elastic_function,
     non_empty_processed_with_temporal: Upload,
     no_warn,
     internal_example_user_metadata,
@@ -366,6 +390,7 @@ async def test_republish(
 
 @pytest.mark.asyncio
 async def test_publish_failed(
+    elastic_function,
     non_empty_uploaded: tuple[str, str],
     internal_example_user_metadata,
     user1,
@@ -427,6 +452,7 @@ async def test_process_non_existing(
 @pytest.mark.parametrize('with_failure', [None, 'before', 'after', 'not-matched'])
 @pytest.mark.asyncio
 async def test_re_processing(
+    elastic_function,
     published: Upload,
     internal_example_user_metadata,
     monkeypatch,
@@ -1021,7 +1047,7 @@ async def test_creating_new_entries_during_processing(temporal_worker, user1):
         json.dump(
             {
                 'data': {
-                    'm_def': 'tests.processing.test_data.TestBatch',
+                    'm_def': 'tests.processing.test_data.BatchForTest',
                     'batch_id': 'my_batch',
                     'n_samples': 5,
                 }
@@ -1044,7 +1070,11 @@ async def test_creating_new_entries_during_processing(temporal_worker, user1):
 
 
 @pytest.mark.asyncio
-async def test_qcms_data(temporal_worker, user1):
+async def test_qcms_data(
+    elastic_function,
+    temporal_worker,
+    user1,
+):
     async with temporal_worker():
         upload = await asyncio.to_thread(
             lambda: run_processing(
@@ -1067,7 +1097,11 @@ async def test_qcms_data(temporal_worker, user1):
 
 
 @pytest.mark.asyncio
-async def test_phonopy_data(temporal_worker, user1):
+async def test_phonopy_data(
+    elastic_function,
+    temporal_worker,
+    user1,
+):
     async with temporal_worker():
         upload = await asyncio.to_thread(
             lambda: run_processing(
@@ -1197,8 +1231,8 @@ def test_upload_context(
     data = ExampleData(main_author=user1)
     data.create_upload(upload_id='test_id', published=True)
 
-    referenced_archive = EntryArchive(data=TestData())
-    referenced_archive.data.test_section.append(TestSection())
+    referenced_archive = EntryArchive(data=DataForTest())
+    referenced_archive.data.test_section.append(SectionForTest())
 
     data.create_entry(
         upload_id='test_id',
@@ -1215,8 +1249,8 @@ def test_upload_context(
     context = ServerContext(upload=upload)
     test_archive = EntryArchive(m_context=context)
 
-    section_reference = TestReferenceSection()
-    test_archive.data = TestData(reference_section=section_reference)
+    section_reference = ReferenceSectionForTest()
+    test_archive.data = DataForTest(reference_section=section_reference)
     assert section_reference.m_root().m_context is not None
     section_reference.reference = url
     assert (

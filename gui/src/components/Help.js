@@ -45,7 +45,7 @@ HelpButton.propTypes = {
   children: PropTypes.node
 }
 
-const HelpDialog = ({heading, content, text, maxWidth, open, onClose}) => {
+export const HelpDialog = ({heading, content, text, maxWidth, open, onClose}) => {
   return <Dialog
     maxWidth={maxWidth}
     onClose={onClose}

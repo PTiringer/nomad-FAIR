@@ -18,11 +18,15 @@
 
 from __future__ import annotations
 
+import bz2
+import gzip
+import lzma
 import os.path
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
+
+import magic
 
 from nomad.config import config
-from nomad.config.models.plugins import Parser as ParserPlugin
 from nomad.config.models.plugins import ParserEntryPoint
 from nomad.datamodel import EntryArchive, EntryMetadata, results
 from nomad.datamodel.context import ClientContext, ServerLocalContext
@@ -37,25 +41,13 @@ from .parser import (
 )
 from .tabular import TabularDataParser
 
-try:
-    # these packages are not available without parsing extra, which is ok, if the
-    # parsers are only initialized to load their metainfo definitions
-    import bz2
-    import gzip
-    import lzma
+_compressions: dict[bytes, tuple[str, Callable]] = {
+    b'\x1f\x8b\x08': ('gz', gzip.open),
+    b'\x42\x5a\x68': ('bz2', bz2.open),
+    b'\xfd\x37\x7a': ('xz', lzma.open),
+}
 
-    import magic
-
-    _compressions = {
-        b'\x1f\x8b\x08': ('gz', gzip.open),
-        b'\x42\x5a\x68': ('bz2', bz2.open),
-        b'\xfd\x37\x7a': ('xz', lzma.open),
-    }
-
-    encoding_magic = magic.Magic(mime_encoding=True)
-
-except ImportError:
-    pass
+encoding_magic = magic.Magic(mime_encoding=True)
 
 
 def match_parser(
@@ -230,15 +222,6 @@ config.load_plugins()
 enabled_entry_points = []
 if config.plugins is not None:
     enabled_entry_points = config.plugins.entry_points.filtered_values()
-
-# Load parsers using old plugin mechanism
-parsers.extend(
-    [
-        entry_point.create_matching_parser_interface()
-        for entry_point in enabled_entry_points
-        if isinstance(entry_point, ParserPlugin)
-    ]
-)
 
 # Load parsers using new plugin mechanism. The entry point name is used to
 # identify the parser.

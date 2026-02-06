@@ -511,13 +511,13 @@ export default function About() {
         </p>
       </InfoCard>
       <InfoCard xs={4} title="APIs" bottom><Markdown>{`
-      The NOMAD can also be accessed programmatically via ReST APIs.
-      There is the proprietary NOMAD API,an implementation of the
+      NOMAD can also be accessed programmatically via REST APIs.
+      There is the proprietary NOMAD API, an implementation of the
       standardized [OPTiMaDe API](https://github.com/Materials-Consortia/OPTiMaDe/tree/master)
       materials science database API, and more.
 
-      We offer a [tutorial on how to use the API with plain Python](${appBase}/docs/api.html).
-      Another [tutorial covers how to install and use NOMAD's Python client library](${appBase}/docs/archive.html).
+      We offer a [how-to guide on using the API with plain Python](${appBase}/docs/howto/manage/program/api.html).
+      Another [how-to guide covers the installation and use of NOMAD's API client library](${appBase}/docs/howto/manage/program/archive_query.html).
       The [NOMAD Analytics Toolkit](https://nomad-lab.eu/AIToolkit) allows to use
       this without installation and directly on NOMAD servers.
 
@@ -527,10 +527,10 @@ export default function About() {
         <Markdown>{`
         ### Getting Help
         If you encounter any difficulties, please write to
-        support@nomad-lab.eu . If you think
+        support@nomad-lab.eu. If you think
         that this web-page is not working as expected, or if you want to start a discussion
         about possible features, feel free to open an issue on our
-        [github project](https://github.com/FAIRmat-NFDI/nomad/issues).
+        [GitHub project](https://github.com/FAIRmat-NFDI/nomad/issues).
 
         ### Developer Documentation
         The [in-depth documentation](${appBase}/docs/index.html)
@@ -541,7 +541,7 @@ export default function About() {
 
         ### Source code
         The source-code for NOMAD is maintained
-        at the MPCDF's [gitlab](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR).
+        at the MPCDF's [GitLab](https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR).
         To push code, you need an MPCDF account and you can apply
         [here](https://www.mpcdf.mpg.de/userspace/new-users).
 

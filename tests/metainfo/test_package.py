@@ -15,13 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 from nomad.metainfo import MSection, Package
+from nomad.mongo.package import PackageDefinition
 
 m_package = Package(aliases=['nomad.datamodel.test_package'])
 
 
-class TestSection(MSection):
+class SectionForTest(MSection):
     pass
 
 
@@ -33,15 +33,21 @@ def test_package_registry():
 
 
 def test_resolve():
-    json_obj = dict(m_def='tests.metainfo.test_package.TestSection')
+    json_obj = dict(m_def='tests.metainfo.test_package.SectionForTest')
     metainfo_obj = MSection.from_dict(json_obj)
-    assert metainfo_obj.m_def is TestSection.m_def
+    assert metainfo_obj.m_def is SectionForTest.m_def
 
 
 def test_resolve_with_alias():
-    json_obj = dict(m_def='nomad.datamodel.test_package.TestSection')
+    json_obj = dict(m_def='nomad.datamodel.test_package.SectionForTest')
     metainfo_obj = MSection.from_dict(json_obj)
-    assert metainfo_obj.m_def is TestSection.m_def
+    assert metainfo_obj.m_def is SectionForTest.m_def
 
 
 m_package.__init_metainfo__()
+
+
+def test_package_mongo(mongo_function_with_indexed_def):
+    for package in Package.registry.values():
+        if not package.name.startswith('tests.'):
+            assert PackageDefinition.has_package(package.definition_id)

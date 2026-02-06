@@ -17,10 +17,11 @@
 # limitations under the License.
 #
 
-import requests
 import sys
 import time
 from datetime import datetime
+
+import requests
 
 base_url = 'https://nomad-lab.eu/prod/rae/api/v1'
 if len(sys.argv) > 1:
@@ -31,7 +32,7 @@ while True:
         start = time.time()
         response = requests.get(f'{base_url}/entries', params=dict(owner='public'))
         end = time.time()
-        print('PING – %s – %f - %s' % (response.status_code, end - start, datetime.now()))
+        print(f'PING – {response.status_code} – {end - start} - {datetime.now()}')
         time.sleep(5)
     except Exception as e:
-        print('ERROR – %s' % e)
+        print(f'ERROR – {e}')

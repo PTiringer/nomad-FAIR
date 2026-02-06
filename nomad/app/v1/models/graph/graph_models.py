@@ -47,7 +47,7 @@ from nomad.graph.model import (
 )
 from nomad.metainfo.pydantic_extension import PydanticModel
 
-from ..groups import UserGroup, UserGroupPagination, UserGroupQuery
+from ..groups import UserGroup, UserGroupMember, UserGroupPagination, UserGroupQuery
 
 
 class Error(BaseModel):
@@ -250,7 +250,18 @@ class GraphMetainfo(BaseModel):
     m_children: MSection
 
 
-class GraphGroup(mapped(UserGroup, owner=GraphUser, members=list[GraphUser])):  # type: ignore
+class GraphUserGroupMember(UserGroupMember):
+    user: GraphUser
+
+
+class GraphUserGroup(
+    mapped(  # type: ignore
+        UserGroup,
+        owner=GraphUser,
+        members=list[GraphUser],
+        members_info=list[GraphUserGroupMember],
+    )
+):
     m_errors: list[Error]
 
 
@@ -266,7 +277,7 @@ class GroupResponseOptions(BaseModel):
 
 class GraphGroups(BaseModel):
     m_errors: list[Error]
-    m_children: GraphGroup
+    m_children: GraphUserGroup
     m_request: GroupRequestOptions
     m_response: GroupResponseOptions
 

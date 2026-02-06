@@ -18,7 +18,6 @@
 
 import click
 
-from nomad import utils
 from nomad.config import config
 
 from .admin import admin
@@ -45,33 +44,47 @@ def hub():
 
 
 @run.command(help='Run the action cpu worker.')
-def action_cpu_worker():
+@click.option('--workers', type=int, default=12, help='Number of workers.')
+def action_cpu_worker(workers: int):
     import asyncio
 
     from nomad.actions.workers import cpu
 
-    asyncio.run(cpu.run_worker())
+    asyncio.run(cpu.run_worker(workers=workers))
 
 
 @run.command(help='Run the action gpu worker.')
-def action_gpu_worker():
+@click.option('--workers', type=int, default=12, help='Number of workers.')
+def action_gpu_worker(workers: int):
     import asyncio
 
     from nomad.actions.workers import gpu
 
-    asyncio.run(gpu.run_worker())
+    asyncio.run(gpu.run_worker(workers=workers))
 
 
 @run.command(help='Run the action internal worker.')
-@click.option('--workers', type=int, default=1, help='Number of worker.')
-def action_internal_worker(workers: int):
-    run_action_internal_worker(workers=workers)
+@click.option('--workers', type=int, default=1, help='Number of workers.')
+@click.option(
+    '--max-tasks-per-child',
+    type=int,
+    default=100,
+    help='Number of tasks per worker.',
+)
+def action_internal_worker(workers: int, max_tasks_per_child: int):
+    run_action_internal_worker(workers=workers, max_tasks_per_child=max_tasks_per_child)
 
 
-@run.command(help='Run the nomad development worker.')
-@click.option('--workers', type=int, default=None, help='Number of celery workers.')
-def worker(**kwargs):
-    run_worker(**kwargs)
+@run.command(help='Run the action internal worker.')
+@click.option('--workers', type=int, default=1, help='Number of workers.')
+@click.option(
+    '--max-tasks-per-child',
+    type=int,
+    default=100,
+    help='Number of tasks per worker.',
+)
+def worker(workers: int, max_tasks_per_child: int):
+    run_action_internal_worker(workers=workers, max_tasks_per_child=max_tasks_per_child)
 
 
 @run.command(help='Run the nomad development app with all apis.')
@@ -94,12 +107,16 @@ def app(with_gui: bool, **kwargs):
     run_app(with_gui=with_gui, **kwargs)
 
 
-def run_action_internal_worker(workers: int = 1):
+def run_action_internal_worker(*, workers: int = 1, max_tasks_per_child: int = 100):
     import asyncio
 
     from nomad.actions.workers import internal_worker
 
-    asyncio.run(internal_worker.run_worker(workers=workers))
+    asyncio.run(
+        internal_worker.run_worker(
+            workers=workers, max_tasks_per_child=max_tasks_per_child
+        )
+    )
 
 
 def run_app(
@@ -120,7 +137,6 @@ def run_app(
     if with_gui:
         import glob
         import os
-        import os.path
         import shutil
 
         gui_folder = os.path.abspath(
@@ -209,18 +225,6 @@ def run_app(
         server.run()
 
 
-def run_worker(*, workers=None):
-    config.meta.service = 'worker'
-    from nomad import processing
-
-    params = ['worker', '--loglevel=INFO', '-B', '-Q', 'celery']
-
-    if workers is not None:
-        params.append(f'--concurrency={workers}')
-
-    processing.app.worker_main(params)
-
-
 def run_hub():
     import os
     import subprocess
@@ -244,47 +248,28 @@ def run_hub():
     )
 
 
-def task_app(**kwargs):
-    logger = utils.get_logger('app')
-    try:
-        run_app(**kwargs)
-    except Exception as error:
-        logger.exception(error)
-
-
-def task_worker(**kwargs):
-    logger = utils.get_logger('worker')
-    try:
-        run_worker(**kwargs)
-    except Exception as error:
-        logger.exception(error)
-
-
 def run_appworker(
     *,
     app_host: str | None = None,
     app_port: int | None = None,
     fastapi_workers: int | None = None,
-    celery_workers: int | None = None,
+    temporal_workers: int | None = None,
     dev: bool = False,
 ):
     from concurrent import futures as concurrent_futures
 
     if dev:
         fastapi_workers = 1
-        celery_workers = 1
+        temporal_workers = 1
 
     with concurrent_futures.ProcessPoolExecutor(2) as executor:
         results = []
 
-        def _submit(*args, **kwargs):
-            results.append(executor.submit(*args, **kwargs))
+        def _submit(fn, *args, **kwargs):
+            results.append(executor.submit(fn, *args, **kwargs))
 
-        if config.temporal.enabled:
-            _submit(run_action_internal_worker, workers=celery_workers)
-        else:
-            _submit(task_worker, workers=celery_workers)
-        _submit(task_app, workers=fastapi_workers, host=app_host, port=app_port)
+        _submit(run_action_internal_worker, workers=temporal_workers)
+        _submit(run_app, workers=fastapi_workers, host=app_host, port=app_port)
 
         try:
             for future in concurrent_futures.as_completed(results):
@@ -306,7 +291,7 @@ def run_appworker(
     '--fastapi-workers', type=int, default=None, help='Number of FastAPI workers.'
 )
 @click.option(
-    '--celery-workers', type=int, default=None, help='Number of Celery workers.'
+    '--temporal-workers', type=int, default=None, help='Number of temporal workers.'
 )
 @click.option(
     '--dev', is_flag=True, default=False, help='Use one worker (for dev. env.).'

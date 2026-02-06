@@ -371,6 +371,7 @@ def example_data(
             data.create_upload(
                 upload_id=upload_id,
                 upload_name=upload_name,
+                description=f'Descripton for upload {upload_id}',
                 coauthors=coauthors,
                 reviewers=reviewers,
                 published=published,
@@ -660,36 +661,62 @@ def example_data_schema_yaml(
 def example_data_writeable(mongo_function, user1, normalized, elastic_function):
     data = ExampleData(main_author=user1)
 
+    upload_id_map = {
+        'id_published_w': f'id_published_w_{uuid.uuid4().hex[:8]}',
+        'id_unpublished_w': f'id_unpublished_w_{uuid.uuid4().hex[:8]}',
+        'id_processing_w': f'id_processing_w{uuid.uuid4().hex[:8]}',
+        'id_empty_w': f'id_empty_w{uuid.uuid4().hex[:8]}',
+    }
+
     # one upload with one entry, published
-    data.create_upload(upload_id='id_published_w', published=True, embargo_length=12)
+    uid = upload_id_map['id_published_w']
+    data.create_upload(
+        upload_id=uid,
+        description=f'Description for writable upload {uid}',
+        published=True,
+        embargo_length=12,
+    )
     data.create_entry(
-        upload_id='id_published_w',
+        upload_id=upload_id_map['id_published_w'],
         entry_id='id_published_w_entry',
         mainfile='test_content/test_embargo_entry/mainfile.json',
     )
 
     # one upload with one entry, unpublished
-    data.create_upload(upload_id='id_unpublished_w', published=False, embargo_length=12)
+    uid = upload_id_map['id_unpublished_w']
+    data.create_upload(
+        upload_id=uid,
+        description=f'Description for writable upload {uid}',
+        published=False,
+        embargo_length=12,
+    )
     data.create_entry(
-        upload_id='id_unpublished_w',
+        upload_id=upload_id_map['id_unpublished_w'],
         entry_id='id_unpublished_w_entry',
         mainfile='test_content/test_embargo_entry/mainfile.json',
     )
 
     # one upload, no entries, running a blocking processing
+    uid = upload_id_map['id_processing_w']
     data.create_upload(
-        upload_id='id_processing_w',
+        upload_id=uid,
+        description=f'Description for writable upload {uid}',
         published=False,
         process_status=ProcessStatus.RUNNING,
         current_process='publish_upload',
     )
 
     # one upload, no entries, unpublished
-    data.create_upload(upload_id='id_empty_w', published=False)
+    uid = upload_id_map['id_empty_w']
+    data.create_upload(
+        upload_id=uid,
+        description=f'Description for writable upload {uid}',
+        published=False,
+    )
 
     data.save()
 
-    yield
+    yield upload_id_map
 
     data.delete()
 

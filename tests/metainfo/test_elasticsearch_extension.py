@@ -17,6 +17,7 @@
 #
 
 from datetime import date
+from unittest.mock import Mock
 
 import numpy as np
 import pytest
@@ -27,6 +28,7 @@ from nomad.datamodel.datamodel import SearchableQuantity
 from nomad.metainfo import Datetime, MEnum, MSection, Quantity, SubSection, Unit
 from nomad.metainfo.elasticsearch_extension import (
     Elasticsearch,
+    _generate_entry_batches,
     create_indices,
     create_searchable_quantity,
     entry_index,
@@ -327,7 +329,7 @@ def example_entry():
 
 
 @pytest.fixture(scope='module')
-def indices(elastic_infra):
+def indices(elastic_infra, elastic_test_indices):
     # remove whatever the infrastructure created by default
     from nomad.infrastructure import elastic_client
 
@@ -340,7 +342,7 @@ def indices(elastic_infra):
     create_indices(Entry.m_def, Material.m_def)
     yield
     # re-establish the default elasticsearch setup.
-    clear_elastic_infra()
+    clear_elastic_infra(elastic_test_indices)
 
 
 def test_mappings(indices):
@@ -830,3 +832,83 @@ def test_create_searchable_quantity(quantity_def, path, sections, expected):
         assert searchable_quantity is None
     else:
         assert searchable_quantity.m_to_dict() == expected.m_to_dict()
+
+
+class MockEntryType:
+    """Mock entry_type object for testing."""
+
+    def create_index_doc(self, entry):
+        """Returns a mock document with size proportional to entry data."""
+        return {'entry_id': entry['entry_id'], 'data': entry.get('data', '')}
+
+
+@pytest.fixture
+def mock_logger():
+    """Fixture providing a mock logger."""
+    return Mock()
+
+
+@pytest.fixture
+def mock_entry_type():
+    """Fixture providing a mock entry_type."""
+    return MockEntryType()
+
+
+@pytest.mark.parametrize(
+    'entries,max_size,expected_batch_sizes',
+    [
+        pytest.param([], 1000, [], id='empty'),
+        pytest.param(
+            [{'entry_id': 'e1', 'data': 'x'}],
+            1000,
+            [1],
+            id='single-small-entry',
+        ),
+        pytest.param(
+            [{'entry_id': f'e{i}', 'data': 'x' * 10} for i in range(5)],
+            5000,
+            [5],
+            id='multiple-entries-one-batch',
+        ),
+        pytest.param(
+            [{'entry_id': f'e{i}', 'data': 'x' * 100} for i in range(10)],
+            500,
+            [3, 3, 3, 1],
+            id='multiple-entries-multiple-batches',
+        ),
+        pytest.param(
+            [{'entry_id': 'e1', 'data': 'x' * 1000}],
+            100,
+            [1],
+            id='single-large-entry-exceeding-max_size',
+        ),
+        pytest.param(
+            [
+                {'entry_id': 'e1', 'data': 'x' * 100},
+                {'entry_id': 'e2', 'data': 'x' * 200},
+                {'entry_id': 'e3', 'data': 'x' * 100},
+            ],
+            500,
+            [2, 1],
+            id='mixed-size-batches',
+        ),
+    ],
+)
+def test_generate_entry_batches(
+    entries, max_size, expected_batch_sizes, mock_entry_type, mock_logger
+):
+    """Test that _generate_entry_batches generates the expected number of batches."""
+    batches = list(
+        _generate_entry_batches(entries, mock_entry_type, max_size, mock_logger)
+    )
+    # Verify that the number of batches matches expected
+    assert len(batches) == len(expected_batch_sizes)
+
+    # Verify that each batch has the expected size
+    for batch, expected_size in zip(batches, expected_batch_sizes):
+        actual_size = len(batch) // 2
+        assert actual_size == expected_size
+
+    # Verify total number of entries processed
+    total_entries_processed = sum(len(batch) // 2 for batch in batches)
+    assert total_entries_processed == len(entries)

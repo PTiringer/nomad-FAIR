@@ -18,9 +18,11 @@
 import json
 import os
 import sys
+from tempfile import mkstemp
 from typing import Any, cast
 
 import click
+from json_stream import streamable_dict
 from pint import Unit
 from pint.errors import UndefinedUnitError
 
@@ -160,12 +162,59 @@ def get_gui_artifacts_js() -> str:
         'searchQuantities': _generate_search_quantities(),
         'metainfo': _generate_metainfo(all_metainfo_packages),
         'parserMetadata': code_metadata,
-        'northTools': {k: v.dict() for k, v in config.north.tools.filtered_items()},
+        'northTools': {
+            plugin.id: plugin.dict()
+            for plugin in config.plugins.entry_points.filtered_values()
+            if plugin.entry_point_type == 'north_tool'
+        }
+        if config.plugins
+        else {},
         'unitList': unit_list_json,
         'unitPrefixes': prefixes_json,
     }
 
     return f'window.nomadArtifacts = {json.dumps(artifactsDict, indent=2)};\n'
+
+
+def generate_gui_artifacts_js() -> str:
+    from nomad.datamodel import all_metainfo_packages
+    from nomad.parsing.parsers import code_metadata
+
+    all_packages = all_metainfo_packages()
+    unit_list_json, prefixes_json = _generate_units_json()
+
+    def generator():
+        yield 'searchQuantities', _generate_search_quantities()
+        yield (
+            'metainfo',
+            all_packages.m_to_dict(
+                with_meta=True, with_def_id=True, return_as_generator=True
+            ),
+        )
+        yield 'parserMetadata', json.loads(json.dumps(code_metadata, sort_keys=True))
+        yield (
+            'northTools',
+            {
+                plugin.id: plugin.dict()
+                for plugin in config.plugins.entry_points.filtered_values()
+                if plugin.entry_point_type == 'north_tool'
+            }
+            if config.plugins
+            else {},
+        )
+        yield 'unitList', unit_list_json
+        yield 'unitPrefixes', prefixes_json
+
+    os.makedirs(config.fs.tmp, exist_ok=True)
+
+    fd, path = mkstemp('.js', 'tmp', dir=config.fs.tmp)
+
+    with os.fdopen(fd, 'w') as f:
+        f.write('window.nomadArtifacts = ')
+        json.dump(streamable_dict(generator()), f, indent=2)
+        f.write(';\n')
+
+    return path
 
 
 @dev.command(help=('Generates all python-based GUI artifacts into javascript code.'))
@@ -328,12 +377,15 @@ def get_gui_config() -> str:
         'servicesUploadLimit': config.services.upload_limit,
         'appTokenMaxExpiresIn': config.services.app_token_max_expires_in,
         'uploadMembersGroupSearchEnabled': config.services.upload_members_group_search_enabled,
-        'ui': config.ui.dict(exclude_none=True) if config.ui else {},
+        'uploadPagination': config.uploads.pagination.model_dump(exclude_none=True),
+        'entryPagination': config.uploads.entries.pagination.model_dump(
+            exclude_none=True
+        ),
+        'ui': config.ui.model_dump(exclude_none=True) if config.ui else {},
         'plugins': plugins,
         'dataciteEnabled': config.datacite.enabled,
-        'temporalProcessingEnabled': config.temporal.enabled,
         'termsOfServiceURL': config.oasis.terms_of_service_url,
-        'footerLinks': [link.dict() for link in config.meta.footer_links],
+        'footerLinks': [link.model_dump() for link in config.meta.footer_links],
         'description': config.meta.description,
     }
 
@@ -479,11 +531,12 @@ def update_parser_readmes(parser):
 @click.option('--username', '-u', type=str, help='The main author username.')
 def example_data(username: str):
     from nomad import infrastructure, utils
+    from nomad.auth import user_management
     from nomad.utils.exampledata import ExampleData
 
     infrastructure.setup()
 
-    main_author = infrastructure.user_management.get_user(username=username)
+    main_author = user_management.user_management.get_user(username=username)
     if main_author is None:
         print(f'The user {username} does not exist.')
         sys.exit(1)

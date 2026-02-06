@@ -39,9 +39,11 @@ class DefinitionAnnotation(Annotation):
 
     def __init__(self):
         self.definition = None
+        self.initialized: bool = False
 
     def init_annotation(self, definition):
         self.definition = definition
+        self.initialized = True
 
 
 class SectionAnnotation(DefinitionAnnotation):

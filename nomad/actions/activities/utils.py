@@ -11,6 +11,7 @@ from nomad.workflows.activities import (
     delete_upload_search_activity,
     edit_upload_metadata_activity,
     get_entry_batch_from_file,
+    handle_heartbeat_failure_activity,
     import_bundle_activity,
     match_all_activity,
     next_level_entries,
@@ -48,6 +49,7 @@ def get_nomad_internal_activities() -> list[Callable]:
         import_bundle_activity,
         publish_upload_activity,
         publish_externally_activity,
+        handle_heartbeat_failure_activity,
     ]
 
 

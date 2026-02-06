@@ -24,7 +24,7 @@ import yaml
 from pydantic import ValidationError
 
 from nomad.config import load_config
-from nomad.config.models.plugins import Parser, ParserEntryPoint, Schema
+from nomad.config.models.plugins import ParserEntryPoint, SchemaPackageEntryPoint
 from nomad.utils import flatten_dict
 
 from .utils import assert_log
@@ -134,9 +134,9 @@ def test_config_warning(
     'config_dict, error',
     [
         pytest.param(
-            {'celery': {'timeout': 'not_a_number'}},
+            {'services': {'api_timeout': 'not_a_number'}},
             (
-                '1 validation error for Config\ncelery.timeout\n  '
+                '1 validation error for Config\nservices.api_timeout\n  '
                 'Input should be a valid integer, unable to parse string as an '
                 "integer [type=int_parsing, input_value='not_a_number', input_type=str]"
             ),
@@ -182,13 +182,15 @@ def test_config_priority(conf_yaml, conf_env, value, mockopen, monkeypatch):
     [
         pytest.param(
             {
+                # TODO: the NORTH part is only needed to reset the tool
+                'north': {'tools': {'include': []}},
                 'plugins': {
                     'options': {
                         'dosnormalizer:dos_normalizer_entry_point': {
                             'name': 'yaml',
                         }
                     }
-                }
+                },
             },
             {'plugins': {'include': ['dosnormalizer:dos_normalizer_entry_point']}},
             {
@@ -209,15 +211,15 @@ def test_config_priority(conf_yaml, conf_env, value, mockopen, monkeypatch):
             id='dictionary: merges',
         ),
         pytest.param(
-            {'plugins': {'include': ['a']}},
+            {'north': {'tools': {'include': []}}, 'plugins': {'include': ['a']}},
             {'plugins': {'include': ['b']}},
             {'plugins': {'entry_points': {'include': ['b']}}},
             id='list: overrides',
         ),
         pytest.param(
-            {'celery': {'timeout': 100}},
-            {'celery': {'timeout': 200}},
-            {'celery': {'timeout': 200}},
+            {'services': {'api_timeout': 100}},
+            {'services': {'api_timeout': 200}},
+            {'services': {'api_timeout': 200}},
             id='scalar: overrides',
         ),
     ],
@@ -237,6 +239,7 @@ def test_config_merge(conf_yaml, conf_env, conf_expected, mockopen, monkeypatch)
     [
         pytest.param(
             {
+                'north': {'tools': {'include': []}},
                 'plugins': {
                     'include': ['a'],
                     'exclude': ['a'],
@@ -247,6 +250,7 @@ def test_config_merge(conf_yaml, conf_env, conf_expected, mockopen, monkeypatch)
         ),
         pytest.param(
             {
+                'north': {'tools': {'include': []}},
                 'plugins': {
                     'entry_points': {'include': ['b'], 'exclude': ['b']},
                 },
@@ -256,6 +260,7 @@ def test_config_merge(conf_yaml, conf_env, conf_expected, mockopen, monkeypatch)
         ),
         pytest.param(
             {
+                'north': {'tools': {'include': []}},
                 'plugins': {
                     'include': ['a'],
                     'exclude': ['a'],
@@ -267,6 +272,7 @@ def test_config_merge(conf_yaml, conf_env, conf_expected, mockopen, monkeypatch)
         ),
         pytest.param(
             {
+                'north': {'tools': {'include': []}},
                 'plugins': {
                     'include': [],
                     'exclude': [],
@@ -278,6 +284,7 @@ def test_config_merge(conf_yaml, conf_env, conf_expected, mockopen, monkeypatch)
         ),
         pytest.param(
             {
+                'north': {'tools': {'include': []}},
                 'plugins': {
                     'include': None,
                     'exclude': None,
@@ -289,6 +296,7 @@ def test_config_merge(conf_yaml, conf_env, conf_expected, mockopen, monkeypatch)
         ),
         pytest.param(
             {
+                'north': {'tools': {'include': []}},
                 'plugins': {
                     'options': {
                         'electronicparsers:vasp_parser_entry_point': {
@@ -305,6 +313,7 @@ def test_config_merge(conf_yaml, conf_env, conf_expected, mockopen, monkeypatch)
                 },
             },
             {
+                'north': {'tools': {'include': []}},
                 'plugins': {
                     'entry_points': {
                         'options': {
@@ -314,7 +323,7 @@ def test_config_merge(conf_yaml, conf_env, conf_expected, mockopen, monkeypatch)
                             }
                         }
                     }
-                }
+                },
             },
             id='old, new and default options are merged with old config having precendence over new values.',
         ),
@@ -334,7 +343,7 @@ def test_parser_plugins():
     parsers = [
         entry_point
         for entry_point in config.plugins.entry_points.options.values()
-        if isinstance(entry_point, Parser | ParserEntryPoint)
+        if isinstance(entry_point, ParserEntryPoint)
     ]
     assert len(parsers) == 68
 
@@ -344,20 +353,250 @@ def test_plugin_polymorphism(mockopen, monkeypatch):
         'plugins': {
             'options': {
                 'schema': {
-                    'plugin_type': 'schema',
+                    'entry_point_type': 'schema_package',
                     'name': 'test',
-                    'python_package': 'runschema',
+                    'plugin_package': 'runschema',
                 },
                 'parser': {
-                    'plugin_type': 'parser',
+                    'entry_point_type': 'parser',
                     'name': 'parsers/abinit',
-                    'python_package': 'electronicparsers.abinit',
-                    'parser_class_name': 'electronicparsers.abinit.parser.AbinitParser',
+                    'plugin_package': 'electronicparsers',
                 },
             }
         }
     }
     config = load_test_config(plugins, None, mockopen, monkeypatch)
     config.load_plugins()
-    assert isinstance(config.plugins.entry_points.options['schema'], Schema)
-    assert isinstance(config.plugins.entry_points.options['parser'], Parser)
+    assert isinstance(
+        config.plugins.entry_points.options['schema'], SchemaPackageEntryPoint
+    )
+    assert isinstance(config.plugins.entry_points.options['parser'], ParserEntryPoint)
+
+
+@pytest.mark.parametrize(
+    'conf_yaml, conf_expected',
+    [
+        pytest.param(
+            None,
+            {
+                'uploads': {
+                    'pagination': {
+                        'page_size': 10,
+                        'order_by': 'upload_create_time',
+                        'order': 'desc',
+                    },
+                    'entries': {
+                        'pagination': {
+                            'page_size': 5,
+                            'order_by': 'process_status',
+                            'order': 'asc',
+                        }
+                    },
+                }
+            },
+            id='default pagination values',
+        ),
+        pytest.param(
+            {
+                'uploads': {
+                    'pagination': {
+                        'page_size': 12,
+                        'order_by': 'upload_id',
+                        'order': 'asc',
+                    },
+                    'entries': {
+                        'pagination': {
+                            'page_size': 6,
+                            'order_by': 'entry_id',
+                            'order': 'desc',
+                        }
+                    },
+                }
+            },
+            {
+                'uploads': {
+                    'pagination': {
+                        'page_size': 12,
+                        'order_by': 'upload_id',
+                        'order': 'asc',
+                    },
+                    'entries': {
+                        'pagination': {
+                            'page_size': 6,
+                            'order_by': 'entry_id',
+                            'order': 'desc',
+                        }
+                    },
+                }
+            },
+            id='all pagination values changed',
+        ),
+        pytest.param(
+            {'projects': {'pagination': {'page_size': 12}}},
+            {'uploads': {'pagination': {'page_size': 12}}},
+            id='using alias projects',
+        ),
+    ],
+)
+def test_pagination(conf_yaml, conf_expected, mockopen, monkeypatch):
+    config = load_test_config(conf_yaml, None, mockopen, monkeypatch)
+    assert_config(config, conf_expected)
+
+
+@pytest.mark.parametrize(
+    'entry_point_id, custom_id_url_safe, expected_id_url_safe, should_raise',
+    [
+        pytest.param(
+            'nomad_parser_vasp.parsers:VASPRunParser',
+            None,
+            'nomad_parser_vasp.parsers-VASPRunParser',
+            False,
+            id='auto-generate: typical entry point id',
+        ),
+        pytest.param(
+            'simple_id',
+            None,
+            'simple_id',
+            False,
+            id='auto-generate: simple id unchanged',
+        ),
+        pytest.param(
+            'some.entry:point',
+            'my_custom_id',
+            'my_custom_id',
+            False,
+            id='custom: valid with underscores',
+        ),
+        pytest.param(
+            'some.entry:point',
+            'my-custom-id',
+            'my-custom-id',
+            False,
+            id='custom: valid with hyphens',
+        ),
+        pytest.param(
+            'some.entry:point',
+            'test%20string',
+            'test%20string',
+            False,
+            id='custom: valid with percent-encoding',
+        ),
+        pytest.param(
+            'some.entry:point',
+            '_private_id',
+            '_private_id',
+            False,
+            id='custom: valid starting with underscore',
+        ),
+        pytest.param(
+            'some.entry:point',
+            'id123',
+            'id123',
+            False,
+            id='custom: valid with numbers',
+        ),
+        pytest.param(
+            'some.entry:point',
+            'valid.id',
+            'valid.id',
+            False,
+            id='custom: valid with dots',
+        ),
+        pytest.param(
+            'some.entry:point',
+            'invalid id',
+            None,
+            True,
+            id='custom: invalid with spaces',
+        ),
+        pytest.param(
+            'some.entry:point',
+            'invalid:id',
+            None,
+            True,
+            id='custom: invalid with colons',
+        ),
+    ],
+)
+def test_id_url_safe(
+    entry_point_id,
+    custom_id_url_safe,
+    expected_id_url_safe,
+    should_raise,
+    mockopen,
+    monkeypatch,
+):
+    """Tests URL-safe identifier generation, validation, and assignment."""
+    config_dict = {
+        'plugins': {
+            'options': {
+                entry_point_id: {
+                    'entry_point_type': 'parser',
+                    'id_url_safe': custom_id_url_safe,
+                }
+            },
+        }
+    }
+    conf_yaml, conf_env = load_format(config_dict, 'yaml')
+    config = load_test_config(conf_yaml, conf_env, mockopen, monkeypatch)
+
+    if should_raise:
+        with pytest.raises(ValueError):
+            config.load_plugins()
+    else:
+        config.load_plugins()
+        assert (
+            config.plugins.entry_points.options[entry_point_id].id_url_safe
+            == expected_id_url_safe
+        )
+
+
+@pytest.mark.parametrize(
+    'options, collides',
+    [
+        pytest.param(
+            {
+                'pkg.mod:Class': {
+                    'id_url_safe': 'A',
+                    'entry_point_type': 'schema_package',
+                },
+                'pkg-mod_Class': {
+                    'id_url_safe': 'A',
+                    'entry_point_type': 'schema_package',
+                },
+            },
+            True,
+            id='same custom id_url_safe and entry point type',
+        ),
+        pytest.param(
+            {
+                'pkg.mod:Class': {
+                    'id_url_safe': 'A',
+                    'entry_point_type': 'parser',
+                },
+                'pkg-mod_Class': {
+                    'id_url_safe': 'A',
+                    'entry_point_type': 'schema_package',
+                },
+            },
+            False,
+            id='same custom id_url_safe, different entry point types',
+        ),
+    ],
+)
+def test_id_url_safe_collision(options, collides, mockopen, monkeypatch):
+    """Tests that URL-safe identifier collisions are detected."""
+    config_dict = {
+        'plugins': {
+            'options': options,
+        }
+    }
+
+    conf_yaml, conf_env = load_format(config_dict, 'yaml')
+    config = load_test_config(conf_yaml, conf_env, mockopen, monkeypatch)
+
+    if collides:
+        with pytest.raises(ValueError):
+            config.load_plugins()
+    else:
+        config.load_plugins()

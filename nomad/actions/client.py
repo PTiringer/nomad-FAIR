@@ -1,6 +1,7 @@
 import temporalio.converter
 from temporalio.client import Client
 from temporalio.contrib.pydantic import PydanticPayloadConverter
+from temporalio.runtime import PrometheusConfig, Runtime, TelemetryConfig
 
 from nomad.actions._codec import EncryptionCodec
 from nomad.config import config
@@ -16,9 +17,20 @@ async def get_client() -> Client:
         if config.services.mode == ModeEnum.DEVELOPMENT
         else EncryptionCodec(),
     )
+    runtime = Runtime(
+        telemetry=TelemetryConfig(
+            metrics=PrometheusConfig(
+                bind_address=config.temporal.prometheus_bind_address
+            )
+            if config.temporal.prometheus_bind_address is not None
+            else None
+        ),
+        worker_heartbeat_interval=None,
+    )
     client = await Client.connect(
         host,
         namespace=config.temporal.namespace,
         data_converter=data_converter,
+        runtime=runtime,
     )
     return client

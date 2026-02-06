@@ -30,7 +30,7 @@ fi
 rm -rf nomad/app/static/gui
 
 # Install nomad
-uv pip install -e ".[infrastructure,parsing,dev]" -c requirements-dev.txt
+uv pip install -e ".[infrastructure,dev]" -c requirements-dev.txt
 
 uv pip install -r requirements-plugins.txt # todo: remove this after moving to distro
 

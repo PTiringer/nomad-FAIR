@@ -18,12 +18,11 @@
 
 import json
 import os
-import os.path
 
 import pytest
 
 from nomad.config import config
-from nomad.datamodel import Context, EntryArchive
+from nomad.datamodel import Context, EntryArchive, EntryMetadata
 from nomad.parsing.parser import ArchiveParser
 
 
@@ -76,7 +75,9 @@ def get_file_parameter():
 
 @pytest.mark.parametrize('mainfile', get_file_parameter())
 def test_example_data(mainfile, no_warn):
-    archive = EntryArchive()
+    archive = EntryArchive(
+        metadata=EntryMetadata(upload_id='sample_id', entry_id='sample_entry_id')
+    )
     archive.m_context = Context()
     ArchiveParser().parse(mainfile, archive)
     archive.m_to_dict()

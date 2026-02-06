@@ -37,7 +37,7 @@ ENV NODE_OPTIONS="--max_old_space_size=4096 --openssl-legacy-provider"
 # Python cached base layers
 # ================================================================================
 
-FROM ghcr.io/astral-sh/uv:0.5-python3.12-bookworm-slim AS base_python
+FROM ghcr.io/astral-sh/uv:0.9-python3.13-bookworm-slim AS base_python
 # Keeps Python from buffering stdout and stderr to avoid situations where
 # the application crashes without emitting any logs due to buffering.
 ENV PYTHONUNBUFFERED=1
@@ -92,8 +92,6 @@ RUN echo "REACT_APP_BACKEND_URL=/nomad-oasis" > .env
 
 # ================================================================================
 
-# ================================================================================
-
 FROM dev_node AS build_node
 
 RUN yarn run build
@@ -125,7 +123,7 @@ COPY tests/data/parsers/archive.json ./tests/data/parsers/archive.json
 COPY tests/data/examples/example.out ./tests/data/examples/example.out
 
 # Build documentation with static version
-RUN SETUPTOOLS_SCM_PRETEND_VERSION='0.0' uv pip install ".[parsing,infrastructure,dev]"
+RUN SETUPTOOLS_SCM_PRETEND_VERSION='0.0' uv pip install ".[infrastructure,dev]"
 
 # Copy the built gui code
 COPY --from=build_node /app/gui/build nomad/app/static/gui
@@ -134,7 +132,7 @@ COPY --from=build_node /app/gui/build nomad/app/static/gui
 ARG SETUPTOOLS_SCM_PRETEND_VERSION='0.0'
 
 # Re-install project with correct version
-RUN uv pip install ".[parsing,infrastructure,dev]"
+RUN uv pip install ".[infrastructure,dev]"
 
 # Build the python package.
 RUN uv build

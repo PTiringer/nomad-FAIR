@@ -17,7 +17,7 @@
 #
 
 from enum import Enum
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Request, status
 from fastapi.exception_handlers import RequestValidationError
@@ -48,7 +48,7 @@ from ..models import (
     metadata_required_parameters,
 )
 from ..utils import create_responses
-from .auth import create_user_dependency
+from .auth import get_current_user
 
 router = APIRouter()
 
@@ -122,7 +122,7 @@ def perform_search(*args, **kwargs) -> MetadataResponse:
     response_model_exclude_none=True,
 )
 async def post_entries_metadata_query(
-    request: Request, data: Metadata, user: User = Depends(create_user_dependency())
+    request: Request, data: Metadata, user: Annotated[User, Depends(get_current_user())]
 ):
     """
     Executes a *query* and returns a *page* of the results with *required* result data
@@ -162,10 +162,10 @@ async def post_entries_metadata_query(
 )
 async def get_entries_metadata(
     request: Request,
-    with_query: WithQuery = Depends(query_parameters),
-    pagination: MetadataPagination = Depends(metadata_pagination_parameters),
-    required: MetadataRequired = Depends(metadata_required_parameters),
-    user: User = Depends(create_user_dependency()),
+    with_query: Annotated[WithQuery, Depends(query_parameters)],
+    pagination: Annotated[MetadataPagination, Depends(metadata_pagination_parameters)],
+    required: Annotated[MetadataRequired, Depends(metadata_required_parameters)],
+    user: Annotated[User, Depends(get_current_user())],
 ):
     """
     Executes a *query* and returns a *page* of the results with *required* result data.
@@ -200,12 +200,14 @@ async def get_entries_metadata(
     response_model_exclude_none=True,
 )
 async def get_material_metadata(
-    material_id: str = Path(
-        ...,
-        description='The unique material id of the material to retrieve metadata from.',
-    ),
-    required: MetadataRequired = Depends(metadata_required_parameters),
-    user: User = Depends(create_user_dependency()),
+    material_id: Annotated[
+        str,
+        Path(
+            description='The unique material id of the material to retrieve metadata from.'
+        ),
+    ],
+    required: Annotated[MetadataRequired, Depends(metadata_required_parameters)],
+    user: Annotated[User, Depends(get_current_user())],
 ):
     """
     Retrives the material metadata for the given id.

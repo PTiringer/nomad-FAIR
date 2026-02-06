@@ -34,7 +34,7 @@ Allows to create pydantic models from section definitions.
 
 from typing import cast
 
-from pydantic import BaseModel, Field, create_model
+from pydantic import Field, create_model
 
 from . import DefinitionAnnotation
 from .data_type import to_pydantic_type
@@ -52,7 +52,8 @@ class PydanticModel(DefinitionAnnotation):
     """
 
     def __init__(self):
-        self.model: type[BaseModel] = None
+        super().__init__()
+        self.model = None
 
     def to_pydantic(self, section):
         """Returns the pydantic model instance for the given section."""
@@ -74,3 +75,4 @@ class PydanticModel(DefinitionAnnotation):
         model_config = {'from_attributes': True}
 
         self.model = create_model(name, __config__=model_config, **fields)  # type: ignore
+        self.initialized = True

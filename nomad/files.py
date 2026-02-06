@@ -49,9 +49,7 @@ import hashlib
 import io
 import json
 import os
-import os.path
 import shutil
-import tarfile  # noqa: F401
 import zipfile
 from abc import ABCMeta
 from collections.abc import Callable, Iterable, Iterator

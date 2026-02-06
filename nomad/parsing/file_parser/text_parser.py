@@ -139,12 +139,27 @@ class Quantity:
         self.dtype = kwargs.get('dtype', self.dtype)
         self.unit = kwargs.get('unit', self.unit)
         self.shape = kwargs.get('shape', self.shape)
-
         self._re_pattern: str = (
             re_pattern.re_pattern
             if isinstance(re_pattern, ParsePattern)
+            else '|'.join(re_pattern)
+            if isinstance(re_pattern, list)
             else re_pattern
         )
+        if isinstance(re_pattern, str):
+            # reformulate regular expression to capture range
+            match = re.findall(r'_capture:(.+?)(?:__(?:start|end)|\Z)', re_pattern)
+            re_patterns = [m for m in match] if match else [re_pattern]
+        elif isinstance(re_pattern, ParsePattern):
+            re_patterns = [re_pattern.re_pattern]
+        else:
+            re_patterns = re_pattern
+        self.re_patterns = [re.compile(p.encode()) for p in re_patterns]
+        self.multiline = kwargs.get(
+            'multiline', isinstance(re_pattern, str) and len(re_patterns) == 1
+        )
+        self.exact_match = kwargs.get('exact_match', not self.multiline)
+        self.units_mapping = kwargs.get('units_mapping', {})
         self.str_operation: Callable = kwargs.get('str_operation', None)
         self.sub_parser: TextParser = kwargs.get('sub_parser', None)
         self.repeats: bool = kwargs.get('repeats', False)
@@ -260,6 +275,9 @@ class TextParser(FileParser):
         findall: if True will employ re.findall, otherwise re.finditer
         file_offset: offset in reading the file
         file_length: length of the chunk to be read from the file
+        allow_overlap: if True, will match each quantity to the file block
+        max_lines: maximum number of lines to cache in a multiline search
+        line_parsing: if True will perform line by line matching
     """
 
     def __init__(
@@ -275,15 +293,22 @@ class TextParser(FileParser):
         self._quantities: list[Quantity] = quantities
         self.findall: bool = kwargs.get('findall', True)
         self.findlazy: bool = kwargs.get('findlazy', None)
-        self._kwargs = kwargs
         self._file_length: int = kwargs.get('file_length', 0)
         self._file_offset: int = kwargs.get('file_offset', 0)
         self._file_pad: int = 0
+        self._parsed: list[int] = []
+        # True if multiple quantities can match a line
+        self.allow_overlap = kwargs.get('allow_overlap', False)
+        # maximum mumber of lines to cache in a multiline search
+        self.max_lines = kwargs.get('max_lines', 10)
+        self.line_parsing = kwargs.get('line_parsing', False)
         if quantities is None:
             self.init_quantities()
         # check quantity patterns are valid
         re_has_group = re.compile(r'\(.+\)')
         for i in range(len(self._quantities) - 1, -1, -1):
+            if self._quantities[i].sub_parser:
+                continue
             try:
                 assert (
                     re_has_group.search(self._quantities[i].re_pattern.pattern.decode())
@@ -302,7 +327,16 @@ class TextParser(FileParser):
         """
         Returns a copy of the object excluding the parsed results.
         """
-        return TextParser(self.mainfile, self.quantities, self.logger, **self._kwargs)
+        return TextParser(
+            self.mainfile,
+            self.quantities,
+            self.logger,
+            findall=self.findall,
+            findlazy=self.findlazy,
+            allow_overlap=self.allow_overlap,
+            max_lines=self.max_lines,
+            line_parsing=self.line_parsing,
+        )
 
     def init_quantities(self):
         """
@@ -363,7 +397,7 @@ class TextParser(FileParser):
         Memory mapped representation of the file.
         """
         if self._file_handler is None:
-            with self.open(self.mainfile) as f:
+            with self.open(self.mainfile, 'rb') as f:
                 if isinstance(f, io.TextIOWrapper):
                     self._file_handler = mmap.mmap(
                         f.fileno(),
@@ -374,8 +408,18 @@ class TextParser(FileParser):
                     # set the extra chunk loaded before the intended offset to empty
                     self._file_handler[: self._file_pad] = b' ' * self._file_pad
                 else:
-                    self._file_handler = f.read()
+                    self._file_handler = [(0, f.seek(0, 2))]
             self._file_pad = 0
+        return self._file_handler
+
+    @property
+    def file_pointers(self):
+        """
+        List of (start, end) indices of blocks in the file to be parsed.
+        """
+        if self._file_handler is None:
+            with self.open(self.mainfile, 'rb') as f:
+                self._file_handler = [(0, f.seek(0, 2))]
         return self._file_handler
 
     def keys(self):
@@ -415,6 +459,20 @@ class TextParser(FileParser):
                 'Error setting value', data=dict(quantity=quantity.name)
             )
 
+    def _load_block(self) -> bytes | mmap.mmap:
+        """
+        Loads the file block to be parsed.
+        """
+        if not isinstance(self._file_handler, list):
+            return self._file_handler
+
+        with self.open(self.mainfile, 'rb') as f:
+            block = b''
+            for span in self._file_handler:
+                f.seek(span[0] + self._file_offset)
+                block += f.read(span[1] - span[0])
+            return block
+
     def _parse_quantities(self, quantities: list[Quantity]):
         """
         Parse a list of quantities.
@@ -432,7 +490,8 @@ class TextParser(FileParser):
                 self._re_findall = re_findall_b
 
         # map matches to quantities
-        matches = re.findall(re_findall_b, self.file_mmap)
+        block = self._load_block()
+        matches = re.findall(re_findall_b, block)
         current_index = 0
         for quantity in quantities:
             values = []
@@ -441,6 +500,8 @@ class TextParser(FileParser):
 
             non_empty_matches = []
             for match in matches:
+                if isinstance(match, bytes):
+                    match = [match]
                 non_empty_match = [
                     m for m in match[current_index : current_index + n_groups] if m
                 ]
@@ -478,10 +539,11 @@ class TextParser(FileParser):
         """
         value = []
         units = []
+        block = self._load_block()
         re_matches = (
-            quantity.re_pattern.finditer(self.file_mmap)
+            quantity.re_pattern.finditer(block)
             if quantity.repeats
-            else [quantity.re_pattern.search(self.file_mmap)]
+            else [quantity.re_pattern.search(block)]
         )
         for res in re_matches:
             if res is None:
@@ -492,7 +554,12 @@ class TextParser(FileParser):
                 sub_parser.logger = self.logger
                 if sub_parser.findlazy is None:
                     sub_parser.findlazy = self.findlazy
-                sub_parser._file_handler = b' '.join([g for g in res.groups() if g])
+                start = res.span(1)[0]
+                sub_parser._file_offset = self._file_offset + start
+                sub_parser._file_handler = [
+                    (res.span(n + 1)[0] - start, res.span(n + 1)[1] - start)
+                    for n in range(len(res.groups()))
+                ]
                 value.append(sub_parser if sub_parser.findlazy else sub_parser.parse())
 
             else:
@@ -520,6 +587,126 @@ class TextParser(FileParser):
         else:
             self._add_value(quantity, value, units)
 
+    def _parse_line(self, key=None):
+        self._blocks = [[[None] * len(q.re_patterns)] for q in self.quantities]
+        self._units = [None] * len(self.quantities)
+        self._multiline = True in [q.multiline for q in self.quantities]
+        self._repeats = True in [q.repeats for q in self.quantities]
+        with self.open(self.mainfile, 'rb') as fileobj:
+            fileobj.seek(self._file_offset)
+            # for multiline support
+            lines = b''
+            n_lines = 0
+            parsed = []
+            while True:
+                position = fileobj.tell()
+                line = fileobj.readline()
+                if not line:
+                    break
+                if self._file_length > 0 and position > (
+                    self._file_offset + self._file_length
+                ):
+                    break
+                if not self._repeats and False not in [
+                    None not in block[-1] for block in self._blocks
+                ]:
+                    break
+                if self._multiline:
+                    if n_lines > self.max_lines:
+                        n_lines = 0
+                        lines = b''
+                    n_lines += 1
+                    lines += line
+                for n_q, quantity in enumerate(self.quantities):
+                    if n_q in parsed:
+                        continue
+                    blocks = self._blocks[n_q][-1]
+                    n_re = [n for n, p in enumerate(blocks) if p is None]
+                    if not n_re:
+                        if not quantity.repeats:
+                            parsed.append(n_q)
+                            continue
+                        else:
+                            blocks = [None] * len(quantity.re_patterns)
+                            self._blocks[n_q].append(blocks)
+                            n_re = [0]
+
+                    if quantity.multiline:
+                        match = re.search(quantity.re_patterns[n_re[0]], lines)
+                    else:
+                        # faster matching
+                        if quantity.exact_match:
+                            match = re.match(quantity.re_patterns[n_re[0]], line)
+                        else:
+                            match = re.search(quantity.re_patterns[n_re[0]], line)
+                    if match:
+                        lines = b''
+                        if quantity.sub_parser:
+                            block = [
+                                match.span(n + 1) for n in range(len(match.groups()))
+                            ]
+                            if not block:
+                                # if nothing is captured capture the whole block
+                                block = [match.span()]
+                            block = [(s + position, e + position) for s, e in block]
+                            blocks[n_re[0]] = block
+                        else:
+                            values = [g or b'' for g in match.groups()]
+                            unit_index = quantity.re_patterns[n_re[0]].groupindex.get(
+                                '__unit'
+                            )
+                            if unit_index:
+                                self._units[n_q] = values.pop(unit_index - 1).decode()
+                            blocks[n_re[0]] = b''.join(values).decode()
+
+                        if not self.allow_overlap:
+                            break
+
+            for n_q, quantity in enumerate(self.quantities):
+                if quantity.sub_parser:
+                    data = []
+                    for blocks in self._blocks[n_q]:
+                        if None in blocks:
+                            continue
+                        sub_parser = quantity.sub_parser.copy()
+                        sub_parser.mainfile = self.mainfile
+                        sub_parser.line_parsing = True
+                        sub_parser.allow_overlap = self.allow_overlap
+                        sub_parser.max_lines = self.max_lines
+                        sub_parser._file_offset = blocks[0][0][0]
+                        sub_parser._file_length = (
+                            blocks[-1][-1][-1] - sub_parser._file_offset
+                        )
+                        data.append(sub_parser)
+                    if data:
+                        self._results.setdefault(
+                            quantity.name, data if quantity.repeats else data[0]
+                        )
+                else:
+                    data = [
+                        ' '.join(block)
+                        for block in self._blocks[n_q]
+                        if None not in block
+                    ]
+                    if data:
+                        data = [quantity.to_data(d) for d in data]
+                        unit = (
+                            quantity.units_mapping.get(
+                                self._units[n_q], self._units[n_q]
+                            )
+                            or quantity.unit
+                        )
+                        if unit:
+                            data = [
+                                pint.Quantity(d, unit)
+                                if isinstance(unit, str)
+                                else d * unit
+                                for d in data
+                            ]
+                        self._results[quantity.name] = (
+                            data if quantity.repeats else data[0]
+                        )
+
     def parse(self, key=None):
         """
         Triggers parsing of quantity with name key, if key is None will parse all quantities.
@@ -528,6 +715,10 @@ class TextParser(FileParser):
         """
         if self._results is None:
             self._results = dict()
+
+        if self.line_parsing:
+            self._parse_line()
+            return
 
         if self.file_mmap is None:
             return self
@@ -569,7 +760,6 @@ class TextParser(FileParser):
         if self.findall:
             if isinstance(self._file_handler, mmap.mmap):
                 self._file_handler.close()
-            self._file_handler = b' '
 
         return self
 
@@ -603,7 +793,14 @@ class DataTextParser(TextParser):
             try:
                 data = None
                 if self.mainfile is not None:
-                    data = np.loadtxt(self.mainfile)
+                    data = np.loadtxt(
+                        self.mainfile,
+                        **{
+                            key: val
+                            for key, val in self._kwargs.items()
+                            if key in np.loadtxt.__code__.co_varnames
+                        },
+                    )
                 else:
                     if not self._mainfile_contents and self.mainfile_obj:
                         with self.open_mainfile_obj() as mainfile_obj:

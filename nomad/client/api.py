@@ -108,6 +108,7 @@ class Auth(requests.auth.AuthBase):
             data={
                 'username': self.user,
                 'password': self._password,
+                'grant_type': 'password',
             },
             headers={'Content-Type': 'application/x-www-form-urlencoded'},
         )

@@ -115,7 +115,7 @@ def test_row_actions(original, final):
     'original, model',
     [
         pytest.param(
-            {'unit': 'nm', 'search_quantity': 'some_molecule', 'scale': 'linear'},
+            {'unit': 'nm', 'search_quantity': 'some_molecule'},
             Axis(title=None, unit='nm', quantity=None, search_quantity='some_molecule'),
             id='Axis using old model',
         ),
@@ -125,7 +125,6 @@ def test_row_actions(original, final):
                 unit='nm',
                 quantity=None,
                 search_quantity='some_molecule',
-                scale='linear',
             ),
             Axis(title=None, unit='nm', quantity=None, search_quantity='some_molecule'),
             id='Axis old model (objects)',

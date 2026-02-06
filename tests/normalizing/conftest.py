@@ -77,7 +77,14 @@ def run_processing(directory, mainfile):
     # parse
     parser = ArchiveParser()
     context = ServerContext(upload=upload)
-    test_archive = EntryArchive(m_context=context, metadata=EntryMetadata())
+    test_archive = EntryArchive(
+        m_context=context,
+        metadata=EntryMetadata(
+            upload_id=upload_id,
+            entry_id=f'sample_id_{uuid.uuid4().hex[:8]}',
+            mainfile=mainfile,
+        ),
+    )
     parser.parse(upload_files.raw_file_object(mainfile).os_path, test_archive)
     run_normalize(test_archive)
     return test_archive

@@ -99,6 +99,7 @@ export const schemaLayout = object({
 export const schemaWidget = object({
   type: string().required(),
   title: string(),
+  description: string().optional(),
   layout: object({
     sm: schemaLayout,
     md: schemaLayout,

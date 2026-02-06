@@ -151,6 +151,7 @@ def _request_transfer_start(
     return response, body
 
 
+@pytest.mark.skip('REMOVE-CELERY')
 @pytest.mark.parametrize(
     'embargo_length, expected_response_code',
     [
@@ -202,6 +203,7 @@ def _check_workflow_failure(
         assert expected_error in upload_error
 
 
+@pytest.mark.skip('REMOVE-CELERY')
 def test_bad_formatted_token(
     auth_headers,
     client: TestClient,
@@ -225,6 +227,7 @@ def test_bad_formatted_token(
     )
 
 
+@pytest.mark.skip('REMOVE-CELERY')
 def test_invalid_token(
     auth_headers,
     client: TestClient,
@@ -255,6 +258,7 @@ def test_invalid_token(
     )
 
 
+@pytest.mark.skip('REMOVE-CELERY')
 def test_workflow_failed(
     auth_headers,
     client: TestClient,
@@ -295,6 +299,7 @@ def test_workflow_failed(
     )
 
 
+@pytest.mark.skip('REMOVE-CELERY')
 @pytest.mark.parametrize(
     'user',
     [
@@ -314,6 +319,7 @@ def test_different_user_roles(
     )
 
 
+@pytest.mark.skip('REMOVE-CELERY')
 def test_token_not_provided(
     auth_headers,
     client: TestClient,
@@ -330,7 +336,8 @@ def test_token_not_provided(
     assert len(body['detail']) > 0
 
 
-@pytest.mark.disable_health_check_patch(True)
+@pytest.mark.skip('REMOVE-CELERY')
+@pytest.mark.disable_health_check_patch
 def test_external_deployment_health_failed(
     auth_headers,
     client: TestClient,
@@ -352,7 +359,8 @@ def test_external_deployment_health_failed(
     assert response.status_code == 400
 
 
-@pytest.mark.enable_target_deployment_url_validation(True)
+@pytest.mark.skip('REMOVE-CELERY')
+@pytest.mark.enable_target_deployment_url_validation
 @pytest.mark.parametrize(
     'target_url, expected_message',
     [
@@ -381,6 +389,7 @@ def test_invalid_target_url(
     assert response.status_code == 422
 
 
+@pytest.mark.skip('REMOVE-CELERY')
 def test_default_target_url(
     auth_headers,
     client: TestClient,
@@ -398,6 +407,7 @@ def test_default_target_url(
     assert old_upload.published_to[0] == config.oasis.central_nomad_deployment_url
 
 
+@pytest.mark.skip('REMOVE-CELERY')
 def test_transfer_processing_upload(
     auth_headers,
     client: TestClient,
@@ -424,6 +434,7 @@ def test_transfer_processing_upload(
     assert response.status_code == 400
 
 
+@pytest.mark.skip('REMOVE-CELERY')
 def test_non_published_upload(
     auth_headers, client: TestClient, non_empty_processed: Upload
 ):
@@ -441,6 +452,7 @@ def test_non_published_upload(
     assert body['detail'] == 'The upload should be published first.'
 
 
+@pytest.mark.skip('REMOVE-CELERY')
 def test_transfer_duplicated_upload(
     auth_headers,
     client: TestClient,

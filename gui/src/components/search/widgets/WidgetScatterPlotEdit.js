@@ -279,6 +279,16 @@ export const WidgetScatterPlotEdit = React.memo(({widget}) => {
           />
         </WidgetEditOption>
         <WidgetEditOption>
+          <InputTextField
+            label="Description"
+            fullWidth
+            value={settings?.description}
+            multiline
+            maxRows={10}
+            onChange={(event) => handleChange('description', event.target.value)}
+          />
+        </WidgetEditOption>
+        <WidgetEditOption>
           <WidgetEditSelect
             label="Action to perform on mouse drag"
             options={dragModeOptions}

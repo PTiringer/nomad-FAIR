@@ -15,9 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-import hashlib
-import json
+import os
 import re
 from contextlib import asynccontextmanager
 
@@ -32,8 +30,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from temporalio.client import Client
 
-from nomad._auth import check_api_secret
 from nomad.actions.client import get_client
+from nomad.auth.tokens import check_api_secret
 from nomad.config import config
 from nomad.config.models.plugins import APIEntryPoint
 from nomad.mongo.cache import MongoBackend
@@ -43,7 +41,7 @@ from .static import GuiFiles
 from .static import app as static_files_app
 from .v1.main import app as v1_app
 from .v1.routers import apps as apps_router
-from .v1.routers.auth import resolve_user
+from .v1.routers.auth import _resolve_user
 
 
 class OasisAuthenticationMiddleware(BaseHTTPMiddleware):
@@ -82,13 +80,14 @@ class OasisAuthenticationMiddleware(BaseHTTPMiddleware):
 
         try:
             # Here any token would be allowed
-            # NOTE: cannot handle `form_data` as the stream would be consumed
-            _user = resolve_user(
-                bearer_token=bearer_token,
-                upload_token=request.query_params.get('token'),
-                request=request,
-                signature_token=request.query_params.get('signature_token'),
+            _user = _resolve_user(
                 required=True,
+                keycloak_token=bearer_token,
+                request=request,
+                simple_token=bearer_token,
+                upload_token=request.headers.get('Upload-Token'),
+                # Deprecated token via query param (for rejection)
+                upload_token_query_param=request.query_params.get('token'),
             )
         except HTTPException as exc:
             return Response(status_code=exc.status_code, content=exc.detail)
@@ -107,13 +106,13 @@ OASIS_AUTH_WHITELIST: dict[str, set[str]] = {
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from nomad import infrastructure
-    from nomad.cli.dev import get_gui_artifacts_js, get_gui_config
+    from nomad.cli.dev import generate_gui_artifacts_js, get_gui_config
     from nomad.metainfo.elasticsearch_extension import entry_type
     from nomad.parsing.parsers import import_all_parsers
 
     import_all_parsers()
 
-    # each subprocess is supposed disconnect and
+    # each subprocess is supposed to disconnect and
     # connect again: https://jira.mongodb.org/browse/PYTHON-2090
     try:
         from mongoengine import disconnect
@@ -123,16 +122,8 @@ async def lifespan(app: FastAPI):
         pass
 
     entry_type.reload_quantities_dynamic()
-    GuiFiles.gui_artifacts_data = get_gui_artifacts_js()
-    GuiFiles.gui_env_data = get_gui_config()
 
-    data = {
-        'artifacts': GuiFiles.gui_artifacts_data,
-        'gui_config': GuiFiles.gui_env_data,
-    }
-    GuiFiles.gui_data_etag = hashlib.md5(
-        json.dumps(data).encode(), usedforsecurity=False
-    ).hexdigest()
+    GuiFiles.bootstrap(generate_gui_artifacts_js(), get_gui_config())
 
     infrastructure.setup()
 
@@ -144,17 +135,17 @@ async def lifespan(app: FastAPI):
     # Validate API secret
     check_api_secret()
 
-    if config.temporal.enabled:
-        try:
-            app.state.temporal_client = await get_client()
-            yield
-        except Exception as e:
-            logger = get_logger(__name__)
-
-            logger.error(f'Failed to connect to temporal', exc_info=e)
-            raise
-    else:
+    try:
+        app.state.temporal_client = await get_client()
         yield
+    except Exception as e:
+        logger = get_logger(__name__)
+
+        logger.error(f'Failed to connect to temporal', exc_info=e)
+        raise
+    finally:
+        if os.path.exists(GuiFiles.gui_artifacts_path):
+            os.remove(GuiFiles.gui_artifacts_path)
 
 
 app = FastAPI(lifespan=lifespan)

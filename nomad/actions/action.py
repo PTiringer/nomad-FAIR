@@ -1,6 +1,5 @@
 import functools
 from collections.abc import Callable
-from importlib.metadata import entry_points
 from typing import TYPE_CHECKING, Protocol
 
 from nomad.actions import TaskQueue
@@ -59,41 +58,37 @@ class Action:
 @functools.lru_cache
 def get_actions() -> dict[str, 'ActionEntryPoint']:
     """
-    Loads and returns all valid Actions from the 'nomad.plugin' entry points.
+    Loads and returns all valid and available Actions from the nomad plugin entry points.
 
     Raises:
         Exception: If an entry point fails to load.
         TypeError: If a loaded entry point doesn't return an Action.
 
     Returns:
-        list[Action]: Loaded Action instances.
+        Dictionary containing the entry point ID as key and ActionEntryPoint as value.
     """
+    from nomad.config import config
     from nomad.config.models.plugins import ActionEntryPoint
 
-    nomad_entry_points = entry_points(group='nomad.plugin')
-
+    config.load_plugins()
+    nomad_entry_points = config.plugins.entry_points.filtered_values()
     actions: dict[str, ActionEntryPoint] = {}
-    invalid_entrypoints: list = []
 
-    for plugin_entry_point in nomad_entry_points:
-        entry_point = plugin_entry_point.load()
+    for entry_point in nomad_entry_points:
         if not isinstance(entry_point, ActionEntryPoint):
             continue
 
         try:
-            handler = entry_point.load()
+            action = entry_point.load()
         except Exception as e:
-            raise Exception(f'Failed to load entry point {entry_point}: {e}')
+            raise Exception(
+                f'Failed to load action from entry point "{entry_point.id}"'
+            ) from e
 
-        if not isinstance(handler, Action):
-            invalid_entrypoints.append(str(plugin_entry_point))
-        else:
-            actions[plugin_entry_point.value] = entry_point
-
-    if invalid_entrypoints:
-        raise TypeError(
-            'The following entry points did not return an Action:\n'
-            + '\n'.join(invalid_entrypoints)
-        )
+        if not isinstance(action, Action):
+            raise TypeError(
+                f'The following entry point did not return an Action: "{entry_point.id}"'
+            )
+        actions[entry_point.id] = entry_point
 
     return actions

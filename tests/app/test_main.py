@@ -18,6 +18,7 @@
 
 import re
 import urllib
+from tempfile import NamedTemporaryFile
 from unittest.mock import MagicMock
 
 import pytest
@@ -28,7 +29,7 @@ from starlette.routing import Mount, Route
 from starlette.testclient import TestClient
 
 from nomad.app.main import OASIS_AUTH_WHITELIST, OasisAuthenticationMiddleware
-from nomad.infrastructure import KeycloakError
+from nomad.auth.keycloak import KeycloakError
 from tests import ORIGINAL_API_BASE_PATH
 
 # Tests for `OasisAuthenticationMiddleware`
@@ -43,13 +44,13 @@ from tests import ORIGINAL_API_BASE_PATH
             [r'^/info$'],
             '/protected',
             401,
-            'Authorization required.',
+            'Authentication required.',
         ),
         (
             [r'^/info$'],
             '/protected/info',
             401,
-            'Authorization required.',
+            'Authentication required.',
         ),
         # Prefix match: allow `/info` and all under `/info/...`
         ([r'^/info'], '/info', 200, 'I am nomad'),
@@ -57,7 +58,7 @@ from tests import ORIGINAL_API_BASE_PATH
             [r'^/info'],
             '/protected',
             401,
-            'Authorization required.',
+            'Authentication required.',
         ),
         # Allow `/protected` path
         ([r'^/protected'], '/protected', 200, 'protected endpoint'),
@@ -70,13 +71,13 @@ from tests import ORIGINAL_API_BASE_PATH
             [r'^/nonexistent$'],
             '/info',
             401,
-            'Authorization required.',
+            'Authentication required.',
         ),
         (
             [r'^/nonexistent$'],
             '/protected',
             401,
-            'Authorization required.',
+            'Authentication required.',
         ),
     ],
 )
@@ -131,22 +132,6 @@ def app_middleware_client():
     return TestClient(app())
 
 
-def test_oasis_auth_middleware_invalid_token(app_middleware_client, monkeypatch):
-    monkeypatch.setattr('nomad.config.oasis.require_authentication', True)
-
-    def mock_tokenauth(token):
-        raise KeycloakError('Invalid token')
-
-    monkeypatch.setattr('nomad.infrastructure.keycloak.tokenauth', mock_tokenauth)
-
-    response = app_middleware_client.get(
-        '/protected', headers={'Authorization': 'Bearer invalid'}
-    )
-
-    assert response.status_code == 401
-    assert response.text == 'Invalid token'
-
-
 @pytest.fixture
 def mock_user():
     user = MagicMock()
@@ -154,35 +139,20 @@ def mock_user():
     return user
 
 
-def test_oasis_auth_middleware_user_not_allowed(
-    app_middleware_client, monkeypatch, mock_user
+@pytest.mark.parametrize('token_source', ['header', 'cookie'])
+def test_oasis_auth_middleware_valid_keycloak_token(
+    app_middleware_client, monkeypatch, mock_user, token_source
 ):
     monkeypatch.setattr('nomad.config.oasis.require_authentication', True)
     monkeypatch.setattr(
-        'nomad.infrastructure.keycloak.tokenauth', lambda token: mock_user
-    )
-    monkeypatch.setattr('nomad.config.oasis.allowed_users', {})
-    response = app_middleware_client.get(
-        '/protected', headers={'Authorization': 'Bearer valid'}
-    )
-    assert response.status_code == 403
-    assert response.text == 'You are not authorized to access this Oasis'
-
-
-@pytest.mark.parametrize('auth_method', ['header', 'cookie'])
-def test_oasis_auth_middleware_valid_user(
-    app_middleware_client, monkeypatch, mock_user, auth_method
-):
-    monkeypatch.setattr('nomad.config.oasis.require_authentication', True)
-    monkeypatch.setattr(
-        'nomad.infrastructure.keycloak.tokenauth', lambda token: mock_user
+        'nomad.auth.keycloak.keycloak.tokenauth', lambda token: mock_user
     )
     monkeypatch.setattr('nomad.config.oasis.allowed_users', {mock_user.email})
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth.datamodel.User.get',
         lambda *args, **kwargs: mock_user,
     )
-    if auth_method == 'header':
+    if token_source == 'header':
         response = app_middleware_client.get(
             '/protected', headers={'Authorization': 'Bearer valid'}
         )
@@ -195,39 +165,105 @@ def test_oasis_auth_middleware_valid_user(
     assert response.text == 'protected endpoint'
 
 
+def test_oasis_auth_middleware_invalid_keycloak_token(
+    app_middleware_client, monkeypatch
+):
+    monkeypatch.setattr('nomad.config.oasis.require_authentication', True)
+
+    def mock_tokenauth(token):
+        raise KeycloakError('Invalid token')
+
+    monkeypatch.setattr('nomad.auth.keycloak.keycloak.tokenauth', mock_tokenauth)
+
+    response = app_middleware_client.get(
+        '/protected', headers={'Authorization': 'Bearer invalid'}
+    )
+
+    assert response.status_code == 401
+    assert response.text == 'Invalid token'
+
+
 @pytest.mark.parametrize(
     'token_auth, token_param',
     [
-        ('_get_user_upload_token_auth', 'token'),
-        ('_get_user_signature_token_auth', 'signature_token'),
+        ('get_user_from_upload_token', 'Upload-Token'),
+        ('get_user_from_simple_token', 'Authorization'),
     ],
 )
-def test_oasis_auth_middleware_non_bearer_token(
+def test_oasis_auth_middleware_upload_simple_token(
     token_auth, token_param, app_middleware_client, monkeypatch, mock_user
 ):
-    """Test passing auth middleware with non-bearer (upload/signature) token."""
+    """Test passing auth middleware with upload/simple tokens."""
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth.config.oasis.require_authentication', True
     )
-    # Patch the non-bearer token auth method
+
     monkeypatch.setattr(
         f'nomad.app.v1.routers.auth.{token_auth}',
         lambda *args, **kwargs: mock_user,
     )
 
     monkeypatch.setattr(
-        'nomad.app.v1.routers.auth.config.oasis.allowed_users',
-        {mock_user.email},
+        'nomad.app.v1.routers.auth.config.oasis.allowed_users', {mock_user.email}
     )
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth.datamodel.User.get',
         lambda *args, **kwargs: mock_user,
     )
 
-    response = app_middleware_client.get(f'/protected?{token_param}=abc')
+    if token_param == 'Upload-Token':
+        # Upload token in "Upload-Token" header
+        response = app_middleware_client.get(
+            '/protected',
+            headers={token_param: 'abc'},
+        )
+    else:
+        # Need to patch `get_user_from_keycloak_token` because middleware
+        # cannot differentiate keycloak token from simple token,
+        # and would try simple token in `get_user_from_keycloak_token`
+        # first as it's enabled by default
+        monkeypatch.setattr(
+            'nomad.app.v1.routers.auth.get_user_from_keycloak_token',
+            lambda *args, **kwargs: None,
+        )
+        monkeypatch.setattr(
+            'nomad.app.v1.routers.auth.jwt.decode',
+            lambda *args, **kwargs: {'user': mock_user.user_id, 'exp': 600},
+        )
+
+        # Simple token as "Authorization: Bearer <token>"
+        response = app_middleware_client.get(
+            '/protected',
+            headers={token_param: 'Bearer abc'},
+        )
 
     assert response.status_code == 200
     assert response.text == 'protected endpoint'
+
+
+def test_oasis_auth_middleware_user_not_allowed(
+    app_middleware_client, monkeypatch, mock_user
+):
+    monkeypatch.setattr('nomad.config.oasis.require_authentication', True)
+    monkeypatch.setattr(
+        'nomad.auth.keycloak.keycloak.tokenauth', lambda token: mock_user
+    )
+    monkeypatch.setattr('nomad.config.oasis.allowed_users', {})
+    response = app_middleware_client.get(
+        '/protected', headers={'Authorization': 'Bearer valid'}
+    )
+    assert response.status_code == 403
+    assert response.text == 'You are not authorized to access this Oasis'
+
+
+def test_oasis_auth_middleware_rejects_legacy_query_token(
+    monkeypatch, app_middleware_client
+):
+    monkeypatch.setattr('nomad.config.oasis.require_authentication', True)
+    response = app_middleware_client.get('/protected?token=abc123')
+
+    assert response.status_code == 400
+    assert 'Passing upload token via query parameter' in response.text
 
 
 # Tests for `/alive`, `/-/health` and static files app (`/docs` and `/gui`)
@@ -244,22 +280,28 @@ def test_alive_health(monkeypatch, client, require_auth):
 @pytest.mark.parametrize('path', ['env.js', 'artifacts.js'])
 def test_gui(client, path, monkeypatch):
     monkeypatch.setattr('nomad.app.main.GuiFiles.gui_env_data', 'env.js')
-    monkeypatch.setattr('nomad.app.main.GuiFiles.gui_artifacts_data', 'artifacts.js')
     monkeypatch.setattr('nomad.app.main.GuiFiles.gui_data_etag', 'etag')
 
-    rv = client.get(f'/gui/{path}')
-    assert rv.status_code == 200
-    assert rv.text == path
-    assert rv.headers.get('Etag') == '"etag"'
+    with NamedTemporaryFile(delete=True) as tmp:
+        monkeypatch.setattr('nomad.app.main.GuiFiles.gui_artifacts_path', tmp.name)
 
-    rv = client.get(f'/gui/{path}', headers={'if-none-match': 'etag'})
-    assert rv.status_code == 304
+        rv = client.get(f'/gui/{path}')
+        assert rv.status_code == 200
+        if path == 'env.js':
+            assert rv.text == path
+        else:
+            # empty file
+            assert rv.text == ''
+        assert rv.headers.get('Etag') == '"etag"'
 
-    rv = client.get(f'/gui/{path}', headers={'if-none-match': 'W/"etag"'})
-    assert rv.status_code == 304
+        rv = client.get(f'/gui/{path}', headers={'if-none-match': 'etag'})
+        assert rv.status_code == 304
 
-    rv = client.get(f'/gui/{path}', headers={'if-none-match': 'different-etag'})
-    assert rv.status_code == 200
+        rv = client.get(f'/gui/{path}', headers={'if-none-match': 'W/"etag"'})
+        assert rv.status_code == 304
+
+        rv = client.get(f'/gui/{path}', headers={'if-none-match': 'different-etag'})
+        assert rv.status_code == 200
 
 
 # Verify `OasisAuthenticationMiddleware` is applied correctly in NOMAD

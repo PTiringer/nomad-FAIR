@@ -28,8 +28,9 @@ import { defaultApp } from "../../../defaultApp"
 const context = cloneDeep(defaultApp)
 const columns = [
   {search_quantity: 'entry_name', title: 'Name', align: 'left', selected: true},
+  {search_quantity: 'data.datetime#nomad.datamodel.metainfo.basesections.v1.Activity', title: 'Activity start time', align: 'left', selected: true},
   {search_quantity: 'entry_type', title: 'Entry type', align: 'left', selected: true},
-  {search_quantity: 'entry_create_time', title: 'Entry creation time', align: 'left', selected: true},
+  {search_quantity: 'entry_create_time', title: 'Entry creation time', align: 'left', selected: false},
   {search_quantity: 'upload_name', title: 'Upload name', align: 'left'},
   {search_quantity: 'upload_id', title: 'Upload id', align: 'left'},
   {search_quantity: 'upload_create_time', title: 'Upload time', align: 'left'},
@@ -37,7 +38,7 @@ const columns = [
   {search_quantity: 'results.eln.lab_ids', title: 'IDs'}
 ]
 
-context.colums = columns
+context.columns = columns
 context.rows.details = { enabled: false }
 context.rows.actions = { enabled: true }
 

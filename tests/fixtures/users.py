@@ -7,7 +7,8 @@ User fixtures:
 
 import pytest
 
-from nomad import infrastructure
+from nomad.auth import keycloak, user_management
+from nomad.auth.keycloak import KeycloakError, OIDCToken
 from nomad.config import config
 from nomad.datamodel import User
 from tests.utils import fake_user_uuid, generate_convert_label
@@ -77,6 +78,12 @@ def user2():
 
 
 @pytest.fixture(scope='session')
+def user3():
+    """Return an another user object."""
+    return User(**users[fake_user_uuid(3)])
+
+
+@pytest.fixture(scope='session')
 def users_dict(user_molds):
     """Return a dict: user labels -> user objects."""
     return {k: User(**v) for k, v in user_molds.items()}
@@ -107,8 +114,8 @@ class KeycloakMock:
     def tokenauth(self, access_token: str):
         if access_token in self.users:
             return User(**self.users[access_token])
-        else:
-            raise infrastructure.KeycloakError('user does not exist')
+
+        raise KeycloakError('user does not exist')
 
     def add_user(self, user, *args, **kwargs):
         self.id_counter += 1
@@ -125,16 +132,19 @@ class KeycloakMock:
     def get_user(self, user_id=None, username=None, email=None):
         if user_id is not None:
             return User(**self.users[user_id])
-        elif username is not None:
+
+        if username is not None:
             for _, user_values in self.users.items():
                 if user_values['username'] == username:
                     return User(**user_values)
             raise KeyError('Only test user usernames are recognized')
+
         elif email is not None:
             for _, user_values in self.users.items():
                 if user_values['email'] == email:
                     return User(**user_values)
             raise KeyError('Only test user emails are recognized')
+
         else:
             assert False, 'no token based get_user during tests'
 
@@ -145,45 +155,55 @@ class KeycloakMock:
             if query in ' '.join([str(value) for value in user.values()])
         ]
 
-    def basicauth(self, username: str, password: str) -> str:
+    def basicauth(self, username: str, password: str) -> OIDCToken:
         for user in self.users.values():
             if user['username'] == username or user['email'] == username:
-                return user['user_id']
+                return OIDCToken(
+                    access_token=f'fake-access-{user["user_id"]}',
+                    token_type='Bearer',
+                    expires_in=3600,
+                    refresh_expires_in=7200,
+                    refresh_token=f'fake-refresh-{user["user_id"]}',
+                    id_token=f'fake-id-{user["user_id"]}',
+                    scope='openid profile email',
+                )
 
-        raise infrastructure.KeycloakError()
+        raise KeycloakError()
 
 
 config.keycloak.realm_name = 'fairdi_nomad_test'
 config.keycloak.password = 'password'
 
-_keycloak = infrastructure.keycloak
-_user_management = infrastructure.user_management
+_keycloak = keycloak.keycloak
+_user_management = user_management.user_management
 
 
 # use a session fixture in addition to the function fixture, to ensure mocked keycloak
 # before other class, module, etc. scoped function are run
 @pytest.fixture(scope='session', autouse=True)
 def mocked_keycloak_session(monkeysession):
-    monkeysession.setattr('nomad.infrastructure.keycloak', KeycloakMock())
-    monkeysession.setattr('nomad.infrastructure.user_management', KeycloakMock())
+    monkeysession.setattr('nomad.auth.keycloak.keycloak', KeycloakMock())
+    monkeysession.setattr('nomad.auth.user_management.user_management', KeycloakMock())
 
 
 @pytest.fixture(scope='function', autouse=True)
 def mocked_keycloak(monkeypatch):
-    monkeypatch.setattr('nomad.infrastructure.keycloak', KeycloakMock())
-    monkeypatch.setattr('nomad.infrastructure.user_management', KeycloakMock())
+    monkeypatch.setattr('nomad.auth.keycloak.keycloak', KeycloakMock())
+    monkeypatch.setattr('nomad.auth.user_management.user_management', KeycloakMock())
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope='function')  # type: ignore[no-redef]
 def keycloak(monkeypatch):
-    monkeypatch.setattr('nomad.infrastructure.keycloak', _keycloak)
-    monkeypatch.setattr('nomad.infrastructure.user_management', _user_management)
+    monkeypatch.setattr('nomad.auth.keycloak.keycloak', _keycloak)
+    monkeypatch.setattr('nomad.auth.user_management.user_management', _user_management)
 
 
 @pytest.fixture(scope='function')
 def with_oasis_user_management(monkeypatch):
-    from nomad.infrastructure import OasisUserManagement
+    from nomad.auth.user_management import OasisUserManagement
 
-    monkeypatch.setattr('nomad.infrastructure.user_management', OasisUserManagement())
+    monkeypatch.setattr(
+        'nomad.auth.user_management.user_management', OasisUserManagement()
+    )
     yield
-    monkeypatch.setattr('nomad.infrastructure.user_management', _user_management)
+    monkeypatch.setattr('nomad.auth.user_management.user_management', _user_management)

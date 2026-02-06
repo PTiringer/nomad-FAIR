@@ -50,7 +50,7 @@ async def logs(request: Request):
 
     if content_encoding is not None and content_encoding not in ['gzip']:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"\"'Content-Encoding': '{content_encoding}'\" not supported",
         )
 
@@ -70,7 +70,7 @@ async def logs(request: Request):
 
     elif content_encoding is None:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f'unsupported content type, content starts with {str(content[:5])}',
         )
 
@@ -82,7 +82,7 @@ async def logs(request: Request):
 
             traceback.print_exc()
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail='decompressing gzip request failed',
             )
 

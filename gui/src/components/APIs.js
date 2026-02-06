@@ -17,7 +17,7 @@
  */
 import { makeStyles } from '@material-ui/core'
 import React from 'react'
-import { apiBase, appBase, resourcesEnabled } from '../config'
+import { apiBase, appBase } from '../config'
 import Markdown from './Markdown'
 import AppTokenForm from './AppTokenForm'
 
@@ -30,14 +30,6 @@ const useStyles = makeStyles(theme => ({
   }
 }))
 
-const resourcesSection = `## Resources
-The resources API provides links from NOMAD entries to related external resources.
-These include the [Aflow Encyclopedia of Crystallographic Prototypes](https://www.aflowlib.org/prototype-encyclopedia/),
-[Springer Materials Database of Inorganic Solid Phases](https://materials.springer.com)
-and [OPTIMADE providers](https://providers.optimade.org/).
-
-- [Resources API dashboard](${appBase}/resources/extensions/docs)`
-
 export default function About() {
   const classes = useStyles()
 
@@ -49,13 +41,13 @@ export default function About() {
       and functions programatically.
 
       - [NOMAD API dashboard](${apiBase}/v1/extensions/docs)
-      - [How-to-guide for basic usage](${appBase}/docs/howto/programmatic/api.html)
+      - [How-to-guide for basic usage](${appBase}/docs/howto/manage/program/api.html)
       - [How-to-guide for Python client library](${appBase}/docs/howto/programmatic/archive_query.html)
 
       ###  App token
 
       Next to the usual access token based on OpenID Connect, we provide an
-      [app token](${appBase}/docs/apis/api.html#app-token) with custom expiration date.
+      [app token](${appBase}/docs/howto/manage/program/api.html#app-token) with custom expiration date.
       You may request one via the [API](${apiBase}/v1/extensions/docs) or the following form:
     `}</Markdown>
 
