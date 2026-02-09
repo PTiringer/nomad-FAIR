@@ -349,9 +349,7 @@ class TestAdminUploads:
         assert 're-pack' in result.stdout
         entry.reload()
         upload_files = files.PublicUploadFiles(upload_id)
-        for path_info in upload_files.raw_directory_list(
-            recursive=True, files_only=True
-        ):
+        for path_info in upload_files.raw_listdir(recursive=True, files_only=True):
             with upload_files.raw_file(path_info.path) as f:
                 f.read()
         for entry in Entry.objects(upload_id=upload_id):

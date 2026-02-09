@@ -53,7 +53,8 @@ import shutil
 import tempfile
 import zipfile
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
+from contextlib import contextmanager, suppress
 from datetime import datetime
 from functools import cached_property
 from pathlib import Path
@@ -62,16 +63,23 @@ from typing import IO, Any, NamedTuple
 import magic
 import yaml
 import zipstream
+from deprecation import deprecated
 from fsspec import AbstractFileSystem
 from fsspec.implementations.local import LocalFileSystem
-from fsspec.implementations.zip import ZipFileSystem as RefZipFS
+from fsspec.implementations.tar import TarFileSystem
+from fsspec.implementations.zip import ZipFileSystem
 from pathvalidate import sanitize_filename, sanitize_filepath
 from pydantic import BaseModel
 
 from nomad import datamodel, utils
-from nomad.archive import ArchiveReader, read_archive, to_json, write_archive
-from nomad.archive.storage_v2 import combine_archive
-from nomad.common import extract_file, get_compression_format, is_safe_relative_path
+from nomad.archive import (
+    ArchiveReader,
+    combine_archive,
+    read_archive,
+    to_json,
+    write_archive,
+)
+from nomad.common import get_compression_format, is_safe_relative_path
 from nomad.config import config
 from nomad.config.models.config import BundleExportSettings, BundleImportSettings
 
@@ -82,51 +90,6 @@ empty_archive_file_size = 32
 empty_hdf5_file_size = 96
 
 UPath = Path
-
-
-class ZipFileSystem(RefZipFS):
-    def find(self, path, maxdepth=None, withdirs=False, detail=False, **kwargs):
-        """
-        Provide our bugfix for fsspec's ZipFileSystem find method.
-        todo: remove when fsspec is updated to a version including the fix.
-        todo: https://github.com/fsspec/filesystem_spec/issues/1974
-        todo: https://github.com/fsspec/filesystem_spec/issues/1975
-        """
-        if maxdepth is not None and maxdepth < 1:
-            raise ValueError('maxdepth must be at least 1')
-
-        # Remove the leading slash, as the zip file paths are always
-        # given without a leading slash
-        path = path.lstrip('/')
-        path_depth = len(path_parts := list(filter(lambda s: bool(s), path.split('/'))))
-
-        self._get_dirs()
-
-        result = {}
-        if path in self.dir_cache and self.dir_cache[path]['type'] == 'file':
-            result[path] = self.dir_cache[path]
-            return result if detail else [path]
-
-        for file_path, file_info in self.dir_cache.items():
-            if path_depth and (
-                len(file_parts := list(filter(bool, file_path.split('/')))) < path_depth
-                or any(a != b for a, b in zip(path_parts, file_parts))
-            ):
-                continue
-
-            if file_info['type'] == 'directory':
-                if withdirs and file_path not in result:
-                    result[file_path.strip('/')] = file_info
-                continue
-
-            if file_path not in result:
-                result[file_path] = file_info if detail else None
-
-        if maxdepth:
-            result = {
-                k: v for k, v in result.items() if k.count('/') < maxdepth + path_depth
-            }
-        return result if detail else sorted(result)
 
 
 def mkdtemp(prefix: str):
@@ -189,6 +152,21 @@ class DirectoryObject(PathObject):
     def exists(self) -> bool:
         return self._fs.isdir(self.os_path)
 
+    def zip_fp(self, access: str):
+        """
+        Utilities
+        """
+        return self.join_file(f'raw-{access}.plain.zip')
+
+    def msg_fp(self, access: str, fallback: bool = False):
+        def versioned_file_name(version_suffix):
+            return f'archive-{access}{version_suffix}.msg.msg'
+
+        return _versioned_archive_file_object(self, versioned_file_name, fallback)
+
+    def h5_fp(self, access: str):
+        return self.join_file(f'archive-{access}.h5')
+
 
 class RawPathInfo(NamedTuple):
     """
@@ -207,7 +185,7 @@ class StreamedFile(BaseModel):
     file size and an associated path.
     """
 
-    f: Any = None
+    src: Any = None
     path: str
     size: int
 
@@ -263,9 +241,9 @@ class FileSource(ABC):
             self._fs.mkdirs(full_path.parent, exist_ok=True)
             with (
                 self._fs.open(full_path.as_posix(), 'wb') as output_file,
-                streamed_file.f,
+                streamed_file.src,
             ):
-                shutil.copyfileobj(streamed_file.f, output_file)
+                shutil.copyfileobj(streamed_file.src, output_file)
 
     def close(self):
         """Perform "closing" of the source, if applicable."""
@@ -345,7 +323,7 @@ class DiskFileSource(BrowsableFileSource):
         for target_path in self._fs.find(self.full_path):
             yield StreamedFile(
                 path=os.path.relpath(target_path, self.base_path),
-                f=self._fs.open(target_path, 'rb'),
+                src=self._fs.open(target_path, 'rb'),
                 size=self._fs.size(target_path),
             )
 
@@ -402,7 +380,7 @@ class ZipFileSource(BrowsableFileSource):
         for target_path in self._zip_fs.find(self.sub_path):
             yield StreamedFile(
                 path=target_path,
-                f=self._zip_fs.open(target_path),
+                src=self._zip_fs.open(target_path),
                 size=self._zip_fs.size(target_path),
             )
 
@@ -475,7 +453,7 @@ def json_to_streamed_file(json_dict: dict[str, Any], path: str) -> StreamedFile:
             return super().default(obj)
 
     json_bytes = json.dumps(json_dict, cls=StandardJSONEncoder).encode()
-    return StreamedFile(path=path, f=io.BytesIO(json_bytes), size=len(json_bytes))
+    return StreamedFile(path=path, src=io.BytesIO(json_bytes), size=len(json_bytes))
 
 
 def create_zipstream(streamed_files: Iterable[StreamedFile], compress: bool = False):
@@ -488,7 +466,7 @@ def create_zipstream(streamed_files: Iterable[StreamedFile], compress: bool = Fa
     )
 
     def content_generator(file):
-        with file.f as f:
+        with file.src as f:
             while data := f.read(1024 * 1024):
                 yield data
 
@@ -530,23 +508,6 @@ def _versioned_archive_file_object(
             return current_file
 
     return target_dir.join_file(file_name(f'-{suffixes[0]}'))
-
-
-def _zip_fp(target_dir: DirectoryObject, access: str) -> PathObject:
-    return target_dir.join_file(f'raw-{access}.plain.zip')
-
-
-def _archive_msg_fp(
-    target_dir: DirectoryObject, access: str, fallback: bool = False
-) -> PathObject:
-    def versioned_file_name(version_suffix):
-        return f'archive-{access}{version_suffix}.msg.msg'
-
-    return _versioned_archive_file_object(target_dir, versioned_file_name, fallback)
-
-
-def _archive_h5_fp(target_dir: DirectoryObject, access: str) -> PathObject:
-    return target_dir.join_file(f'archive-{access}.h5')
 
 
 class UploadFiles(DirectoryObject):
@@ -609,9 +570,9 @@ class UploadFiles(DirectoryObject):
         """
         return os.path.exists(cls.base_folder_for(upload_id))
 
-    def to_staging_upload_files(
+    def to_staging(
         self, create: bool = False, include_archive: bool = False
-    ) -> StagingUploadFiles:
+    ) -> StagingUploadFiles | None:
         """Casts to or creates corresponding staging upload files or returns None."""
         raise NotImplementedError()
 
@@ -627,19 +588,19 @@ class UploadFiles(DirectoryObject):
         """If this upload has no content yet."""
         raise NotImplementedError()
 
-    def raw_path_exists(self, path: str) -> bool:
+    def raw_exists(self, path: str) -> bool:
         """
         Returns True if the specified path is a valid raw path (either file or directory)
         """
         raise NotImplementedError()
 
-    def raw_path_is_file(self, path: str) -> bool:
+    def raw_isfile(self, path: str) -> bool:
         """
         Returns True if the specified path points to a file (rather than a directory).
         """
         raise NotImplementedError()
 
-    def raw_directory_list(
+    def raw_listdir(
         self,
         path: str = '',
         recursive=False,
@@ -659,7 +620,33 @@ class UploadFiles(DirectoryObject):
         """
         raise NotImplementedError()
 
-    def raw_file(self, file_path: str, *args, **kwargs) -> IO:
+    @deprecated(details='Use raw_exists() instead.')
+    def raw_path_exists(self, path: str) -> bool:
+        return self.raw_exists(path)
+
+    @deprecated(details='Use raw_isfile() instead.')
+    def raw_path_is_file(self, path: str) -> bool:
+        return self.raw_isfile(path)
+
+    @deprecated(details='Use raw_listdir() instead.')
+    def raw_directory_list(
+        self,
+        path: str = '',
+        recursive=False,
+        files_only=False,
+        depth: int = -1,
+    ) -> Iterable[RawPathInfo]:
+        return self.raw_listdir(path, recursive, files_only, depth)
+
+    def _raw_fileobj(self, file_path: str, *args, **kwargs):
+        """
+        Hack to bypass automatic resource management.
+        !!!DO NOT USE!!!
+        """
+        raise NotImplementedError()
+
+    @contextmanager
+    def raw_file(self, file_path: str, *args, **kwargs):
         """
         Opens a raw file and returns a file-like object. Additional args, kwargs are
         delegated to the respective `open` call.
@@ -678,7 +665,7 @@ class UploadFiles(DirectoryObject):
         raise NotImplementedError()
 
     def raw_file_mime_type(self, file_path: str) -> str:
-        assert self.raw_path_is_file(file_path), (
+        assert self.raw_isfile(file_path), (
             'Provided path does not specify a file, or is invalid.'
         )
         with self.raw_file(file_path, 'br') as raw_file:
@@ -687,7 +674,8 @@ class UploadFiles(DirectoryObject):
                 or 'application/octet-stream'
             )
 
-    def read_archive(self, entry_id: str) -> ArchiveReader:
+    @contextmanager
+    def read_archive(self, entry_id: str) -> Iterator[ArchiveReader]:
         """
         Returns an :class:`nomad.archive.ArchiveReader` that contains the
         given entry_id.
@@ -744,7 +732,6 @@ class StagingUploadFiles(UploadFiles):
 
         self._raw_dir = self.join_dir('raw', create)
         self._archive_dir = self.join_dir('archive', create)
-        self._frozen_file = self.join_file('.frozen')
 
         self._size = 0
 
@@ -753,15 +740,19 @@ class StagingUploadFiles(UploadFiles):
         return UPath(config.fs.staging)
 
     @property
+    def _frozen_file(self):
+        return self.join_file('.frozen')
+
+    @property
     def external_os_path(self):
         if not config.fs.staging_external:
             return self.os_path
 
         return self.os_path.replace(config.fs.staging, config.fs.staging_external)
 
-    def to_staging_upload_files(
+    def to_staging(
         self, create: bool = False, include_archive: bool = False
-    ) -> StagingUploadFiles:
+    ) -> StagingUploadFiles | None:
         return self
 
     @property
@@ -774,12 +765,12 @@ class StagingUploadFiles(UploadFiles):
     def is_empty(self) -> bool:
         return not self._fs.ls(self._raw_dir.os_path, False)
 
-    def raw_path_exists(self, path: str) -> bool:
+    def raw_exists(self, path: str) -> bool:
         if not is_safe_relative_path(path):
             return False
         return self._fs.exists(self._full_path(path))
 
-    def raw_path_is_file(self, path: str) -> bool:
+    def raw_isfile(self, path: str) -> bool:
         if not is_safe_relative_path(path):
             return False
         return self._fs.isfile(self._full_path(path))
@@ -788,7 +779,7 @@ class StagingUploadFiles(UploadFiles):
         assert path and is_safe_relative_path(path), 'Bad path provided'
         self._fs.makedirs(self._full_path(path).as_posix(), True)
 
-    def raw_directory_list(
+    def raw_listdir(
         self,
         path: str = '',
         recursive=False,
@@ -815,15 +806,20 @@ class StagingUploadFiles(UploadFiles):
                 access='unpublished',
             )
 
-    def raw_file(self, file_path: str, *args, **kwargs) -> IO:
+    def _raw_fileobj(self, file_path: str, *args, **kwargs):
         assert is_safe_relative_path(file_path)
 
-        path_object = self.raw_file_object(file_path)
+        full_path = self.raw_file_object(file_path).os_path
 
         try:
-            return self._fs.open(path_object.os_path, *args, **kwargs)
-        except (FileNotFoundError, IsADirectoryError):
-            raise KeyError(path_object.os_path)
+            return self._fs.open(full_path, *args, **kwargs)
+        except (FileNotFoundError, IsADirectoryError) as e:
+            raise KeyError(full_path) from e
+
+    @contextmanager
+    def raw_file(self, file_path: str, *args, **kwargs):
+        with self._raw_fileobj(file_path, *args, **kwargs) as f:
+            yield f
 
     def raw_file_size(self, file_path: str) -> int:
         assert is_safe_relative_path(file_path)
@@ -841,20 +837,23 @@ class StagingUploadFiles(UploadFiles):
         archive_file_object = self._archive_file_object(entry_id)
         try:
             write_archive(archive_file_object.os_path, 1, data=[(entry_id, data)])
-        except Exception as e:
+        except Exception:
             # in case of failure, remove the possible corrupted archive file
-            if archive_file_object.exists():
-                archive_file_object.delete()
+            archive_file_object.delete()
 
-            raise e
+            raise
 
         return archive_file_object.size
 
-    def read_archive(self, entry_id: str) -> ArchiveReader:
+    @contextmanager
+    def read_archive(self, entry_id: str) -> Iterator[ArchiveReader]:
         try:
-            return read_archive(self._archive_file_object(entry_id, True).os_path)
-        except FileNotFoundError:
-            raise KeyError(entry_id)
+            with read_archive(
+                self._archive_file_object(entry_id, True).os_path
+            ) as archive:
+                yield archive
+        except FileNotFoundError as e:
+            raise KeyError(entry_id) from e
 
     def _archive_file_object(self, entry_id: str, fallback: bool = False) -> PathObject:
         def versioned_file_name(version_suffix):
@@ -890,107 +889,65 @@ class StagingUploadFiles(UploadFiles):
         Raises:
             AssertionError: If file format is unrecognized or merge conflicts occur.
         """
-        tmp_dir = None
+        assert not self.is_frozen
+        assert self._fs.exists(path), f'{path} does not exist'
+        assert is_safe_relative_path(target_dir)
+
+        archive_format = get_compression_format(path) if auto_decompress else None
+        if archive_format == 'error':
+            raise ValueError('Bad archive.')
+
+        src_fs: AbstractFileSystem
+        if archive_format == 'zip':
+            src_fs = ZipFileSystem(path)
+            src_root = src_parent = ''
+        elif archive_format == 'tar':
+            src_fs = TarFileSystem(path)
+            src_root = src_parent = ''
+        else:
+            src_fs = self._fs
+            src_root = path
+            src_parent = os.path.dirname(path) if self._fs.isfile(path) else path
+
+        dst_root = os.path.join(self._raw_dir.os_path, target_dir)
+
         try:
-            assert not self.is_frozen
-            assert os.path.exists(path), f'{path} does not exist'
-            assert is_safe_relative_path(target_dir)
-            self._size += os.stat(path).st_size
-
-            is_dir = os.path.isdir(path)
-            compression_format = (
-                get_compression_format(path) if auto_decompress else None
-            )
-
-            # ONLY extract if it's an archive *and* auto_decompress is enabled
-            if compression_format == 'error':
-                raise ValueError(
-                    'Cannot extract file. Bad file format or file extension?'
-                )
-            elif compression_format is not None:
-                tmp_dir = mkdtemp(self.upload_id + '_unzip')
-                extract_file(path, tmp_dir, compression_format, remove_archive=False)
-
-            # Determine what to merge
-            elements_to_merge: Iterable[tuple[str, list[str], list[str]]] = []
-            if is_dir:
-                # Directory
-                source_dir = path
-                elements_to_merge = os.walk(source_dir)
-            elif compression_format:
-                # Zipped archive
-                source_dir = tmp_dir
-                elements_to_merge = os.walk(source_dir)
-            else:
-                # Single, non-compressed file
-                source_dir = os.path.dirname(path)
-                elements_to_merge = [(source_dir, [], [os.path.basename(path)])]
-
-            # Do the merge
-            os_target_dir = os.path.join(self._raw_dir.os_path, target_dir)
-            if not os.path.isdir(os_target_dir):
-                os.makedirs(os_target_dir)
-            for source_root, dirs, files in elements_to_merge:
-                elements = dirs + files
-                for element in elements:
-                    element_source_path = os.path.join(source_root, element)
-                    element_relative_path = os.path.relpath(
-                        element_source_path, source_dir
-                    )
-                    element_target_path = os.path.join(
-                        os_target_dir, element_relative_path
-                    )
-                    if os.path.islink(element_source_path):
-                        continue  # Skip links, could pose security risk
-                    if os.path.exists(element_target_path):
-                        if os.path.isfile(element_target_path) != os.path.isfile(
-                            element_source_path
+            for item, info in src_fs.find(src_root, None, True, True).items():
+                rel_path = os.path.relpath(item, src_parent)
+                dst_path = os.path.join(dst_root, rel_path)
+                if info['type'] == 'file':
+                    if self._fs.exists(dst_path) and not self._fs.isfile(dst_path):
+                        raise ValueError(
+                            f'Cannot merge a file with a directory or vice versa: {rel_path}.'
+                        )
+                    if src_fs is not self._fs or item != dst_path:
+                        self._fs.mkdirs(os.path.dirname(dst_path), exist_ok=True)
+                        with (
+                            src_fs.open(item) as src_f,
+                            self._fs.open(dst_path, 'wb') as dst_f,
                         ):
-                            assert False, (
-                                f'Cannot merge a file with a directory or vice versa: {element_relative_path}'
-                            )
+                            shutil.copyfileobj(src_f, dst_f)
 
-                    # Copy or move the element
-                    if os.path.isdir(element_source_path):
-                        # Directory - just create corresponding directory in the target if needed.
-                        if not os.path.exists(element_target_path):
-                            os.makedirs(element_target_path)
-                    else:
-                        # File - copy or move it
-                        if cleanup_source_file_and_dir or compression_format:
-                            # Move the file
-                            shutil.move(element_source_path, element_target_path)
-                        else:
-                            # Copy the file
-                            try:
-                                shutil.copyfile(
-                                    element_source_path, element_target_path
-                                )
-                            except shutil.SameFileError:
-                                pass
-                        if updated_files is not None:
-                            updated_files.add(
-                                os.path.join(target_dir, element_relative_path)
-                            )
-        except Exception:
-            if cleanup_source_file_and_dir:
-                parent_dir = os.path.dirname(path)
-                if os.path.exists(parent_dir):
-                    shutil.rmtree(parent_dir)
-            raise
+                    if updated_files is not None:
+                        updated_files.add(os.path.join(target_dir, rel_path))
+                elif info['type'] == 'directory':
+                    if self._fs.exists(dst_path) and not self._fs.isdir(dst_path):
+                        raise ValueError(
+                            f'Cannot merge a file with a directory or vice versa: {rel_path}.'
+                        )
+                    self._fs.mkdirs(dst_path, True)
         finally:
-            # Cleanup
-            if tmp_dir and os.path.exists(tmp_dir):
-                shutil.rmtree(tmp_dir)
+            if hasattr(src_fs, 'close'):
+                src_fs.close()
+
             if cleanup_source_file_and_dir:
-                if os.path.exists(path):
-                    if os.path.isdir(path):
-                        shutil.rmtree(path)
-                    else:
-                        os.remove(path)
-                parent_dir = os.path.dirname(path)
-                if os.path.exists(parent_dir) and not os.listdir(parent_dir):
-                    shutil.rmtree(parent_dir)
+                self._fs.rm(path, recursive=True)
+                if self._fs.exists(parent := os.path.dirname(path)) and not self._fs.ls(
+                    parent, False
+                ):
+                    self._fs.rm(parent, recursive=True)
+
+            self._size = self._fs.du(dst_root)
 
     def delete_rawfiles(self, path, updated_files: set[str] | None = None):
         assert is_safe_relative_path(path)
@@ -1040,26 +997,32 @@ class StagingUploadFiles(UploadFiles):
         Gets the content of the metadata file located in the directory defined by `path_dir`.
         The `path_dir` should be relative to the `raw` folder.
         """
-        path_incl_filename = os.path.join(path_dir, config.process.metadata_file_name)
+
+        def json_load(_f):
+            return json.load(f)
+
+        def yaml_load(_f):
+            return yaml.safe_load(_f)
+
+        def dummy_load(_):
+            return {}
+
+        loader = {'json': json_load, 'yaml': yaml_load, 'yml': yaml_load}
+
+        base = UPath(self._raw_dir.os_path) / path_dir
         for ext in config.process.metadata_file_extensions:
-            path_incl_filename_ext = path_incl_filename + '.' + ext
-            full_path = os.path.join(self._raw_dir.os_path, path_incl_filename_ext)
-            if os.path.isfile(full_path):
-                try:
-                    with open(full_path) as f:
-                        if full_path.endswith('.json'):
-                            return json.load(f)
-                        elif full_path.endswith('.yaml') or full_path.endswith('.yml'):
-                            return yaml.load(f, Loader=yaml.SafeLoader)
-                        else:
-                            return {}
-                except Exception as e:
-                    # ignore the file contents if the file is not parsable, just warn.
-                    self.logger.warn(
-                        'could not parse nomad.yaml/json',
-                        path=path_incl_filename_ext,
-                        exc_info=e,
-                    )
+            if not self._fs.isfile(
+                full_path := base / f'{config.process.metadata_file_name}.{ext}'
+            ):
+                continue
+            try:
+                with self._fs.open(full_path.as_posix()) as f:
+                    return loader.get(ext, dummy_load)(f)
+            except Exception as e:
+                # ignore the file contents if the file is not parsable, just warn.
+                self.logger.warn(
+                    'could not parse nomad.yaml/json', path=path_dir, exc_info=e
+                )
         return {}
 
     @property
@@ -1097,7 +1060,7 @@ class StagingUploadFiles(UploadFiles):
 
         # freeze the upload
         assert not self.is_frozen, 'Cannot pack an upload that is packed, or packing.'
-        with open(self._frozen_file.os_path, 'w') as f:
+        with self._fs.open(self._frozen_file.os_path, 'w') as f:
             f.write('frozen')
 
         # Check embargo flag consistency
@@ -1122,73 +1085,59 @@ class StagingUploadFiles(UploadFiles):
         # zip archives
         if include_archive:
             with utils.timer(self.logger, 'packed msgpack archive') as log_data:
-                number_of_entries = self._pack_archive_files(
-                    target_dir, entries, access, other_access
+                log_data.update(
+                    number_of_entries=self._pack_archive_files(
+                        target_dir, list(entry.entry_id for entry in entries), access
+                    )
                 )
-                log_data.update(number_of_entries=number_of_entries)
+                target_dir.msg_fp(other_access).delete()
+                target_dir.h5_fp(other_access).delete()
 
         # zip raw files
         if include_raw:
             with utils.timer(self.logger, 'packed raw files'):
-                self._pack_raw_files(target_dir, access, other_access)
+                self._pack_raw_files(target_dir, access)
+                target_dir.zip_fp(other_access).delete()
 
     def _pack_archive_files(
-        self,
-        target_dir: DirectoryObject,
-        entries: list[datamodel.EntryMetadata],
-        access: str,
-        other_access: str,
+        self, target_dir: DirectoryObject, entries: list[str], access: str
     ):
         number_of_entries = len(entries)
 
         def create_iterator():
-            for entry in entries:
-                archive_file = self._archive_file_object(entry.entry_id)
-                if archive_file.exists():
-                    with read_archive(archive_file.os_path) as archive:
-                        yield entry.entry_id, archive
-                else:
-                    yield entry.entry_id, None
+            for item in entries:
+                fo = self._archive_file_object(item)
+                yield item, fo.os_path if fo.exists() else None
 
         try:
-            file_object = _archive_msg_fp(target_dir, access)
-            combine_archive(file_object.os_path, number_of_entries, create_iterator())
-            # Remove the file with the opposite access, if it exists
-            other_file_object = _archive_msg_fp(target_dir, other_access)
-            if other_file_object.exists():
-                other_file_object.delete()  # This file should be empty, if it exists
+            combine_archive(
+                target_dir.msg_fp(access).os_path, number_of_entries, create_iterator()
+            )
 
-            file_object = _archive_h5_fp(target_dir, access)
             import h5py
 
-            with h5py.File(file_object.os_path, 'w') as hdf5_target:
-                for entry in entries:
+            with h5py.File(target_dir.h5_fp(access).os_path, 'w') as hdf5_target:
+                for entry_id in entries:
                     with h5py.File(
-                        self.archive_hdf5_location(entry.entry_id), 'a'
+                        self.archive_hdf5_location(entry_id), 'a'
                     ) as hdf5_source:
-                        group = hdf5_target.create_group(entry.entry_id)
+                        group = hdf5_target.create_group(entry_id)
                         for key in hdf5_source.keys():
                             hdf5_source.copy(key, group)
-            other_file_object = _archive_h5_fp(target_dir, other_access)
-            if other_file_object.exists():
-                other_file_object.delete()
-
         except Exception as e:
             self.logger.error('exception during packing archives', exc_info=e)
             raise
 
         return number_of_entries
 
-    def _pack_raw_files(
-        self, target_dir: DirectoryObject, access: str, other_access: str
-    ):
+    def _pack_raw_files(self, target_dir: DirectoryObject, access: str):
         try:
-            raw_zip_file_object = _zip_fp(target_dir, access)
-            with zipfile.ZipFile(raw_zip_file_object.os_path, mode='w') as raw_zip:
-                for path_info in self.raw_directory_list(recursive=True):
+            with zipfile.ZipFile(
+                target_dir.zip_fp(access).os_path, mode='w'
+            ) as raw_zip:
+                for path_info in self.raw_listdir(recursive=True):
                     basename = os.path.basename(path_info.path)
-                    # TODO remove extra handling of POTCAR files once processed uploads
-                    # are published.
+                    # TODO remove extra handling of POTCAR files once processed uploads are published.
                     if basename.startswith('POTCAR'):
                         if not basename.endswith('.stripped'):
                             continue  # Skip the unstripped POTCAR files when publishing
@@ -1197,9 +1146,6 @@ class StagingUploadFiles(UploadFiles):
                     raw_zip.write(
                         self._raw_dir.join_file(path_info.path).os_path, path_info.path
                     )
-            # Remove the zip file with the opposite access, if it exists
-            # This file should be empty, if it exists
-            _zip_fp(target_dir, other_access).delete()
         except Exception as e:
             self.logger.error('exception during packing raw files', exc_info=e)
             raise
@@ -1261,7 +1207,7 @@ class StagingUploadFiles(UploadFiles):
         """
         hash = hashlib.sha512()
         for filepath in self.entry_files(mainfile):
-            with open(self._raw_dir.join_file(filepath).os_path, 'rb') as f:
+            with self._fs.open(self._raw_dir.join_file(filepath).os_path) as f:
                 for data in iter(lambda: f.read(65536), b''):
                     hash.update(data)
         if mainfile_key:
@@ -1293,11 +1239,6 @@ class StagingUploadFiles(UploadFiles):
 
 
 class PublicUploadFiles(UploadFiles):
-    def __init__(self, upload_id: str, create: bool = False):
-        super().__init__(upload_id, create)
-        self._raw_zip_file_object: PathObject = None
-        self._archive_msg_file_object: PathObject = None
-
     @classmethod
     def _file_area(cls):
         return UPath(config.fs.public)
@@ -1307,7 +1248,7 @@ class PublicUploadFiles(UploadFiles):
         if not config.fs.public_external:
             return self.os_path
 
-        self.os_path.replace(config.fs.public, config.fs.public_external)
+        return self.os_path.replace(config.fs.public, config.fs.public_external)
 
     @cached_property
     def access(self):
@@ -1327,9 +1268,9 @@ class PublicUploadFiles(UploadFiles):
         files_found = False
         sole_access = None
         for access in ('public', 'restricted'):
-            raw_zip_file_object = _zip_fp(self, access)
-            archive_msg_file_object = _archive_msg_fp(self, access)
-            archive_hdf5_file_object = _archive_h5_fp(self, access)
+            raw_zip_file_object = self.zip_fp(access)
+            archive_msg_file_object = self.msg_fp(access)
+            archive_hdf5_file_object = self.h5_fp(access)
             found = (
                 (
                     raw_zip_file_object.exists()
@@ -1346,13 +1287,10 @@ class PublicUploadFiles(UploadFiles):
             )
             if found:
                 if files_found:
-                    self._raw_zip_file_object = self._archive_msg_file_object = None
                     raise KeyError(
                         'Inconsistency: both public and restricted files found'
                     )
                 files_found = True
-                self._raw_zip_file_object = raw_zip_file_object
-                self._archive_msg_file_object = archive_msg_file_object
                 sole_access = access
 
         if not files_found:
@@ -1366,15 +1304,16 @@ class PublicUploadFiles(UploadFiles):
         If both public and restricted files exist, or if none of them exist, a KeyError will
         be thrown.
         """
-        _ = self.access  # Invoke to initialize
-        return self._raw_zip_file_object
+        return self.zip_fp(self.access)
 
-    @property
+    @contextmanager
     def _zip_fs(self):
-        return ZipFileSystem(self.raw_zip_file_object().os_path)
+        zip_fs = ZipFileSystem(self.raw_zip_file_object().os_path)
+        yield zip_fs
+        zip_fs.close()
 
     def archive_hdf5_location(self, entry_id: str) -> str:
-        hdf5_file_object = _archive_h5_fp(self, self.access)
+        hdf5_file_object = self.h5_fp(self.access)
         if not hdf5_file_object.exists():
             raise FileNotFoundError()
 
@@ -1384,17 +1323,19 @@ class PublicUploadFiles(UploadFiles):
     def _missing_raw_files(self):
         return not self._fs.exists(self.raw_zip_file_object().os_path)
 
-    def _open_msg_file(self) -> ArchiveReader:
-        msg_file_object = _archive_msg_fp(self, self.access, fallback=True)
+    @contextmanager
+    def _open_msg_file(self) -> Iterator[ArchiveReader]:
+        msg_file_object = self.msg_fp(self.access, fallback=True)
 
         if not msg_file_object.exists():
             raise FileNotFoundError()
 
-        return read_archive(msg_file_object.os_path)
+        with read_archive(msg_file_object.os_path) as archive:
+            yield archive
 
-    def to_staging_upload_files(
+    def to_staging(
         self, create: bool = False, include_archive: bool = False
-    ) -> StagingUploadFiles:
+    ) -> StagingUploadFiles | None:
         if StagingUploadFiles.exists_for(self.upload_id):
             if create:
                 raise FileExistsError('Staging upload does already exist')
@@ -1404,17 +1345,16 @@ class PublicUploadFiles(UploadFiles):
             return None
 
         staging_upload_files = StagingUploadFiles(self.upload_id, create=True)
-        # Extract files
-        raw_zip_file = self.raw_zip_file_object()
-        if raw_zip_file.exists():
+        if (raw_zip_file := self.raw_zip_file_object()).exists():
             staging_upload_files.add_rawfiles(raw_zip_file.os_path)
 
         if include_archive:
-            try:
+            with suppress(FileNotFoundError):
                 with self._open_msg_file() as archive:
                     for entry_id, data in archive.items():
-                        entry_id = entry_id.strip()
-                        staging_upload_files.write_archive(entry_id, to_json(data))
+                        staging_upload_files.write_archive(
+                            entry_id.strip(), to_json(data)
+                        )
 
                 import h5py
 
@@ -1426,28 +1366,28 @@ class PublicUploadFiles(UploadFiles):
                             for key in data.keys():
                                 data.copy(key, hdf5_target)
 
-            except FileNotFoundError:
-                pass
-
         return staging_upload_files
 
     def is_empty(self) -> bool:
-        return not self._zip_fs.ls('', False)
+        with self._zip_fs() as zip_fs:
+            return not zip_fs.ls('', False)
 
-    def raw_path_exists(self, path: str) -> bool:
+    def raw_exists(self, path: str) -> bool:
         if not is_safe_relative_path(path):
             return False
         if self._missing_raw_files:
             # We consider the empty path (i.e. root) to always "exists".
             return not path
-        return self._zip_fs.exists(path)
+        with self._zip_fs() as zip_fs:
+            return zip_fs.exists(path)
 
-    def raw_path_is_file(self, path: str) -> bool:
+    def raw_isfile(self, path: str) -> bool:
         if not is_safe_relative_path(path) or self._missing_raw_files:
             return False
-        return self._zip_fs.isfile(path)
+        with self._zip_fs() as zip_fs:
+            return zip_fs.isfile(path)
 
-    def raw_directory_list(
+    def raw_listdir(
         self,
         path: str = '',
         recursive=False,
@@ -1459,21 +1399,23 @@ class PublicUploadFiles(UploadFiles):
         if not path and self._missing_raw_files:
             return
 
-        zip_fs = self._zip_fs
-        for target in zip_fs.find(
-            path, (depth if depth > 0 else None) if recursive else 1, not files_only
-        ):
-            if not (isfile := zip_fs.isfile(target)) and UPath(target) == UPath(path):
-                # skip folder itself
-                continue
-            yield RawPathInfo(
-                path=target,
-                is_file=isfile,
-                size=zip_fs.size(target) if isfile else zip_fs.du(target),
-                access=self.access,
-            )
+        with self._zip_fs() as zip_fs:
+            for target in zip_fs.find(
+                path, (depth if depth > 0 else None) if recursive else 1, not files_only
+            ):
+                if not (isfile := zip_fs.isfile(target)) and UPath(target) == UPath(
+                    path
+                ):
+                    # skip folder itself
+                    continue
+                yield RawPathInfo(
+                    path=target,
+                    is_file=isfile,
+                    size=zip_fs.size(target) if isfile else zip_fs.du(target),
+                    access=self.access,
+                )
 
-    def raw_file(self, file_path: str, *args, **kwargs) -> IO:
+    def _raw_fileobj(self, file_path: str, *args, **kwargs):
         assert is_safe_relative_path(file_path)
         mode = kwargs.pop('mode', None)
         if len(args) > 0:
@@ -1482,32 +1424,47 @@ class PublicUploadFiles(UploadFiles):
         encoding = kwargs.pop('encoding', None)
 
         try:
-            f = self._zip_fs.open(file_path, **kwargs)
+            f = ZipFileSystem(self.raw_zip_file_object().os_path).open(
+                file_path, **kwargs
+            )
             return io.TextIOWrapper(f, encoding=encoding) if 't' in mode else f
-        except (FileNotFoundError, IsADirectoryError, KeyError):
-            pass
+        except (FileNotFoundError, IsADirectoryError, KeyError) as e:
+            raise KeyError(file_path) from e
 
-        raise KeyError(file_path)
+    @contextmanager
+    def raw_file(self, file_path: str, *args, **kwargs):
+        assert is_safe_relative_path(file_path)
+        mode = kwargs.pop('mode', None)
+        if len(args) > 0:
+            mode = args[0]
+        mode = mode or 'rb'
+        encoding = kwargs.pop('encoding', None)
+
+        try:
+            with self._zip_fs() as zip_fs, zip_fs.open(file_path, **kwargs) as f:
+                yield io.TextIOWrapper(f, encoding=encoding) if 't' in mode else f
+        except (FileNotFoundError, IsADirectoryError, KeyError) as e:
+            raise KeyError(file_path) from e
 
     def raw_file_size(self, file_path: str) -> int:
         assert is_safe_relative_path(file_path)
-        try:
-            if file_size := self._zip_fs.size(file_path):
-                return file_size
-        except FileNotFoundError:
-            pass
+
+        with suppress(FileNotFoundError):
+            with self._zip_fs() as zip_fs:
+                if file_size := zip_fs.size(file_path):
+                    return file_size
 
         raise KeyError(file_path)
 
-    def read_archive(self, entry_id: str) -> Any:
+    @contextmanager
+    def read_archive(self, entry_id: str) -> Iterator[ArchiveReader]:
         try:
-            archive = self._open_msg_file()
-            if entry_id in archive:
-                return archive
-        except FileNotFoundError:
-            pass
-
-        raise KeyError(entry_id)
+            with self._open_msg_file() as archive:
+                if entry_id not in archive:
+                    raise KeyError(entry_id)
+                yield archive
+        except FileNotFoundError as e:
+            raise KeyError(entry_id) from e
 
     def re_pack(self, with_embargo: bool) -> None:
         """
@@ -1519,35 +1476,23 @@ class PublicUploadFiles(UploadFiles):
         be correctly packed (i.e. there cannot be non-empty public and restricted files
         at the same time).
         """
-        if (self.access == 'restricted' and with_embargo) or (
-            self.access == 'public' and not with_embargo
-        ):
-            return  # Nothing to do
-        self.close()
-        new_access = 'restricted' if with_embargo else 'public'
-        msg_file_object = _archive_msg_fp(self, self.access)
-        msg_file_object_new = _archive_msg_fp(self, new_access)
-        if msg_file_object.exists():
-            if msg_file_object_new.exists():
-                msg_file_object_new.delete()  # We have checked that the file is empty anyway
-            os.rename(msg_file_object.os_path, msg_file_object_new.os_path)
-        raw_zip_file_object = self.raw_zip_file_object()
-        raw_zip_file_object_new = _zip_fp(self, new_access)
-        if raw_zip_file_object.exists():
-            if raw_zip_file_object_new.exists():
-                raw_zip_file_object_new.delete()  # We have checked that the file is empty anyway
-            os.rename(raw_zip_file_object.os_path, raw_zip_file_object_new.os_path)
-        hdf5_file_object = _archive_h5_fp(self, self.access)
-        hdf5_file_object_new = _archive_h5_fp(self, new_access)
-        if hdf5_file_object.exists():
-            if hdf5_file_object_new.exists():
-                hdf5_file_object_new.delete()  # We have checked that the file is empty anyway
-            os.rename(hdf5_file_object.os_path, hdf5_file_object_new.os_path)
+        if (self.access == 'restricted') == with_embargo:
+            return
 
-        # Clear the cached values
+        self.close()
+
+        new_access = 'restricted' if with_embargo else 'public'
+
+        def _move_to(src, dest):
+            if src.exists():
+                dest.delete()
+                os.rename(src.os_path, dest.os_path)
+
+        _move_to(self.msg_fp(self.access), self.msg_fp(new_access))
+        _move_to(self.raw_zip_file_object(), self.zip_fp(new_access))
+        _move_to(self.h5_fp(self.access), self.h5_fp(new_access))
+
         self.__dict__.pop('access', None)  # clear cached_property
-        self._raw_zip_file_object = None
-        self._archive_msg_file_object = None
 
     def files_to_bundle(
         self, export_settings: BundleExportSettings

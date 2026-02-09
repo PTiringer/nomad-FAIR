@@ -413,9 +413,11 @@ def export(ctx, uploads, required, output: str):
             total_count += 1
             try:
                 if upload_files is not None:  # Added check
-                    archive = upload_files.read_archive(entry_id)
-                    archive_data = required_reader.read(archive, entry_id, upload_id)
-                    write(entry_id, archive_data)
+                    with upload_files.read_archive(entry_id) as archive:
+                        archive_data = required_reader.read(
+                            archive, entry_id, upload_id
+                        )
+                        write(entry_id, archive_data)
             except ArchiveQueryError as e:
                 logger.error('could not read archive', exc_info=e, entry_id=entry_id)
             except KeyError as e:
@@ -930,7 +932,7 @@ def integrity(
 ):
     from nomad.app.v1.models import MetadataPagination, MetadataRequired
     from nomad.archive.storage_v2 import ArchiveWriter
-    from nomad.files import PublicUploadFiles, StagingUploadFiles, _archive_msg_fp
+    from nomad.files import PublicUploadFiles, StagingUploadFiles
     from nomad.processing import Entry, Upload
     from nomad.search import search
 
@@ -981,7 +983,7 @@ def integrity(
         upload_files = upload.upload_files
 
         return any(
-            not upload_files.raw_path_exists(file)
+            not upload_files.raw_exists(file)
             for entry in search_results.data
             for file in entry['files']
         )
@@ -1000,7 +1002,7 @@ def integrity(
             upload_files = PublicUploadFiles(upload.upload_id)
 
             return _check_file_exist(
-                _archive_msg_fp(upload_files, upload_files.access, True).os_path
+                upload_files.msg_fp(upload_files.access, True).os_path
             )
 
         upload_files = StagingUploadFiles(upload.upload_id)  # type: ignore
@@ -1084,9 +1086,7 @@ def integrity(
         if upload.published:
             upload_files = PublicUploadFiles(upload.upload_id)
 
-            return _check_magic(
-                _archive_msg_fp(upload_files, upload_files.access, True).os_path
-            )
+            return _check_magic(upload_files.msg_fp(upload_files.access, True).os_path)
 
         upload_files = StagingUploadFiles(upload.upload_id)  # type: ignore
 
@@ -1118,9 +1118,7 @@ def integrity(
         if upload.published:
             upload_files = PublicUploadFiles(upload.upload_id)
 
-            return _check_suffix(
-                _archive_msg_fp(upload_files, upload_files.access, True).os_path
-            )
+            return _check_suffix(upload_files.msg_fp(upload_files.access, True).os_path)
 
         upload_files = StagingUploadFiles(upload.upload_id)  # type: ignore
 

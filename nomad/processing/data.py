@@ -2046,7 +2046,7 @@ class Upload(Proc):
         logger.info('started to unpublish')
 
         try:
-            self.upload_files.to_staging_upload_files(create=True, include_archive=True)
+            self.upload_files.to_staging(create=True, include_archive=True)
         except Exception as e:
             logger.error('unpublish failed', exc_info=e)
             raise
@@ -2368,8 +2368,8 @@ class Upload(Proc):
         assert is_safe_relative_path(target_dir), 'Bad target path provided'
         target_path = os.path.join(target_dir, os.path.basename(path))
         staging_upload_files = self.staging_upload_files
-        if staging_upload_files.raw_path_exists(target_path):
-            assert staging_upload_files.raw_path_is_file(target_path), (
+        if staging_upload_files.raw_exists(target_path):
+            assert staging_upload_files.raw_isfile(target_path), (
                 'Target path is a directory'
             )
 
@@ -2488,7 +2488,7 @@ class Upload(Proc):
 
     @property
     def staging_upload_files(self) -> StagingUploadFiles:
-        return self.upload_files.to_staging_upload_files()
+        return self.upload_files.to_staging()
 
     @classmethod
     def _passes_process_filter(
@@ -2529,9 +2529,7 @@ class Upload(Proc):
             self.set_last_status_message('Refreshing staging files')
             self._cleanup_staging_files()
             with utils.timer(logger, 'upload extracted'):
-                self.upload_files.to_staging_upload_files(
-                    create=True, include_archive=True
-                )
+                self.upload_files.to_staging(create=True, include_archive=True)
         elif not StagingUploadFiles.exists_for(self.upload_id):
             # Create staging files
             self.set_last_status_message('Creating staging files')
@@ -2653,16 +2651,14 @@ class Upload(Proc):
         for path, recursive in scan:
             path_infos: Iterable[RawPathInfo] = (
                 [RawPathInfo(path=path, is_file=True, size=None, access=None)]
-                if staging_upload_files.raw_path_is_file(path)
-                else staging_upload_files.raw_directory_list(
-                    path, recursive, files_only=True
-                )
+                if staging_upload_files.raw_isfile(path)
+                else staging_upload_files.raw_listdir(path, recursive, files_only=True)
             )
 
             for path_info in path_infos:
                 self._preprocess_files(path_info.path)
 
-                if not staging_upload_files.raw_path_exists(path_info.path):
+                if not staging_upload_files.raw_exists(path_info.path):
                     continue
                 if skip_matching and path_info.path not in entries_metadata:
                     continue
@@ -2923,7 +2919,7 @@ class Upload(Proc):
         """
         Used when parsers add/modify raw files during processing.
         """
-        assert self.upload_files.raw_path_is_file(path), (
+        assert self.upload_files.raw_isfile(path), (
             'Provided path does not denote a file'
         )
         logger = self.get_logger()

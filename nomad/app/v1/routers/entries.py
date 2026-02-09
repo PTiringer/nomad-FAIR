@@ -679,7 +679,7 @@ def _create_entry_rawdir(entry_metadata: dict[str, Any], uploads: _Uploads):
     mainfile_dir = os.path.dirname(mainfile)
 
     files = []
-    for path_info in upload_files.raw_directory_list(mainfile_dir, files_only=True):
+    for path_info in upload_files.raw_listdir(mainfile_dir, files_only=True):
         files.append(EntryRawDirFile(path=path_info.path, size=path_info.size))
 
     return EntryRawDir(
@@ -1312,7 +1312,7 @@ def _answer_entries_archive_download_request(
                     )
                 )  # pylint: disable=maybe-no-member
 
-                yield StreamedFile(path=path, f=f, size=f.getbuffer().nbytes)
+                yield StreamedFile(path=path, src=f, size=f.getbuffer().nbytes)
             except KeyError as e:
                 logger.error(
                     'missing archive', entry_id=entry_metadata['entry_id'], exc_info=e
@@ -1325,7 +1325,7 @@ def _answer_entries_archive_download_request(
         manifest_content = json.dumps(manifest, indent=2).encode()
         yield StreamedFile(
             path='manifest.json',
-            f=io.BytesIO(manifest_content),
+            src=io.BytesIO(manifest_content),
             size=len(manifest_content),
         )
 
@@ -1619,7 +1619,7 @@ async def get_entry_raw_file(
     entry_path = os.path.dirname(mainfile)
     path = os.path.join(entry_path, path)
 
-    if not upload_files.raw_path_exists(path):
+    if not upload_files.raw_exists(path):
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             detail='The requested file does not exist.',

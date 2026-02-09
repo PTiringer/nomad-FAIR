@@ -58,6 +58,8 @@ itsdangerous==2.2.0       # via flask
 jinja2==3.1.6             # via flask, jupyterhub, -c requirements-dev.txt
 jmespath==1.0.1           # via nomad-lab, -c requirements-dev.txt
 joblib==1.5.3             # via mdanalysis, pymatgen, scikit-learn, -c requirements-dev.txt
+json-stream==2.4.1        # via nomad-lab, -c requirements-dev.txt
+json-stream-rs-tokenizer==0.5.0  # via json-stream, -c requirements-dev.txt
 jsonpath-ng==1.7.0        # via nomad-lab, -c requirements-dev.txt
 jsonschema==4.26.0        # via jupyter-telemetry, oauthenticator, -c requirements-dev.txt
 jsonschema-specifications==2025.9.1  # via jsonschema, -c requirements-dev.txt
