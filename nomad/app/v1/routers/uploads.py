@@ -1039,7 +1039,7 @@ async def get_upload_rawdir_path(
     try:
         # Get upload files
         upload_files = upload.upload_files
-        if not upload_files.raw_path_exists(path):
+        if not upload_files.raw_exists(path):
             raise HTTPException(
                 status.HTTP_404_NOT_FOUND,
                 detail=strip(
@@ -1055,7 +1055,7 @@ async def get_upload_rawdir_path(
             else ('embargoed' if upload.embargo_length else 'public'),
         )
 
-        if upload_files.raw_path_is_file(path):
+        if upload_files.raw_isfile(path):
             # Path denotes a file
             response.file_metadata = RawDirFileMetadata(
                 name=os.path.basename(path), size=upload_files.raw_file_size(path)
@@ -1071,7 +1071,7 @@ async def get_upload_rawdir_path(
             # Path denotes a directory
             start = pagination.get_simple_index()
             end = start + pagination.page_size
-            directory_list = upload_files.raw_directory_list(path)
+            directory_list = upload_files.raw_listdir(path)
             upload_files.close()
             content = []
             path_to_element: dict[str, RawDirElementMetadata] = {}
@@ -1251,7 +1251,7 @@ async def get_upload_raw_path(
     # Get upload files
     upload_files = upload.upload_files
     try:
-        if not upload_files.raw_path_exists(path):
+        if not upload_files.raw_exists(path):
             raise HTTPException(
                 status.HTTP_404_NOT_FOUND,
                 detail=strip(
@@ -1259,7 +1259,7 @@ async def get_upload_raw_path(
                 Not found. Invalid path?"""
                 ),
             )
-        if upload_files.raw_path_is_file(path):
+        if upload_files.raw_isfile(path):
             # File
             if files_params.compress:
                 media_type = 'application/zip'
@@ -1549,7 +1549,7 @@ async def put_upload_raw_path(
             )
         if not compression_format and not overwrite_if_exists:
             full_path = os.path.join(path, os.path.basename(upload_path))
-            if upload_files.raw_path_exists(full_path):
+            if upload_files.raw_exists(full_path):
                 raise HTTPException(
                     status.HTTP_409_CONFLICT,
                     detail='The provided path already exists and overwrite_if_exists is set to False.',
@@ -1559,17 +1559,17 @@ async def put_upload_raw_path(
         # Process on worker (normal case)
         if copy_or_move:  # the case for move/copy an existing file
             path_to_target_file = os.path.join(path, file_name)
-            if upload_files.raw_path_exists(path_to_target_file):
+            if upload_files.raw_exists(path_to_target_file):
                 raise HTTPException(
                     status.HTTP_409_CONFLICT,
                     detail='The provided path already exists.',
                 )
-            if not upload_files.raw_path_exists(path):
+            if not upload_files.raw_exists(path):
                 raise HTTPException(
                     status.HTTP_404_NOT_FOUND,
                     detail='No file or folder with that path found.',
                 )
-            if not upload_files.raw_path_exists(copy_or_move_source_path):
+            if not upload_files.raw_exists(copy_or_move_source_path):
                 raise HTTPException(
                     status.HTTP_409_CONFLICT,
                     detail=f'No file or folder with that source path: {copy_or_move_source_path}',
@@ -1732,7 +1732,7 @@ async def delete_upload_raw_path(
 
     upload_files = StagingUploadFiles(upload_id)
 
-    if not upload_files.raw_path_exists(path):
+    if not upload_files.raw_exists(path):
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             detail='No file or folder with that path found.',
@@ -1783,7 +1783,7 @@ async def post_upload_raw_create_dir_path(
 
     if not path or not is_safe_relative_path(path):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail='Bad path provided.')
-    if upload.staging_upload_files.raw_path_exists(path):
+    if upload.staging_upload_files.raw_exists(path):
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
             detail=f'Path `{path}` already exists.',

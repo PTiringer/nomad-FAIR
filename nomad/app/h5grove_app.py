@@ -45,15 +45,15 @@ def open_zipped_h5_file(
     create_error: Callable[[int, str], Exception],
     h5py_options: dict[str, Any] = {},
 ) -> h5py.File:
+    """
+    Patched h5grove utils function open_file_with_error_fallback in order to open h5 file
+    in zipped folder.
+    """
     import io
     import re
 
     from nomad import files
 
-    """
-    Patched h5grove utils function open_file_with_error_fallback in order to open h5 file
-    in zipped folder.
-    """
     match = re.match(
         r'.*?/uploads/(?P<upload_id>.+?)/(?P<directory>.+?)/(?P<path_or_id>.+)',
         filepath,
@@ -68,7 +68,9 @@ def open_zipped_h5_file(
     try:
         file_object: IO | str
         if match['directory'] == 'raw':
-            file_object = upload_files.raw_file(path_or_id, 'rb')
+            # todo: this is leaking resources, needs further refinement
+            # todo: track https://github.com/silx-kit/h5grove/pull/110
+            file_object = upload_files._raw_fileobj(path_or_id, 'rb')  # noqa
         else:
             file_object = upload_files.archive_hdf5_location(path_or_id)
     except Exception:

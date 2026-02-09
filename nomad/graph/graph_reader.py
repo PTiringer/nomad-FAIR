@@ -1099,7 +1099,8 @@ class GeneralReader:
             self.upload_pool[upload_id] = upload.upload_files
 
         try:
-            return self.upload_pool[upload_id].read_archive(entry_id)[entry_id]
+            with self.upload_pool[upload_id].read_archive(entry_id) as reader:
+                return reader[entry_id]
         except KeyError:
             raise ArchiveError(
                 f'Archive {entry_id} does not exist in upload {entry_id}.'
@@ -2375,7 +2376,7 @@ class FileSystemReader(GeneralReader):
 
         full_path: list = self._root_path + node.current_path
         full_path_str: str = '/'.join(self._to_abs_path(full_path))
-        is_current_path_file: bool = node.archive.raw_path_is_file(full_path_str)
+        is_current_path_file: bool = node.archive.raw_isfile(full_path_str)
 
         if not is_current_path_file:
             await _populate_result(node.result_root, full_path + ['m_is'], 'Directory')
@@ -2397,7 +2398,7 @@ class FileSystemReader(GeneralReader):
 
             child_path: list = node.current_path + [key]
 
-            if not node.archive.raw_path_exists(
+            if not node.archive.raw_exists(
                 '/'.join(self._to_abs_path(self._root_path + child_path))
             ):
                 continue
@@ -2424,7 +2425,7 @@ class FileSystemReader(GeneralReader):
         abs_path: list = self._to_abs_path(full_path)
 
         os_path: str = '/'.join(abs_path)
-        if not node.archive.raw_path_is_file(os_path):
+        if not node.archive.raw_isfile(os_path):
             await _populate_result(node.result_root, full_path + ['m_is'], 'Directory')
 
         ref_path = ['/'.join(self._root_path)]
@@ -2445,7 +2446,7 @@ class FileSystemReader(GeneralReader):
         folders: list = []
         files: list = []
         file: RawPathInfo
-        for file in node.archive.raw_directory_list(
+        for file in node.archive.raw_listdir(
             os_path, recursive=True, depth=config.depth if config.depth else -1
         ):
             if file.is_file:

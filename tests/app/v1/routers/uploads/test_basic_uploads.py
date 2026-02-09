@@ -235,12 +235,8 @@ def assert_file_upload_and_processing(
                             for path in zf.namelist():
                                 if not path.endswith('/'):
                                     target_path_full = os.path.join(target_path, path)
-                                    assert upload_files.raw_path_exists(
-                                        target_path_full
-                                    )
-                                    assert upload_files.raw_path_is_file(
-                                        target_path_full
-                                    )
+                                    assert upload_files.raw_exists(target_path_full)
+                                    assert upload_files.raw_isfile(target_path_full)
                     elif os.path.isdir(source_path):
                         for root, _, filepaths in os.walk(source_path):
                             for filepath in filepaths:
@@ -251,15 +247,15 @@ def assert_file_upload_and_processing(
                                     else os.path.join(rel_dir, filepath)
                                 )
                                 target_path_full = os.path.join(target_path, path)
-                                assert upload_files.raw_path_exists(target_path_full)
-                                assert upload_files.raw_path_is_file(target_path_full)
+                                assert upload_files.raw_exists(target_path_full)
+                                assert upload_files.raw_isfile(target_path_full)
                     else:
                         if mode == 'stream':
                             # Must specify file_name
                             file_name = query_args['file_name']
                         target_path_full = os.path.join(target_path, file_name)
-                        assert upload_files.raw_path_exists(target_path_full)
-                        assert upload_files.raw_path_is_file(target_path_full)
+                        assert upload_files.raw_exists(target_path_full)
+                        assert upload_files.raw_isfile(target_path_full)
                         assert (
                             upload_files.raw_file_size(target_path_full)
                             == os.stat(source_path).st_size
@@ -268,8 +264,8 @@ def assert_file_upload_and_processing(
                 upload_files = files.UploadFiles.get(upload_id)
                 file_name = os.path.basename(source_paths[0])
                 target_path_full = os.path.join(target_path, file_name)
-                assert upload_files.raw_path_exists(target_path_full)
-                assert upload_files.raw_path_is_file(target_path_full)
+                assert upload_files.raw_exists(target_path_full)
+                assert upload_files.raw_isfile(target_path_full)
 
         assert_expected_mainfiles(upload_id, expected_mainfiles)
     return response, processed_response_data
@@ -1124,8 +1120,8 @@ async def test_post_upload_raw_create_dir_path(
     assert_response(response, expected_status_code)
     if expected_status_code == 200:
         upload = Upload.get(upload_id)
-        assert upload.upload_files.raw_path_exists(path)
-        assert not upload.upload_files.raw_path_is_file(path)
+        assert upload.upload_files.raw_exists(path)
+        assert not upload.upload_files.raw_isfile(path)
 
 
 @pytest.mark.parametrize(
@@ -1283,10 +1279,10 @@ async def test_delete_upload_raw_path(
             upload_files = StagingUploadFiles(upload_id)
             if path == '':
                 # Deleting the root folder = the folder itself should be emptied, but not deleted.
-                assert not list(upload_files.raw_directory_list(''))
+                assert not list(upload_files.raw_listdir(''))
             else:
                 # Deleting a file or folder within the raw folder - it should disappear.
-                assert not upload_files.raw_path_exists(path)
+                assert not upload_files.raw_exists(path)
 
             assert_expected_mainfiles(upload_id, expected_mainfiles)
 
@@ -2061,11 +2057,11 @@ async def test_post_upload_action_delete_entry_files(
                 handle = env.client.get_workflow_handle(workflow_ids[0])
                 await handle.result()
             for path in expect_exists or []:
-                assert upload.upload_files.raw_path_exists(path), (
+                assert upload.upload_files.raw_exists(path), (
                     f'Missing expected path: {path}'
                 )
             for path in expect_not_exists or []:
-                assert not upload.upload_files.raw_path_exists(path), (
+                assert not upload.upload_files.raw_exists(path), (
                     f'Expected path not to exist: {path}'
                 )
 
@@ -2462,7 +2458,7 @@ async def test_post_upload_bundle(
 
 
 def _raw_path_exists(upload_id: str, path: str):
-    return Upload.get(upload_id).upload_files.raw_path_exists(path)
+    return Upload.get(upload_id).upload_files.raw_exists(path)
 
 
 async def _perform_move_or_copy(
