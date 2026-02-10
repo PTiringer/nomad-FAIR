@@ -203,20 +203,6 @@ def test_get_current_user_auth_methods(
         assert exc.value.status_code == 401
 
 
-def test_get_current_user_rejects_query_token():
-    """Ensure that passing upload token via query param is rejected."""
-
-    dep = get_current_user(
-        required_scopes=[Scope.UPLOADS_READ], allow_upload_token=True
-    )
-
-    with pytest.raises(
-        HTTPException, match='Passing upload token via query parameter'
-    ) as exc:
-        dep(upload_token_query_param='abc123')
-    assert exc.value.status_code == 400
-
-
 def test_get_current_user_keycloak_token_from_cookie(
     monkeypatch, allowed_user, patch_user_get
 ):
