@@ -19,6 +19,7 @@
 import click
 
 from nomad.config import config
+from nomad.config.models.config import WorkerConfig
 
 from .admin import admin
 
@@ -44,47 +45,87 @@ def hub():
 
 
 @run.command(help='Run the action cpu worker.')
-@click.option('--workers', type=int, default=12, help='Number of workers.')
-def action_cpu_worker(workers: int):
+@click.option('--workers', type=int, default=None, help='Number of workers.')
+def action_cpu_worker(workers: int | None):
     import asyncio
 
     from nomad.actions.workers import cpu
 
-    asyncio.run(cpu.run_worker(workers=workers))
+    config_dict = config.temporal.cpu_worker.model_dump()
+    if workers is not None:
+        config_dict['workers'] = workers
+
+    worker_config = WorkerConfig.model_validate(config_dict)
+
+    asyncio.run(cpu.run_worker(worker_config))
 
 
 @run.command(help='Run the action gpu worker.')
-@click.option('--workers', type=int, default=12, help='Number of workers.')
-def action_gpu_worker(workers: int):
+@click.option('--workers', type=int, default=None, help='Number of workers.')
+def action_gpu_worker(workers: int | None):
     import asyncio
 
     from nomad.actions.workers import gpu
 
-    asyncio.run(gpu.run_worker(workers=workers))
+    config_dict = config.temporal.gpu_worker.model_dump()
+    if workers is not None:
+        config_dict['workers'] = workers
+
+    worker_config = WorkerConfig.model_validate(config_dict)
+
+    asyncio.run(gpu.run_worker(worker_config))
 
 
 @run.command(help='Run the action internal worker.')
-@click.option('--workers', type=int, default=1, help='Number of workers.')
+@click.option('--workers', type=int, default=None, help='Number of workers.')
 @click.option(
     '--max-tasks-per-child',
     type=int,
-    default=100,
+    default=None,
     help='Number of tasks per worker.',
 )
-def action_internal_worker(workers: int, max_tasks_per_child: int):
-    run_action_internal_worker(workers=workers, max_tasks_per_child=max_tasks_per_child)
+@click.option(
+    '--max-concurrent-activities',
+    type=int,
+    default=None,
+    help='Maximum number of concurrent activities for the internal worker.',
+)
+def action_internal_worker(
+    workers: int | None,
+    max_tasks_per_child: int | None,
+    max_concurrent_activities: int | None,
+):
+    run_action_internal_worker(
+        workers=workers,
+        max_tasks_per_child=max_tasks_per_child,
+        max_concurrent_activities=max_concurrent_activities,
+    )
 
 
 @run.command(help='Run the action internal worker.')
-@click.option('--workers', type=int, default=1, help='Number of workers.')
+@click.option('--workers', type=int, default=None, help='Number of workers.')
 @click.option(
     '--max-tasks-per-child',
     type=int,
-    default=100,
+    default=None,
     help='Number of tasks per worker.',
 )
-def worker(workers: int, max_tasks_per_child: int):
-    run_action_internal_worker(workers=workers, max_tasks_per_child=max_tasks_per_child)
+@click.option(
+    '--max-concurrent-activities',
+    type=int,
+    default=None,
+    help='Maximum number of concurrent activities for the internal worker.',
+)
+def worker(
+    workers: int | None,
+    max_tasks_per_child: int | None,
+    max_concurrent_activities: int | None,
+):
+    run_action_internal_worker(
+        workers=workers,
+        max_tasks_per_child=max_tasks_per_child,
+        max_concurrent_activities=max_concurrent_activities,
+    )
 
 
 @run.command(help='Run the nomad development app with all apis.')
@@ -107,16 +148,27 @@ def app(with_gui: bool, **kwargs):
     run_app(with_gui=with_gui, **kwargs)
 
 
-def run_action_internal_worker(*, workers: int = 1, max_tasks_per_child: int = 100):
+def run_action_internal_worker(
+    *,
+    workers: int | None = None,
+    max_tasks_per_child: int | None = None,
+    max_concurrent_activities: int | None = None,
+):
     import asyncio
 
     from nomad.actions.workers import internal_worker
 
-    asyncio.run(
-        internal_worker.run_worker(
-            workers=workers, max_tasks_per_child=max_tasks_per_child
-        )
-    )
+    config_dict = config.temporal.internal_worker.model_dump()
+    if workers is not None:
+        config_dict['workers'] = workers
+    if max_tasks_per_child is not None:
+        config_dict['max_tasks_per_child'] = max_tasks_per_child
+    if max_concurrent_activities is not None:
+        config_dict['max_concurrent_activities'] = max_concurrent_activities
+
+    worker_config = WorkerConfig.model_validate(config_dict)
+
+    asyncio.run(internal_worker.run_worker(worker_config))
 
 
 def run_app(

@@ -121,6 +121,8 @@ class EntriesToBeProcessedResult:
     upload_id: str
     entries: list[ProcessEntryActivityInput] | None = None
     directory: str | None = None
+    current_sub_batch_index: int = 0
+    current_batch_id: int = 0
     total_batches: int = 0
     next_parser_level: int | None = None
 

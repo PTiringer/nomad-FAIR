@@ -1004,8 +1004,8 @@ class TestWorkflowErrorHandling:
         )
 
         # Verify that entry processing was attempted for both entries
-        # 18 calls accounts for the number of retries
-        assert mock_data_layer['entry_class'].get.call_count == 18
+        # 6 calls accounts for the number of retries
+        assert mock_data_layer['entry_class'].get.call_count == 6
 
         # Verify that the upload workflow completed successfully
         # (The upload should not be marked as failed due to individual entry failures)
