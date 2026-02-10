@@ -30,7 +30,7 @@ from pydantic import BaseModel
 from nomad import datamodel, utils
 from nomad.auth import keycloak, user_management
 from nomad.auth.keycloak import KeycloakError
-from nomad.auth.scopes import Scope
+from nomad.auth.scopes import _resolve_scopes
 from nomad.config import config
 from nomad.config.models.config import _DEFAULT_API_KEY, ModeEnum
 from nomad.datamodel import User
@@ -109,7 +109,7 @@ def get_user_from_keycloak_token(keycloak_token: str | None) -> AuthResult | Non
 
     try:
         user = cast(datamodel.User, keycloak.keycloak.tokenauth(keycloak_token))
-        return AuthResult(user, config.auth.keycloak_token_scopes)
+        return AuthResult(user, _resolve_scopes(['*:*']))
 
     except KeycloakError as e:
         raise HTTPException(
@@ -141,7 +141,7 @@ def get_user_from_simple_token(simple_token: str | None) -> AuthResult | None:
         )
         user = User.get(user_id=decoded['user'])
         # TODO: better way to exclude AUTH permission
-        scopes = config.auth.simple_token_scopes - {Scope.TOKENS_CREATE}
+        scopes = _resolve_scopes(['*:*']) - _resolve_scopes(['tokens:*'])
         return AuthResult(user, scopes)
 
     except KeyError:
@@ -195,7 +195,7 @@ def get_user_from_upload_token(upload_token: str | None) -> AuthResult | None:
 
         user_id = str(uuid.UUID(bytes=payload_bytes))
         user = cast(datamodel.User, user_management.user_management.get_user(user_id))
-        return AuthResult(user, config.auth.upload_token_scopes)
+        return AuthResult(user, _resolve_scopes(['uploads:*']))
 
     except Exception:
         # Decode error, format error, user not found, etc.

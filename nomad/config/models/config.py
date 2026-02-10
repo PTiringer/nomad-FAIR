@@ -23,12 +23,19 @@ from enum import Enum
 from importlib.metadata import entry_points, version
 from urllib.parse import quote
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
 from nomad.auth.scopes import _resolve_scopes
 from nomad.config.models.pagination import PaginationBaseModel
 
-from .common import ConfigBaseModel, Options
+from .common import ConfigBaseModel, Options, OptionsGlob
 from .north import NORTH
 from .plugins import EntryPointType, PluginPackage, Plugins
 from .ui import UI
@@ -251,41 +258,114 @@ class Services(ConfigBaseModel):
         return f'{protocol}://{host_and_port}/{base_path}/{api}'
 
 
+def resolve_scopes_valid(scope_options):
+    """Contains a concrete set of scopes for unauthenticated user as resolved from
+    unauthenticated_user_scopes."""
+
+    # If no include/exclude is given, return all scopes.
+    if not scope_options:
+        return _resolve_scopes('*:*')
+
+    include = None
+    exclude = None
+    if isinstance(scope_options, OptionsGlob):
+        include = scope_options.include
+        exclude = scope_options.exclude
+    elif isinstance(scope_options, dict):
+        include = scope_options.get('include')
+        exclude = scope_options.get('exclude')
+    else:
+        raise TypeError(
+            "Auth scope configuration must be a mapping with 'include'/'exclude'."
+        )
+
+    # If no include is given, default to all scopes. This is different from an empty list.
+    if include is None:
+        include = {'*:*'}
+    # If no exclude is given, default to empty set.
+    if not exclude:
+        exclude = {}
+
+    return _resolve_scopes(include) - _resolve_scopes(exclude)
+
+
 class Auth(ConfigBaseModel):
     """
     Authentication/authorization-related configurations.
     """
 
-    anonymous_user_permission: set[str] = Field(
-        default_factory=lambda: {'*:read'},
-        description='Backend scopes that would be granted to anonymous users.',
+    require_authentication: bool = Field(
+        False,
+        description="""
+            If True, all API requests require authentication (=users must be logged in).
+            If false, unauthenticated users can still perform actions as defined by
+            `unauthenticated_user_scopes`.
+        """,
+    )
+    reject_unauthorized_users: bool = Field(
+        True,
+        description="""
+            If True, any users that are not specified in `auth.authorized_users` are
+            rejected access with an HTTP 403 response code. Multiple NOMAD deployments may
+            share the same keycloak instance, and users can thus be authenticated
+            correctly, without having authorization to access the deployment. If False,
+            unauthorized users can still perform actions as defined by
+            `unathorized_user_scopes`.
+        """,
+    )
+    authorized_users: list[str] = Field(
+        None,
+        description="""
+            A list of usernames or user account emails that are authorized to access this
+            NOMAD deployment. If not specified, all users recognized by the Keycloak
+            instance are allowed.
+        """,
+    )
+    unauthenticated_user_scopes: OptionsGlob = Field(
+        OptionsGlob(include=['*:read']),
+        description="""
+            Controls the API scopes granted to unauthenticated (=not logged in) users.
+
+            Semantics:
+                - `include` defines the baseline granted scopes. Defaults to all scopes if
+                  not defined or null.
+                - `exclude` removes scopes from that baseline. Defaults to an empty set.
+                - Wildcards are supported (e.g. `"*:read"` for read-only, `"*:*"` for all).
+
+            For the complete list of scopes (resources/actions), refer to the
+            `nomad.auth.Scope` Enum.
+        """,
+    )
+    unauthorized_user_scopes: OptionsGlob = Field(
+        OptionsGlob(include=['*:read']),
+        description="""
+            Controls the API scopes granted to unauthorized users (=users who can log in
+            through Keycloak, but that are not allowed to access this NOMAD deployment).
+
+            Semantics:
+                - `include` defines the baseline granted scopes. Defaults to all scopes if
+                  not defined or null.
+                - `exclude` removes scopes from that baseline. Defaults to an empty set.
+                - Wildcards are supported (e.g. `"*:read"` for read-only, `"*:*"` for all).
+
+            For the complete list of scopes (resources/actions), refer to the
+            `nomad.auth.Scope` Enum.
+        """,
     )
 
-    keycloak_token_scopes: set[str] = Field(
-        default_factory=lambda: {'*:*'},
-        description='Backend scopes that would be granted to the keycloak token.',
-    )
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def unauthenticated_user_scopes_resolved(self) -> set[str]:
+        """Contains a concrete set of scopes for unauthenticated user as resolved from
+        unauthenticated_user_scopes."""
+        return resolve_scopes_valid(self.unauthenticated_user_scopes)
 
-    simple_token_scopes: set[str] = Field(
-        default_factory=lambda: {'*:*'},
-        description='Backend scopes that would be granted to the simple token.',
-    )
-
-    upload_token_scopes: set[str] = Field(
-        default_factory=lambda: {'uploads:*'},
-        description='Backend scopes that would be granted to the upload token.',
-    )
-
-    @field_validator(
-        'anonymous_user_permission',
-        'keycloak_token_scopes',
-        'simple_token_scopes',
-        'upload_token_scopes',
-        mode='after',
-    )
-    @classmethod
-    def _resolve_scopes_for_all_tokens(cls, scopes: set[str]) -> set[str]:
-        return _resolve_scopes(scopes)
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def unauthorized_user_scopes_resolved(self) -> set[str]:
+        """Contains a concrete set of scopes for unauthorized users as resolved from
+        unauthorized_user_scopes."""
+        return resolve_scopes_valid(self.unauthorized_user_scopes)
 
 
 class FooterLink(ConfigBaseModel):
@@ -375,11 +455,8 @@ class Oasis(ConfigBaseModel):
     )
     allowed_users: list[str] = Field(
         None,
-        description="""
-        A list of usernames or user account emails. These represent a white-list of
-        allowed users. With this, users will need to login right-away and only the
-        listed users might use this deployment. All API requests must have authentication
-        information as well.""",
+        description='Use `auth.authorized_users` instead.',
+        deprecated=True,
     )
     uses_central_user_management: bool = Field(
         False,
@@ -404,20 +481,9 @@ class Oasis(ConfigBaseModel):
 
     require_authentication: bool | None = Field(
         None,
-        description="""
-        [Deprecated] Use `Auth.anonymous_user_permission` to set default permission.
-    """,
+        description='Use `auth.require_authentication` instead.',
+        deprecated=True,
     )
-
-    @field_validator('require_authentication', mode='before')
-    @classmethod
-    def _deprecate_require_authentication(cls, v):
-        if v is not None:
-            raise ValueError(
-                '`Oasis.require_authentication` has been removed. '
-                'Use `Auth.anonymous_user_permission` to set the default permission.'
-            )
-        return v
 
 
 class FS(ConfigBaseModel):
@@ -1467,6 +1533,20 @@ class Config(ConfigBaseModel):
                 values.ui.app_base = f'{"https" if services.https else "http"}://{services.api_host}:{services.api_port}{values.services.api_base_path.rstrip("/")}'
             if services and north:
                 values.ui.north_base = f'{"https" if services.https else "http"}://{north.hub_host}:{north.hub_port}{services.api_base_path.rstrip("/")}/north'
+
+        # Backwards compatibility for auth settings stored in the oasis config.
+        # Only apply if the deprecated oasis.* field was explicitly set AND
+        # the new auth.* field was NOT explicitly set by the user.
+        if (
+            'require_authentication' in values.oasis.model_fields_set
+            and 'require_authentication' not in values.auth.model_fields_set
+        ):
+            values.auth.require_authentication = values.oasis.require_authentication
+        if (
+            'allowed_users' in values.oasis.model_fields_set
+            and 'authorized_users' not in values.auth.model_fields_set
+        ):
+            values.auth.authorized_users = values.oasis.allowed_users
 
         return values
 

@@ -6,7 +6,6 @@ from copy import deepcopy
 import pytest
 import requests
 
-from nomad.auth.scopes import _resolve_scopes
 from nomad.config import config
 from nomad.utils.structlogging import LogstashFormatter
 
@@ -14,8 +13,8 @@ from nomad.utils.structlogging import LogstashFormatter
 @pytest.fixture(scope='module')
 def api_v1(monkeysession, api_v1):
     monkeysession.setattr(
-        'nomad.config.config.auth.anonymous_user_permission',
-        _resolve_scopes({'*:read', 'federation:*'}),
+        'nomad.config.config.auth.unauthenticated_user_scopes',
+        {'include': ['*:read', 'federation:*']},
     )
     return api_v1
 

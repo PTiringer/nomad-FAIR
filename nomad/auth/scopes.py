@@ -122,7 +122,7 @@ class Scope(str, Enum):
 
 
 def _resolve_scopes(
-    scopes: Iterable[str],
+    scopes: str | Iterable[str],
 ) -> set[str]:
     """Resolve and validate configured scopes, supporting '*' as wildcards.
 
@@ -138,6 +138,10 @@ def _resolve_scopes(
     Args:
         scopes: Scope strings from configuration.
     """
+    if isinstance(scopes, str):
+        scopes = {scopes}
+    else:
+        scopes = set(scopes)
     known_scopes: set[str] = Scope.all_values()
     resolved_scopes: set[str] = set()
 
