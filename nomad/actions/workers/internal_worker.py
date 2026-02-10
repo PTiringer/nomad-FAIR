@@ -12,11 +12,12 @@ from nomad.actions.activities.utils import get_all_activities
 from nomad.actions.client import get_client
 from nomad.actions.workflows.utils import get_all_workflows
 from nomad.config import config
+from nomad.config.models.config import WorkerConfig
 from nomad.infrastructure import setup
 from nomad.utils.structlogging import get_logger
 
 
-async def run_worker(workers: int, max_tasks_per_child: int = 100):
+async def run_worker(worker_config: WorkerConfig):
     logger = get_logger(__name__)
     loop = asyncio.get_running_loop()
     stop_event = asyncio.Event()
@@ -30,9 +31,9 @@ async def run_worker(workers: int, max_tasks_per_child: int = 100):
     loop.add_signal_handler(signal.SIGINT, _signal_handler)
 
     client = await get_client()
-    executor_kwargs = {'max_workers': workers, 'initializer': setup}
+    executor_kwargs = {'max_workers': worker_config.workers, 'initializer': setup}
     if sys.version_info >= (3, 11):
-        executor_kwargs['max_tasks_per_child'] = max_tasks_per_child
+        executor_kwargs['max_tasks_per_child'] = worker_config.max_tasks_per_child
 
     # NOTE: internal processing is not thread safe, avoid using ThreadPoolExecutor with more than 1 worker.
     # mypy: has issues with **kwargs in this context
@@ -50,7 +51,7 @@ async def run_worker(workers: int, max_tasks_per_child: int = 100):
                 seconds=config.temporal.graceful_shutdown_timeout
             ),
             # Limit the number of concurrent activities to avoid overloading the worker
-            max_concurrent_activities=workers,
+            max_concurrent_activities=worker_config.max_concurrent_activities,
         )
 
         # Run the worker until SIGTERM
@@ -64,11 +65,3 @@ async def run_worker(workers: int, max_tasks_per_child: int = 100):
             await worker_task
         except asyncio.CancelledError:
             logger.info('Worker shut down cleanly.')
-
-
-def main():
-    asyncio.run(run_worker(1))
-
-
-if __name__ == '__main__':
-    main()

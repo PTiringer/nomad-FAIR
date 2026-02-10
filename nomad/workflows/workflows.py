@@ -134,11 +134,11 @@ class BatchProcessEntriesWorkflow:
     Handles processing of entry batches.
 
     Architecture:
-    - Processes batches sequentially to prevent task queue overload
+    - Uses continue-as-new to process batches sequentially, preventing history buildup
     - Within each batch, processes up to 1000 entries concurrently
     - Handles both file-based storage (large datasets) and in-memory storage (small datasets)
 
-    Note: 1000 is the limit set by Temporal for max number of child workflows.
+    Note: 1000 is the limit set by Temporal for max number of concurrent activities.
     """
 
     @workflow.run
@@ -149,72 +149,127 @@ class BatchProcessEntriesWorkflow:
         timeout = timedelta(
             seconds=config.temporal.processing_timeouts.process_upload_timeout
         )
-
         # Handle file-based entry storage (used for very large uploads)
         # Entries are stored in batch files to avoid memory constraints
         if entry_batch_directory := next_level_entries_result.directory:
-            # Process each file-based batch sequentially to prevent overwhelming the task queue
-            # Each batch will internally process up to 1000 entries concurrently
-            for batch_id in range(next_level_entries_result.total_batches):
-                # Load entries from the batch file
-                entries_to_be_processed = await workflow.execute_activity(
-                    get_entry_batch_from_file,
-                    EntryBatchFromFileInput(
-                        upload_id=next_level_entries_result.upload_id,
-                        batch_dir_path=entry_batch_directory,
-                        batch_id=batch_id,
-                    ),
-                    schedule_to_close_timeout=timedelta(
-                        seconds=config.temporal.processing_timeouts.next_level_entries_timeout
-                    ),
-                    retry_policy=retry_policy,
-                )
+            current_batch_id = next_level_entries_result.current_batch_id
 
-                # Recursively process this batch (which may further subdivide if >1000 entries)
-                await workflow.execute_child_workflow(
-                    BatchProcessEntriesWorkflow.run,
+            # Load entries from the current batch file
+            entries_to_be_processed = await workflow.execute_activity(
+                get_entry_batch_from_file,
+                EntryBatchFromFileInput(
+                    upload_id=next_level_entries_result.upload_id,
+                    batch_dir_path=entry_batch_directory,
+                    batch_id=current_batch_id,
+                ),
+                schedule_to_close_timeout=timedelta(
+                    seconds=config.temporal.processing_timeouts.next_level_entries_timeout
+                ),
+                retry_policy=retry_policy,
+            )
+
+            # Process this batch's entries
+            await self._process_entries_batch(entries_to_be_processed, retry_policy)
+
+            # Move to next batch using continue-as-new if more batches remain
+            next_batch_id = current_batch_id + 1
+            if next_batch_id < next_level_entries_result.total_batches:
+                workflow.continue_as_new(
                     EntriesToBeProcessedResult(
-                        entries=entries_to_be_processed,
                         upload_id=next_level_entries_result.upload_id,
-                    ),
-                    id=f'{workflow.info().workflow_id}-file-batch-{batch_id}',
-                    parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
-                    retry_policy=retry_policy,
+                        directory=entry_batch_directory,
+                        total_batches=next_level_entries_result.total_batches,
+                        current_batch_id=next_batch_id,
+                    )
                 )
 
         # Handle in-memory entry processing (from small uploads or loaded file batches)
         elif entries_to_be_processed := next_level_entries_result.entries:
             # Two-tier processing strategy based on batch size:
             # 1. Large batches (>1000): Split into smaller batches and process sequentially
-            # 2. Small batches (≤1000): Process all entries concurrently
+            # 2. Small batches (≤1000): Process all entries concurrently as activities
             if len(entries_to_be_processed) > 1000:
-                entry_batches = generate_batches(entries_to_be_processed)
-                # Each sub-batch will be processed with up to 1000 concurrent entries
-                for i, batch in enumerate(entry_batches):
-                    await workflow.execute_child_workflow(
-                        BatchProcessEntriesWorkflow.run,
+                entry_batches = list(generate_batches(entries_to_be_processed))
+                current_sub_batch_index = (
+                    next_level_entries_result.current_sub_batch_index
+                )
+
+                # Process current sub-batch
+                current_batch = entry_batches[current_sub_batch_index]
+                await self._process_entries_batch(current_batch, retry_policy)
+
+                # Continue to next sub-batch using continue-as-new if more remain
+                next_sub_batch_index = current_sub_batch_index + 1
+                if next_sub_batch_index < len(entry_batches):
+                    workflow.continue_as_new(
                         EntriesToBeProcessedResult(
-                            entries=batch,
+                            entries=entries_to_be_processed,  # Keep original list for batching
                             upload_id=next_level_entries_result.upload_id,
-                        ),
-                        id=f'{workflow.info().workflow_id}-batch-{i}',
-                        retry_policy=retry_policy,
+                            current_sub_batch_index=next_sub_batch_index,
+                        )
                     )
             else:
-                # Process entries directly when <= 1000
-                tasks = [
-                    workflow.execute_child_workflow(
-                        ProcessEntryWorkflow.run,
-                        data,
-                        id=data.workflow_id,
-                        parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
-                        retry_policy=retry_policy,
-                    )
-                    for data in entries_to_be_processed
-                ]
-                # Use return_exceptions=True to allow individual child workflows to fail
-                # without stopping the entire batch or failing the parent workflow
-                await asyncio.gather(*tasks, return_exceptions=True)
+                # Process entries directly as activities when <= 1000
+                await self._process_entries_batch(entries_to_be_processed, retry_policy)
+
+    async def _process_entries_batch(
+        self, entries: list[ProcessEntryActivityInput], retry_policy: RetryPolicy
+    ):
+        """
+        Process a batch of entries concurrently as activities.
+
+        Args:
+            entries: List of entry inputs to process (max 1000)
+            retry_policy: Retry policy for activity execution
+        """
+        tasks = []
+
+        for entry_input in entries:
+            task = self._process_single_entry(entry_input, retry_policy)
+            tasks.append(task)
+
+        # Use return_exceptions=True to allow individual activities to fail
+        # without stopping the entire batch or failing the parent workflow
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def _process_single_entry(
+        self, input: ProcessEntryActivityInput, retry_policy: RetryPolicy
+    ):
+        """
+        Process a single entry with error handling for heartbeat timeouts.
+
+        Args:
+            input: Entry input to process
+            retry_policy: Retry policy for activity execution
+
+        Returns:
+            Result from the process_entry_activity
+        """
+        try:
+            result = await workflow.execute_activity(
+                process_entry_activity,
+                input,
+                schedule_to_close_timeout=timedelta(
+                    seconds=config.temporal.processing_timeouts.process_entry_timeout
+                ),
+                heartbeat_timeout=timedelta(
+                    seconds=config.temporal.processing_timeouts.internal_processing_heartbeat_timeout
+                ),
+                retry_policy=retry_policy,
+            )
+            return result
+
+        except ActivityError as e:
+            # Handle heartbeat timeout failures with a dedicated recovery activity
+            if 'heartbeat timeout' in str(e.cause):
+                await workflow.execute_activity(
+                    handle_heartbeat_failure_activity,
+                    input,
+                    schedule_to_close_timeout=timedelta(
+                        seconds=config.temporal.processing_timeouts.process_entry_timeout
+                    ),
+                )
+            raise e
 
 
 @workflow.defn

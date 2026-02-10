@@ -223,6 +223,7 @@ class Services(ConfigBaseModel):
         True,
         description='If true, all queries to the /entries/query API endpoint will be logged.',
     )
+
     # Validators
     _console_log_level = field_validator('console_log_level', mode='before')(
         normalize_loglevel
@@ -628,6 +629,36 @@ class ProcessingTimeouts(ConfigBaseModel):
     )
 
 
+class WorkerConfig(ConfigBaseModel):
+    workers: int = Field(
+        1,
+        description="""
+            Number of worker processes to spawn. These workers are responsible for
+            core NOMAD activities such as entry and upload processing.
+        """,
+    )
+    max_tasks_per_child: int = Field(
+        100,
+        description="""
+            Maximum number of tasks a worker process will execute before
+            it is restarted to prevent potential memory leaks.
+        """,
+    )
+    max_concurrent_activities: int | None = Field(
+        None,
+        description="""
+            Maximum number of concurrent activities that each worker process
+            can handle. Defaults to the number of workers.
+        """,
+    )
+
+    @model_validator(mode='after')
+    def set_default_max_concurrent_activities(self):
+        if self.max_concurrent_activities is None:
+            self.max_concurrent_activities = self.workers
+        return self
+
+
 class Temporal(ConfigBaseModel):
     host: str = Field(
         'localhost',
@@ -656,6 +687,19 @@ class Temporal(ConfigBaseModel):
     processing_timeouts: ProcessingTimeouts = Field(
         default_factory=ProcessingTimeouts,
         description='Timeout configuration for individual processing workflows and activities.',
+    )
+
+    internal_worker: WorkerConfig = Field(
+        default_factory=WorkerConfig,
+        description='Configuration for the internal action worker.',
+    )
+    cpu_worker: WorkerConfig = Field(
+        default_factory=lambda: WorkerConfig(workers=12),
+        description='Configuration for the CPU action worker.',
+    )
+    gpu_worker: WorkerConfig = Field(
+        default_factory=lambda: WorkerConfig(workers=12),
+        description='Configuration for the GPU action worker.',
     )
 
 
