@@ -121,7 +121,7 @@ def _resolve_user_with_scopes(
 
     if auth_result is None:  # user resolving failed: anonymous user
         user = None
-        scopes = config.auth.anonymous_user_permission
+        scopes = config.auth.unauthenticated_user_scopes_resolved
     else:
         user = auth_result.user
         scopes = auth_result.scopes
@@ -134,10 +134,9 @@ def _resolve_user_with_scopes(
         user = datamodel.User.get(username=config.tests.assume_auth_for_username)
         scopes = Scope.all_values()  # full permission for tester
 
-    # Handle anonymous user
+    # Anonymous users
     if user is None:
-        # `allowed_users` would imply login required
-        if not allow_anonymous or config.oasis.allowed_users is not None:
+        if not allow_anonymous or config.auth.require_authentication:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail='Authentication required.',
@@ -146,11 +145,10 @@ def _resolve_user_with_scopes(
 
     # Non-anonymous user
     else:
-        # Validate against recording
+        # Validate user against Keycloak
         try:
             if datamodel.User.get(user.user_id) is None:
                 raise ValueError('User not found in database')
-
         except Exception as e:
             logger.error('API usage by unknown user.', exc_info=e)
             raise HTTPException(
@@ -158,16 +156,19 @@ def _resolve_user_with_scopes(
                 detail='You are logged in with an unknown user',
             ) from e
 
-        # Check user whitelist (via `allowed_users`)
+        # Check user whitelist (via `authorized_users`)
         if (
-            config.oasis.allowed_users is not None
-            and user.email not in config.oasis.allowed_users
-            and user.username not in config.oasis.allowed_users
+            config.auth.authorized_users is not None
+            and user.email not in config.auth.authorized_users
+            and user.username not in config.auth.authorized_users
         ):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail='You are not authorized to access this Oasis',
-            )
+            if config.auth.reject_unauthorized_users:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail='You are not authorized to access this Oasis',
+                )
+            else:
+                scopes = config.auth.unauthorized_user_scopes_resolved
 
     # Enforce backend scopes
     if missing_scopes := required_scopes - set(scopes):

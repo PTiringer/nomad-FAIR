@@ -34,17 +34,17 @@ from nomad.config.models.config import ModeEnum
         pytest.param(
             dict(username='user1', password='password', grant_type='password'),
             200,
-            id='valid_credentials',
+            id='valid-credentials',
         ),
         pytest.param(
             dict(username='bad', password='credentials', grant_type='password'),
             401,
-            id='invalid_credentials',
+            id='invalid-credentials',
         ),
         pytest.param(
             dict(username='user1', password='password'),
             422,
-            id='missing_grant_type',
+            id='missing-grant-type',
         ),
     ],
 )
@@ -63,46 +63,44 @@ def test_post_token_various_cases(client, user1, form_data, expected_status):
 # Tests for NOMAD custom tokens (simple token, upload token)
 
 
-def test_get_signature_token(auth_headers, client):
-    response = client.get('auth/signature_token', headers=auth_headers['user1'])
-    assert response.status_code == 200
-    assert response.json().get('signature_token') is not None
-
-
-def test_get_signature_token_unauthorized(auth_headers, client):
-    response = client.get('auth/signature_token', headers=None)
-    assert response.status_code == 401
-    response = client.get('auth/signature_token', headers=auth_headers['invalid'])
-    assert response.status_code == 401
+@pytest.mark.parametrize(
+    'auth_key, expected_status',
+    [
+        pytest.param('user1', 200, id='authorized'),
+        pytest.param(None, 401, id='no-auth'),
+        pytest.param('invalid', 401, id='invalid-auth'),
+    ],
+)
+def test_get_signature_token(auth_headers, client, auth_key, expected_status):
+    headers = auth_headers.get(auth_key) if auth_key else None
+    response = client.get('auth/signature_token', headers=headers)
+    assert response.status_code == expected_status
+    if expected_status == 200:
+        assert response.json().get('signature_token') is not None
 
 
 @pytest.mark.parametrize(
-    'expires_in, status_code',
+    'auth_key, expires_in, expected_status',
     [
-        (0, 422),
-        (30 * 60, 200),
-        (2 * 60 * 60, 200),
-        (31 * 24 * 60 * 60, 422),
-        (None, 422),
+        pytest.param('user1', 0, 422, id='valid-auth-expires-too-short'),
+        pytest.param('user1', 30 * 60, 200, id='valid-auth-expires-30min'),
+        pytest.param('user1', 2 * 60 * 60, 200, id='valid-auth-expires-2h'),
+        pytest.param('user1', 31 * 24 * 60 * 60, 422, id='valid-auth-expires-too-long'),
+        pytest.param('user1', None, 422, id='valid-auth-expires-missing'),
+        pytest.param(None, 60, 401, id='no-auth'),
+        pytest.param('invalid', 60, 401, id='invalid-auth'),
     ],
 )
-def test_get_app_token(auth_headers, client, expires_in, status_code):
+def test_get_app_token(auth_headers, client, auth_key, expires_in, expected_status):
+    headers = auth_headers.get(auth_key) if auth_key else None
     response = client.get(
         'auth/app_token',
-        headers=auth_headers['user1'],
+        headers=headers,
         params={'expires_in': expires_in},
     )
-    assert response.status_code == status_code
-    if status_code == 200:
+    assert response.status_code == expected_status
+    if expected_status == 200:
         assert response.json().get('app_token') is not None
-
-
-def test_get_app_token_unauthorized(auth_headers, client):
-    response = client.get('auth/app_token', headers=None, params={'expires_in': 60})
-    assert response.status_code == 401
-    headers = auth_headers['invalid']
-    response = client.get('auth/app_token', headers=headers, params={'expires_in': 60})
-    assert response.status_code == 401
 
 
 # Tests for `get_current_user`
@@ -157,21 +155,21 @@ def test_get_current_user_auth_methods(
 
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth.get_user_from_keycloak_token',
-        lambda _token: AuthResult(allowed_user, set())
-        if get_user_from_keycloak_token
-        else None,
+        lambda _token: (
+            AuthResult(allowed_user, set()) if get_user_from_keycloak_token else None
+        ),
     )
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth.get_user_from_simple_token',
-        lambda _token: AuthResult(allowed_user, set())
-        if get_user_from_simple_token
-        else None,
+        lambda _token: (
+            AuthResult(allowed_user, set()) if get_user_from_simple_token else None
+        ),
     )
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth.get_user_from_upload_token',
-        lambda _token: AuthResult(allowed_user, set())
-        if get_user_from_upload_token
-        else None,
+        lambda _token: (
+            AuthResult(allowed_user, set()) if get_user_from_upload_token else None
+        ),
     )
 
     patch_user_get(allowed_user)
@@ -310,32 +308,99 @@ def test_get_current_user_assume_auth_for_username(
 
 
 @pytest.mark.parametrize(
-    'user, status_code, exc_msg',
+    'user, required_scopes, require_authentication, reject_unauthorized_users, authorized_users, status_code, exc_msg',
     [
-        (None, 401, 'Authentication required'),
-        ('not_allowed', 403, 'not authorized to access this Oasis'),
-        ('allowed', 200, None),
+        pytest.param(
+            'tester',
+            [],
+            True,
+            True,
+            ['tester'],
+            200,
+            None,
+            id='authenticated-user-in-allowed-users',
+        ),
+        pytest.param(
+            'tester',
+            [],
+            True,
+            True,
+            ['my-user'],
+            403,
+            'You are not authorized to access this Oasis',
+            id='authenticated-user-not-in-allowed-users',
+        ),
+        pytest.param(
+            'tester',
+            [],
+            True,
+            False,
+            ['my-user'],
+            200,
+            None,
+            id='authenticated-user-no-authorization-required',
+        ),
+        pytest.param(
+            None,
+            [],
+            True,
+            True,
+            ['tester'],
+            401,
+            'Authentication required',
+            id='unauthenticated-user-authentication-required',
+        ),
+        pytest.param(
+            None,
+            [],
+            False,
+            True,
+            None,
+            200,
+            None,
+            id='unauthenticated-user-authentication-not-required',
+        ),
+        pytest.param(
+            None,
+            ['uploads:read'],
+            False,
+            True,
+            None,
+            403,
+            'Missing scopes:',
+            id='unauthenticated-user-authentication-not-required-invalid-scope',
+        ),
     ],
 )
-def test_get_current_user_oasis_allowed_users(
+def test_get_current_user(
     user,
+    required_scopes: list[str],
+    require_authentication: bool,
+    reject_unauthorized_users: bool,
+    authorized_users: list[str],
     status_code: int,
     exc_msg: str,
     allowed_user,
     patch_user_get,
     monkeypatch,
 ):
-    if user == 'allowed':
+    if user == 'tester':
         auth_user = allowed_user
-    elif user == 'not_allowed':
-        auth_user = User(
-            user_id='456', username='not_allowed', email='notallowed@example.com'
-        )
-    else:
+    elif user is None:
         auth_user = None
+    else:
+        raise ValueError(f'Invalid user value: {user}')
 
     monkeypatch.setattr(
-        'nomad.app.v1.routers.auth.config.oasis.allowed_users', ['tester']
+        'nomad.app.v1.routers.auth.config.auth.require_authentication',
+        require_authentication,
+    )
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.config.auth.reject_unauthorized_users',
+        reject_unauthorized_users,
+    )
+    monkeypatch.setattr(
+        'nomad.app.v1.routers.auth.config.auth.authorized_users', authorized_users
     )
     monkeypatch.setattr(
         'nomad.app.v1.routers.auth.get_user_from_keycloak_token',
@@ -344,16 +409,17 @@ def test_get_current_user_oasis_allowed_users(
     if auth_user is not None:
         patch_user_get(auth_user)
 
-    dep = get_current_user(required_scopes=[])
+    dep = get_current_user(required_scopes=required_scopes)
 
     if status_code != 200:
         with pytest.raises(HTTPException, match=exc_msg) as exc:
             dep(keycloak_token='abc')
         assert exc.value.status_code == status_code
-
     else:
         patch_user_get(allowed_user)
-        assert dep(keycloak_token='abc') == allowed_user
+        reveived_user = dep(keycloak_token='abc')
+        if user is not None:
+            assert reveived_user == allowed_user
 
 
 # Tests for scope enforcing (`_resolve_user_with_scopes`)
@@ -364,35 +430,17 @@ def test_get_current_user_oasis_allowed_users(
 def test_scopes_anonymous_allowed_with_permission(monkeypatch):
     """
     Anonymous user should be allowed when allow_anonymous=True and
-    anonymous_user_permission contains the required scopes.
+    unauthenticated_user_scopes contains the required scopes.
     """
 
     monkeypatch.setattr(
-        'nomad.app.v1.routers.auth.config.auth.anonymous_user_permission',
-        {Scope.BASIC_READ},
+        'nomad.app.v1.routers.auth.config.auth.unauthenticated_user_scopes',
+        {'include': [Scope.BASIC_READ]},
     )
 
     dep = get_current_user(required_scopes=[Scope.BASIC_READ], allow_anonymous=True)
 
     assert dep() is None
-
-
-def test_scopes_anonymous_missing_scope(monkeypatch):
-    """
-    Anonymous user should be forbidden (403) when allow_anonymous but missing scopes.
-    """
-
-    monkeypatch.setattr(
-        'nomad.app.v1.routers.auth.config.auth.anonymous_user_permission',
-        set(),
-    )
-
-    dep = get_current_user(required_scopes=[Scope.BASIC_READ], allow_anonymous=True)
-
-    with pytest.raises(HTTPException, match='Missing scopes') as exc:
-        dep()
-    assert exc.value.status_code == 403
-    assert Scope.BASIC_READ in str(exc.value.detail)
 
 
 def test_scopes_anonymous_not_allowed(monkeypatch):
@@ -401,8 +449,8 @@ def test_scopes_anonymous_not_allowed(monkeypatch):
     """
 
     monkeypatch.setattr(
-        'nomad.app.v1.routers.auth.config.auth.anonymous_user_permission',
-        {Scope.BASIC_READ},
+        'nomad.app.v1.routers.auth.config.auth.unauthenticated_user_scopes',
+        {'include': [Scope.BASIC_READ]},
     )
 
     dep = get_current_user(required_scopes=[Scope.BASIC_READ], allow_anonymous=False)

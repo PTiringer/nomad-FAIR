@@ -207,14 +207,9 @@ services:
   unavailable_value: unavailable
   upload_limit: 10
 auth:
-  anonymous_user_permission:
-    - "*:read"
-  keycloak_token_scopes:
-    - "*:*"
-  simple_token_scopes:
-    - "*:*"
-  upload_token_scopes:
-    - "uploads:*"
+  unauthenticated_user_scopes:
+    include:
+      - "*:read"
 tests:
   default_timeout: 60
 north:

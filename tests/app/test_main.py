@@ -113,15 +113,15 @@ def force_keycloak_path(monkeypatch):
 
 def test_anonymous_allowed(client, monkeypatch):
     monkeypatch.setattr(
-        'nomad.config.config.auth.anonymous_user_permission',
-        _resolve_scopes({'*:read'}),
+        'nomad.config.config.auth.unauthenticated_user_scopes',
+        {'include': ['*:read']},
     )
 
     response = client.get('/api/v1/apps/entry-points')
     assert response.status_code == 200
 
     monkeypatch.setattr(
-        'nomad.config.config.auth.anonymous_user_permission', _resolve_scopes(set())
+        'nomad.config.config.auth.unauthenticated_user_scopes', {'include': []}
     )
 
     response = client.get('/api/v1/apps/entry-points')
@@ -131,7 +131,7 @@ def test_anonymous_allowed(client, monkeypatch):
 
 def test_anonymous_not_allowed(client, monkeypatch):
     monkeypatch.setattr(
-        'nomad.config.config.auth.anonymous_user_permission', _resolve_scopes({'*:*'})
+        'nomad.config.config.auth.unauthenticated_user_scopes', {'include': {'*:*'}}
     )
 
     response = client.get('/api/v1/auth/signature_token')

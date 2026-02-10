@@ -22,55 +22,111 @@ import pytest
 from nomad.auth.scopes import Scope, _resolve_scopes
 
 
-class TestResolveScopes:
-    def test_no_wildcard(self):
-        scopes = {'uploads:read', 'datasets:write', 'info:read'}
-        assert _resolve_scopes(scopes) == scopes
+@pytest.mark.parametrize(
+    'scopes, expected',
+    [
+        pytest.param(
+            {'uploads:read', 'datasets:write', 'info:read'},
+            {'uploads:read', 'datasets:write', 'info:read'},
+            id='no-wildcard',
+        ),
+        pytest.param(
+            ['  uploads:read  ', '', '   ', '\n', 'info:read\t'],
+            {'uploads:read', 'info:read'},
+            id='whitespace-handling',
+        ),
+        pytest.param(
+            {'*:*'},
+            Scope.all_values(),
+            id='wildcard-all',
+        ),
+        pytest.param(
+            {'uploads:*'},
+            {s for s in Scope.all_values() if s.startswith('uploads:')},
+            id='wildcard-resource',
+        ),
+        pytest.param(
+            {'*:read'},
+            {s for s in Scope.all_values() if s.endswith(':read')},
+            id='wildcard-action',
+        ),
+        pytest.param(
+            {'uploads:*', 'uploads:read', '*:read'},
+            {s for s in Scope.all_values() if s.startswith('uploads:')}
+            | {s for s in Scope.all_values() if s.endswith(':read')},
+            id='wildcards-deduplicate',
+        ),
+    ],
+)
+def test_resolve_scopes_valid(scopes, expected):
+    assert _resolve_scopes(scopes) == expected
 
-        # test whitespace handling
-        scopes = ['  uploads:read  ', '', '   ', '\n', 'info:read\t']
-        assert _resolve_scopes(scopes) == {'uploads:read', 'info:read'}
 
-    @pytest.mark.parametrize(
-        'scope', ['uploads:unknown_action', 'unknown_resource:read']
-    )
-    def test_unknown_scope(self, scope):
-        with pytest.raises(ValueError, match='Unknown concrete scopes'):
-            _resolve_scopes({scope})
-
-    @pytest.mark.parametrize('scope', ['uploads', 'uploads:read:extra', '*:*:*', '*'])
-    def test_illegal_format(self, scope):
-        with pytest.raises(ValueError, match=f'Illegal scope {scope}'):
-            _resolve_scopes({scope})
-
-    @pytest.mark.parametrize(
-        'scope', ['up*:read', '*load:read', 'uploads:r*', 'uploads:*d']
-    )
-    def test_reject_partial_wildcard(self, scope):
-        with pytest.raises(ValueError, match='Partial wildcard'):
-            _resolve_scopes({scope})
-
-    def test_wildcard(self):
-        assert _resolve_scopes({'*:*'}) == Scope.all_values()
-
-        resolved = _resolve_scopes({'uploads:*'})
-        expected = {s for s in Scope.all_values() if s.startswith('uploads:')}
-        assert resolved == expected
-        assert resolved
-
-        resolved = _resolve_scopes({'*:read'})
-        expected = {s for s in Scope.all_values() if s.endswith(':read')}
-        assert resolved == expected
-        assert resolved
-
-    def test_wildcards_deduplicate(self):
-        resolved = _resolve_scopes({'uploads:*', 'uploads:read', '*:read'})
-        expected = {s for s in Scope.all_values() if s.startswith('uploads:')} | {
-            s for s in Scope.all_values() if s.endswith(':read')
-        }
-        assert resolved == expected
-
-    @pytest.mark.parametrize('scope', ['not_a_resource:*', '*:not_an_action'])
-    def test_unmatched_wildcard(self, scope):
-        with pytest.raises(ValueError, match='Wildcards matched nothing'):
-            _resolve_scopes({scope})
+@pytest.mark.parametrize(
+    'scopes, match',
+    [
+        pytest.param(
+            {'uploads:unknown_action'},
+            'Unknown concrete scopes',
+            id='unknown-action',
+        ),
+        pytest.param(
+            {'unknown_resource:read'},
+            'Unknown concrete scopes',
+            id='unknown-resource',
+        ),
+        pytest.param(
+            {'uploads'},
+            'Illegal scope uploads',
+            id='illegal-format-no-colon',
+        ),
+        pytest.param(
+            {'uploads:read:extra'},
+            'Illegal scope uploads:read:extra',
+            id='illegal-format-extra-colon',
+        ),
+        pytest.param(
+            {'*:*:*'},
+            r'Illegal scope \*:\*:\*',
+            id='illegal-format-triple-wildcard',
+        ),
+        pytest.param(
+            {'*'},
+            r'Illegal scope \*',
+            id='illegal-format-single-wildcard',
+        ),
+        pytest.param(
+            {'up*:read'},
+            'Partial wildcard',
+            id='partial-wildcard-resource-suffix',
+        ),
+        pytest.param(
+            {'*load:read'},
+            'Partial wildcard',
+            id='partial-wildcard-resource-prefix',
+        ),
+        pytest.param(
+            {'uploads:r*'},
+            'Partial wildcard',
+            id='partial-wildcard-action-suffix',
+        ),
+        pytest.param(
+            {'uploads:*d'},
+            'Partial wildcard',
+            id='partial-wildcard-action-prefix',
+        ),
+        pytest.param(
+            {'not_a_resource:*'},
+            'Wildcards matched nothing',
+            id='unmatched-wildcard-resource',
+        ),
+        pytest.param(
+            {'*:not_an_action'},
+            'Wildcards matched nothing',
+            id='unmatched-wildcard-action',
+        ),
+    ],
+)
+def test_resolve_scopes_raises(scopes, match):
+    with pytest.raises(ValueError, match=match):
+        _resolve_scopes(scopes)
