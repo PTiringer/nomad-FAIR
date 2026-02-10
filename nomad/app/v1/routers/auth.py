@@ -73,19 +73,8 @@ def _resolve_user_with_scopes(
     keycloak_token: str | None = None,
     simple_token: str | None = None,
     upload_token: str | None = None,
-    upload_token_query_param: str | None = None,  # DEPRECATED: via query parameters
 ) -> User | None:
     """Resolve User/scopes from token and validate."""
-    # Require upload token via header (reject query parameter)
-    if upload_token_query_param is not None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Passing upload token via query parameter 'token' is no longer supported. "
-                "Please use the 'Upload-Token' header instead."
-            ),
-        )
-
     # Resolve user and extract scopes from (simple->keycloak->upload) token
     auth_result: AuthResult | None = None
 
@@ -208,7 +197,6 @@ def get_current_user(
             keycloak_token=kwargs.get('keycloak_token'),
             simple_token=kwargs.get('simple_token'),
             upload_token=kwargs.get('upload_token'),
-            upload_token_query_param=kwargs.get('upload_token_query_param'),
         )
 
     # Build signature
@@ -250,19 +238,6 @@ def get_current_user(
                     None,
                     alias='Upload-Token',
                     description='HMAC-signed upload token.',
-                ),
-                kind=Parameter.KEYWORD_ONLY,
-            )
-        )
-        parameters.append(
-            Parameter(
-                name='upload_token_query_param',
-                annotation=str,
-                default=FastApiQuery(
-                    None,
-                    alias='token',
-                    description='[DEPRECATED] Legacy upload token query parameter. '
-                    'Use the "Upload-Token" header instead.',
                 ),
                 kind=Parameter.KEYWORD_ONLY,
             )
