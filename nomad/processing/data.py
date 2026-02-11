@@ -2259,6 +2259,7 @@ class Upload(Proc):
         reprocess_settings: dict[str, Any] | None = None,
         path_filter: str | None = None,
         only_updated_files: bool = False,
+        trigger_processing: bool = True,
     ):
         if self.process_status == ProcessStatus.RUNNING:
             raise ProcessAlreadyRunning
@@ -2271,6 +2272,7 @@ class Upload(Proc):
                 reprocess_settings,
                 path_filter,
                 only_updated_files,
+                trigger_processing=trigger_processing,
             ),
         )
 
@@ -2280,6 +2282,7 @@ class Upload(Proc):
         reprocess_settings: dict[str, Any] | None = None,
         path_filter: str | None = None,
         only_updated_files: bool = False,
+        trigger_processing: bool = True,
     ):
         """
         Internal method to start a temporal process upload workflow.
@@ -2295,10 +2298,11 @@ class Upload(Proc):
             only_updated_files=only_updated_files,
             workflow_id=workflow_id,
             workflow_tmp_dir=mkdtemp(f'{self.upload_id}_{workflow_id}'),
+            trigger_processing=trigger_processing,
         )
         try:
             handle = await client.start_workflow(
-                'ProcessUploadWorkflow',
+                'UpdateUploadWorkflow',
                 data,
                 id=workflow_id,
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS.value,

@@ -480,7 +480,7 @@ class TestProcessUploadWorkflow:
             input_data = TestFixtures.upload_processing_input()
 
             await env.client.execute_workflow(
-                'ProcessUploadWorkflow',
+                'UpdateUploadWorkflow',
                 input_data,
                 id='test-process-upload-workflow',
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
@@ -521,7 +521,7 @@ class TestProcessUploadWorkflow:
             input_data = TestFixtures.upload_processing_input()
 
             await env.client.execute_workflow(
-                'ProcessUploadWorkflow',
+                'UpdateUploadWorkflow',
                 input_data,
                 id='test-process-upload-workflow-levels',
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
@@ -841,7 +841,7 @@ class TestWorkflowErrorHandling:
                 'Process process_entry failed',
             ),
             (
-                'ProcessUploadWorkflow',
+                'UpdateUploadWorkflow',
                 TestFixtures.upload_processing_input,
                 'update_files',
                 'upload_instance',
@@ -902,8 +902,8 @@ class TestWorkflowErrorHandling:
 
         mock_target.fail = mock_fail
 
-        # Special setup for ProcessUploadWorkflow
-        if workflow_class == 'ProcessUploadWorkflow':
+        # Special setup for UpdateUploadWorkflow
+        if workflow_class == 'UpdateUploadWorkflow':
             monkeypatch.setattr('nomad.workflows.activities.parser_min_level', 0)
 
         async with temporal_worker() as env:
@@ -991,7 +991,7 @@ class TestWorkflowErrorHandling:
             input_data = TestFixtures.upload_processing_input()
 
             await env.client.execute_workflow(
-                'ProcessUploadWorkflow',
+                'UpdateUploadWorkflow',
                 input_data,
                 id='test-partial-entry-failure',
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
@@ -1070,7 +1070,7 @@ class TestWorkflowPerformanceAndScalability:
             )
 
             await env.client.execute_workflow(
-                'ProcessUploadWorkflow',
+                'UpdateUploadWorkflow',
                 input_data,
                 id='test-process-upload-huge-dataset',
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
@@ -1148,7 +1148,7 @@ class TestWorkflowPerformanceAndScalability:
             )
 
             await env.client.execute_workflow(
-                'ProcessUploadWorkflow',
+                'UpdateUploadWorkflow',
                 input_data,
                 id='test-process-upload-multi-level',
                 task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,

@@ -12,6 +12,7 @@ from nomad.workflows.workflows import (
     ProcessUploadWorkflow,
     PublishExternallyWorkflow,
     PublishUploadWorkflow,
+    UpdateUploadWorkflow,
 )
 
 
@@ -19,6 +20,7 @@ def get_nomad_internal_workflows() -> list:
     return [
         BatchProcessEntriesWorkflow,
         DeleteUploadWorkflow,
+        UpdateUploadWorkflow,
         ProcessUploadWorkflow,
         ProcessEntryWorkflow,
         ProcessExampleUploadWorkflow,
