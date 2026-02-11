@@ -1433,6 +1433,15 @@ async def put_upload_raw_path(
             )
         ),
     ] = True,
+    trigger_processing: Annotated[
+        bool,
+        FastApiQuery(
+            description=strip(
+                """
+            If set to true (default), reprocesses the upload after deleting the file/folder."""
+            ),
+        ),
+    ] = True,
 ):
     """
     Upload one or more files to the directory specified by `path` in the upload specified by `upload_id`.
@@ -1473,6 +1482,11 @@ async def put_upload_raw_path(
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
             detail='`include_archive` requires `wait_for_processing`.',
+        )
+    if wait_for_processing and not trigger_processing:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail='`trigger_processing` must be true when `wait_for_processing` is set.`',
         )
 
     upload = _get_upload_with_write_access(upload_id, user, include_published=False)
@@ -1596,7 +1610,9 @@ async def put_upload_raw_path(
         # Initiate processing
         try:
             upload.process_upload(
-                file_operations=file_operations, only_updated_files=True
+                file_operations=file_operations,
+                only_updated_files=True,
+                trigger_processing=trigger_processing,
             )
         except ProcessAlreadyRunning:
             raise HTTPException(
@@ -1719,6 +1735,15 @@ async def delete_upload_raw_path(
             )
         ),
     ],
+    trigger_processing: Annotated[
+        bool,
+        FastApiQuery(
+            description=strip(
+                """
+            If set to true (default), reprocesses the upload after deleting the file/folder."""
+            ),
+        ),
+    ] = True,
 ):
     """
     Delete file or folder located at the specified path in the specified upload. The upload
@@ -1740,7 +1765,9 @@ async def delete_upload_raw_path(
 
     try:
         upload.process_upload(
-            file_operations=[dict(op='DELETE', path=path)], only_updated_files=True
+            file_operations=[dict(op='DELETE', path=path)],
+            only_updated_files=True,
+            trigger_processing=trigger_processing,
         )
     except ProcessAlreadyRunning:
         raise HTTPException(

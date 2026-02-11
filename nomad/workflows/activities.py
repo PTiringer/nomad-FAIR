@@ -244,7 +244,11 @@ def cleanup_activity(input: UploadProcessingWorkflowInput):
 @activity.defn
 def process_upload_success(input: UploadWorkflowIdInput):
     upload = Upload.get(input.upload_id)
-    upload.process_status = ProcessStatus.SUCCESS
+    # When the processing is not triggered it means that the workflow
+    # only modified the upload files. In that case we want to set the status to READY so that the user can trigger the processing manually.
+    upload.process_status = (
+        ProcessStatus.SUCCESS if input.trigger_processing else ProcessStatus.READY
+    )
     upload.set_last_status_message('Process completed successfully')
 
 

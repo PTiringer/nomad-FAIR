@@ -219,6 +219,86 @@ class BatchProcessEntriesWorkflow:
 
 @workflow.defn
 class ProcessUploadWorkflow:
+    """
+    Specialized workflow to process an upload through multiple steps:
+    1. Match all files to parsers
+    2. Parse entries level by level
+    3. Cleanup temporary data
+    """
+
+    @workflow.run
+    async def run(self, input: UploadProcessingWorkflowInput):
+        retry_policy = RetryPolicy(
+            maximum_attempts=3,
+        )
+        heartbeat_timeout = timedelta(
+            seconds=config.temporal.processing_timeouts.internal_processing_heartbeat_timeout
+        )
+        workflow_info = workflow.info()
+        # Step 2: Match all, pass updated_files as set
+        await workflow.execute_activity(
+            match_all_activity,
+            input,
+            schedule_to_close_timeout=timedelta(
+                seconds=config.temporal.processing_timeouts.match_all_timeout
+            ),
+            heartbeat_timeout=heartbeat_timeout,
+            retry_policy=retry_policy,
+        )
+
+        # Step 3: Parse next level
+        while True:  # Outer loop: Continue until no more parser levels to process
+            next_level_entries_result = await workflow.execute_activity(
+                next_level_entries,
+                input,
+                schedule_to_close_timeout=timedelta(
+                    seconds=config.temporal.processing_timeouts.next_level_entries_timeout
+                ),
+                heartbeat_timeout=heartbeat_timeout,
+                retry_policy=retry_policy,
+            )
+
+            # If None returned: no entries exist for this parser level at all
+            # then we're done with all parser levels.
+            if not next_level_entries_result:
+                break
+
+            # Delegate all batch processing complexity to BatchProcessEntriesWorkflow
+            await workflow.execute_child_workflow(
+                BatchProcessEntriesWorkflow.run,
+                next_level_entries_result,
+                id=f'{workflow_info.workflow_id}-{input.min_level}-batch-processor',
+                parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
+                retry_policy=retry_policy,
+            )
+
+            next_parser_level = (
+                next_level_entries_result.next_parser_level or input.min_level
+            )
+            input.min_level = next_parser_level + 1
+
+        # Step 4: Cleanup
+        await workflow.execute_activity(
+            cleanup_activity,
+            input,
+            schedule_to_close_timeout=timedelta(
+                seconds=config.temporal.processing_timeouts.cleanup_timeout
+            ),
+            heartbeat_timeout=heartbeat_timeout,
+            retry_policy=retry_policy,
+        )
+
+
+@workflow.defn
+class UpdateUploadWorkflow:
+    """
+    Workflow to update an upload's files and optionally reprocess them.
+    1. Update files
+    2. (Optional) Reprocess updated files through ProcessUploadWorkflow
+    3. Mark upload as successful or failed
+    By default, reprocessing is triggered unless specified otherwise.
+    """
+
     @workflow.run
     async def run(self, input: UploadProcessingWorkflowInput):
         retry_policy = RetryPolicy(
@@ -235,6 +315,7 @@ class ProcessUploadWorkflow:
             upload_id=input.upload_id,
             workflow_id=workflow_info.workflow_id,
             process_name='_process_upload',
+            trigger_processing=input.trigger_processing,
         )
         try:
             # Step 0: Add workflow id to upload
@@ -258,73 +339,32 @@ class ProcessUploadWorkflow:
                 retry_policy=retry_policy,
             )
 
-            # Step 2: Match all, pass updated_files as set
-            parse_all_input = UploadProcessingWorkflowInput(
-                upload_id=input.upload_id,
-                file_operations=input.file_operations,
-                reprocess_settings=input.reprocess_settings,
-                path_filter=input.path_filter,
-                only_updated_files=input.only_updated_files,
-                publish_directly_after_processing=input.publish_directly_after_processing,
-                updated_files=updated_files,
-                min_level=parser_min_level,
-                workflow_id=input.workflow_id,
-                workflow_tmp_dir=input.workflow_tmp_dir,
-            )
-            await workflow.execute_activity(
-                match_all_activity,
-                parse_all_input,
-                schedule_to_close_timeout=timedelta(
-                    seconds=config.temporal.processing_timeouts.match_all_timeout
-                ),
-                heartbeat_timeout=heartbeat_timeout,
-                retry_policy=retry_policy,
-            )
-
-            # Step 3: Parse next level
-            while True:  # Outer loop: Continue until no more parser levels to process
-                next_level_entries_result = await workflow.execute_activity(
-                    next_level_entries,
-                    parse_all_input,
-                    schedule_to_close_timeout=timedelta(
-                        seconds=config.temporal.processing_timeouts.next_level_entries_timeout
-                    ),
-                    heartbeat_timeout=heartbeat_timeout,
-                    retry_policy=retry_policy,
+            if input.trigger_processing:
+                parse_all_input = UploadProcessingWorkflowInput(
+                    upload_id=input.upload_id,
+                    file_operations=input.file_operations,
+                    reprocess_settings=input.reprocess_settings,
+                    path_filter=input.path_filter,
+                    only_updated_files=input.only_updated_files,
+                    publish_directly_after_processing=input.publish_directly_after_processing,
+                    updated_files=updated_files,
+                    min_level=parser_min_level,
+                    workflow_id=input.workflow_id,
+                    workflow_tmp_dir=input.workflow_tmp_dir,
                 )
-
-                # If None returned: no entries exist for this parser level at all
-                # then we're done with all parser levels.
-                if not next_level_entries_result:
-                    break
-
-                # Delegate all batch processing complexity to BatchProcessEntriesWorkflow
+                # Here we excecute steps:
+                # 2: Match all, pass updated_files
+                # 3: Parse next level(s)
+                # 4: Cleanup
                 await workflow.execute_child_workflow(
-                    BatchProcessEntriesWorkflow.run,
-                    next_level_entries_result,
-                    id=f'{workflow_info.workflow_id}-{parse_all_input.min_level}-batch-processor',
+                    ProcessUploadWorkflow.run,
+                    parse_all_input,
+                    id=f'{workflow_info.workflow_id}-reprocess-{input.upload_id}',
                     parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
                     retry_policy=retry_policy,
                 )
 
-                next_parser_level = (
-                    next_level_entries_result.next_parser_level
-                    or parse_all_input.min_level
-                )
-                parse_all_input.min_level = next_parser_level + 1
-
-            # Step 4: Cleanup
-            await workflow.execute_activity(
-                cleanup_activity,
-                input,
-                schedule_to_close_timeout=timedelta(
-                    seconds=config.temporal.processing_timeouts.cleanup_timeout
-                ),
-                heartbeat_timeout=heartbeat_timeout,
-                retry_policy=retry_policy,
-            )
-
-            # Step 5: Mark as successful
+            # Step 5: Mark as successful if the processing was triggered, otherwise will mark as READY
             await workflow.execute_activity(
                 process_upload_success,
                 upload_workflow_input,
@@ -399,7 +439,7 @@ class ProcessExampleUploadWorkflow:
         )
 
         await workflow.execute_child_workflow(
-            ProcessUploadWorkflow.run,
+            UpdateUploadWorkflow.run,
             process_upload_input,
             id=f'process-upload-workflow-{current_workflow_id}-{input.upload_id}',
             parent_close_policy=workflow.ParentClosePolicy.TERMINATE,

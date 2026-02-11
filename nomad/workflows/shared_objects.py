@@ -70,6 +70,7 @@ class UploadWorkflowIdInput:
     process_name: str
     failure_message: str | None = None
     error_details: str | None = None
+    trigger_processing: bool = True
 
 
 @dataclass
@@ -101,6 +102,7 @@ class UploadProcessingWorkflowInput:
     workflow_id: str
     workflow_tmp_dir: str
     file_operations: list[dict[str, Any]] | None = None
+    trigger_processing: bool = True
     reprocess_settings: dict[str, Any] | None = None
     path_filter: str | None = None
     only_updated_files: bool = False

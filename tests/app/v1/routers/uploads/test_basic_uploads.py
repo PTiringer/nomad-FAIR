@@ -2471,6 +2471,7 @@ async def _perform_move_or_copy(
     # This is the path of the parent folder where is supposed to end the file
     # If empty string it will be stored in the raw directory
     final_destination_folder_path: str,
+    trigger_processing: bool = True,
 ):
     return await asyncio.to_thread(
         lambda: client.put(
@@ -2480,6 +2481,7 @@ async def _perform_move_or_copy(
                     'copy_or_move': copy_or_move,
                     'file_name': new_file_name,
                     'copy_or_move_source_path': source_path,
+                    'trigger_processing': trigger_processing,
                 },
             ),
             headers=user,
@@ -2488,7 +2490,7 @@ async def _perform_move_or_copy(
 
 
 @pytest.mark.parametrize(
-    'source_path, new_file_name, expected_status_code, expected_error_message, orignal_file_should_exist',
+    'source_path, new_file_name, expected_status_code, expected_error_message, orignal_file_should_exist, trigger_processing',
     [
         pytest.param(
             'examples_template/0.aux',
@@ -2496,13 +2498,24 @@ async def _perform_move_or_copy(
             200,
             None,
             False,
+            True,
             id='success-rename-file',
+        ),
+        pytest.param(
+            'examples_template/0.aux',
+            'random_file_name.aux',
+            200,
+            None,
+            False,
+            False,
+            id='success-rename-file-without-reprocessing',
         ),
         pytest.param(
             'examples_template/0.aux',
             '1.aux',
             409,
             'The provided path already exists',
+            True,
             True,
             id='conflicting-file-rename',
         ),
@@ -2512,8 +2525,10 @@ async def _perform_move_or_copy(
             409,
             'No file or folder with that source path',
             False,
+            True,
             id='renaming-a-non-existing-file',
         ),
+        # TODO: Add folder rename tests when folder rename is supported
     ],
 )
 @pytest.mark.asyncio
@@ -2528,10 +2543,11 @@ async def test_rename_file_or_folder(
     expected_status_code: int,
     expected_error_message: None | str,
     orignal_file_should_exist: bool,
+    trigger_processing: bool,
 ):
     upload_id: str = non_empty_processed_with_temporal.upload_id
     user = auth_headers['user1']
-    async with temporal_worker():
+    async with temporal_worker() as env:
         parent_folder = '/'.join(source_path.split('/')[:-1])
         rename_result = await _perform_move_or_copy(
             client,
@@ -2541,11 +2557,16 @@ async def test_rename_file_or_folder(
             new_file_name=new_file_name,
             copy_or_move='move',
             final_destination_folder_path=parent_folder,
+            trigger_processing=trigger_processing,
         )
         assert rename_result.status_code == expected_status_code
         if expected_status_code == 200:
-            await asyncio.to_thread(
-                lambda: block_until_completed(client, upload_id, user)
+            await _assert_trigger_reprocessing_behavior(
+                env,
+                client,
+                upload_id,
+                user,
+                trigger_processing,
             )
             assert not _raw_path_exists(upload_id, source_path)
             assert _raw_path_exists(upload_id, f'{parent_folder}/{new_file_name}')
@@ -2560,3 +2581,124 @@ async def test_rename_file_or_folder(
                 assert _raw_path_exists(upload_id, source_path)
             else:
                 assert not _raw_path_exists(upload_id, source_path)
+
+
+async def _get_list_of_started_workflows(temporal_env):
+    matching_workflows = []
+    async for execution in temporal_env.client.list_workflows():
+        matching_workflows.append(execution.raw_info.type.name)
+    return matching_workflows
+
+
+async def _assert_trigger_reprocessing_behavior(
+    env,
+    client: TestClient,
+    upload_id: str,
+    user,
+    trigger_processing: None | bool,
+):
+    """
+    Waits for possible processing and asserts that the correct workflows are started based on the trigger_processing flag.
+    """
+    if trigger_processing is True or (trigger_processing is None):
+        await asyncio.to_thread(lambda: assert_processing(client, upload_id, user))
+        matching_workflows = await _get_list_of_started_workflows(env)
+        assert 'UpdateUploadWorkflow' in matching_workflows
+        assert 'ProcessUploadWorkflow' in matching_workflows
+    else:
+        await asyncio.to_thread(lambda: block_until_completed(client, upload_id, user))
+        matching_workflows = await _get_list_of_started_workflows(env)
+        assert 'UpdateUploadWorkflow' in matching_workflows
+        assert 'ProcessUploadWorkflow' not in matching_workflows
+
+
+@pytest.mark.parametrize(
+    'trigger_processing',
+    [
+        pytest.param(True, id='trigger-processing'),
+        pytest.param(False, id='no-processing'),
+        pytest.param(None, id='default-processing'),
+    ],
+)
+@pytest.mark.asyncio
+async def test_delete_raw_path_trigger_processing_option(
+    temporal_worker,
+    non_empty_processed_with_temporal,
+    client: TestClient,
+    auth_headers,
+    trigger_processing: None | bool,
+):
+    upload_id: str = non_empty_processed_with_temporal.upload_id
+    user = auth_headers['user1']
+    path_to_delete = 'examples_template/1.aux'
+    async with temporal_worker() as env:
+        url = build_url(
+            f'uploads/{upload_id}/raw/{path_to_delete}',
+            query_args={'trigger_processing': trigger_processing},
+        )
+        delete_result = await asyncio.to_thread(
+            lambda: client.delete(
+                url,
+                headers=user,
+            )
+        )
+        assert_response(delete_result, 200)
+        await _assert_trigger_reprocessing_behavior(
+            env,
+            client,
+            upload_id,
+            user,
+            trigger_processing,
+        )
+
+        upload_files = StagingUploadFiles(upload_id)
+        assert not upload_files.raw_path_exists(path_to_delete)
+
+
+@pytest.mark.parametrize(
+    'trigger_processing',
+    [
+        pytest.param(True, id='trigger-reprocessing'),
+        pytest.param(False, id='no-reprocessing'),
+        pytest.param(None, id='default-reprocessing'),
+    ],
+)
+@pytest.mark.asyncio
+async def test_put_upload_raw_path_trigger_processing_option(
+    temporal_worker,
+    non_empty_processed_with_temporal,
+    client: TestClient,
+    auth_headers,
+    trigger_processing: None | bool,
+):
+    upload_id: str = non_empty_processed_with_temporal.upload_id
+    user = auth_headers['user1']
+    path_to_upload = example_file_aux  # contains '1.aux'
+    async with temporal_worker() as env:
+        url = build_url(
+            f'uploads/{upload_id}/raw/',
+            query_args={
+                'trigger_processing': trigger_processing,
+            },
+        )
+        upload_response = await asyncio.to_thread(
+            lambda: perform_post_put_file(
+                client,
+                'PUT',
+                url,
+                'multipart',
+                path_to_upload,
+                user,
+            )
+        )
+        assert_response(upload_response, 200)
+        await _assert_trigger_reprocessing_behavior(
+            env,
+            client,
+            upload_id,
+            user,
+            trigger_processing,
+        )
+
+        upload_files = StagingUploadFiles(upload_id)
+        assert upload_files.raw_path_exists('1.aux')
