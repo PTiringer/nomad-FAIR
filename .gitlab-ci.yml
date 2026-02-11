@@ -181,9 +181,12 @@ python coverage report:
     - coverage combine .coverage_*
     - coverage report
     - coverage xml
+    - coverage html 
   coverage: /(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/
   artifacts:
     when: always
+    paths:
+      - htmlcov/
     reports:
       coverage_report:
         coverage_format: cobertura
