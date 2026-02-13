@@ -3541,7 +3541,7 @@ data:
 
     yield data
 
-    await asyncio.to_thread(lambda: data.delete())
+    await asyncio.to_thread(data.delete)
 
 
 def test_custom_schema_archive_and_definition(user1, custom_data):
@@ -4263,7 +4263,7 @@ async def example_data_with_figure(
 
     yield data
 
-    await asyncio.to_thread(lambda: data.delete())
+    await asyncio.to_thread(data.delete)
 
 
 @pytest.mark.parametrize(

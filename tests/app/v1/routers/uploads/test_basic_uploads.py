@@ -1912,9 +1912,7 @@ async def test_post_upload_action_process(
             set_upload_entry_metadata(
                 non_empty_processed_with_temporal, internal_example_user_metadata
             )
-            await asyncio.to_thread(
-                lambda: non_empty_processed_with_temporal.publish_upload()
-            )
+            await asyncio.to_thread(non_empty_processed_with_temporal.publish_upload)
 
         monkeypatch.setattr('nomad.config.meta.version', 're_process_test_version')
         monkeypatch.setattr('nomad.config.meta.commit', 're_process_test_commit')
@@ -2419,7 +2417,7 @@ async def test_post_upload_bundle(
         # Create the bundle
         set_upload_entry_metadata(non_empty_processed, internal_example_user_metadata)
         if publish:
-            await asyncio.to_thread(lambda: non_empty_processed.publish_upload())
+            await asyncio.to_thread(non_empty_processed.publish_upload)
             await non_empty_processed.await_workflows()
         upload = non_empty_processed
         upload_id = upload.upload_id
