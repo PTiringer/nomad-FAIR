@@ -146,43 +146,46 @@ class BatchProcessEntriesWorkflow:
         retry_policy = RetryPolicy(
             maximum_attempts=3,
         )
-        timeout = timedelta(
-            seconds=config.temporal.processing_timeouts.process_upload_timeout
-        )
         # Handle file-based entry storage (used for very large uploads)
         # Entries are stored in batch files to avoid memory constraints
         if entry_batch_directory := next_level_entries_result.directory:
-            current_batch_id = next_level_entries_result.current_batch_id
+            file_semaphore = asyncio.Semaphore(
+                config.temporal.batch_processing_concurrency
+            )  # Max concurrent batches
 
-            # Load entries from the current batch file
-            entries_to_be_processed = await workflow.execute_activity(
-                get_entry_batch_from_file,
-                EntryBatchFromFileInput(
-                    upload_id=next_level_entries_result.upload_id,
-                    batch_dir_path=entry_batch_directory,
-                    batch_id=current_batch_id,
-                ),
-                schedule_to_close_timeout=timedelta(
-                    seconds=config.temporal.processing_timeouts.next_level_entries_timeout
-                ),
-                retry_policy=retry_policy,
-            )
-
-            # Process this batch's entries
-            await self._process_entries_batch(entries_to_be_processed, retry_policy)
-
-            # Move to next batch using continue-as-new if more batches remain
-            next_batch_id = current_batch_id + 1
-            if next_batch_id < next_level_entries_result.total_batches:
-                workflow.continue_as_new(
-                    EntriesToBeProcessedResult(
-                        upload_id=next_level_entries_result.upload_id,
-                        directory=entry_batch_directory,
-                        total_batches=next_level_entries_result.total_batches,
-                        current_batch_id=next_batch_id,
+            async def process_file_batch(batch_id):
+                async with file_semaphore:
+                    entries_to_be_processed = await workflow.execute_activity(
+                        get_entry_batch_from_file,
+                        EntryBatchFromFileInput(
+                            upload_id=next_level_entries_result.upload_id,
+                            batch_dir_path=entry_batch_directory,
+                            batch_id=batch_id,
+                        ),
+                        schedule_to_close_timeout=timedelta(
+                            seconds=config.temporal.processing_timeouts.next_level_entries_timeout
+                        ),
+                        retry_policy=retry_policy,
                     )
-                )
+                    # Recursively process this batch (which may further subdivide if >1000 entries)
+                    await workflow.execute_child_workflow(
+                        BatchProcessEntriesWorkflow.run,
+                        EntriesToBeProcessedResult(
+                            entries=entries_to_be_processed,
+                            upload_id=next_level_entries_result.upload_id,
+                        ),
+                        id=f'{workflow.info().workflow_id}-file-batch-{batch_id}',
+                        parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
+                        retry_policy=retry_policy,
+                    )
 
+            # Each sub-batch will be processed with up to 1000 concurrent entries
+            await asyncio.gather(
+                *[
+                    process_file_batch(batch_id)
+                    for batch_id in range(next_level_entries_result.total_batches)
+                ]
+            )
         # Handle in-memory entry processing (from small uploads or loaded file batches)
         elif entries_to_be_processed := next_level_entries_result.entries:
             # Two-tier processing strategy based on batch size:
@@ -223,6 +226,9 @@ class BatchProcessEntriesWorkflow:
             retry_policy: Retry policy for activity execution
         """
         tasks = []
+        self.entry_semaphore = asyncio.Semaphore(
+            config.temporal.entry_processing_concurrency
+        )  # Max concurrent entry processing activities
 
         for entry_input in entries:
             task = self._process_single_entry(entry_input, retry_policy)
@@ -246,18 +252,19 @@ class BatchProcessEntriesWorkflow:
             Result from the process_entry_activity
         """
         try:
-            result = await workflow.execute_activity(
-                process_entry_activity,
-                input,
-                schedule_to_close_timeout=timedelta(
-                    seconds=config.temporal.processing_timeouts.process_entry_timeout
-                ),
-                heartbeat_timeout=timedelta(
-                    seconds=config.temporal.processing_timeouts.internal_processing_heartbeat_timeout
-                ),
-                retry_policy=retry_policy,
-            )
-            return result
+            async with self.entry_semaphore:
+                result = await workflow.execute_activity(
+                    process_entry_activity,
+                    input,
+                    schedule_to_close_timeout=timedelta(
+                        seconds=config.temporal.processing_timeouts.process_entry_timeout
+                    ),
+                    heartbeat_timeout=timedelta(
+                        seconds=config.temporal.processing_timeouts.internal_processing_heartbeat_timeout
+                    ),
+                    retry_policy=retry_policy,
+                )
+                return result
 
         except ActivityError as e:
             # Handle heartbeat timeout failures with a dedicated recovery activity
