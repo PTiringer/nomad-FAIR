@@ -157,6 +157,8 @@ def mock_data_layer(monkeypatch):
     mock_processing_timeouts.remove_workflow_id_timeout = 7200
     mock_processing_timeouts.cleanup_workflow_tmp_dir_timeout = 7200
     mock_temporal_config.processing_timeouts = mock_processing_timeouts
+    mock_temporal_config.batch_processing_concurrency = 1
+    mock_temporal_config.entry_processing_concurrency = 1
     mock_config.reprocess = mock_reprocess
     mock_config.temporal = mock_temporal_config
     monkeypatch.setattr('nomad.config.config', mock_config)

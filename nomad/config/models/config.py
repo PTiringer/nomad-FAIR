@@ -746,6 +746,14 @@ class Temporal(ConfigBaseModel):
         1,
         description='Graceful shutdown timeout (in seconds) for Temporal workers.',
     )
+    batch_processing_concurrency: int = Field(
+        5,
+        description='Maximum number of concurrent batches processed by the batch processing workflow.',
+    )
+    entry_processing_concurrency: int = Field(
+        50,
+        description='Maximum number of concurrent entries processed per batch processing workflow.',
+    )
     prometheus_bind_address: str | None = Field(
         None,
         description='The bind address for the Prometheus metrics server. If not set, the runtime will not be configured with Prometheus metrics.',
