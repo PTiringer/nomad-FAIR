@@ -493,7 +493,7 @@ class DocumentType:
                         annotation=annotation, prefix=prefix
                     )
                     self.nested_sections.append(search_quantity)
-                    self.nested_object_keys.sort(key=lambda item: len(item))
+                    self.nested_object_keys.sort(key=len)
 
         self.mapping = dict(properties=mappings)
 
@@ -1266,7 +1266,7 @@ def create_indices(
     material_type.nested_object_keys += [
         'entries'
     ] + material_entry_type.nested_object_keys
-    material_type.nested_object_keys.sort(key=lambda item: len(item))
+    material_type.nested_object_keys.sort(key=len)
 
     entry_index.create_index(upsert=True)  # TODO update the existing v0 index
     material_index.create_index()

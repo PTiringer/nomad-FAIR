@@ -377,7 +377,7 @@ async def test_republish(
     assert Upload.get(processed.upload_id) is not None
 
     async with temporal_worker():
-        await asyncio.to_thread(lambda: processed.publish_upload())
+        await asyncio.to_thread(processed.publish_upload)
         await asyncio.to_thread(lambda: processed.block_until_complete(interval=0.01))
 
     with processed.entries_metadata() as entries:
@@ -522,7 +522,7 @@ async def test_re_processing(
     # reprocess
     monkeypatch.setattr('nomad.config.meta.version', 're_process_test_version')
     async with temporal_worker():
-        await asyncio.to_thread(lambda: published.process_upload())
+        await asyncio.to_thread(published.process_upload)
         await published.await_workflows()
 
     published.reload()
@@ -586,7 +586,7 @@ async def test_re_process_staging(
 
     if publish:
         async with temporal_worker():
-            await asyncio.to_thread(lambda: upload.publish_upload())
+            await asyncio.to_thread(upload.publish_upload)
             try:
                 await upload.await_workflows()
             except Exception:
@@ -596,7 +596,7 @@ async def test_re_process_staging(
             StagingUploadFiles(upload.upload_id, create=True)
 
     async with temporal_worker():
-        await asyncio.to_thread(lambda: upload.process_upload())
+        await asyncio.to_thread(upload.process_upload)
         try:
             await upload.await_workflows()
         except Exception:
@@ -636,7 +636,7 @@ async def test_re_process_match(
         upload_files.add_rawfiles('tests/data/parsers/vasp/vasp.xml')
 
     async with temporal_worker():
-        await asyncio.to_thread(lambda: upload.process_upload())
+        await asyncio.to_thread(upload.process_upload)
         await upload.await_workflows()
 
     assert upload.total_entries_count == 2
@@ -1056,7 +1056,7 @@ async def test_creating_new_entries_during_processing(temporal_worker, user1):
             outfile,
         )
     async with temporal_worker():
-        await asyncio.to_thread(lambda: upload.process_upload())
+        await asyncio.to_thread(upload.process_upload)
         await upload.await_workflows()
     assert upload.process_status == ProcessStatus.SUCCESS
     assert upload.total_entries_count == 6

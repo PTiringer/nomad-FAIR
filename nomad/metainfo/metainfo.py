@@ -643,7 +643,9 @@ class QuantityReference(Reference):
     def _serialize_impl(self, section, value):
         parent_path: str = super()._serialize_impl(section, value)
 
-        return parent_path.split('@')[0] + f'/{self.target_quantity_def.name}'
+        return (
+            parent_path.split('@', maxsplit=1)[0] + f'/{self.target_quantity_def.name}'
+        )
 
 
 # Metainfo data storage and reflection interface
@@ -2362,7 +2364,7 @@ class MSection(metaclass=MObjectMeta):
         Arguments:
             path_with_id: The reference URL. See `MProxy` for details on reference URLs.
         """
-        path = path_with_id.split('@')[0]
+        path = path_with_id.split('@', maxsplit=1)[0]
 
         section = self.m_root() if path.startswith('/') else self
 
@@ -4407,9 +4409,9 @@ Quantity.is_scalar = Quantity(
 Quantity.use_full_storage = Quantity(
     type=bool,
     name='use_full_storage',
-    derived=lambda quantity: quantity.flexible_unit
-    or quantity.variable
-    or len(quantity.attributes) > 0,
+    derived=lambda quantity: (
+        quantity.flexible_unit or quantity.variable or len(quantity.attributes) > 0
+    ),
 )
 Quantity.flexible_unit = Quantity(type=bool, name='flexible_unit', default=False)
 Quantity.cached = Quantity(type=bool, name='cached', default=False)

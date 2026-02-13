@@ -380,7 +380,7 @@ async def _if_exists(target_root: dict, path_stack: list) -> bool:
 def _convert_ref_to_path(ref: str, upload_id: str | None = None) -> list:
     # test module name
     if '.' in (stripped_ref := ref.strip('.')) or re.compile(r'^\w*(\.\w*)*$').match(
-        ref.split('/section_definitions')[0]
+        ref.split('/section_definitions', maxsplit=1)[0]
     ):
         module_path, _ = split_python_definition(stripped_ref)
         return [Token.METAINFO, '.'.join(module_path[:-1])] + module_path[-1].split('/')

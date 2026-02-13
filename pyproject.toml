@@ -72,7 +72,7 @@ infrastructure = [
     'jupyterhub<5.0.0', # Connection issues with newer versions
     'mongoengine',
     'oauthenticator<16.0.0', # Connection issues with newer versions
-    'optimade[mongo]',
+    'optimade[mongo]>=1.2.0,<1.4.0',  # `optimade.server.config.CONFIG` removed
     'pyjwt[crypto]',
     'python-logstash',
     'python-multipart',

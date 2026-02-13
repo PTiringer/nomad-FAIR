@@ -77,7 +77,7 @@ def download_file(url: str, filepath: str) -> str | None:
         ValueError: If the given file cannot be downloaded.
     """
     if os.path.isdir(filepath):
-        filename = url.rsplit('/')[-1]
+        filename = url.rsplit('/', maxsplit=1)[-1]
         final_filepath = os.path.join(filepath, filename)
     else:
         filename = os.path.basename(filepath)

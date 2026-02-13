@@ -216,7 +216,7 @@ async def action_input_schemas(
         A list of action input schemas.
     """
     try:
-        result = await asyncio.to_thread(lambda: get_all_action_schemas())
+        result = await asyncio.to_thread(get_all_action_schemas)
         return result
     except HTTPException:
         raise
