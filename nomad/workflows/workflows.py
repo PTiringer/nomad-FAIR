@@ -423,7 +423,8 @@ class UpdateUploadWorkflow:
                     parse_all_input,
                     id=f'{workflow_info.workflow_id}-reprocess-{input.upload_id}',
                     parent_close_policy=workflow.ParentClosePolicy.TERMINATE,
-                    retry_policy=retry_policy,
+                    # Disable retries for the child workflow; it handles its own activity failures.
+                    retry_policy=RetryPolicy(maximum_attempts=1),
                 )
 
             # Step 5: Mark as successful if the processing was triggered, otherwise will mark as READY
