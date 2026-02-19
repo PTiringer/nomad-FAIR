@@ -16,6 +16,9 @@
 # limitations under the License.
 #
 
+from collections.abc import Callable, Mapping
+from typing import Any
+
 import click
 
 from nomad.config import config
@@ -308,28 +311,41 @@ def run_appworker(
     temporal_workers: int | None = None,
     dev: bool = False,
 ):
-    from concurrent import futures as concurrent_futures
+    import multiprocessing
+    import sys
+    import time
 
     if dev:
         fastapi_workers = 1
         temporal_workers = 1
 
-    with concurrent_futures.ProcessPoolExecutor(2) as executor:
-        results = []
+    tasks: list[tuple[Callable[..., Any], Mapping[str, Any]]] = [
+        (run_action_internal_worker, {'workers': temporal_workers}),
+        (run_app, {'workers': fastapi_workers, 'host': app_host, 'port': app_port}),
+    ]
 
-        def _submit(fn, *args, **kwargs):
-            results.append(executor.submit(fn, *args, **kwargs))
+    processes = []
 
-        _submit(run_action_internal_worker, workers=temporal_workers)
-        _submit(run_app, workers=fastapi_workers, host=app_host, port=app_port)
+    for target, kwargs in tasks:
+        p = multiprocessing.Process(target=target, kwargs=kwargs)
+        p.start()
+        processes.append(p)
 
-        try:
-            for future in concurrent_futures.as_completed(results):
-                future.result()
-        except KeyboardInterrupt:
-            for future in results:
-                future.cancel()
-            executor.shutdown(wait=False)
+    try:
+        while True:
+            for p in processes:
+                # Exit if any process died with an error code
+                if not p.is_alive() and p.exitcode != 0:
+                    # Kill the other process
+                    for other_p in processes:
+                        other_p.terminate()
+                    sys.exit(p.exitcode)
+            time.sleep(5)
+
+    except KeyboardInterrupt:
+        for p in processes:
+            p.terminate()
+        sys.exit(0)
 
 
 @run.command(help='Run both app and worker.')
