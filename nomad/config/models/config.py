@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
 import logging
 import os
 import warnings
@@ -696,10 +695,10 @@ class ProcessingTimeouts(ConfigBaseModel):
 
 
 class WorkerConfig(ConfigBaseModel):
-    workers: int = Field(
+    pool_size: int = Field(
         1,
         description="""
-            Number of worker processes to spawn. These workers are responsible for
+            Number of worker processes in the pool. These workers are responsible for
             core NOMAD activities such as entry and upload processing.
         """,
     )
@@ -714,15 +713,42 @@ class WorkerConfig(ConfigBaseModel):
         None,
         description="""
             Maximum number of concurrent activities that each worker process
-            can handle. Defaults to the number of workers.
+            can handle. If not set, the worker will use resource-based tuning.
         """,
     )
-
-    @model_validator(mode='after')
-    def set_default_max_concurrent_activities(self):
-        if self.max_concurrent_activities is None:
-            self.max_concurrent_activities = self.workers
-        return self
+    target_memory_usage: float = Field(
+        0.8,
+        description="""
+            Target memory usage for the worker tuner. If max_concurrent_activities is not set,
+            the worker will try to keep memory usage below this threshold.
+            It is not recommended to increase this above 0.8 as it might limit performance.
+        """,
+    )
+    target_cpu_usage: float = Field(
+        0.8,
+        description="""
+            Target CPU usage for the worker tuner. If max_concurrent_activities is not set,
+            the worker will try to keep CPU usage below this threshold.
+            It is not recommended to increase this above 0.8 as it might limit performance.
+        """,
+    )
+    activity_ramp_throttle: int = Field(
+        200,
+        description="""
+            If max_concurrent_activities is not set, this is the ramp throttle
+            for the activity slot supplier in milliseconds.
+            It is the minimum time the worker will wait between handing out new slots.
+            This value matters because how many resources a task will use cannot be determined ahead of time,
+            and thus the system should wait to see how much resources are used before issuing more slots.
+        """,
+    )
+    max_activity_slots: int = Field(
+        20,
+        description="""
+            If max_concurrent_activities is not set, this is the maximum number of
+            slots for the activity slot supplier.
+        """,
+    )
 
 
 class Temporal(ConfigBaseModel):
@@ -768,11 +794,11 @@ class Temporal(ConfigBaseModel):
         description='Configuration for the internal action worker.',
     )
     cpu_worker: WorkerConfig = Field(
-        default_factory=lambda: WorkerConfig(workers=12),
+        default_factory=lambda: WorkerConfig(pool_size=12),
         description='Configuration for the CPU action worker.',
     )
     gpu_worker: WorkerConfig = Field(
-        default_factory=lambda: WorkerConfig(workers=12),
+        default_factory=lambda: WorkerConfig(pool_size=12),
         description='Configuration for the GPU action worker.',
     )
 
