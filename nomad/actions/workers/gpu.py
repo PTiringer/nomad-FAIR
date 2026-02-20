@@ -2,8 +2,9 @@ import asyncio
 import signal
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
+from typing import Any
 
-from temporalio.worker import Worker
+from temporalio.worker import ResourceBasedSlotConfig, Worker, WorkerTuner
 
 from nomad.actions import TaskQueue
 from nomad.actions.activities.utils import get_all_activities
@@ -29,19 +30,35 @@ async def run_worker(worker_config: WorkerConfig):
     loop.add_signal_handler(signal.SIGINT, _signal_handler)
 
     client = await get_client()
-    with ThreadPoolExecutor(max_workers=worker_config.workers) as executor:
-        worker = Worker(
-            client,
-            task_queue=TaskQueue.GPU.value,
-            workflows=get_all_workflows(TaskQueue.GPU),
-            activities=get_all_activities(TaskQueue.GPU),
-            activity_executor=executor,
-            graceful_shutdown_timeout=timedelta(
+    with ThreadPoolExecutor(max_workers=worker_config.pool_size) as executor:
+        worker_kwargs: dict[str, Any] = {
+            'client': client,
+            'task_queue': TaskQueue.GPU.value,
+            'workflows': get_all_workflows(TaskQueue.GPU),
+            'activities': get_all_activities(TaskQueue.GPU),
+            'activity_executor': executor,
+            'graceful_shutdown_timeout': timedelta(
                 seconds=config.temporal.graceful_shutdown_timeout
             ),
-            # Limit the number of concurrent activities to avoid overloading the worker
-            max_concurrent_activities=worker_config.max_concurrent_activities,
-        )
+        }
+
+        if worker_config.max_concurrent_activities:
+            worker_kwargs['max_concurrent_activities'] = (
+                worker_config.max_concurrent_activities
+            )
+        else:
+            worker_kwargs['tuner'] = WorkerTuner.create_resource_based(
+                target_memory_usage=worker_config.target_memory_usage,
+                target_cpu_usage=worker_config.target_cpu_usage,
+                activity_config=ResourceBasedSlotConfig(
+                    maximum_slots=worker_config.max_activity_slots,
+                    ramp_throttle=timedelta(
+                        milliseconds=worker_config.activity_ramp_throttle
+                    ),
+                ),
+            )
+
+        worker = Worker(**worker_kwargs)
         setup()
         # Run the worker until SIGTERM
         logger.info('Starting GPU worker.')

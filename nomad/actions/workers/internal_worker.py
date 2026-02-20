@@ -4,8 +4,14 @@ import signal
 import sys
 from concurrent.futures.process import ProcessPoolExecutor
 from datetime import timedelta
+from typing import Any
 
-from temporalio.worker import SharedStateManager, Worker
+from temporalio.worker import (
+    ResourceBasedSlotConfig,
+    SharedStateManager,
+    Worker,
+    WorkerTuner,
+)
 
 from nomad.actions import TaskQueue
 from nomad.actions.activities.utils import get_all_activities
@@ -31,28 +37,44 @@ async def run_worker(worker_config: WorkerConfig):
     loop.add_signal_handler(signal.SIGINT, _signal_handler)
 
     client = await get_client()
-    executor_kwargs = {'max_workers': worker_config.workers, 'initializer': setup}
+    executor_kwargs = {'max_workers': worker_config.pool_size, 'initializer': setup}
     if sys.version_info >= (3, 11):
         executor_kwargs['max_tasks_per_child'] = worker_config.max_tasks_per_child
 
     # NOTE: internal processing is not thread safe, avoid using ThreadPoolExecutor with more than 1 worker.
     # mypy: has issues with **kwargs in this context
     with ProcessPoolExecutor(**executor_kwargs) as executor:  # type: ignore
-        worker = Worker(
-            client=client,
-            task_queue=TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
-            workflows=get_all_workflows(TaskQueue.NOMAD_INTERNAL_WORKFLOWS),
-            activities=get_all_activities(TaskQueue.NOMAD_INTERNAL_WORKFLOWS),
-            activity_executor=executor,
-            shared_state_manager=SharedStateManager.create_from_multiprocessing(
+        worker_kwargs: dict[str, Any] = {
+            'client': client,
+            'task_queue': TaskQueue.NOMAD_INTERNAL_WORKFLOWS,
+            'workflows': get_all_workflows(TaskQueue.NOMAD_INTERNAL_WORKFLOWS),
+            'activities': get_all_activities(TaskQueue.NOMAD_INTERNAL_WORKFLOWS),
+            'activity_executor': executor,
+            'shared_state_manager': SharedStateManager.create_from_multiprocessing(
                 multiprocessing.Manager()
             ),
-            graceful_shutdown_timeout=timedelta(
+            'graceful_shutdown_timeout': timedelta(
                 seconds=config.temporal.graceful_shutdown_timeout
             ),
-            # Limit the number of concurrent activities to avoid overloading the worker
-            max_concurrent_activities=worker_config.max_concurrent_activities,
-        )
+        }
+
+        if worker_config.max_concurrent_activities:
+            worker_kwargs['max_concurrent_activities'] = (
+                worker_config.max_concurrent_activities
+            )
+        else:
+            worker_kwargs['tuner'] = WorkerTuner.create_resource_based(
+                target_memory_usage=worker_config.target_memory_usage,
+                target_cpu_usage=worker_config.target_cpu_usage,
+                activity_config=ResourceBasedSlotConfig(
+                    maximum_slots=worker_config.max_activity_slots,
+                    ramp_throttle=timedelta(
+                        milliseconds=worker_config.activity_ramp_throttle
+                    ),
+                ),
+            )
+
+        worker = Worker(**worker_kwargs)
 
         # Run the worker until SIGTERM
         logger.info('Starting internal processing worker.')
