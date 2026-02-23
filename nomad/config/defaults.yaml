@@ -740,29 +740,7 @@ plugins:
     exclude:
       - nomad_porous_materials.normalizers:porositynormalizer
     options:
-      example_uploads/1_basic_examples/1_theory:
-        entry_point_type: example_upload
-        from_examples_directory: true
-        resources: theory/*
-        title: Electronic structure code input and output files
-        category: Basic examples
-        description: |
-          This upload demonstrate the basic use of NOMAD's *parsers*. For many *electronic
-          structure codes* (VASP, etc.), NOMAD provides parsers. You simply upload
-          the *input and output files* of your simulations and NOMAD parsers are extracting
-          all necessary metadata to produce a **FAIR** dataset.
-      example_uploads/1_basic_examples/2_eln:
-        entry_point_type: example_upload
-        from_examples_directory: true
-        resources: eln/*
-        title: Electronic Lab Notebook
-        category: Basic examples
-        description: |
-          This example contains a custom NOMAD *schema* to create an **Electronic
-          Lab Notebook (ELN)** and a few example *data* entries that use this schema.
-          The schema demonstrates the basic concepts behind a NOMAD ELN and can be a good
-          **starting point** to create you own schemas that model **FAIR data** acquired in your lab.
-      example_uploads/1_basic_examples/3_tables:
+      example_uploads/1_basic_examples/1_tables:
         entry_point_type: example_upload
         from_examples_directory: true
         resources: tabular/*
