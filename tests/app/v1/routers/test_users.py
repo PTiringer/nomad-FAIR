@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 import pytest
+from nomad.config import config
 
 from tests.fixtures.users import users
 from tests.utils import fake_user_uuid
@@ -43,6 +44,51 @@ def test_me_auth_required(client):
 def test_me_auth_bad_token(client):
     response = client.get('users/me', headers={'Authentication': 'Bearer NOTATOKEN'})
     assert response.status_code == 401
+
+
+def test_user_landing_page_roundtrip(auth_headers, client, tmp_path, monkeypatch):
+    monkeypatch.setattr(config.fs, 'north_home', str(tmp_path))
+    landing_page = 'widgets:\n  - type: hero\n    title: Hello\n'
+
+    response = client.get('users/me/landing-page', headers=auth_headers['user1'])
+    assert response.status_code == 404
+
+    response = client.put(
+        'users/me/landing-page',
+        headers={
+            **auth_headers['user1'],
+            'Content-Type': 'application/yaml',
+        },
+        content=landing_page,
+    )
+    assert response.status_code == 200
+    assert response.text == landing_page
+
+    stored_path = (
+        tmp_path
+        / fake_user_uuid(1)
+        / 'landing-pages'
+        / 'user-home.yaml'
+    )
+    assert stored_path.read_text() == landing_page
+
+    response = client.get('users/me/landing-page', headers=auth_headers['user1'])
+    assert response.status_code == 200
+    assert response.text == landing_page
+
+
+def test_user_landing_page_rejects_invalid_yaml(auth_headers, client, tmp_path, monkeypatch):
+    monkeypatch.setattr(config.fs, 'north_home', str(tmp_path))
+
+    response = client.put(
+        'users/me/landing-page',
+        headers={
+            **auth_headers['user1'],
+            'Content-Type': 'application/yaml',
+        },
+        content='widgets: [\n',
+    )
+    assert response.status_code == 400
 
 
 def test_invite(auth_headers, client, no_warn):

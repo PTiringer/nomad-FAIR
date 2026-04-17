@@ -20,9 +20,13 @@ import React from 'react'
 import { MenuBar } from './MenuBar'
 import { routes } from './Routes'
 import MenuBarRoute from './MenuBarRoute'
+import NewWikiPageButton from './NewWikiPageButton'
 
 const MainMenu = React.memo(() => {
-   return <MenuBar>{routes.map((menu) => <MenuBarRoute key={menu.path} label={menu.menu} menu={menu} />)}</MenuBar>
+   return <MenuBar>
+      {routes.map((menu) => <MenuBarRoute key={menu.path} label={menu.menu} menu={menu} />)}
+      <NewWikiPageButton />
+   </MenuBar>
 })
 
 export default MainMenu

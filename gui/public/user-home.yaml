@@ -1,0 +1,40 @@
+# The authenticated landing page reads this file at runtime.
+# User-specific pages are matched against sub, user_id, id, preferred_username,
+# username, email, or name from the logged-in user object.
+default:
+  widgets:
+    - type: hero
+      title: Welcome back, {{displayName}}
+      text: Here are your 10 most recent uploads. Open one directly, or go to the full uploads page to manage everything.
+      actions:
+        - label: Open all uploads
+          to: /user/uploads
+          variant: contained
+    - type: recent_uploads
+      title: Recent uploads
+      limit: 10
+      empty_text: You do not have any uploads yet.
+      empty_action:
+        label: Go to uploads
+        to: /user/uploads
+
+users:
+  # Replace this key with a real username, email, or user id.
+  example.user@example.org:
+    widgets:
+      - type: hero
+        title: Welcome, {{displayName}}
+        text: This page is configured from public/user-home.yaml.
+        actions:
+          - label: Search your data
+            to: /user/search
+            variant: contained
+      - type: markdown
+        text: |
+          ### Useful links
+
+          - [Your uploads](/user/uploads)
+          - [Your datasets](/user/datasets)
+      - type: recent_uploads
+        title: Latest uploads
+        limit: 5

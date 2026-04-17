@@ -69,18 +69,13 @@ class GuiFiles(StaticFiles):
             assert GuiFiles.gui_data_etag is not None, (
                 'Etag for gui data was not initialized'
             )
-            if path == 'env.js':
-                response = PlainTextResponse(
-                    GuiFiles.gui_env_data,
-                    media_type='application/javascript',
-                    headers=dict(etag=GuiFiles.gui_data_etag),
-                )
-            else:
-                response = FileResponse(
-                    GuiFiles.gui_artifacts_path,
-                    media_type='application/javascript',
-                    headers=dict(etag=GuiFiles.gui_data_etag),
-                )
+            response = PlainTextResponse(
+               GuiFiles.gui_env_data
+               if path == 'env.js'
+               else GuiFiles.gui_artifacts_data,
+               media_type='application/javascript',
+               headers=dict(etag=GuiFiles.gui_data_etag),
+            )
 
         request_headers = Headers(scope=scope)
         if self.is_not_modified(response.headers, request_headers):

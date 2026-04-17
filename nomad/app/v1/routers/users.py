@@ -16,14 +16,15 @@
 # limitations under the License.
 #
 
+import os
 from enum import Enum
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import yaml
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 from pydantic.main import BaseModel
 
 from nomad import datamodel
-from nomad.app.v1.routers.auth import get_current_user
 from nomad.auth import user_management
 from nomad.auth.scopes import Scope
 from nomad.config import config
@@ -31,8 +32,11 @@ from nomad.utils import strip
 
 from ..models import HTTPExceptionModel, User
 from ..utils import create_responses
+from .auth import get_current_user
 
 router = APIRouter()
+landing_page_file_name = 'user-home.yaml'
+landing_page_directory = 'landing-pages'
 
 
 class APITag(str, Enum):
@@ -67,6 +71,27 @@ class Users(BaseModel):
     data: list[User]
 
 
+def _get_user_storage_home(current_user: User) -> str:
+    if (
+        config.fs.north_home_user_folder_map is not None
+        and current_user.username in config.fs.north_home_user_folder_map
+    ):
+        user_home_folder = config.fs.north_home_user_folder_map[current_user.username]
+        if os.path.isabs(user_home_folder):
+            return user_home_folder
+        return os.path.join(config.fs.north_home, user_home_folder)
+
+    return os.path.join(config.fs.north_home, current_user.user_id)
+
+
+def _get_user_landing_page_path(current_user: User) -> str:
+    return os.path.join(
+        _get_user_storage_home(current_user),
+        landing_page_directory,
+        landing_page_file_name,
+    )
+
+
 @router.get(
     '/me',
     tags=[APITag.DEFAULT],
@@ -77,8 +102,7 @@ class Users(BaseModel):
 )
 async def read_users_me(
     current_user: Annotated[
-        User,
-        Depends(get_current_user([Scope.USERS_READ], allow_anonymous=False)),
+        User, Depends(get_current_user([Scope.USERS_READ], allow_anonymous=False))
     ],
 ):
     current_user_dict: dict = current_user.m_to_dict(
@@ -89,6 +113,60 @@ async def read_users_me(
     )
     current_user_dict.update(additional_info)
     return current_user_dict
+
+
+@router.get(
+    '/me/landing-page',
+    tags=[APITag.DEFAULT],
+    summary='Get your landing page configuration',
+    description='Returns the YAML configuration for the authenticated user landing page.',
+    responses=create_responses(_authentication_required_response),
+)
+async def read_user_landing_page(
+    current_user: Annotated[
+        User, Depends(get_current_user([Scope.USERS_READ], allow_anonymous=False))
+    ],
+):
+    path = _get_user_landing_page_path(current_user)
+    if not os.path.isfile(path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail='No custom landing page configuration exists for this user.',
+        )
+
+    with open(path) as f:
+        content = f.read()
+
+    return Response(content=content, media_type='application/yaml')
+
+
+@router.put(
+    '/me/landing-page',
+    tags=[APITag.DEFAULT],
+    summary='Store your landing page configuration',
+    description='Validates and stores the YAML configuration for the authenticated user landing page.',
+    responses=create_responses(_authentication_required_response),
+)
+async def write_user_landing_page(
+    body: Annotated[str, Body(media_type='application/yaml')],
+    current_user: Annotated[
+        User, Depends(get_current_user([Scope.USERS_READ], allow_anonymous=False))
+    ],
+):
+    try:
+        yaml.safe_load(body)
+    except yaml.YAMLError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f'Invalid YAML: {str(e)}',
+        )
+
+    path = _get_user_landing_page_path(current_user)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w') as f:
+        f.write(body)
+
+    return Response(content=body, media_type='application/yaml')
 
 
 @router.get(
@@ -194,6 +272,7 @@ async def get_user(user_id: str):
     )
 
 
+
 @router.put(
     '/invite',
     tags=[APITag.DEFAULT],
@@ -203,9 +282,8 @@ async def get_user(user_id: str):
 )
 async def invite_user(
     user: User,
-    _current_user: Annotated[
-        User,
-        Depends(get_current_user([Scope.USERS_INVITE], allow_anonymous=False)),
+    current_user: Annotated[
+        User, Depends(get_current_user([Scope.USERS_INVITE], allow_anonymous=False))
     ],
 ):
     if config.oasis.is_oasis:
