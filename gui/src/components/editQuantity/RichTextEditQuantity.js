@@ -15,14 +15,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React, { useCallback, useState, useRef } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Editor } from '@tinymce/tinymce-react'
 import PropTypes from 'prop-types'
-import { Box, FormControl, FormLabel, makeStyles } from '@material-ui/core'
+import {
+  Box,
+  FormControl,
+  FormLabel,
+  makeStyles
+} from '@material-ui/core'
+import Dialog from '@material-ui/core/Dialog'
+import AppBar from '@material-ui/core/AppBar'
+import Toolbar from '@material-ui/core/Toolbar'
+import IconButton from '@material-ui/core/IconButton'
+import Typography from '@material-ui/core/Typography'
 import DOMPurify from 'dompurify'
-import {getDisplayLabel} from "../../utils"
-import {useRecoilValue} from "recoil"
-import {configState} from "../archive/ArchiveBrowser"
+import { getDisplayLabel } from '../../utils'
+import { useRecoilValue } from 'recoil'
+import { configState } from '../archive/ArchiveBrowser'
+
+const CloseIcon = () => <>✕</>
+const OpenInFullIcon = () => <>⛶</>
 
 const useStyle = makeStyles(theme => ({
   root: {
@@ -41,26 +54,57 @@ const useStyle = makeStyles(theme => ({
 
 const RichTextEditQuantity = React.memo((props) => {
   const classes = useStyle()
-  const {quantityDef, value, onChange, height} = props
-  const initialHeight = height || 500
+  const { quantityDef, value, onChange, height } = props
   const config = useRecoilValue(configState)
   const label = getDisplayLabel(quantityDef, true, config?.showMeta)
-  const initialValue = useRef(value)
-  const editedValue = useRef(value)
+
+  const editedValue = useRef(value || '')
   const [focus, setFocus] = useState(false)
   const [initialized, setInitialized] = useState(false)
+  const [open, setOpen] = useState(false)
+  const tinymceBasePath = `${process.env.PUBLIC_URL || ''}/tinymce`
 
-  if (editedValue.current !== value) {
-    // Means that the value has been changed elsewhere, for example edited in a different tab
-    // In this case we need to force an update to the provided value
-    editedValue.current = value
-    initialValue.current = value
-  }
+  // Responsive editor height:
+  // - use provided `height` prop if present
+  // - otherwise use 60% of viewport height
+  const [editorHeight, setEditorHeight] = useState(() => {
+    if (height) return height
+    if (typeof window !== 'undefined') {
+      return Math.round(window.innerHeight * 0.6)
+    }
+    return 500
+  })
 
-  const handleChange = useCallback((value) => {
-    editedValue.current = value
+  // Single source of truth for content
+  const [content, setContent] = useState(value || '')
+
+  useEffect(() => {
+    const v = value || ''
+    editedValue.current = v
+    setContent(v)
+  }, [value])
+
+  useEffect(() => {
+    if (height) {
+      setEditorHeight(height)
+      return
+    }
+
+    const handleResize = () => {
+      setEditorHeight(Math.round(window.innerHeight * 0.6))
+    }
+
+    handleResize()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [height])
+
+  const handleChange = useCallback((newValue) => {
+    const v = newValue || ''
+    editedValue.current = v
+    setContent(v)
     if (onChange) {
-      onChange(value === '' ? undefined : value)
+      onChange(v === '' ? undefined : v)
     }
   }, [onChange])
 
@@ -68,44 +112,90 @@ const RichTextEditQuantity = React.memo((props) => {
     success('data:' + blobInfo.blob().type + ';base64,' + blobInfo.base64())
   }, [])
 
-  const handleEditorInit = useCallback(editor => {
+  const handleEditorInit = useCallback(() => {
     setInitialized(true)
-  }, [setInitialized])
+  }, [])
+
+  const editorInit = useMemo(() => ({
+    resize: true,
+    height: editorHeight,
+    menubar: false,
+    plugins: [
+      'advlist autolink lists link image charmap print preview anchor',
+      'searchreplace visualblocks code',
+      'insertdatetime media table paste code help wordcount'
+    ],
+    toolbar: 'undo redo | formatselect | ' +
+      'bold italic backcolor link editimage | alignleft aligncenter ' +
+      'alignright alignjustify | bullist numlist outdent indent | image table | ' +
+      'removeformat',
+    default_link_target: "_blank",
+    link_title: true,
+    skin: 'nomad',
+    content_css: 'default',
+    images_upload_handler: handleImageUpload,
+    paste_data_images: true,
+    base_url: tinymceBasePath,
+    suffix: '.min'
+  }), [editorHeight, handleImageUpload, tinymceBasePath])
 
   return (
-    <FormControl fullWidth focused={focus} className={focus ? classes.focused : classes.root}>
-      <Box marginY={1}>
+    <FormControl
+      fullWidth
+      focused={focus}
+      className={focus ? classes.focused : classes.root}
+    >
+      <Box marginY={1} display="flex" alignItems="center" justifyContent="space-between">
         <FormLabel>{label}</FormLabel>
+        <IconButton
+          size="small"
+          onClick={() => setOpen(true)}
+          aria-label="Open editor in fullscreen"
+        >
+          <OpenInFullIcon />
+        </IconButton>
       </Box>
-      <Box height={initialized ? 'initial' : initialHeight}>
+
+      <Box height={initialized ? 'initial' : editorHeight}>
         <Editor
-          onInit={(event, editor) => handleEditorInit(editor)}
-          init={{
-            resize: true,
-            height: initialHeight,
-            menubar: false,
-            plugins: [
-              'advlist autolink lists link image charmap print preview anchor',
-              'searchreplace visualblocks code',
-              'insertdatetime media table paste code help wordcount'
-            ],
-            toolbar: 'undo redo | formatselect | ' +
-            'bold italic backcolor editimage | alignleft aligncenter ' +
-            'alignright alignjustify | bullist numlist outdent indent | image table | ' +
-            'removeformat',
-            skin: 'nomad',
-            images_upload_handler: handleImageUpload,
-            paste_data_images: true
-          }}
+          onInit={handleEditorInit}
+          init={editorInit}
+          value={DOMPurify.sanitize(content)}
           onEditorChange={handleChange}
           onFocus={() => setFocus(true)}
           onBlur={() => setFocus(false)}
-          initialValue={DOMPurify.sanitize(initialValue.current || '')}
         />
       </Box>
+
+      <Dialog fullScreen open={open} onClose={() => setOpen(false)}>
+        <AppBar position="static">
+          <Toolbar>
+            <IconButton
+              edge="start"
+              color="inherit"
+              onClick={() => setOpen(false)}
+              aria-label="Close"
+            >
+              <CloseIcon />
+            </IconButton>
+            <Typography variant="h6" style={{ marginLeft: 12, flex: 1 }}>
+              {label}
+            </Typography>
+          </Toolbar>
+        </AppBar>
+
+        <Box p={2} height="calc(100vh - 64px)">
+          <Editor
+            init={{ ...editorInit, height: '100%' }}
+            value={DOMPurify.sanitize(content)}
+            onEditorChange={handleChange}
+          />
+        </Box>
+      </Dialog>
     </FormControl>
   )
 })
+
 RichTextEditQuantity.propTypes = {
   quantityDef: PropTypes.object.isRequired,
   value: PropTypes.string,

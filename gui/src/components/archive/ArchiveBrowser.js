@@ -1306,7 +1306,9 @@ function SubSection({subSectionDef, section, editable}) {
   }, [subSectionDef, section, lane, history, handleArchiveChanged])
 
   const values = section[subSectionDef.name] || []
-  const showList = subSectionDef.repeats && values.length > 1
+  const showList = subSectionDef.repeats && (
+         values.length > 1 || (values.length === 1 && !!subSectionDef.sub_section?.more?.label_quantity)
+        )
   const actions = editable && (subSectionDef.repeats || !section[subSectionDef.name]) && (
     <Box marginRight={!showList && section[subSectionDef.name] ? -1 : 2}>
       <IconButton data-testid={`subsection:${subSectionDef.name}`} onClick={handleAdd} size="small">

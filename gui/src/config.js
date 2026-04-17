@@ -17,6 +17,7 @@
  */
 import { createTheme } from '@material-ui/core'
 import { isPlainObject, isNil, forOwn } from 'lodash'
+import { defaultApp } from './defaultApp'
 
 /**
  * Used to normalized the given URL into an absolute form which starts with
@@ -103,6 +104,34 @@ Object.values(entry_points || [])
   .forEach(entry_point => {
     apps.push(entry_point.app)
   })
+const entriesAppIndex = apps.findIndex(app => app.path === 'entries')
+
+if (entriesAppIndex === -1) {
+  apps.push({ ...defaultApp, label: 'All entries', breadcrumb: 'All entries', category: 'All' })
+} else {
+  apps[entriesAppIndex] = {
+    ...apps[entriesAppIndex],
+    label: 'All entries',
+    breadcrumb: apps[entriesAppIndex].breadcrumb || 'All entries',
+    category: apps[entriesAppIndex].category || 'All'
+  }
+}
+
+const preferredAppCategoryOrder = ['All', 'CBS', 'Experiment']
+apps.sort((a, b) => {
+  const aIndex = preferredAppCategoryOrder.indexOf(a.category)
+  const bIndex = preferredAppCategoryOrder.indexOf(b.category)
+  if (aIndex !== -1 || bIndex !== -1) {
+    if (aIndex === -1) return 1
+    if (bIndex === -1) return -1
+    if (aIndex !== bIndex) return aIndex - bIndex
+  }
+
+  const categoryCompare = (a.category || '').localeCompare(b.category || '')
+  if (categoryCompare !== 0) return categoryCompare
+
+return (a.label || '').localeCompare(b.label || '')
+})
 export const servicesUploadLimit = window.nomadEnv.servicesUploadLimit
 export const keycloakBase = window.nomadEnv.keycloakBase
 export const keycloakRealm = window.nomadEnv.keycloakRealm

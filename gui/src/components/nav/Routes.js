@@ -24,15 +24,19 @@ import { CacheRoute, CacheSwitch } from 'react-router-cache-route'
 import { matchPath, useLocation, Redirect, useHistory, Link as RouterLink } from 'react-router-dom'
 import { Button, Link, makeStyles, Tooltip } from '@material-ui/core'
 import About from '../About'
+import Docs from '../Docs'
+import FAQ from '../FAQ'
+import Home from '../Home'
 import { MetainfoPage, help as metainfoHelp } from '../archive/MetainfoBrowser'
 import EntryPage, { help as entryHelp } from '../entry/EntryPage'
 import UploadsPage, { help as uploadsHelp } from '../uploads/UploadsPage'
 import UserdataPage, { help as userdataHelp } from '../UserdataPage'
+import UserLandingPageEditor from '../UserLandingPageEditor'
 import APIs from '../APIs'
 import SearchPage from '../search/SearchPage'
 import { SearchContext } from '../search/SearchContext'
 import NorthPage, {help as NORTHHelp} from '../north/NorthPage'
-import { appBase, encyclopediaBase, ui, apps } from '../../config'
+import { encyclopediaBase, ui, apps } from '../../config'
 import EntryQuery from '../entry/EntryQuery'
 import ResolvePID from '../entry/ResolvePID'
 import DatasetPage, { help as datasetHelp } from '../dataset/DatasetPage'
@@ -250,6 +254,12 @@ export const routes = [
         },
         component: UserdataPage,
         routes: [...entryRoutes, ...datasetRoutes, ...uploadRoutes]
+      },
+      {
+        path: 'landing-page',
+        exact: true,
+        breadcrumb: 'Landing page',
+        component: UserLandingPageEditor
       }
     ]
   },
@@ -316,13 +326,17 @@ export const routes = [
         tooltip: 'The NOMAD user/developer forum on matsci.org'
       },
       {
+        path: 'faq',
         menu: 'FAQ',
-        href: 'https://nomad-lab.eu/repository-archive-faqs',
+        component: FAQ,
+        breadcrumb: 'FAQ',
         tooltip: 'Frequently Asked Questions (FAQ)'
       },
       {
+        path: 'docs',
         menu: 'Docs',
-        href: `${appBase}/docs/index.html`,
+        component: Docs,
+        breadcrumb: 'Documentation',
         tooltip: 'The full user and developer documentation'
       },
       {
@@ -381,6 +395,7 @@ const useStyles = makeStyles((theme) => (
 export const Routes = React.memo(function Routes() {
   const styles = useStyles()
   return <CacheSwitch>
+    <Route exact path="/" component={Home} />
     {allRoutes
       .filter(route => route.path && (route.component || route.render || route.redirect || route.children))
       .map((route, i) => {
@@ -406,7 +421,6 @@ export const Routes = React.memo(function Routes() {
           {route.children || undefined}
         </Comp>
       })}
-    <Redirect from="/" to="/about/information" />
   </CacheSwitch>
 })
 

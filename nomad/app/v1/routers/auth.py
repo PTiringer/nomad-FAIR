@@ -168,6 +168,35 @@ def _resolve_user_with_scopes(
 
     return user
 
+def _resolve_user(
+    *,
+    required: bool = False,
+    request: Request | None = None,
+    keycloak_token: str | None = None,
+    simple_token: str | None = None,
+    upload_token: str | None = None,
+    upload_token_query_param: str | None = None,
+) -> User | None:
+    """
+    Backwards-compatible wrapper expected by nomad.app.main.
+    """
+    if upload_token_query_param is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Passing upload token via query parameter 'token' is no longer supported. "
+                "Please use the 'Upload-Token' header instead."
+            ),
+        )
+
+    return _resolve_user_with_scopes(
+        required_scopes=set(),
+        allow_anonymous=not required,
+        request=request,
+        keycloak_token=keycloak_token,
+        simple_token=simple_token,
+        upload_token=upload_token,
+    )
 
 def get_current_user(
     required_scopes: Collection[str] | str,
