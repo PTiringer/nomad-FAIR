@@ -2,6 +2,25 @@
 # User-specific pages are matched against sub, user_id, id, preferred_username,
 # username, email, or name from the logged-in user object.
 default:
+  sidebar:
+    title: Workspace
+    size: sm
+    items:
+      - type: link
+        label: Uploads
+        to: /user/uploads
+        icon: cloud_upload
+      - type: link
+        label: Datasets
+        to: /user/datasets
+        icon: storage
+      - type: link
+        label: Search your data
+        to: /user/search
+        icon: search
+      - type: divider
+      - type: markdown
+        text: Add personal links and notes here from the same YAML file.
   widgets:
     - type: hero
       title: Welcome back, {{displayName}}
@@ -17,10 +36,31 @@ default:
       empty_action:
         label: Go to uploads
         to: /user/uploads
+    - type: markdown
+      text: Use this space to add a short personal note, links, or instructions for your landing page.
+    - type: notes
+      title: Notes
+      content: <p>Use this rich-text area to keep personal notes, highlight links, or add formatted instructions for your landing page.</p>
 
 users:
   # Replace this key with a real username, email, or user id.
   example.user@example.org:
+    sidebar:
+      title: Example menu
+      items:
+        - type: link
+          label: Search your data
+          to: /user/search
+          icon: search
+        - type: link
+          label: Documentation
+          to: /about/docs
+          icon: menu_book
+        - type: markdown
+          text: |
+            ### Shortcuts
+
+            Configure these links in this same YAML file.
     widgets:
       - type: hero
         title: Welcome, {{displayName}}

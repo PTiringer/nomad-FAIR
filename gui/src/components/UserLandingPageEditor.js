@@ -20,16 +20,39 @@ import YAML from 'yaml'
 import {
   Box,
   Button,
+  IconButton,
   Paper,
   TextField,
+  Tooltip,
   Typography,
   makeStyles
 } from '@material-ui/core'
+import HelpOutlineIcon from '@material-ui/icons/HelpOutline'
 import { DoesNotExist, useApi } from './api'
 import { useErrors } from './errors'
 import Page from './Page'
 
-const template = `widgets:
+const template = `sidebar:
+  title: Workspace
+  size: sm
+  items:
+    - type: link
+      label: Uploads
+      to: /user/uploads
+      icon: cloud_upload
+    - type: link
+      label: Datasets
+      to: /user/datasets
+      icon: storage
+    - type: link
+      label: Search your data
+      to: /user/search
+      icon: search
+    - type: divider
+    - type: markdown
+      text: Add personal links and notes here from the same YAML file.
+
+widgets:
   - type: hero
     title: Welcome back, {{displayName}}
     text: Customize this page by editing your personal YAML configuration.
@@ -44,11 +67,21 @@ const template = `widgets:
     empty_action:
       label: Go to uploads
       to: /user/uploads
+  - type: markdown
+    text: Use this space to add a short personal note, links, or instructions for your landing page.
+  - type: notes
+    title: Notes
+    content: <p>Use this rich-text area to keep personal notes, highlight links, or add formatted instructions for your landing page.</p>
 `
 
 const useStyles = makeStyles(theme => ({
   editorCard: {
     padding: theme.spacing(3)
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1)
   },
   editor: {
     marginTop: theme.spacing(2)
@@ -59,6 +92,9 @@ const useStyles = makeStyles(theme => ({
     alignItems: 'center',
     gap: theme.spacing(2),
     marginTop: theme.spacing(2)
+  },
+  helpContent: {
+    maxWidth: 420
   }
 }))
 
@@ -115,9 +151,75 @@ export default function UserLandingPageEditor() {
 
   return <Page limitedWidth loading={loading}>
     <Paper className={classes.editorCard}>
-      <Typography variant="h4" gutterBottom>
-        Edit landing page YAML
-      </Typography>
+      <Box className={classes.header} mb={1}>
+        <Typography variant="h4">
+          Edit landing page YAML
+        </Typography>
+        <Tooltip
+          arrow
+          placement="right"
+          interactive
+          title={
+            <Box className={classes.helpContent}>
+              <Typography variant="subtitle2" gutterBottom>
+                How to use this editor
+              </Typography>
+              <Typography variant="body2" gutterBottom>
+                Define your page under a top-level <code>widgets:</code> list. Each widget must use <code>type:</code>.
+              </Typography>
+              <Typography variant="body2" gutterBottom>
+                Define an optional left sidebar under top-level <code>sidebar:</code>. Sidebar item types are <code>link</code>, <code>markdown</code>, <code>text</code>, and <code>divider</code>.
+              </Typography>
+              <Typography variant="body2" gutterBottom>
+                Available widget types: <code>hero</code>, <code>markdown</code>, <code>notes</code>, <code>button</code>, and <code>recent_uploads</code>.
+              </Typography>
+              <Typography variant="body2" gutterBottom>
+                You can use placeholders like <code>{'{{displayName}}'}</code>, <code>{'{{username}}'}</code>, and <code>{'{{email}}'}</code>.
+              </Typography>
+              <Typography variant="body2" gutterBottom>
+                The <code>notes</code> widget uses the rich-text editor on the landing page itself. In YAML, its formatted content is stored in <code>content</code>.
+              </Typography>
+              <Typography variant="body2">
+                Example:
+                <br />
+                <code>{'sidebar:'}</code>
+                <br />
+                <code>{'  title: Workspace'}</code>
+                <br />
+                <code>{'  items:'}</code>
+                <br />
+                <code>{'    - type: link'}</code>
+                <br />
+                <code>{'      label: Uploads'}</code>
+                <br />
+                <code>{'      to: /user/uploads'}</code>
+                <br />
+                <code>{'      icon: cloud_upload'}</code>
+                <br />
+                <br />
+                <code>{'- type: markdown'}</code>
+                <br />
+                <code>{'  text: |'}</code>
+                <br />
+                <code>{'    ## Welcome'}</code>
+                <br />
+                <code>{'    Add links or notes here.'}</code>
+                <br />
+                <br />
+                <code>{'- type: notes'}</code>
+                <br />
+                <code>{'  title: Notes'}</code>
+                <br />
+                <code>{'  content: <p>Rich text content</p>'}</code>
+              </Typography>
+            </Box>
+          }
+        >
+          <IconButton size="small" aria-label="Landing page editor help">
+            <HelpOutlineIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+      </Box>
       <Typography variant="body1">
         This file is stored in your user-scoped filesystem area and overrides the default landing page only for your account.
       </Typography>

@@ -17,27 +17,69 @@
  */
 import React, { useEffect, useMemo, useState } from 'react'
 import PropTypes from 'prop-types'
+import { cloneDeep } from 'lodash'
 import { Link as RouterLink } from 'react-router-dom'
 import {
   Box,
   Button,
   Divider,
+  Icon,
   List,
+  ListItemIcon,
   ListItem,
   ListItemText,
   Paper,
   Typography,
   makeStyles
 } from '@material-ui/core'
+import ArrowBackIcon from '@material-ui/icons/ArrowBack'
+import DOMPurify from 'dompurify'
 import YAML from 'yaml'
 import About from './About'
+import { Action } from './Actions'
 import Markdown from './Markdown'
 import Page from './Page'
 import { DoesNotExist, useApi } from './api'
+import RichTextEditQuantity from './editQuantity/RichTextEditQuantity'
 import { useErrors } from './errors'
+import {
+  Menu,
+  MenuContent,
+  MenuHeader
+} from './search/menus/Menu'
 import { formatTimestamp } from '../utils'
 
 const defaultLandingPage = {
+  sidebar: {
+    title: 'Workspace',
+    items: [
+      {
+        type: 'link',
+        label: 'Uploads',
+        to: '/user/uploads',
+        icon: 'cloud_upload'
+      },
+      {
+        type: 'link',
+        label: 'Datasets',
+        to: '/user/datasets',
+        icon: 'storage'
+      },
+      {
+        type: 'link',
+        label: 'Search your data',
+        to: '/user/search',
+        icon: 'search'
+      },
+      {
+        type: 'divider'
+      },
+      {
+        type: 'markdown',
+        text: 'Add personal links and notes here from the same YAML file.'
+      }
+    ]
+  },
   widgets: [
     {
       type: 'hero',
@@ -60,6 +102,15 @@ const defaultLandingPage = {
         label: 'Go to uploads',
         to: '/user/uploads'
       }
+    },
+    {
+      type: 'markdown',
+      text: 'Use this space to add a short personal note, links, or instructions for your landing page.'
+    },
+    {
+      type: 'notes',
+      title: 'Notes',
+      content: '<p>Use this rich-text area to keep personal notes, highlight links, or add formatted instructions for your landing page.</p>'
     }
   ]
 }
@@ -88,10 +139,47 @@ const useStyles = makeStyles(theme => ({
     marginTop: theme.spacing(2),
     marginRight: theme.spacing(1)
   },
+  notesActions: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: theme.spacing(2),
+    gap: theme.spacing(2)
+  },
   toolbar: {
     display: 'flex',
     justifyContent: 'flex-end',
     marginBottom: theme.spacing(2)
+  },
+  landingRoot: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    minHeight: 'calc(100vh - 112px)'
+  },
+  landingContent: {
+    flexGrow: 1,
+    minWidth: 0,
+    maxWidth: 1024 + theme.spacing(2),
+    paddingLeft: theme.spacing(2),
+    paddingRight: theme.spacing(2),
+    marginLeft: 'auto',
+    marginRight: 'auto'
+  },
+  landingSidebarColumn: {
+    flexShrink: 0,
+    zIndex: 2
+  },
+  sidebarItem: {
+    paddingTop: theme.spacing(0.75),
+    paddingBottom: theme.spacing(0.75)
+  },
+  sidebarIcon: {
+    minWidth: '2rem'
+  },
+  sidebarMarkdown: {
+    padding: theme.spacing(2),
+    color: theme.palette.text.secondary
   }
 }))
 
@@ -114,6 +202,25 @@ function getLandingPage(config, user) {
     .find(Boolean)
   const page = userConfig || source?.default || source
   return Array.isArray(page) ? {widgets: page} : page
+}
+
+function updateLandingPage(config, user, updatePage) {
+  const source = cloneDeep(config || defaultLandingPage)
+  const keys = getUserKeys(user)
+
+  for (const key of keys) {
+    if (source?.users?.[key]) {
+      source.users[key] = updatePage(Array.isArray(source.users[key]) ? {widgets: source.users[key]} : source.users[key])
+      return source
+    }
+  }
+
+  if (source?.default !== undefined) {
+    source.default = updatePage(Array.isArray(source.default) ? {widgets: source.default} : source.default)
+    return source
+  }
+
+  return updatePage(Array.isArray(source) ? {widgets: source} : source)
 }
 
 function interpolate(value, values) {
@@ -146,6 +253,79 @@ ActionButton.propTypes = {
   className: PropTypes.string
 }
 
+function LandingSidebar({sidebar, values, collapsed, onCollapsedChange}) {
+  const classes = useStyles()
+  const title = interpolate(sidebar?.title || 'Menu', values)
+  const items = sidebar?.items || []
+
+  return <Menu
+    size={sidebar?.size || sidebar?.width}
+    open={true}
+    collapsed={collapsed}
+    onCollapsedChanged={onCollapsedChange}
+    visible={true}
+  >
+    <MenuHeader
+      title={title}
+      actions={<Action
+        tooltip="Collapse menu"
+        onClick={() => onCollapsedChange(true)}
+      >
+        <ArrowBackIcon fontSize="small" />
+      </Action>}
+    />
+    <MenuContent collapsedTitle={title}>
+      {items.map((item, index) => {
+        if (item?.visible === false) return null
+        if (item?.type === 'divider') return <Divider key={index} />
+        if (item?.type === 'markdown') {
+          return <Box key={index} className={classes.sidebarMarkdown}>
+            <Markdown text={interpolate(item.text || '', values)} />
+          </Box>
+        }
+        if (item?.type === 'text') {
+          return <Box key={index} className={classes.sidebarMarkdown}>
+            <Typography variant={item.variant || 'body2'}>
+              {interpolate(item.text || '', values)}
+            </Typography>
+          </Box>
+        }
+
+        const label = interpolate(item?.label || item?.title || '', values)
+        if (!label) return null
+        const listItemProps = item.href
+          ? {
+            button: true,
+            component: 'a',
+            href: interpolate(item.href, values),
+            target: item.target,
+            rel: item.target === '_blank' ? 'noopener noreferrer' : undefined
+          }
+          : {
+            button: true,
+            component: RouterLink,
+            to: interpolate(item.to || '/', values)
+          }
+        return <ListItem key={index} className={classes.sidebarItem} {...listItemProps}>
+          {item.icon && <ListItemIcon className={classes.sidebarIcon}>
+            <Icon fontSize="small">{item.icon}</Icon>
+          </ListItemIcon>}
+          <ListItemText
+            primary={label}
+            secondary={item.description ? interpolate(item.description, values) : undefined}
+          />
+        </ListItem>
+      })}
+    </MenuContent>
+  </Menu>
+}
+LandingSidebar.propTypes = {
+  sidebar: PropTypes.object,
+  values: PropTypes.object.isRequired,
+  collapsed: PropTypes.bool,
+  onCollapsedChange: PropTypes.func.isRequired
+}
+
 export default function Home() {
   const classes = useStyles()
   const { api, user } = useApi()
@@ -153,6 +333,10 @@ export default function Home() {
   const [uploads, setUploads] = useState(null)
   const [landingPageConfig, setLandingPageConfig] = useState(null)
   const [configLoaded, setConfigLoaded] = useState(false)
+  const [notesDirty, setNotesDirty] = useState({})
+  const [notesSaving, setNotesSaving] = useState({})
+  const [notesStatus, setNotesStatus] = useState({})
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   useEffect(() => {
     if (!api?.keycloak?.authenticated) {
@@ -180,11 +364,17 @@ export default function Home() {
 
   const landingPage = useMemo(() => getLandingPage(landingPageConfig, user), [landingPageConfig, user])
   const widgets = Array.isArray(landingPage?.widgets) ? landingPage.widgets : defaultLandingPage.widgets
+  const sidebar = landingPage?.sidebar
+  const showSidebar = sidebar?.enabled !== false && Array.isArray(sidebar?.items) && sidebar.items.length > 0
   const uploadLimit = useMemo(() => {
     return widgets
       .filter(widget => widget?.type === 'recent_uploads')
       .reduce((limit, widget) => Math.max(limit, widget.limit || 10), 0)
   }, [widgets])
+
+  useEffect(() => {
+    setSidebarCollapsed(Boolean(sidebar?.collapsed))
+  }, [sidebar?.collapsed])
 
   useEffect(() => {
     if (!api?.keycloak?.authenticated || !uploadLimit) {
@@ -210,7 +400,41 @@ export default function Home() {
     email: user?.email || ''
   }
 
-  return <Page limitedWidth loading={!configLoaded || Boolean(uploadLimit && !uploads)}>
+  const handleNotesChange = (widgetIndex, content) => {
+    setLandingPageConfig(prev => updateLandingPage(prev, user, (page) => {
+      const widgets = Array.isArray(page?.widgets) ? [...page.widgets] : []
+      const currentWidget = widgets[widgetIndex] || {}
+      widgets[widgetIndex] = {
+        ...currentWidget,
+        content: content || ''
+      }
+      return {...page, widgets}
+    }))
+    setNotesDirty(prev => ({...prev, [widgetIndex]: true}))
+    setNotesStatus(prev => ({...prev, [widgetIndex]: ''}))
+  }
+
+  const handleNotesSave = (widgetIndex) => {
+    const body = YAML.stringify(landingPageConfig || defaultLandingPage)
+    setNotesSaving(prev => ({...prev, [widgetIndex]: true}))
+    setNotesStatus(prev => ({...prev, [widgetIndex]: ''}))
+    api.put('users/me/landing-page', body, {
+      headers: {
+        'Content-Type': 'application/yaml',
+        accept: 'application/yaml'
+      }
+    })
+      .then(() => {
+        setNotesDirty(prev => ({...prev, [widgetIndex]: false}))
+        setNotesStatus(prev => ({...prev, [widgetIndex]: 'Saved.'}))
+      })
+      .catch(errors.raiseError)
+      .finally(() => {
+        setNotesSaving(prev => ({...prev, [widgetIndex]: false}))
+      })
+  }
+
+  const content = <>
     <Box className={classes.toolbar}>
       <Button
         color="primary"
@@ -251,6 +475,33 @@ export default function Home() {
         return <Box key={widgetIndex} className={classes.widget}>
           <ActionButton action={widget} values={values} />
         </Box>
+      }
+
+      if (widget.type === 'notes') {
+        return <Paper key={widgetIndex} className={`${classes.markdown} ${classes.widget}`}>
+          {widget.title && <Typography variant="h5" gutterBottom>
+            {interpolate(widget.title, values)}
+          </Typography>}
+          <RichTextEditQuantity
+            quantityDef={{name: 'notes', label: interpolate(widget.title || 'Notes', values)}}
+            value={DOMPurify.sanitize(widget.content || '')}
+            onChange={(content) => handleNotesChange(widgetIndex, content)}
+            height={360}
+          />
+          <Box className={classes.notesActions}>
+            <Typography color="textSecondary">
+              {notesStatus[widgetIndex] || (notesDirty[widgetIndex] ? 'Unsaved changes.' : '')}
+            </Typography>
+            <Button
+              color="primary"
+              variant="contained"
+              onClick={() => handleNotesSave(widgetIndex)}
+              disabled={!notesDirty[widgetIndex] || notesSaving[widgetIndex]}
+            >
+              Save notes
+            </Button>
+          </Box>
+        </Paper>
       }
 
       if (widget.type !== 'recent_uploads') {
@@ -303,5 +554,26 @@ export default function Home() {
         </Box>}
       </Paper>
     })}
+  </>
+
+  const loading = !configLoaded || Boolean(uploadLimit && !uploads)
+  if (!showSidebar) {
+    return <Page limitedWidth loading={loading}>{content}</Page>
+  }
+
+  return <Page loading={loading} style={{marginLeft: 0, marginRight: 0}}>
+    <Box className={classes.landingRoot}>
+      <Box className={classes.landingSidebarColumn}>
+        <LandingSidebar
+          sidebar={sidebar}
+          values={values}
+          collapsed={sidebarCollapsed}
+          onCollapsedChange={setSidebarCollapsed}
+        />
+      </Box>
+      <Box className={classes.landingContent}>
+        {content}
+      </Box>
+    </Box>
   </Page>
 }

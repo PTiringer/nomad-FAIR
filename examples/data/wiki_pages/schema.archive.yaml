@@ -1,0 +1,104 @@
+# Minimal wiki-style schema example built on the existing ELN editor.
+definitions:
+  name: Wiki Pages example schema
+  sections:
+    WikiPage:
+      more:
+        label_quantity: name
+      base_sections:
+        - nomad.datamodel.metainfo.eln.ElnBaseSection
+        - nomad.datamodel.data.EntryData
+      m_annotations:
+        template:
+          name: Untitled Wiki Page
+          tags:
+            - wiki
+            - knowledge-base
+        eln:
+          lane_width: 1200px
+          hide:
+            - lab_id
+          properties:
+            order:
+              - name
+              - summary
+              - slug
+              - page_type
+              - body
+              - sidebar
+              - to_do
+      quantities:
+        summary:
+          type: str
+          m_annotations:
+            eln:
+              component: RichTextEditQuantity
+              props:
+                height: 180
+        slug:
+          type: str
+          description: Short URL-style identifier for this page.
+          m_annotations:
+            eln:
+              component: StringEditQuantity
+        page_type:
+          type:
+            type_kind: Enum
+            type_data:
+              - article
+              - guide
+              - reference
+              - faq
+          default: article
+          m_annotations:
+            eln:
+              component: EnumEditQuantity
+        body:
+          type: str
+          m_annotations:
+            eln:
+              component: RichTextEditQuantity
+              props:
+                height: 520
+        sidebar:
+          type: str
+          description: Optional rich text block for callouts or navigation links.
+          m_annotations:
+            eln:
+              component: RichTextEditQuantity
+              props:
+                height: 220
+      sub_sections:
+        to_do:
+          repeats: true
+          section:
+            label: To Do
+            name: WikiTodoItem
+            more:
+              label_quantity: topic
+            m_annotations:
+              eln:
+                overview: true
+                properties:
+                  order:
+                    - topic
+                    - assignee
+                    - deadline
+            quantities:
+              topic:
+                type: str
+                m_annotations:
+                  eln:
+                    component: StringEditQuantity
+              assignee:
+                type: str
+                m_annotations:
+                  eln:
+                    component: StringEditQuantity
+              deadline:
+                type:
+                  type_kind: custom
+                  type_data: nomad.metainfo.data_type.Datetime
+                m_annotations:
+                  eln:
+                    component: DateTimeEditQuantity

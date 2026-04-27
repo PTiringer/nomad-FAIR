@@ -282,16 +282,19 @@ const useMenuContentStyles = makeStyles(theme => {
       display: 'flex',
       alignItems: 'center',
       position: 'absolute',
-      right: '0.07rem',
-      top: 0,
+      left: collapseWidth,
+      top: theme.spacing(1),
       height: collapseWidth,
-      transform: 'rotate(90deg)'
+      transform: 'rotate(90deg)',
+      transformOrigin: 'left top',
+      whiteSpace: 'nowrap'
     }
 
   }
 })
 export const MenuContent = React.memo(({
   className,
+  collapsedTitle,
   children
 }) => {
   const styles = useMenuContentStyles()
@@ -314,7 +317,7 @@ export const MenuContent = React.memo(({
       {collapsed && <Typography
           className={clsx(styles.collapsedText)}
           variant="button"
-        >Filters
+        >{collapsedTitle}
         </Typography>
       }
       </div>
@@ -323,7 +326,11 @@ export const MenuContent = React.memo(({
 })
 MenuContent.propTypes = {
   className: PropTypes.string,
+  collapsedTitle: PropTypes.string,
   children: PropTypes.node
+}
+MenuContent.defaultProps = {
+  collapsedTitle: 'Filters'
 }
 
 /**

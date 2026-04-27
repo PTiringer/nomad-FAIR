@@ -1,0 +1,32 @@
+data:
+  m_def: ./schema.archive.yaml#/definitions/section_definitions/0
+  name: Home
+  tags:
+    - wiki
+    - knowledge-base
+  summary: |
+    <p>Welcome to the internal knowledge base. This page acts as the entry point
+    for experiments, NeXus conventions, and operational notes.</p>
+  slug: home
+  page_type: guide
+  body: |
+    <h2>Purpose</h2>
+    <p>This wiki page shows how a knowledge-base entry can be edited with the
+    same ELN components used elsewhere in NOMAD.</p>
+    <h2>Editing model</h2>
+    <p>The schema uses rich text fields for page content and repeated sub-sections
+    for structured content blocks.</p>
+  sidebar: |
+    <p><strong>Quick links</strong></p>
+    <ul>
+      <li>NeXus ingestion guide</li>
+      <li>Instrument conventions</li>
+      <li>Troubleshooting</li>
+    </ul>
+  to_do:
+    - topic: Review onboarding notes
+      assignee: Documentation Team
+      deadline: '2026-04-01T00:00:00+00:00'
+    - topic: Confirm instrument naming rules
+      assignee: Lab Ops
+      deadline: '2026-04-15T00:00:00+00:00'
