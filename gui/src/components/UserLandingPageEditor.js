@@ -171,6 +171,9 @@ export default function UserLandingPageEditor() {
                 Define an optional left sidebar under top-level <code>sidebar:</code>. Sidebar item types are <code>link</code>, <code>markdown</code>, <code>text</code>, and <code>divider</code>.
               </Typography>
               <Typography variant="body2" gutterBottom>
+                For internal application links, use <code>to:</code> with a route like <code>/user/uploads</code>. You can also use <code>route:</code> or <code>path:</code>. For external links, use <code>href:</code> or <code>url:</code>.
+              </Typography>
+              <Typography variant="body2" gutterBottom>
                 Available widget types: <code>hero</code>, <code>markdown</code>, <code>notes</code>, <code>button</code>, and <code>recent_uploads</code>.
               </Typography>
               <Typography variant="body2" gutterBottom>

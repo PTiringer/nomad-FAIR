@@ -253,6 +253,40 @@ ActionButton.propTypes = {
   className: PropTypes.string
 }
 
+function isExternalLink(value) {
+  return typeof value === 'string' && /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(value)
+}
+
+function getSidebarLinkProps(item, values) {
+  const href = interpolate(item.href || item.url, values)
+  if (href) {
+    return {
+      button: true,
+      component: 'a',
+      href,
+      target: item.target,
+      rel: item.target === '_blank' ? 'noopener noreferrer' : undefined
+    }
+  }
+
+  const to = interpolate(item.to || item.route || item.path || '/', values)
+  if (isExternalLink(to)) {
+    return {
+      button: true,
+      component: 'a',
+      href: to,
+      target: item.target,
+      rel: item.target === '_blank' ? 'noopener noreferrer' : undefined
+    }
+  }
+
+  return {
+    button: true,
+    component: RouterLink,
+    to
+  }
+}
+
 function LandingSidebar({sidebar, values, collapsed, onCollapsedChange}) {
   const classes = useStyles()
   const title = interpolate(sidebar?.title || 'Menu', values)
@@ -293,19 +327,7 @@ function LandingSidebar({sidebar, values, collapsed, onCollapsedChange}) {
 
         const label = interpolate(item?.label || item?.title || '', values)
         if (!label) return null
-        const listItemProps = item.href
-          ? {
-            button: true,
-            component: 'a',
-            href: interpolate(item.href, values),
-            target: item.target,
-            rel: item.target === '_blank' ? 'noopener noreferrer' : undefined
-          }
-          : {
-            button: true,
-            component: RouterLink,
-            to: interpolate(item.to || '/', values)
-          }
+        const listItemProps = getSidebarLinkProps(item, values)
         return <ListItem key={index} className={classes.sidebarItem} {...listItemProps}>
           {item.icon && <ListItemIcon className={classes.sidebarIcon}>
             <Icon fontSize="small">{item.icon}</Icon>
