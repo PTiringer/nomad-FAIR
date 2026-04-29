@@ -25,26 +25,26 @@ describe('test deleting different types of uploads', function() {
   test.each([
     [
       'single upload',
-      'Delete selected upload',
-      'Are you sure you want to delete the selected upload?',
+      'Delete selected project',
+      'Are you sure you want to delete the selected project?',
       [{upload_id: 'a'}]
     ],
     [
       'multiple uploads',
-      'Delete selected uploads',
-      'You have selected 2 uploads. Are you sure you want to delete the selected uploads?',
+      'Delete selected projects',
+      'You have selected 2 projects. Are you sure you want to delete the selected projects?',
       [{upload_id: 'a'}, {upload_id: 'b'}]
     ],
     [
       'upload with reviewer',
-      'Delete selected upload',
-      'The upload you are about to delete has been shared with at least one coauthor or reviewer. Are you sure you want to delete the selected upload?',
+      'Delete selected project',
+      'The project you are about to delete has been shared with at least one coauthor or reviewer. Are you sure you want to delete the selected project?',
       [{upload_id: 'a', reviewers: [{user_id: 'b'}]}]
     ],
     [
       'upload with coauthor',
-      'Delete selected upload',
-      'The upload you are about to delete has been shared with at least one coauthor or reviewer. Are you sure you want to delete the selected upload?',
+      'Delete selected project',
+      'The project you are about to delete has been shared with at least one coauthor or reviewer. Are you sure you want to delete the selected project?',
       [{upload_id: 'a', coauthors: [{user_id: 'b'}]}]
     ]
   ])('%s', async (name, tooltip, dialogText, uploads) => {

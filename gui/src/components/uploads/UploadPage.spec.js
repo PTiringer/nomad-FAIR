@@ -61,7 +61,7 @@ const testShownColumnsAction = async () => {
 const testPublishedWritePermissions = async () => {
   await screen.findByTestId('logout-button')
   // Wait to load the page, i.e. wait for some text to appear
-  await screen.findByText('unnamed upload')
+  await screen.findByText('unnamed project')
 
   // Test if only the first two steps are shown
   expect(screen.queryByText('Prepare and upload your files')).toBeInTheDocument()
@@ -82,7 +82,7 @@ const testPublishedWritePermissions = async () => {
 const testUnpublishedWritePermissions = async () => {
   await screen.findByTestId('logout-button')
   // Wait to load the page, i.e. wait for some text to appear
-  await screen.findByText('unnamed upload')
+  await screen.findByText('unnamed project')
 
   // Test if the table title is rendered correctly
   expect(screen.queryByText('1 entry')).toBeInTheDocument()
@@ -105,7 +105,7 @@ const testUnpublishedWritePermissions = async () => {
 const testEmbargoedPublishesWritePermissions = async () => {
   await screen.findByTestId('logout-button')
   // Wait to load the page, i.e. wait for some text to appear
-  await screen.findByText('unnamed upload')
+  await screen.findByText('unnamed project')
 
   // Test if only the first two steps are shown
   expect(screen.queryByText('Prepare and upload your files')).toBeInTheDocument()
@@ -126,7 +126,7 @@ const testEmbargoedPublishesWritePermissions = async () => {
 const testReadOnlyPermissions = async (isLoggedIn) => {
   await screen.findByTestId(isLoggedIn ? 'logout-button' : 'login-register-button')
   // Wait to load the page, i.e. wait for some text to appear
-  await screen.findByText('unnamed upload')
+  await screen.findByText('unnamed project')
 
   // Test if the table title is rendered correctly
   expect(screen.queryByText('1 entry')).toBeInTheDocument()
@@ -323,7 +323,7 @@ test('Render upload page: multiple entries', async () => {
 
   await screen.findByTestId('logout-button')
   // Wait to load the page, i.e. wait for some text to appear
-  await screen.findByText('unnamed upload')
+  await screen.findByText('unnamed project')
 
   // Test if the table header is rendered correctly
   expect(screen.queryByText('6 entries')).toBeInTheDocument()
@@ -358,7 +358,7 @@ test('Delete selected entries from table', async () => {
 
   await screen.findByTestId('logout-button')
   // Wait for the page to load, i.e. wait for some text to appear
-  await screen.findByText('unnamed upload')
+  await screen.findByText('unnamed project')
 
   // Test if the table header is rendered correctly
   expect(screen.queryByText('6 entries')).toBeInTheDocument()
@@ -510,7 +510,7 @@ test('Toggle visible for all checkbox; check embargo, icon', async () => {
   await testAndToggleCheckbox(false)
   expect(embargoButton).toHaveAttribute('aria-disabled', 'true')
   expect(embargoButton).toHaveTextContent('No embargo')
-  expect(embargoHelper).toHaveTextContent('Upload is publicly visible, embargo disabled')
+  expect(embargoHelper).toHaveTextContent('Project is publicly visible, embargo disabled')
   expect(screen.getByTooltip('Unpublished but accessible by everyone')).toBeInTheDocument()
 
   await testAndToggleCheckbox(true)

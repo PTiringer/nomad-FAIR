@@ -56,15 +56,15 @@ The result will be a list of entries (one per identified mainfile).
 Each entry is associated with metadata. This is data that NOMAD acquired from your files and that
 describe your entry (e.g. chemical formula, used code, system type and symmetry, etc.).
 Furthermore, you can provide your own metadata (comments, references, co-authors, etc.).
-When an upload is created, it is created in the *staging area*, and it will only be visible
+When a project is created, it is created in the *staging area*, and it will only be visible
 to you (the main author). You can add other users as *co-authors*. They will be listed
-as co-authors of the upload and all its entries, and they can view and edit the upload.
-You can also add *reviewers*, which are users who are allowed the view the upload. No
-other users can see your data until you *publish* the upload.
+as co-authors of the project and all its entries, and they can view and edit the project.
+You can also add *reviewers*, which are users who are allowed the view the project. No
+other users can see your data until you *publish* the project.
 
 #### Prepare and upload files
 
-While the upload is in the staging area, you and the co-authors can add and remove files
+While the project is in the staging area, you and the co-authors can add and remove files
 to it. You can upload plain files, or \`*.zip\` or \`*.tar.gz\` archives. We encourage you
 to add all input and output files, as well as any other auxiliary files that you might
 have created, and to organize your files in a folder structure. Ideally, you should have a
@@ -80,40 +80,40 @@ return here and press the reload button below).
 
 ### Limits
 
-There is a limit of 10 unpublished uploads per user. Please accumulate all data into as
-few uploads as possible. But, there is a also an upper limit of 32 GB per upload.
+There is a limit of 10 unpublished projects per user. Please accumulate all data into as
+few projects as possible. But, there is a also an upper limit of 32 GB per project.
 Please upload multiple archives, if you have more than 32 GB of data to upload.
-Only uploads with at least one recognized entry can be published.
+Only projects with at least one recognized entry can be published.
 
-#### The uploads page
+#### The projects page
 
-Here you will find all your unpublished and published uploads. You can see the
-progress on the processing, you can review your uploads, and publish or delete them.
+Here you will find all your unpublished and published projects. You can see the
+progress on the processing, you can review your projects, and publish or delete them.
 
-Click on an upload to see more details about its contents. Click on processed entries
+Click on a project to see more details about its contents. Click on processed entries
 to see their metadata, archive data, and a processing log. In the details view, you also
-find buttons for editing user metadata, deleting uploads, and publishing uploads. Entries
-cannot be published individually, only the upload as a whole, with all its entries, can be published.
+find buttons for editing user metadata, deleting projects, and publishing projects. Entries
+cannot be published individually, only the project as a whole, with all its entries, can be published.
 
 #### Publishing and embargo
 
 When you publish, you can set an *embargo* or publish your data as *Open Access* right away.
 The embargo allows you to share data with selected users, create a DOI for your data, etc,
-before the full upload data is made public. The embargo might last up to 36 months, and when
+before the full project data is made public. The embargo might last up to 36 months, and when
 it expires the data becomes public automatically. While embargoed, some metadata (and datasets
 created from this data) are publicly visible and findable, but only you and users you share
-the upload with (i.e. users added as co-authors or reviewers) can view and download the raw
+the project with (i.e. users added as co-authors or reviewers) can view and download the raw
 data and archive.
 
 #### Processing errors
 
-We distinguish between uploads that fail processing completely and uploads that contain
+We distinguish between projects that fail processing completely and projects that contain
 entries that could not be processed. The former might be caused by issues during the
-upload, bad file formats, etc. The latter (far more common) case means that not all of the
+project, bad file formats, etc. The latter (far more common) case means that not all of the
 identified mainfiles could be parsed. The processing logs of the failed entries might
 provide some insight.
 
-You cannot publish uploads that failed processing completely. In most
+You cannot publish projects that failed processing completely. In most
 cases they wouldn't have any entries to publish anyway. In the case of failed processing of
 some entries however, the data can still be published. You will be able to share it and create
 DOIs for it, etc. The only shortcomings will be missing metadata (labeled *not processed*
@@ -122,11 +122,11 @@ the now missing information might become available in the future automatically.
 
 #### Co-Authors, References, Comments, Datasets, DOIs
 
-You can edit additional *user metadata*. Some of these fields are set on the upload level,
+You can edit additional *user metadata*. Some of these fields are set on the project level,
 others on the entry level. You can select and edit many entries at once. Edit buttons for
 user metadata are available in many views on this web-page. For example, you can edit user
-metadata when you click on an upload to open its details, and press the edit button there.
-The metadata fields cannot be changed after the upload has been published (except for dataset members).
+metadata when you click on a project to open its details, and press the edit button there.
+The metadata fields cannot be changed after the project has been published (except for dataset members).
 The documentation on the [user data page](${guiBase}/userdata) contains more information.
 `
 export const uploadsPageContext = React.createContext()
@@ -193,8 +193,8 @@ function UploadCommands({uploadCommands}) {
           large HTTP request on large files. Form data has the advantage of carrying
           more information (e.g. the file name) to our servers (see below).
 
-          #### Upload names
-          With multi-part form data (\`-X PUT -f file=@<local_file>\`), your upload will
+          #### Project names
+          With multi-part form data (\`-X PUT -f file=@<local_file>\`), your project will
           be named after the file by default. With stream data (\`-T <local_file>\`)
           there will be no default name. To set a custom name, you can use the URL
           parameter \`name\`:
@@ -210,7 +210,7 @@ function UploadCommands({uploadCommands}) {
 }
 
 const UploadActions = React.memo(function UploadActions({data}) {
-  return <Tooltip title="Open this upload">
+  return <Tooltip title="Open this project">
     <UploadButton component={IconButton} uploadId={data.upload_id}>
       <DetailsIcon />
     </UploadButton>
@@ -373,7 +373,7 @@ export function UploadsPage() {
     <Page loading={!(data && uploadCommands)}>
       <Box marginBottom={2}>
         <Typography>
-          You can either create an upload and upload files through the browser:
+          You can either create a project and upload files through the browser:
         </Typography>
       </Box>
       <Box alignItems='center' style={{display: 'flex'}}>
@@ -382,13 +382,13 @@ export function UploadsPage() {
         <ExampleUploadButton color="inherit" disabled={isDisabled} />
         <Box display="inline-block" marginLeft={2}>
           {isDisabled && <Typography color="error" role='error-maximum-number-of-unpublished'>
-            You have reached maximum number of unpublished uploads!
+            You have reached the maximum number of unpublished projects!
           </Typography>}
         </Box>
       </Box>
       <Box marginTop={4}>
         <Typography>
-          Or, you can create an upload by sending a file-archive via shell command:
+          Or, you can create a project by sending a file-archive via shell command:
         </Typography>
       </Box>
       <Box>
@@ -414,10 +414,10 @@ export function UploadsPage() {
             getId={option => option.upload_id}
             onSelectedChanged={setSelected}
           >
-            <DatatableToolbar title="Your existing uploads">
+            <DatatableToolbar title="Your existing projects">
               <DatatableToolbarActions>
                 <TooltipButton
-                  title="Reload the uploads"
+                  title="Reload the projects"
                   component={IconButton}
                   onClick={handleReload}
                 >

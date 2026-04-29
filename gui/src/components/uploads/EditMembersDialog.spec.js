@@ -156,13 +156,13 @@ const submitChanges = async (dialog, user) => {
   expect(submitButton).toBeEnabled()
   await user.click(submitButton)
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
-  const processing = await screen.findByText('Upload is processing ...')
+  const processing = await screen.findByText('Project is processing ...')
   await waitFor(() => expect(processing).not.toBeInTheDocument())
 }
 
 const openMembersDialog = async (user, {waitForMainAuthor = true} = {}) => {
   await screen.findByTestId('logout-button')
-  await screen.findByText('unnamed upload')
+  await screen.findByText('unnamed project')
   const editMembersButton = screen.getByTestId('edit-members-action')
   await waitFor(() => expect(editMembersButton).toBeEnabled())
   await user.click(editMembersButton)
@@ -178,7 +178,7 @@ const openMembersDialog = async (user, {waitForMainAuthor = true} = {}) => {
 
 const testReadOnlyPermissions = async (isLoggedIn) => {
   await screen.findByTestId(isLoggedIn ? 'logout-button' : 'login-register-button')
-  await screen.findByText('unnamed upload')
+  await screen.findByText('unnamed project')
   expect(screen.getByTestId('edit-members-action')).toBeDisabled()
 }
 

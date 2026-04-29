@@ -42,7 +42,7 @@ export default function NewUploadButton({...props}) {
   }
 
   return <Button variant="contained" onClick={handleClick} disabled={clicked} {...props}>
-    Create a new upload
+    Create a new project
   </Button>
 }
 NewUploadButton.propTypes = {

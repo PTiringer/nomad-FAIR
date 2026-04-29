@@ -45,7 +45,7 @@ sidebar:
   title: Workspace
   items:
     - type: link
-      label: Uploads
+      label: Projects
       to: /user/uploads
       icon: cloud_upload
     - type: link
@@ -75,7 +75,7 @@ widgets:
       expect(screen.getByText('Workspace')).toBeInTheDocument()
     })
 
-    expect(screen.getByText('Uploads').closest('a')).toHaveAttribute('href', '/user/uploads')
+    expect(screen.getByText('Projects').closest('a')).toHaveAttribute('href', '/user/uploads')
     expect(screen.getByText('Datasets').closest('a')).toHaveAttribute('href', '/user/datasets')
     expect(screen.getByText('Docs').closest('a')).toHaveAttribute('href', 'https://example.com/docs')
   })

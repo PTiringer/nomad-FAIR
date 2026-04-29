@@ -37,7 +37,7 @@ const template = `sidebar:
   size: sm
   items:
     - type: link
-      label: Uploads
+      label: Projects
       to: /user/uploads
       icon: cloud_upload
     - type: link
@@ -57,15 +57,15 @@ widgets:
     title: Welcome back, {{displayName}}
     text: Customize this page by editing your personal YAML configuration.
     actions:
-      - label: Open all uploads
+      - label: Open all projects
         to: /user/uploads
         variant: contained
   - type: recent_uploads
-    title: Recent uploads
+    title: Recent projects
     limit: 10
-    empty_text: You do not have any uploads yet.
+    empty_text: You do not have any projects yet.
     empty_action:
-      label: Go to uploads
+      label: Go to projects
       to: /user/uploads
   - type: markdown
     text: Use this space to add a short personal note, links, or instructions for your landing page.
@@ -193,7 +193,7 @@ export default function UserLandingPageEditor() {
                 <br />
                 <code>{'    - type: link'}</code>
                 <br />
-                <code>{'      label: Uploads'}</code>
+                <code>{'      label: Projects'}</code>
                 <br />
                 <code>{'      to: /user/uploads'}</code>
                 <br />

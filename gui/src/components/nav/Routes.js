@@ -219,12 +219,12 @@ export const routes = [
         path: 'uploads',
         exact: true,
         component: UploadsPage,
-        menu: 'Uploads',
-        tooltip: 'Upload and publish new data',
-        breadcrumb: 'Your uploads',
+        menu: 'Projects',
+        tooltip: 'Create and publish new projects',
+        breadcrumb: 'Your projects',
         routes: uploadRoutes,
         help: {
-          title: 'How to upload data to NOMAD',
+          title: 'How to create projects in NOMAD',
           content: uploadsHelp
         }
       },

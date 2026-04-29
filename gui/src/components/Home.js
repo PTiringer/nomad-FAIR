@@ -55,7 +55,7 @@ const defaultLandingPage = {
     items: [
       {
         type: 'link',
-        label: 'Uploads',
+        label: 'Projects',
         to: '/user/uploads',
         icon: 'cloud_upload'
       },
@@ -84,10 +84,10 @@ const defaultLandingPage = {
     {
       type: 'hero',
       title: 'Welcome back, {{displayName}}',
-      text: 'Here are your 10 most recent uploads. Open one directly, or go to the full uploads page to manage everything.',
+      text: 'Here are your 10 most recent projects. Open one directly, or go to the full projects page to manage everything.',
       actions: [
         {
-          label: 'Open all uploads',
+          label: 'Open all projects',
           to: '/user/uploads',
           variant: 'contained'
         }
@@ -95,11 +95,11 @@ const defaultLandingPage = {
     },
     {
       type: 'recent_uploads',
-      title: 'Recent uploads',
+      title: 'Recent projects',
       limit: 10,
-      empty_text: 'You do not have any uploads yet.',
+      empty_text: 'You do not have any projects yet.',
       empty_action: {
-        label: 'Go to uploads',
+        label: 'Go to projects',
         to: '/user/uploads'
       }
     },
@@ -535,7 +535,7 @@ export default function Home() {
       return <Paper key={widgetIndex} className={`${classes.uploadsCard} ${classes.widget}`}>
         <Box p={3}>
           <Typography variant="h5">
-            {interpolate(widget.title || 'Recent uploads', values)}
+            {interpolate(widget.title || 'Recent projects', values)}
           </Typography>
         </Box>
         <Divider />
@@ -567,10 +567,10 @@ export default function Home() {
         </List>}
         {uploadsToShow.length === 0 && <Box className={classes.emptyState}>
           <Typography variant="body1" paragraph>
-            {interpolate(widget.empty_text || 'You do not have any uploads yet.', values)}
+            {interpolate(widget.empty_text || 'You do not have any projects yet.', values)}
           </Typography>
           <ActionButton
-            action={widget.empty_action || {label: 'Go to uploads', to: '/user/uploads'}}
+            action={widget.empty_action || {label: 'Go to projects', to: '/user/uploads'}}
             values={values}
           />
         </Box>}

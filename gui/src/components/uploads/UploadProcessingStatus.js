@@ -48,7 +48,7 @@ const UploadProcessingStatus = React.memo(function ProcessingStatus() {
               <CircularProgress />
             </Grid>
             <Grid item style={{flexGrow: 1}}>
-              <Typography>Upload is processing ...</Typography>
+              <Typography>Project is processing ...</Typography>
               <Typography>{upload.last_status_message}</Typography>
             </Grid>
           </Grid>

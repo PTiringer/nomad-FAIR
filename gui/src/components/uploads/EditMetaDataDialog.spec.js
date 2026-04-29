@@ -26,7 +26,7 @@ import UploadPage from './UploadPage'
 const testComment = async () => {
   await screen.findByTestId('logout-button')
   // Wait to load the page, i.e. wait for some text to appear
-  await screen.findByText('unnamed upload')
+  await screen.findByText('unnamed project')
 
   // Open the members dialog
   fireEvent.click(screen.getByTestId('edit-metadata-button'))
@@ -34,7 +34,7 @@ const testComment = async () => {
 
   expect(screen.queryByButtonText('Submit')).toBeDisabled()
   const dialog = screen.getByTestId('edit-metadata-dialog')
-  expect(within(dialog).queryByText('Edit upload metadata')).toBeInTheDocument()
+  expect(within(dialog).queryByText('Edit project metadata')).toBeInTheDocument()
   expect(within(dialog).queryByText('Comments')).toBeInTheDocument()
   expect(within(dialog).queryByText('Mocked')).toBeInTheDocument()
 
@@ -46,7 +46,7 @@ const testComment = async () => {
 const testReferences = async () => {
   await screen.findByTestId('logout-button')
   // Wait to load the page, i.e. wait for some text to appear
-  await screen.findByText('unnamed upload')
+  await screen.findByText('unnamed project')
 
   // Open the members dialog
   fireEvent.click(screen.getByTestId('edit-metadata-button'))
@@ -54,7 +54,7 @@ const testReferences = async () => {
 
   expect(screen.queryByButtonText('Submit')).toBeDisabled()
   const dialog = screen.getByTestId('edit-metadata-dialog')
-  expect(within(dialog).queryByText('Edit upload metadata')).toBeInTheDocument()
+  expect(within(dialog).queryByText('Edit project metadata')).toBeInTheDocument()
   expect(within(dialog).queryByText('References')).toBeInTheDocument()
   expect(within(dialog).queryByText('Datasets')).toBeInTheDocument()
   expect(within(dialog).queryByTestId('reference-add-button')).toBeDisabled()
@@ -98,7 +98,7 @@ const testReferences = async () => {
 const testDatasetForPublished = async () => {
   await screen.findByTestId('logout-button')
   // Wait to load the page, i.e. wait for some text to appear
-  await screen.findByText('unnamed upload')
+  await screen.findByText('unnamed project')
 
   // Open the members dialog
   fireEvent.click(screen.getByTestId('edit-metadata-button'))
@@ -106,7 +106,7 @@ const testDatasetForPublished = async () => {
 
   expect(screen.queryByButtonText('Submit')).toBeDisabled()
   const dialog = screen.getByTestId('edit-metadata-dialog')
-  expect(within(dialog).queryByText('Edit upload metadata')).toBeInTheDocument()
+  expect(within(dialog).queryByText('Edit project metadata')).toBeInTheDocument()
   expect(within(dialog).queryByText('Comments')).toBeInTheDocument()
   expect(within(dialog).queryByText('Mocked')).toBeInTheDocument()
 
@@ -131,7 +131,7 @@ const testDatasetForPublished = async () => {
 const testReadOnlyPermissions = async (isLoggedIn) => {
   await screen.findByTestId(isLoggedIn ? 'logout-button' : 'login-register-button')
   // Wait to load the page, i.e. wait for some text to appear
-  await screen.findByText('unnamed upload')
+  await screen.findByText('unnamed project')
 
   // Members dialog should be disabled
   expect(screen.queryByTestId('edit-metadata-button')).not.toBeInTheDocument()

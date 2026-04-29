@@ -30,7 +30,7 @@ describe('test name rendering', function() {
     ['valid string', 'My Upload Name']
   ])('%s', async (name, uploadName) => {
       renderNoAPI(<UploadName upload_name={uploadName}/>)
-      expect(screen.getByText(uploadName || 'unnamed upload')).toBeInTheDocument()
+      expect(screen.getByText(uploadName || 'unnamed project')).toBeInTheDocument()
     }
   )
 })

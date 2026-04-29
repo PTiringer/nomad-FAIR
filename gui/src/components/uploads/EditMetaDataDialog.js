@@ -543,7 +543,7 @@ function EditMetaDataDialog({...props}) {
       {upload?.entries && (upload?.entries > 1 ? `Edit metadata of all ${upload?.entries} entries` : `Edit metadata of all the entries`)}
     </Button>}
     {open && <Dialog classes={{paper: classes.dialog}} open={open} disableEscapeKeyDown data-testid='edit-metadata-dialog'>
-      <DialogTitle>Edit upload metadata</DialogTitle>
+      <DialogTitle>Edit project metadata</DialogTitle>
       <DialogContent>
         <DialogContentText>
           You can add, edit, or remove the metadata for the selected entries.

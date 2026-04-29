@@ -35,7 +35,7 @@ const UploadFilesView = React.memo(function UploadFilesView() {
   return <Page>
     <FileBrowser
       uploadUrl={createUploadUrl(deploymentUrl, uploadId, '')}
-      rootTitle="Upload files"
+      rootTitle="Project files"
     />
   </Page>
 })
