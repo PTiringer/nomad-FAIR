@@ -341,12 +341,17 @@ export function UploadsPage() {
     const columns = [
       {
         key: 'upload_create_time',
+        label: 'Project create time',
         render: upload => formatTimestamp(upload.upload_create_time)
       },
-      {key: 'upload_name'},
+      {
+        key: 'upload_name',
+        label: 'Project name'
+      },
       {
         key: 'upload_id',
-        render: upload => <Quantity quantity={'upload_id'} noLabel noWrap withClipboard data={upload}/>
+        label: 'Project id',
+        render: upload => <Quantity quantity={'upload_id'} label="Project id" noLabel noWrap withClipboard data={upload}/>
       },
       {
       key: 'last_status_message',
