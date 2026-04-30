@@ -46,6 +46,9 @@ const NewWikiPageButton = React.memo(() => {
         data: {
           m_def: 'wiki_page.schema_packages.schema_package.WikiPage',
           name: formatWikiPageName(user),
+          description: '',
+          ai_summary: '',
+          test: '',
           tags: ['wiki', 'knowledge-base']
         }
       }

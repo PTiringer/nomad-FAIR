@@ -4,9 +4,12 @@ data:
   tags:
     - wiki
     - knowledge-base
-  summary: |
+  description: |
+    <p>Shared starting point for notes, conventions, and operational knowledge.</p>
+  ai_summary: |
     <p>Welcome to the internal knowledge base. This page acts as the entry point
     for experiments, NeXus conventions, and operational notes.</p>
+  test: Example test value
   slug: home
   page_type: guide
   body: |

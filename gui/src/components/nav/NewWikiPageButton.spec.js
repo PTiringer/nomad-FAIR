@@ -15,7 +15,7 @@ jest.mock('../errors', () => ({
 describe('<NewWikiPageButton />', () => {
   afterEach(() => {
     jest.useRealTimers()
-  }
+  })
 
   it('creates a new upload and wiki page entry', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-04-08T13:45:00Z'))
@@ -41,6 +41,9 @@ describe('<NewWikiPageButton />', () => {
           data: {
             m_def: 'wiki_page.schema_packages.schema_package.WikiPage',
             name: 'Missing date time name',
+            description: '',
+            ai_summary: '',
+            test: '',
             tags: ['wiki', 'knowledge-base']
           }
         }

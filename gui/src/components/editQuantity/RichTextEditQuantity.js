@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import { Editor } from '@tinymce/tinymce-react'
 import PropTypes from 'prop-types'
 import {
@@ -55,56 +55,28 @@ const useStyle = makeStyles(theme => ({
 const RichTextEditQuantity = React.memo((props) => {
   const classes = useStyle()
   const { quantityDef, value, onChange, height } = props
+  const initialHeight = height || 500
   const config = useRecoilValue(configState)
   const label = getDisplayLabel(quantityDef, true, config?.showMeta)
 
-  const editedValue = useRef(value || '')
+  const initialValue = useRef(value)
+  const editedValue = useRef(value)
+
   const [focus, setFocus] = useState(false)
   const [initialized, setInitialized] = useState(false)
   const [open, setOpen] = useState(false)
-  const tinymceBasePath = `${process.env.PUBLIC_URL || ''}/tinymce`
 
-  // Responsive editor height:
-  // - use provided `height` prop if present
-  // - otherwise use 60% of viewport height
-  const [editorHeight, setEditorHeight] = useState(() => {
-    if (height) return height
-    if (typeof window !== 'undefined') {
-      return Math.round(window.innerHeight * 0.6)
-    }
-    return 500
-  })
-
-  // Single source of truth for content
-  const [content, setContent] = useState(value || '')
-
-  useEffect(() => {
-    const v = value || ''
-    editedValue.current = v
-    setContent(v)
-  }, [value])
-
-  useEffect(() => {
-    if (height) {
-      setEditorHeight(height)
-      return
-    }
-
-    const handleResize = () => {
-      setEditorHeight(Math.round(window.innerHeight * 0.6))
-    }
-
-    handleResize()
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [height])
+  if (editedValue.current !== value) {
+    // Means that the value has been changed elsewhere, for example edited in a different tab
+    // In this case we need to force an update to the provided value
+    editedValue.current = value
+    initialValue.current = value
+  }
 
   const handleChange = useCallback((newValue) => {
-    const v = newValue || ''
-    editedValue.current = v
-    setContent(v)
+    editedValue.current = newValue
     if (onChange) {
-      onChange(v === '' ? undefined : v)
+      onChange(newValue === '' ? undefined : newValue)
     }
   }, [onChange])
 
@@ -112,13 +84,13 @@ const RichTextEditQuantity = React.memo((props) => {
     success('data:' + blobInfo.blob().type + ';base64,' + blobInfo.base64())
   }, [])
 
-  const handleEditorInit = useCallback(() => {
+  const handleEditorInit = useCallback(editor => {
     setInitialized(true)
-  }, [])
+  }, [setInitialized])
 
-  const editorInit = useMemo(() => ({
+  const editorInit = {
     resize: true,
-    height: editorHeight,
+    height: initialHeight,
     menubar: false,
     plugins: [
       'advlist autolink lists link image charmap print preview anchor',
@@ -126,18 +98,13 @@ const RichTextEditQuantity = React.memo((props) => {
       'insertdatetime media table paste code help wordcount'
     ],
     toolbar: 'undo redo | formatselect | ' +
-      'bold italic backcolor link editimage | alignleft aligncenter ' +
+      'bold italic backcolor editimage | alignleft aligncenter ' +
       'alignright alignjustify | bullist numlist outdent indent | image table | ' +
       'removeformat',
-    default_link_target: "_blank",
-    link_title: true,
     skin: 'nomad',
-    content_css: 'default',
     images_upload_handler: handleImageUpload,
-    paste_data_images: true,
-    base_url: tinymceBasePath,
-    suffix: '.min'
-  }), [editorHeight, handleImageUpload, tinymceBasePath])
+    paste_data_images: true
+  }
 
   return (
     <FormControl
@@ -156,14 +123,14 @@ const RichTextEditQuantity = React.memo((props) => {
         </IconButton>
       </Box>
 
-      <Box height={initialized ? 'initial' : editorHeight}>
+      <Box height={initialized ? 'initial' : initialHeight}>
         <Editor
-          onInit={handleEditorInit}
+          onInit={(event, editor) => handleEditorInit(editor)}
           init={editorInit}
-          value={DOMPurify.sanitize(content)}
           onEditorChange={handleChange}
           onFocus={() => setFocus(true)}
           onBlur={() => setFocus(false)}
+          initialValue={DOMPurify.sanitize(initialValue.current || '')}
         />
       </Box>
 
@@ -187,7 +154,7 @@ const RichTextEditQuantity = React.memo((props) => {
         <Box p={2} height="calc(100vh - 64px)">
           <Editor
             init={{ ...editorInit, height: '100%' }}
-            value={DOMPurify.sanitize(content)}
+            value={DOMPurify.sanitize(editedValue.current || '')}
             onEditorChange={handleChange}
           />
         </Box>

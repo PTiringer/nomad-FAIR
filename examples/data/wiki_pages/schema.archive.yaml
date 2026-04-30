@@ -11,6 +11,9 @@ definitions:
       m_annotations:
         template:
           name: Untitled Wiki Page
+          description: ''
+          ai_summary: ''
+          test: ''
           tags:
             - wiki
             - knowledge-base
@@ -21,20 +24,47 @@ definitions:
           properties:
             order:
               - name
-              - summary
+              - description
+              - ai_summary
+              - tags
+              - test
               - slug
               - page_type
               - body
               - sidebar
               - to_do
       quantities:
-        summary:
+        description:
           type: str
           m_annotations:
+            display:
+              visible: true
+              editable: true
             eln:
               component: RichTextEditQuantity
+              label: Description
               props:
                 height: 180
+        ai_summary:
+          type: str
+          m_annotations:
+            display:
+              visible: true
+              editable: true
+            eln:
+              component: RichTextEditQuantity
+              label: AI summary
+              props:
+                height: 180
+        test:
+          type: str
+          description: Test field for checking wiki page editing.
+          m_annotations:
+            display:
+              visible: true
+              editable: true
+            eln:
+              component: StringEditQuantity
         slug:
           type: str
           description: Short URL-style identifier for this page.
