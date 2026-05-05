@@ -1088,7 +1088,7 @@ export function VicinityGraph({def}) {
         orient='auto'
         markerWidth='3'
         markerHeight='4'
-        xoverflow='visible'
+        overflow='visible'
       >
         <path d='M 0,-5 L 10 ,0 L 0,5' fill={color} stroke={color} />
       </marker>
