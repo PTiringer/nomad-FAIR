@@ -133,7 +133,7 @@ export const NorthURL = React.memo(({ action, data }) => {
       if (newUrl) window.open(newUrl, tool.name)
     } else if (uploadid_is_mounted === false) {
       setDialogMessage(
-        `The upload ${data?.upload_id} is not mounted. You need to stop the tool before relaunching it.
+        `The project ${data?.upload_id} is not mounted. You need to stop the tool before relaunching it.
         Stopping the tool may cause loss of unsaved data.`)
       setShowStopOnly(true)
       setOpenDialog(true)

@@ -55,7 +55,7 @@ const DataStore = React.memo(({children}) => {
   const storeKey = useRef() // A key used to determine when the caches should be cleared
   const selectedEntry = useRef() // stores identity of the selected entry (used to determine if editable)
   const entryBreadCrumb = useRef({innerText: 'Entry'})
-  const uploadBreadCrumb = useRef({innerText: 'Upload'})
+  const uploadBreadCrumb = useRef({innerText: 'Project'})
   const breadcrumb = {
     uploadRef: uploadBreadCrumb,
     entryRef: entryBreadCrumb,

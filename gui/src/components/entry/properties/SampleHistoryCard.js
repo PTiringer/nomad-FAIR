@@ -31,9 +31,9 @@ const columns = [
   {search_quantity: 'data.datetime#nomad.datamodel.metainfo.basesections.v1.Activity', title: 'Activity start time', align: 'left', selected: true},
   {search_quantity: 'entry_type', title: 'Entry type', align: 'left', selected: true},
   {search_quantity: 'entry_create_time', title: 'Entry creation time', align: 'left', selected: false},
-  {search_quantity: 'upload_name', title: 'Upload name', align: 'left'},
-  {search_quantity: 'upload_id', title: 'Upload id', align: 'left'},
-  {search_quantity: 'upload_create_time', title: 'Upload time', align: 'left'},
+  {search_quantity: 'upload_name', title: 'Project name', align: 'left'},
+  {search_quantity: 'upload_id', title: 'Project id', align: 'left'},
+  {search_quantity: 'upload_create_time', title: 'Project time', align: 'left'},
   {search_quantity: 'authors', title: 'Authors', align: 'left', sortable: false},
   {search_quantity: 'results.eln.lab_ids', title: 'IDs'}
 ]

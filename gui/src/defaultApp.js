@@ -31,7 +31,7 @@ export const defaultApp = {
     {
     "search_quantity": "upload_create_time",
     "selected": true,
-    "title": "Upload time",
+    "title": "Project time",
     "align": "left"
     },
     {
@@ -42,11 +42,13 @@ export const defaultApp = {
     {
     "search_quantity": "upload_name",
     "selected": false,
+    "title": "Project name",
     "align": "left"
     },
     {
     "search_quantity": "upload_id",
     "selected": false,
+    "title": "Project id",
     "align": "left"
     },
     {
@@ -1895,6 +1897,7 @@ export const defaultApp = {
       },
       {
         "search_quantity": "upload_id",
+        "title": "Project id",
         "type": "terms",
         "scale": "linear",
         "show_input": true,
@@ -1907,6 +1910,7 @@ export const defaultApp = {
       },
       {
         "search_quantity": "upload_name",
+        "title": "Project name",
         "type": "terms",
         "scale": "linear",
         "show_input": true,

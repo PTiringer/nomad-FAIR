@@ -60,17 +60,17 @@ function ConfirmDialogPublishUploadExternally({
       open={open}
       onClose={() => setOpen(false)}
     >
-      <DialogTitle>Confirm that you want to publish the upload to {targetName}</DialogTitle>
+      <DialogTitle>Confirm that you want to publish the project to {targetName}</DialogTitle>
       <DialogContent>
         <DialogContentText>
-          You are about to transfer this upload to <strong>{targetDeploymentUrl || 'central NOMAD'}</strong>.
+          You are about to transfer this project to <strong>{targetDeploymentUrl || 'central NOMAD'}</strong>.
         </DialogContentText>
         <DialogContentText>
-          Please note that this upload will be published under the account that you used to generate the access token.
+          Please note that this project will be published under the account that you used to generate the access token.
         </DialogContentText>
         <DialogContentText>
-          The upload will be published to the {targetName} with the chosen <strong>embargo period</strong> ({embargo === 0 ? <strong>no embargo</strong> : <strong>{`${embargo} months`}</strong>}). Please check the {targetName} for the status of the upload.
-          If this upload is already transferred to the target, this action has no effect.
+          The project will be published to the {targetName} with the chosen <strong>embargo period</strong> ({embargo === 0 ? <strong>no embargo</strong> : <strong>{`${embargo} months`}</strong>}). Please check the {targetName} for the status of the project.
+          If this project is already transferred to the target, this action has no effect.
         </DialogContentText>
       </DialogContent>
       <DialogActions>
@@ -170,7 +170,7 @@ const TransferUploadDialog = ({ open, setOpen }) => {
   return (
     <form autoComplete='off'>
       <Dialog open={open && isPublished} disableEscapeKeyDown>
-        <DialogTitle>Transfer Upload</DialogTitle>
+        <DialogTitle>Transfer project</DialogTitle>
         <DialogContent>
           <ConfirmDialogPublishUploadExternally
             upload={upload}
@@ -184,7 +184,7 @@ const TransferUploadDialog = ({ open, setOpen }) => {
           />
           {isLoading && <LinearProgress />}
           <DialogContentText style={{ marginTop: isLoading ? 10 : 0 }}>
-            {`This feature allows you to transfer a published upload to${oasis ? " either" : ""} an external OASIS deployment${oasis ? " or the central NOMAD platform" : ""}. The transferred upload will remain published in the target system under the embargo period you select.`}
+            {`This feature allows you to transfer a published project to${oasis ? " either" : ""} an external OASIS deployment${oasis ? " or the central NOMAD platform" : ""}. The transferred project will remain published in the target system under the embargo period you select.`}
           </DialogContentText>
           <DialogContentText>
             Once the transfer begins, the process may take some time to complete. You can safely close the page while the transfer is in progress.
@@ -224,7 +224,7 @@ const TransferUploadDialog = ({ open, setOpen }) => {
                 size="small"
                 heading="Access Token Help"
                 text={`
-The access token is a temporary credential used to securely authorize the publish action to an external OASIS${oasis ? ' or the central NOMAD' : ''}. It is generated using the authenticated user's credentials, ensuring that the upload is performed on behalf of that specific user. Check the [documentation](https://nomad-lab.eu/prod/v1/docs/howto/manage/program/api.html#authentication) to know how to get an access token from the transfer target.
+The access token is a temporary credential used to securely authorize the publish action to an external OASIS${oasis ? ' or the central NOMAD' : ''}. It is generated using the authenticated user's credentials, ensuring that the project is published on behalf of that specific user. Check the [documentation](https://nomad-lab.eu/prod/v1/docs/howto/manage/program/api.html#authentication) to know how to get an access token from the transfer target.
 `}
               />
             </Tooltip>
@@ -248,7 +248,7 @@ The access token is a temporary credential used to securely authorize the publis
             hideLabel
             disabledReason={
               isVisibleForAll
-                ? 'Upload is publicly visible, embargo disabled'
+                ? 'Project is publicly visible, embargo disabled'
                 : !authToken
                   ? 'Provide an Access Token'
                   : isLoading

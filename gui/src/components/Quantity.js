@@ -379,6 +379,7 @@ const quantityPresets = {
     placeholder: 'no comment'
   },
   upload_id: {
+    label: 'Project id',
     noWrap: true,
     withClipboard: true,
     render: (data) => (
@@ -406,6 +407,7 @@ const quantityPresets = {
     </Typography>
   },
   upload_create_time: {
+    label: 'Project time',
     noWrap: true,
     render: (data) => <Typography noWrap>
       {formatTimestamp(data.upload_create_time)}

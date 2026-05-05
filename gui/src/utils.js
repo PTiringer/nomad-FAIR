@@ -811,6 +811,7 @@ export function pluralize(word, count, inclusive, format = true, prefix) {
     'value': 'values',
     'material': 'materials',
     'dataset': 'datasets',
+    'project': 'projects',
     'item': 'items',
     'upload': 'uploads',
     'code': 'codes',

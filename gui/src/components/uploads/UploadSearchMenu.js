@@ -33,7 +33,7 @@ const UploadSearchMenu = React.memo(({
     return (
       <MenuBarRoute
         menu={menu}
-        label={'Search in this upload'}
+        label={'Search in this project'}
         initialFilters={{upload_id: uploadId}}>
         <SearchIcon/>
       </MenuBarRoute>

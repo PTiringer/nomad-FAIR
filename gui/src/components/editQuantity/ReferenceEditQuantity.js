@@ -84,10 +84,10 @@ const CreateNewReferenceDialog = React.memo(({allEntryDataSections, open, onSucc
       const response = await api.get(`/uploads?is_published=false&page_size=10000`)
       const uploads = response.data.map(upload => {
         const uploadName = uploadId === upload.upload_id
-          ? (upload.upload_name ? `${upload.upload_name} (This upload)` : 'This upload')
-          : (upload.upload_name ? upload.upload_name : `upload-id: ${upload.upload_id}`)
+          ? (upload.upload_name ? `${upload.upload_name} (This project)` : 'This project')
+          : (upload.upload_name ? upload.upload_name : `project-id: ${upload.upload_id}`)
         if (user.sub === upload.main_author) {
-          return {label: uploadName, upload_id: upload.upload_id, main_author: upload.main_author, group: 'My uploads'}
+          return {label: uploadName, upload_id: upload.upload_id, main_author: upload.main_author, group: 'My projects'}
         } else {
           return {label: uploadName, upload_id: upload.upload_id, main_author: upload.main_author}
         }
@@ -183,7 +183,7 @@ const CreateNewReferenceDialog = React.memo(({allEntryDataSections, open, onSucc
           getOptionSelected={(option, value) => option.upload_id === value.upload_id}
           groupBy={(option) => option.group}
           getOptionLabel={(option) => option.label}
-          renderInput={(params) => <TextField {...params} label="Target upload" variant='filled' />}
+          renderInput={(params) => <TextField {...params} label="Target project" variant='filled' />}
         />
         {allEntryDataSections?.length > 1 ? <AutoComplete
           options={allEntryDataSections}

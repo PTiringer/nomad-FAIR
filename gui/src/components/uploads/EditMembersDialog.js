@@ -366,11 +366,11 @@ const EditMembersDialog = ({open, setOpen}) => {
   return <editMembersDialogContext.Provider value={contextValue}>
     <React.Fragment>
       {open && <Dialog classes={{paper: classes.dialog}} open={open} disableEscapeKeyDown data-testid='edit-members-dialog'>
-        <DialogTitle>Edit upload members</DialogTitle>
+        <DialogTitle>Edit project members</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            You can add and remove members for this upload and change their access.
-            Reviewers can view the upload, co-authors can also edit it.
+            You can add and remove members for this project and change their access.
+            Reviewers can view the project, co-authors can also edit it.
           </DialogContentText>
           <AddMember />
           <MembersTable />

@@ -24,7 +24,7 @@ import SearchPage from './search/SearchPage'
 
 export const help = `
 This page allows you to **inspect** and **manage** your own data. It is similar to the
-*entry search page*, but it will only show data that was uploaded by you or is shared with you.
+*entry search page*, but it will only show data from projects created by you or shared with you.
 
 Besides giving you a filter for your data, this page also allows you to edit the *user metadata*
 on all entries. User metadata is assigned to individual entries, but of course you can
@@ -33,12 +33,12 @@ and users to share data with.
 
 #### Selecting entries for edit
 
-You can use the search in combination with the entries, dataset, or uploads table to
+You can use the search in combination with the entries, dataset, or projects table to
 help select sets of entries that you like to edit. If you select individual entries,
 only these entries will be edit. If you select all entries, all entries fitting your
 search (including those
-  on further pages) will be edited. If you hit edit on datasets or uploads all entries
-  in these dataset or upload will be edited.
+  on further pages) will be edited. If you hit edit on datasets or projects all entries
+  in these dataset or project will be edited.
 
 #### The edit user metadata dialog
 

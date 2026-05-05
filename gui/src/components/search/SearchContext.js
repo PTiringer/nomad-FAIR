@@ -316,7 +316,7 @@ export const SearchContextRaw = React.memo(({
       upload_create_time: {
         render: row => row?.upload_create_time
           ? formatTimestamp(row.upload_create_time)
-          : <i>no upload time</i>
+          : <i>no project time</i>
       },
       entry_create_time: {
         render: row => row?.entry_create_time
