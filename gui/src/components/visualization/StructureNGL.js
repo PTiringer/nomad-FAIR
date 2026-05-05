@@ -37,7 +37,7 @@ import { withErrorHandler } from '../ErrorHandler'
 import { useAsyncError } from '../../hooks'
 import { useApi } from '../api'
 import { download, scale, parseNomadUrl } from '../../utils'
-import { hsl } from 'chroma-js'
+import chroma from 'chroma-js'
 
 const useStyles = makeStyles((theme) => ({
   canvas: {
@@ -1398,7 +1398,7 @@ function palette(count) {
   const goldenAngle = 137.508
   function selectColor(i) {
     const hue = (i * goldenAngle) % 360
-    return hsl(hue, 0.8, 0.5).hex()
+    return chroma.hsl(hue, 0.8, 0.5).hex()
   }
   const values = []
   for (let i = 3; i < count + 3; ++i) {
