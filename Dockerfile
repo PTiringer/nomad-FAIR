@@ -31,7 +31,8 @@ RUN mkdir -p /app/gui
 WORKDIR /app/gui
 
 ENV PATH=/app/node_modules/.bin:$PATH
-ENV NODE_OPTIONS="--max_old_space_size=4096 --openssl-legacy-provider"
+ENV NODE_OPTIONS="--max_old_space_size=8192 --openssl-legacy-provider"
+ENV GENERATE_SOURCEMAP=false
 
 # ================================================================================
 # Python cached base layers
@@ -54,9 +55,13 @@ RUN apt-get update \
      git \
      libgomp1 \
      libmagic1 \
+     nodejs \
+     npm \
      unzip \
      zip \
      && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g configurable-http-proxy
 
 RUN mkdir /app
 WORKDIR /app
@@ -81,7 +86,7 @@ FROM base_node AS dev_node
 # Fetch and cache all (but only) the dependencies
 COPY gui/yarn.lock gui/package.json gui/postinstall.js ./
 
-RUN yarn --network-timeout 1200000
+RUN yarn --network-timeout 1200000 --ignore-engines
 
 # Artifact for running the tests
 COPY tests/states/archives/dft.json  /app/tests/states/archives/dft.json

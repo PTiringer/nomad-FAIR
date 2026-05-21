@@ -130,6 +130,11 @@ c.JupyterHub.allow_named_servers = True
 # If named servers are enabled, default name of server to spawn or open, e.g. by
 # user-redirect. (Default: '')
 c.JupyterHub.default_server_name = 'jupyter'
+c.JupyterHub.cookie_secret_file = (
+    '/app/.volumes/fs/north/jupyterhub_cookie_secret'
+)
+c.JupyterHub.db_url = 'sqlite:////app/.volumes/fs/north/jupyterhub.sqlite'
+c.ConfigurableHTTPProxy.pid_file = '/app/.volumes/fs/north/jupyterhub-proxy.pid'
 
 
 # The public facing URL of the whole JupyterHub application. This is the address on which
