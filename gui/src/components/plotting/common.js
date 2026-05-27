@@ -40,7 +40,7 @@ import {
   isWithinInterval,
   eachQuarterOfInterval
 } from 'date-fns'
-import { scale as chromaScale } from 'chroma-js'
+import chroma from 'chroma-js'
 import { scale as scaleUtils, add, DType, formatNumber, getDisplayLabel, parseQuantityName, parseJMESPath, getLabel } from '../../utils.js'
 import { Unit } from '../units/Unit'
 import { postFixMap } from '../search/FilterRegistry.js'
@@ -394,7 +394,7 @@ export function getLineStyles(nLines, theme, nKinds) {
   const styles = []
   const lineStyles = ['solid', 'dot', 'dashdot']
   const [startColor, endColor] = theme ? [theme.palette.primary.dark, theme.palette.secondary.light] : ['#005271', '#f57c00']
-  const colors = chromaScale([startColor, endColor])
+  const colors = chroma.scale([startColor, endColor])
     .mode('lch').colors(nLines === 1 ? 2 : nLines)
   for (let i = 0; i < nLines; ++i) {
     const line = {
