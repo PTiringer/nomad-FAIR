@@ -153,7 +153,7 @@ const uploadRoutes = [
     routes: [
       {
         path: 'id/:uploadId',
-        breadcrumb: 'Upload',
+        breadcrumb: 'Project',
         component: UploadPage,
         routes: [
           {
@@ -219,12 +219,12 @@ export const routes = [
         path: 'uploads',
         exact: true,
         component: UploadsPage,
-        menu: 'Uploads',
-        tooltip: 'Upload and publish new data',
-        breadcrumb: 'Your uploads',
+        menu: 'Projects',
+        tooltip: 'Create and publish new projects',
+        breadcrumb: 'Your projects',
         routes: uploadRoutes,
         help: {
-          title: 'How to upload data to NOMAD',
+          title: 'How to create projects in NOMAD',
           content: uploadsHelp
         }
       },
@@ -247,7 +247,7 @@ export const routes = [
         cache: 'always',
         menu: 'Search your data',
         breadcrumb: 'Search your data',
-        tooltip: 'Search the data you have uploaded',
+        tooltip: 'Search the data in your projects',
         help: {
           title: 'How to manage your data',
           content: userdataHelp

@@ -69,7 +69,7 @@ export const UploadName = React.memo(({upload_name, onChange}) => {
       </div>
     : <WithButton size="small" icon={<EditIcon/>} onClick={handleEdit}>
         <Typography variant="h6">
-          {value || <i>unnamed upload</i>}
+          {value || <i>unnamed project</i>}
         </Typography>
       </WithButton>
 })

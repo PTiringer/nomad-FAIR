@@ -23,7 +23,7 @@ import Quantity from '../Quantity'
 
 const columns = [
   {key: 'mainfile', align: 'left', label: 'Mainfile'},
-  {key: 'upload_id', align: 'left', label: 'Upload Id', render: data => <Quantity quantity={'upload_id'} noLabel noWrap withClipboard data={data}/>}
+  {key: 'upload_id', align: 'left', label: 'Project Id', render: data => <Quantity quantity={'upload_id'} noLabel noWrap withClipboard data={data}/>}
 ]
 
 export const DeletingReferencesTable = React.memo(({entryReferences, brokenEntries, message}) => {

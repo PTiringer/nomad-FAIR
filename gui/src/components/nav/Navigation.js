@@ -107,7 +107,7 @@ function BetaSnack() {
       className={classes.snack}
       message={<span style={{color: 'white'}}>
        You are using a {version.isBeta ? 'beta' : 'test'} version of NOMAD ({version.label}). {
-          version.usesBetaData ? 'This version is not using the official data. Everything you upload here, might get lost.' : ''
+          version.usesBetaData ? 'This version is not using the official data. Everything you add here, might get lost.' : ''
         } Click <MuiLink style={{color: 'white'}} href={version.officialUrl}>here for the official NOMAD version</MuiLink>.
       </span>}
       action={[

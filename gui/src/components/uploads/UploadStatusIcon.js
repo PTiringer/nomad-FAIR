@@ -41,7 +41,7 @@ const UploadStatusIcon = React.memo(({data, user, ...props}) => {
 
   let tooltip, color, role
   if (!data) {
-    tooltip = 'Upload status not available'
+    tooltip = 'Project status not available'
     color = 'action'
   } else if (data.published) {
     if (data.with_embargo) {

@@ -244,7 +244,7 @@ function SectionSelectAutocomplete(props) {
         return <ListItemText
           key={option.entry_id}
           primary={option?.entry_name || option.mainfile}
-          secondary={option?.upload_name ? `upload name: ${option.upload_name}` : `upload id: ${option.upload_id}`}
+          secondary={option?.upload_name ? `project name: ${option.upload_name}` : `project id: ${option.upload_id}`}
           onClick={(event) => handleEntryClicked(event, option)}
           data-testid={'section-select-entry-activated'}/>
       } else {

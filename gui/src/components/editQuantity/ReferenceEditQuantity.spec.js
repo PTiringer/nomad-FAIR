@@ -70,13 +70,13 @@ const testSectionSelectAutocomplete = async () => {
   expect(sectionSelectEntries.length).toBe(4)
 
   await waitFor(() => expect(within(sectionSelectEntries[0]).queryByText('ref2.archive.yaml')).toBeInTheDocument())
-  await waitFor(() => expect(within(sectionSelectEntries[0]).queryByText('upload id: references_upload_id1')).toBeInTheDocument())
+  await waitFor(() => expect(within(sectionSelectEntries[0]).queryByText('project id: references_upload_id1')).toBeInTheDocument())
   await waitFor(() => expect(within(sectionSelectEntries[1]).queryByText('ref3.archive.yaml')).toBeInTheDocument())
-  await waitFor(() => expect(within(sectionSelectEntries[1]).queryByText('upload id: references_upload_id1')).toBeInTheDocument())
+  await waitFor(() => expect(within(sectionSelectEntries[1]).queryByText('project id: references_upload_id1')).toBeInTheDocument())
   await waitFor(() => expect(within(sectionSelectEntries[2]).queryByText('ref4.archive.yaml')).toBeInTheDocument())
-  await waitFor(() => expect(within(sectionSelectEntries[2]).queryByText('upload id: references_upload_id1')).toBeInTheDocument())
+  await waitFor(() => expect(within(sectionSelectEntries[2]).queryByText('project id: references_upload_id1')).toBeInTheDocument())
   await waitFor(() => expect(within(sectionSelectEntries[3]).queryByText('ref5.archive.yaml')).toBeInTheDocument())
-  await waitFor(() => expect(within(sectionSelectEntries[3]).queryByText('upload id: references_upload_id1')).toBeInTheDocument())
+  await waitFor(() => expect(within(sectionSelectEntries[3]).queryByText('project id: references_upload_id1')).toBeInTheDocument())
 
   const sectionSelectDeactivateEntries = screen.getAllByTestId('section-select-entry-deactivate')
 

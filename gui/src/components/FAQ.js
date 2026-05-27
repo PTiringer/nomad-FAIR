@@ -74,16 +74,16 @@ class FAQ extends React.Component {
           installations and potential (partial) mirrors of NOMAD data under the name
           *NOMAD Oasis* in the future.
 
-          ## Upload data, datasets, embargo, and DOIs
+          ## Project data, datasets, embargo, and DOIs
 
           ### What steps are necessary to publish data and reference it in a paper or share it otherwise?
 
-          1. *upload* your data
+          1. *add* your data
           2. *publish* your data
           3. create a *dataset* and assign a *DOI*
           4. cite your data using a DOI or share URLs for datasets or individual entries
 
-          ### Do I need to prepare my data before I upload?
+          ### Do I need to prepare my data before I add it?
 
           You need to create a file archive that contains all the input and
           output files you want to provide. You can either create a .zip (recommended)
@@ -94,7 +94,7 @@ class FAQ extends React.Component {
 
           ### Only some of my files are shown by NOMAD, where is the rest?
 
-          NOMAD scans the whole upload for files that it recognizes as main code output
+          NOMAD scans the whole project for files that it recognizes as main code output
           files (*mainfile*) of the supported codes. For each recognized *mainfile* NOMAD will
           create and show exactly one entry. NOMAD considers all files in the same directory
           of the *mainfile* to be *auxiliary* files of this entry. These files can include
@@ -123,12 +123,12 @@ class FAQ extends React.Component {
           share all data right away. There are two mechanisms to hide data for two
           different underlying motivations.
 
-          First, not yet *published* data has restricted visibility. Once uploaded, data
-          is only shown to you. Only after you publish your upload, it is visible to others.
-          This allows you to delete wronly uploaded or processed data privately before
+          First, not yet *published* data has restricted visibility. Once added, data
+          is only shown to you. Only after you publish your project, it is visible to others.
+          This allows you to delete wrongly added or processed data privately before
           publishing anything.
 
-          Second, you can publish your uploads with an *embargo* period. This can last up to
+          Second, you can publish your projects with an *embargo* period. This can last up to
           3 years. You can lift the embargo at anytime. Embargoed data is
           visible to and findable by others. This makes only some few metadata (e.g.
           chemical formula, system type, spacegroup, etc.) public, but the raw-file
@@ -139,14 +139,14 @@ class FAQ extends React.Component {
           The embargo will last up to 36 month. Afterwards, your data will be made publicly
           available. You can also lift the embargo on entries at any time.
 
-          ### How do I cite uploaded data in a paper?
+          ### How do I cite project data in a paper?
 
           NOMAD allows to create *datasets* to curate data. A *dataset* is just a named
-          collection of entries. A *dataset* does not have to correspond to an *upload*;
+          collection of entries. A *dataset* does not have to correspond to a *project*;
           you can freely create datasets. Each entry can belong to multiple datasets
           and datasets can overlap and form hierarchies.
           Datasets are created by editing entries and assigning a new dataset name to
-          them. Entries can be edited from the [Upload](./uploads) and [Your data](./userdata)
+          them. Entries can be edited from the [Project](./uploads) and [Your data](./userdata)
           pages.
 
           NOMAD allows you to assign a DOI (Digital Object Identifier) to datasets. A DOI
@@ -173,10 +173,10 @@ class FAQ extends React.Component {
           ### How can I share credit with my co authors?
 
           When you edit the metadata, you can mark other NOMAD users as *co-authors* of
-          an upload or an entry. The main author and the co-authors will comprise the
+          a project or an entry. The main author and the co-authors will comprise the
           respective authors list displayed for each entry.
 
-          ### I want to upload data from a code that is not yet supported?
+          ### I want to add data from a code that is not yet supported?
 
           If you are familiar with the input and output format of other relevant codes,
           write us an Email ([${email}](mailto:${email})) and we will figure out if and how

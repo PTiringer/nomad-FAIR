@@ -38,7 +38,7 @@ describe('test different states', function() {
     ['unpublished, external', 'Unpublished', {published: false, main_author: 'a', viewers: [{user_id: 'b'}]}, {sub: 'c'}],
     ['unpublished, no user data', 'Unpublished', {published: false, main_author: 'a', viewers: [{user_id: 'b'}]}, undefined],
     ['unpublished, visible, no user data', 'Unpublished but accessible by everyone', {published: false, main_author: 'a', viewer_groups: ['all']}, undefined],
-    ['no data', 'Upload status not available', undefined, undefined]
+    ['no data', 'Project status not available', undefined, undefined]
   ])('%s', async (name, tooltip, data, user) => {
       renderNoAPI(<UploadStatusIcon data={data} user={user}/>)
       expectUploadStatusIcon(tooltip)

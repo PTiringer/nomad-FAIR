@@ -152,7 +152,7 @@ const FileEditQuantity = React.memo(props => {
         actions={[
           <React.Fragment key={'upload-file'}>
             <IconButton size="small" onClick={open} >
-              <Tooltip title="upload file (click or drop file)">
+              <Tooltip title="add file (click or drop file)">
                 <UploadIcon/>
               </Tooltip>
             </IconButton>

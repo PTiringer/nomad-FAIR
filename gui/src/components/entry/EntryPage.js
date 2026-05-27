@@ -46,7 +46,7 @@ function EntryTabs({tab, onChange}) {
   const entryHasProcessingError = metadata?.processing_errors?.length > 0
 
   useEffect(() => {
-    dataStore.breadcrumb.setUpload(metadata?.upload_name || 'Upload')
+    dataStore.breadcrumb.setUpload(metadata?.upload_name || 'Project')
     dataStore.breadcrumb.setEntry(metadata?.entry_name || metadata?.mainfile || 'Entry')
   }, [dataStore.breadcrumb, metadata?.entry_name, metadata?.mainfile, metadata?.upload_name])
 

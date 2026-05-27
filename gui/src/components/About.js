@@ -205,7 +205,7 @@ function CodeInfo({code, ...props}) {
   if (metadata.tableOfFiles && metadata.tableOfFiles !== '') {
     introduction = `
       For [${metadata.codeLabel || code}](${metadata.codeUrl}) please provide at least
-      the files from the following table (if applicable). We recommend to upload
+      the files from the following table (if applicable). We recommend to add
       all input and output files and any other relevant files you may have produced.
       `
   }
@@ -460,7 +460,7 @@ export default function About() {
       <InfoCard xs={6} title="Interactive Search" top>
         NOMAD extracts <b>rich metadata</b> from uploaded raw-data. <Link component={RouterLink} to={'/search'}>
         Explore NOMAD&apos;s data</Link> by creating complex queries from interactive data visualizations of key
-        properties, including the simulated composition/system, used method, upload metadata,
+        properties, including the simulated composition/system, used method, project metadata,
         as well as material classifications and available quantities. Or use
         the <b>Optimade</b> filter language to add arbitrarily nested queries.
       </InfoCard>
@@ -476,7 +476,7 @@ export default function About() {
       <InfoCard xs={4} title="Uploading is simple" bottom>
         <p>
         You provide your own data <i>as is</i>. Just zip your files as they are,
-        including nested directory structures and potential auxiliary files, and upload
+        including nested directory structures and potential auxiliary files, and add
         up to 32GB in a single .zip or .tar(.gz) file. NOMAD will automatically discover
         and process the relevant files.
         </p>
@@ -497,7 +497,7 @@ export default function About() {
       </InfoCard>
       <InfoCard xs={4} title="Processing" bottom>
         <p>
-        Uploaded data is automatically processed and made available
+        Project data is automatically processed and made available
         in the uploaded <b>raw files</b> or in its unified <b>processed data</b> form.
         NOMAD parsers convert raw files into NOMAD&apos;s common data format.
         You can inspect the processed data and extracted metadata before
@@ -535,7 +535,7 @@ export default function About() {
         ### Developer Documentation
         The [in-depth documentation](${appBase}/docs/index.html)
         contains a general introduction to NOMAD and its underlying architecture,
-        more information and tutorials, how to prepare uploads, how
+        more information and tutorials, how to prepare projects, how
         to use the API, developer information, how to operate your own NOMAD (a so called
         Oasis), how to contribute parsers, and much more.
 

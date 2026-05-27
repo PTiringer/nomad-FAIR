@@ -50,7 +50,7 @@ const Breadcrumbs = React.memo(function Breadcrumbs() {
   const getRef = useCallback((breadcrumb) => {
     if (breadcrumb === 'Entry') {
       return dataStore.breadcrumb.entryRef
-    } else if (breadcrumb === 'Upload') {
+    } else if (breadcrumb === 'Project') {
       return dataStore.breadcrumb.uploadRef
     } else {
       return undefined
@@ -60,7 +60,7 @@ const Breadcrumbs = React.memo(function Breadcrumbs() {
   const getFinalBreadcrumb = useCallback((breadcrumb) => {
     if (breadcrumb === 'Entry') {
       return dataStore.breadcrumb.getEntry()
-    } else if (breadcrumb === 'Upload') {
+    } else if (breadcrumb === 'Project') {
       return dataStore.breadcrumb.getUpload()
     } else {
       return breadcrumb

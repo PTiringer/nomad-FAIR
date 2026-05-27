@@ -162,7 +162,7 @@ function PublishUpload({ upload, onPublish, isVisibleForAll }) {
 
   if (upload.published) {
     return <Markdown>{`
-      This upload has already been published.
+      This project has already been published.
     `}</Markdown>
   }
 
@@ -173,11 +173,11 @@ function PublishUpload({ upload, onPublish, isVisibleForAll }) {
       open={openConfirmDialog}
       onClose={() => setOpenConfirmDialog(false)}
     >
-      <DialogTitle>Confirm that you want to publish the upload</DialogTitle>
+      <DialogTitle>Confirm that you want to publish the project</DialogTitle>
       <DialogContent>
         <DialogContentText>
-          You are about the publish this upload. The upload cannot be removed and
-          the files and entries in this upload cannot be changed after publication.
+          You are about to publish this project. The project cannot be removed and
+          the files and entries in this project cannot be changed after publication.
         </DialogContentText>
       </DialogContent>
       <DialogActions>
@@ -186,7 +186,7 @@ function PublishUpload({ upload, onPublish, isVisibleForAll }) {
       </DialogActions>
     </Dialog>
     <Markdown>{`
-      If you agree this upload will be published and move out of your private staging
+      If you agree this project will be published and move out of your private staging
       area into the public NOMAD. This step is final. All public data will be made available under the Creative
       Commons Attribution license ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)).
 
@@ -205,7 +205,7 @@ function PublishUpload({ upload, onPublish, isVisibleForAll }) {
           <EmbargoSelect
             embargo={embargo}
             onChange={setEmbargo}
-            disabledReason={isVisibleForAll ? 'Upload is publicly visible, embargo disabled' : null}
+            disabledReason={isVisibleForAll ? 'Project is publicly visible, embargo disabled' : null}
           />
         </Grid>
         <Grid item>
@@ -347,7 +347,7 @@ function UploadOverview(props) {
 
   useEffect(() => {
     if (uploading) return
-    dataStore.breadcrumb.setUpload(upload?.upload_name || 'Upload')
+    dataStore.breadcrumb.setUpload(upload?.upload_name || 'Project')
     api.get(`/uploads/${uploadId}/raw/README.md`)
       .then(setReadme)
       .catch(error => {
@@ -441,13 +441,13 @@ function UploadOverview(props) {
         <Grid item style={{ flexGrow: 1 }}>
           <UploadName upload_name={upload?.upload_name} onChange={handleNameChange} />
           <WithButton clipboard={uploadId}>
-            <Typography>upload id: {uploadId}</Typography>
+            <Typography>project id: {uploadId}</Typography>
           </WithButton>
         </Grid>
         <Grid item>
           <Box display={'flex'}>
             <UploadSearchMenu uploadId={uploadId}/>
-            <Tooltip title="Edit upload members">
+            <Tooltip title="Edit project members">
               <span>
                 <IconButton
                   onClick={() => setOpenEditMembersDialog(true)}
@@ -488,7 +488,7 @@ function UploadOverview(props) {
                 </IconButton>
               </span>
             </Tooltip>
-            <Tooltip title={isPublished ? "Transfer upload" : "The upload must be published before it can be transferred"}>
+            <Tooltip title={isPublished ? "Transfer project" : "The project must be published before it can be transferred"}>
               <span>
                 <IconButton disabled={!isPublished} onClick={() => setOpenTransferDialog(true)}>
                   <SendIcon/>
@@ -500,7 +500,7 @@ function UploadOverview(props) {
               <SourceApiCall {...apiData} />
             </SourceApiDialogButton>
             <DeleteUploadsButton
-              tooltip="Delete upload"
+              tooltip="Delete project"
               disabled={isPublished || !isMainAuthor}
               data-testid='upload-delete-action'
               uploads={[upload]}
@@ -523,19 +523,19 @@ function UploadOverview(props) {
       )}
       <Stepper classes={{ root: classes.stepper }} orientation="vertical" >
         <Step expanded active={false}>
-          <StepLabel>Prepare and upload your files</StepLabel>
+          <StepLabel>Prepare and add your files</StepLabel>
           <StepContent>
             {isPublished && <Typography className={classes.stepContent}>
-              This upload is published and it&apos;s files can&apos;t be modified anymore.
+              This project is published and it&apos;s files can&apos;t be modified anymore.
             </Typography>}
             {!isPublished && isAuthenticated && isWriter && (
               <React.Fragment>
                 <Typography className={classes.stepContent}>
-                  Here you can upload files. Top-level .zip/.tar files will be uncompressed automatically. For more information,
-                  see our documentation on <UploadDocumentation>uploading
+                  Here you can add files. Top-level .zip/.tar files will be uncompressed automatically. For more information,
+                  see our documentation on <UploadDocumentation>adding
                     files</UploadDocumentation> or view the <SupportedCodes>supported codes</SupportedCodes>.
                   Optionally, you can also create an entry from built-in or
-                  uploaded schemas. Please take a look at our documentation on <SchemaDocumentation>schemas</SchemaDocumentation>.
+                  added schemas. Please take a look at our documentation on <SchemaDocumentation>schemas</SchemaDocumentation>.
                 </Typography>
                 <Box display="flex" flexDirection="row">
                   <Box flexGrow={1}>
@@ -580,7 +580,7 @@ function UploadOverview(props) {
           <StepContent>
             <FormControlLabel
               data-testid='upload-visible-for-all-label'
-              label="Enabling this will allow all users, including guests without an account, to view the upload even before it is published."
+              label="Enabling this will allow all users, including guests without an account, to view the project even before it is published."
               control={
                 <Checkbox
                   checked={isVisibleForAll}
@@ -590,7 +590,7 @@ function UploadOverview(props) {
               }
             />
             <Typography className={classes.stepContent}>
-              You can edit the access to the upload by adding or removing users as upload members.
+              You can edit the access to the project by adding or removing users as project members.
             </Typography>
             <Button
               onClick={() => setOpenEditMembersDialog(true)}
@@ -598,7 +598,7 @@ function UploadOverview(props) {
               color='primary'
               disabled={isProcessing}
             >
-              <MembersIcon className={classes.mixedButtonIcon} /> Edit upload members
+              <MembersIcon className={classes.mixedButtonIcon} /> Edit project members
             </Button>
           </StepContent>
         </Step>}
@@ -621,8 +621,8 @@ function UploadOverview(props) {
           <StepLabel>Publish</StepLabel>
           <StepContent>
             {isPublished && <Typography className={classes.stepContent}>
-              {upload?.with_embargo ? `This upload has been published under embargo with a period of ${upload?.embargo_length} months from ${formatTimestamp(upload?.publish_time)}.`
-                : `This upload has already been published.`}
+              {upload?.with_embargo ? `This project has been published under embargo with a period of ${upload?.embargo_length} months from ${formatTimestamp(upload?.publish_time)}.`
+                : `This project has already been published.`}
             </Typography>}
             {!isPublished && <PublishUpload
               upload={upload} onPublish={handlePublish} isVisibleForAll={isVisibleForAll}

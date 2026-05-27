@@ -38,7 +38,7 @@ LinearProgressWithLabel.propTypes = {
 export default function UploadProgressDialog({uploading}) {
     if (uploading || uploading === 0) {
       return (<Dialog open>
-        <DialogTitle>Uploading file ...</DialogTitle>
+        <DialogTitle>Adding file ...</DialogTitle>
         <DialogContent>
           <Box width={300}>
             <LinearProgressWithLabel value={uploading} />

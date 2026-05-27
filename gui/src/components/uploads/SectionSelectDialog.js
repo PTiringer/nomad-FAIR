@@ -349,7 +349,7 @@ function SearchBox({open, onCancel, onSelectedChanged, selected}) {
                     onClick={() => setFilter('upload')}
                   />
                 )}
-                label='Only this upload'
+                label='Only this project'
               />
             </RadioGroup>
           </FormControl>

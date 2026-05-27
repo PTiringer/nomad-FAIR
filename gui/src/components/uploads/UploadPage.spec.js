@@ -64,11 +64,11 @@ const testPublishedWritePermissions = async () => {
   await screen.findByText('unnamed upload')
 
   // Test if only the first two steps are shown
-  expect(screen.queryByText('Prepare and upload your files')).toBeInTheDocument()
+  expect(screen.queryByText('Prepare and add your files')).toBeInTheDocument()
   expect(screen.getByText("Processing completed")).toBeInTheDocument()
   expect(screen.getByText("1/1 entries processed")).toBeInTheDocument()
   expect(screen.queryByText('You can either select and edit individual entries from the list above, or edit all entries at once.')).toBeInTheDocument()
-  expect(screen.queryByText('This upload has already been published.')).toBeInTheDocument()
+  expect(screen.queryByText('This project has already been published.')).toBeInTheDocument()
 
   expect(screen.getByTestId('edit-members-action')).toBeEnabled()
   expect(screen.getByTestId('upload-download-action')).toBeEnabled()
@@ -88,7 +88,7 @@ const testUnpublishedWritePermissions = async () => {
   expect(screen.queryByText('1 entry')).toBeInTheDocument()
 
   // Test if only the first two steps are shown
-  expect(screen.queryByText('Prepare and upload your files')).toBeInTheDocument()
+  expect(screen.queryByText('Prepare and add your files')).toBeInTheDocument()
   expect(screen.getByText("Processing completed")).toBeInTheDocument()
   expect(screen.getByText("1/1 entries processed")).toBeInTheDocument()
   expect(screen.queryByText('You can either select and edit individual entries from the list above, or edit all entries at once.')).toBeInTheDocument()
@@ -108,7 +108,7 @@ const testEmbargoedPublishesWritePermissions = async () => {
   await screen.findByText('unnamed upload')
 
   // Test if only the first two steps are shown
-  expect(screen.queryByText('Prepare and upload your files')).toBeInTheDocument()
+  expect(screen.queryByText('Prepare and add your files')).toBeInTheDocument()
   expect(screen.getByText("Processing completed")).toBeInTheDocument()
   expect(screen.getByText("1/1 entries processed")).toBeInTheDocument()
   expect(screen.queryByText('You can either select and edit individual entries from the list above, or edit all entries at once.')).toBeInTheDocument()
@@ -132,7 +132,7 @@ const testReadOnlyPermissions = async (isLoggedIn) => {
   expect(screen.queryByText('1 entry')).toBeInTheDocument()
 
   // Test if only the first two steps are shown
-  expect(screen.queryByText('Prepare and upload your files')).toBeInTheDocument()
+  expect(screen.queryByText('Prepare and add your files')).toBeInTheDocument()
   expect(screen.getByText("Processing completed")).toBeInTheDocument()
   expect(screen.getByText("1/1 entries processed")).toBeInTheDocument()
   expect(screen.queryByText('You can either select and edit individual entries from the list above, or edit all entries at once.')).not.toBeInTheDocument()
@@ -510,7 +510,7 @@ test('Toggle visible for all checkbox; check embargo, icon', async () => {
   await testAndToggleCheckbox(false)
   expect(embargoButton).toHaveAttribute('aria-disabled', 'true')
   expect(embargoButton).toHaveTextContent('No embargo')
-  expect(embargoHelper).toHaveTextContent('Upload is publicly visible, embargo disabled')
+  expect(embargoHelper).toHaveTextContent('Project is publicly visible, embargo disabled')
   expect(screen.getByTooltip('Unpublished but accessible by everyone')).toBeInTheDocument()
 
   await testAndToggleCheckbox(true)

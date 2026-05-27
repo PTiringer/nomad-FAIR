@@ -57,7 +57,7 @@ const ExampleUploadDialog = React.memo(function ExampleUploadDialog(props) {
 
   return (
     <Dialog {...dialogProps} onClose={dialogProps.onClose}>
-      <DialogTitle id="Uploads-dialogBox">Select a sample Upload</DialogTitle>
+      <DialogTitle id="Uploads-dialogBox">Select a sample Project</DialogTitle>
       <DialogContent>
         <Box maxHeight={800}>
           {Object.keys(exampleUploads).map(categoryKey => (
@@ -107,7 +107,7 @@ export default function ExampleUploadButton(props) {
   return (
     <div>
       <Button variant="contained" onClick={handleClickOpen}>
-        Add Example Uploads
+        Add Example Projects
       </Button>
       <ExampleUploadDialog
         open={isOpen}

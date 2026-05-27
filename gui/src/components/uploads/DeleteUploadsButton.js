@@ -52,7 +52,7 @@ const DeleteUploadsButton = React.memo(({
   const [brokenEntries, setBrokenEntries] = useState([])
   const {uploadIDs, nUploads, shared, uploadText, haveText} = useMemo(() => {
     const nUploads = uploads?.length || 0
-    const uploadText = pluralize('upload', nUploads, false)
+    const uploadText = pluralize('project', nUploads, false)
     const haveText = pluralize('has', nUploads, false)
     return {
       uploadIDs: uploads?.map(upload => upload.upload_id) || [],

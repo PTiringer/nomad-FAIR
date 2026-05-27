@@ -156,7 +156,7 @@ const submitChanges = async (dialog, user) => {
   expect(submitButton).toBeEnabled()
   await user.click(submitButton)
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
-  const processing = await screen.findByText('Upload is processing ...')
+  const processing = await screen.findByText('Project is processing ...')
   await waitFor(() => expect(processing).not.toBeInTheDocument())
 }
 

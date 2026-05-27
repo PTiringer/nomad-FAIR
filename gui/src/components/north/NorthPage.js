@@ -168,7 +168,7 @@ const NorthPage = React.memo(() => {
       <Box marginY={1}>
         <Typography>
           NORTH allows you to run pre-configured applications directly on the server. With
-          NORTH you can access, analyze, and create data directly in your uploads, using
+          NORTH you can access, analyze, and create data directly in your projects, using
           your favorite tools, no setup required.
         </Typography>
       </Box>
@@ -176,7 +176,7 @@ const NorthPage = React.memo(() => {
         <Typography>
           This page shows all available tools. It also show which tools are already running
           for you. For each tool each user can only run one instance at a time. Some
-          tools can also be launched from the file browser in your uploads, depending on
+          tools can also be launched from the file browser in your projects, depending on
           file types.
         </Typography>
       </Box>

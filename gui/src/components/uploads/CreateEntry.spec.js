@@ -34,15 +34,15 @@ const testSectionSelectAutocomplete = async () => {
   const sectionSelectEntries = screen.getAllByTestId('section-select-entry-activated')
 
   await waitFor(() => expect(within(sectionSelectEntries[0]).queryByText('Set your name here')).toBeInTheDocument())
-  await waitFor(() => expect(within(sectionSelectEntries[0]).queryByText('upload id: references_upload_id1')).toBeInTheDocument())
+  await waitFor(() => expect(within(sectionSelectEntries[0]).queryByText('project id: references_upload_id1')).toBeInTheDocument())
   await waitFor(() => expect(within(sectionSelectEntries[1]).queryByText('Set your name here')).toBeInTheDocument())
-  await waitFor(() => expect(within(sectionSelectEntries[1]).queryByText('upload id: references_upload_id1')).toBeInTheDocument())
+  await waitFor(() => expect(within(sectionSelectEntries[1]).queryByText('project id: references_upload_id1')).toBeInTheDocument())
   await waitFor(() => expect(within(sectionSelectEntries[2]).queryByText('Set your name here')).toBeInTheDocument())
-  await waitFor(() => expect(within(sectionSelectEntries[2]).queryByText('upload id: references_upload_id2')).toBeInTheDocument())
+  await waitFor(() => expect(within(sectionSelectEntries[2]).queryByText('project id: references_upload_id2')).toBeInTheDocument())
   await waitFor(() => expect(within(sectionSelectEntries[3]).queryByText('Set your name here')).toBeInTheDocument())
-  await waitFor(() => expect(within(sectionSelectEntries[3]).queryByText('upload id: references_upload_id2')).toBeInTheDocument())
+  await waitFor(() => expect(within(sectionSelectEntries[3]).queryByText('project id: references_upload_id2')).toBeInTheDocument())
   await waitFor(() => expect(within(sectionSelectEntries[4]).queryByText('Set your name here')).toBeInTheDocument())
-  await waitFor(() => expect(within(sectionSelectEntries[4]).queryByText('upload id: references_upload_id2')).toBeInTheDocument())
+  await waitFor(() => expect(within(sectionSelectEntries[4]).queryByText('project id: references_upload_id2')).toBeInTheDocument())
 }
 
 test.each([

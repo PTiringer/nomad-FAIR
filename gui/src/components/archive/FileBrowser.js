@@ -399,7 +399,7 @@ function RawDirectoryContent({deploymentUrl, uploadId, path, title, highlightedI
                       <div {...getRootProps()}>
                         <input {...getInputProps()} />
                         <IconButton size="small">
-                          <Tooltip title="upload to this folder (click or drop files)">
+                          <Tooltip title="add files to this folder (click or drop files)">
                             <UploadIcon/>
                           </Tooltip>
                         </IconButton>

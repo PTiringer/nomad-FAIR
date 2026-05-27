@@ -34,15 +34,15 @@ const template = `widgets:
     title: Welcome back, {{displayName}}
     text: Customize this page by editing your personal YAML configuration.
     actions:
-      - label: Open all uploads
+      - label: Open all projects
         to: /user/uploads
         variant: contained
   - type: recent_uploads
-    title: Recent uploads
+    title: Recent projects
     limit: 10
-    empty_text: You do not have any uploads yet.
+    empty_text: You do not have any projects yet.
     empty_action:
-      label: Go to uploads
+      label: Go to projects
       to: /user/uploads
 `
 

@@ -55,7 +55,7 @@ test('Render uploads page: sort by upload create time', async () => {
     ))).toBeInTheDocument()
   }
 
-  // Test the order of uploads: sort by Upload name
+  // Test the order of uploads: sort by Project name
   fireEvent.click(screen.queryByTestId('sortable_upload_name'))
   rows = screen.queryAllByTestId('datatable-row')
   expect(rows.length).toBe(10)
