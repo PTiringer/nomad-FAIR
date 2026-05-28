@@ -117,6 +117,15 @@ if (entriesAppIndex === -1) {
   }
 }
 
+for (let i = apps.length - 1; i >= 0; i--) {
+  const app = apps[i] || {}
+  const label = (app.label || '').toLowerCase()
+  const path = (app.path || '').toLowerCase()
+  if (app.category === 'Theory' || label === 'calculations' || path === 'calculations') {
+    apps.splice(i, 1)
+  }
+}
+
 const preferredAppCategoryOrder = ['All', 'CBS', 'Experiment']
 apps.sort((a, b) => {
   const aIndex = preferredAppCategoryOrder.indexOf(a.category)
