@@ -813,6 +813,7 @@ export function pluralize(word, count, inclusive, format = true, prefix) {
     'dataset': 'datasets',
     'item': 'items',
     'upload': 'uploads',
+    'project': 'projects',
     'code': 'codes',
     'manager': 'managers',
     'filter': 'filters',
