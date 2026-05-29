@@ -1069,7 +1069,18 @@ class Elasticsearch(DefinitionAnnotation):
         field_type = self.mapping['type']
         if self.dynamic and field_type == 'text':
             return True
-        return field_type == 'keyword' or field_type == 'boolean'
+        return field_type in {
+            'keyword',
+            'boolean',
+            'date',
+            'long',
+            'integer',
+            'short',
+            'byte',
+            'double',
+            'float',
+            'half_float',
+        }
 
     def m_to_dict(self):
         if self.search_quantity:
