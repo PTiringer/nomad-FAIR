@@ -24,7 +24,7 @@ import CssBaseline from '@material-ui/core/CssBaseline'
 import history from '../history'
 import DateFnsUtils from '@date-io/date-fns'
 import { MuiPickersUtilsProvider } from '@material-ui/pickers'
-import { ui, nomadTheme, keycloakBase, keycloakRealm, keycloakClientId } from '../config'
+import { ui, nomadTheme, keycloakBase, keycloakRealm, keycloakClientId, guiBase } from '../config'
 import Keycloak from 'keycloak-js'
 import { ReactKeycloakProvider } from '@react-keycloak/web'
 import { MuiThemeProvider } from '@material-ui/core/styles'
@@ -42,6 +42,8 @@ const keycloak = new Keycloak({
   clientId: keycloakClientId
 })
 
+const keycloakRedirectUri = `${window.location.origin}${guiBase}/`
+
 export default function App() {
   return <React.Fragment>
     <Helmet>
@@ -50,7 +52,7 @@ export default function App() {
     <ReactKeycloakProvider
       authClient={keycloak}
       onEvent={onKeycloakEvent(keycloak)}
-      initOptions={{ onLoad: 'check-sso', 'checkLoginIframe': false, promiseType: 'native' }}
+      initOptions={{ onLoad: 'check-sso', redirectUri: keycloakRedirectUri, 'checkLoginIframe': false, promiseType: 'native' }}
       LoadingComponent={<div />}
     >
       <RecoilRoot>

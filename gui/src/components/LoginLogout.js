@@ -19,7 +19,7 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import Typography from '@material-ui/core/Typography'
 import { Button, Link, makeStyles } from '@material-ui/core'
-import { keycloakBase, keycloakRealm } from '../config'
+import { keycloakBase, keycloakRealm, guiBase } from '../config'
 import LoginIcon from '@material-ui/icons/AccountCircle'
 import { useApi } from './api'
 import { useKeycloak } from '@react-keycloak/web'
@@ -43,6 +43,7 @@ const LoginLogout = React.memo(function LoginLogout(props) {
   const {user} = useApi()
   const {keycloak} = useKeycloak()
   const {variant, color} = props
+  const redirectUri = `${window.location.origin}${guiBase}/`
 
   if (keycloak?.authenticated) {
     return (
@@ -57,7 +58,7 @@ const LoginLogout = React.memo(function LoginLogout(props) {
         <Button
           className={classes.button} style={{marginLeft: 8}}
           variant={variant} color={color}
-          onClick={() => keycloak.logout()}
+          onClick={() => keycloak.logout({redirectUri})}
           startIcon={<LoginIcon/>}
           data-testid='logout-button'
         >Logout</Button>
@@ -69,7 +70,7 @@ const LoginLogout = React.memo(function LoginLogout(props) {
         <Button
           className={classes.button} variant={variant} color={color}
           startIcon={<LoginIcon/>}
-          onClick={() => keycloak.login()}
+          onClick={() => keycloak.login({redirectUri})}
           data-testid='login-register-button'
         >Login / Register</Button>
       </div>
