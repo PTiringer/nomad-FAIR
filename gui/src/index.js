@@ -36,6 +36,7 @@ const resizeObserverMessages = new Set([
 window.addEventListener('error', event => {
   if (resizeObserverMessages.has(event.message)) {
     event.preventDefault()
+    event.stopImmediatePropagation()
   }
 }, true)
 
