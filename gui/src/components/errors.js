@@ -129,6 +129,15 @@ export function withErrors(Component) {
   return WithErrorComponent
 }
 
+const ignoredErrorMessages = new Set([
+  'ResizeObserver loop completed with undelivered notifications.',
+  'ResizeObserver loop limit exceeded'
+])
+
+function isIgnoredError(error) {
+  return error?.message && ignoredErrorMessages.has(error.message)
+}
+
 export class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
@@ -140,12 +149,18 @@ export class ErrorBoundary extends React.Component {
     onError: PropTypes.func
   }
 
-  static getDerivedStateFromError(_error) {
+  static getDerivedStateFromError(error) {
+    if (isIgnoredError(error)) {
+      return null
+    }
     // Update state so the next render will show the fallback UI.
     return { hasError: true }
   }
 
   componentDidCatch(error, errorInfo) {
+    if (isIgnoredError(error)) {
+      return
+    }
     console.log('caught error in boundary', error, errorInfo)
     if (this.context) {
       this.context.raiseError('There has been a Javascript error.')

@@ -155,16 +155,16 @@ export default function Navigation() {
   return (
     <div className={classes.root}>
       <div className={classes.appFrame}>
-        <ErrorBoundary>
-          <BetaSnack />
-          <TermsSnack />
-          <AppBar />
-          <main className={classes.content} ref={scrollParentRef}>
-            <ScrollContext.Provider value={{scrollParentRef: scrollParentRef}}>
+        <BetaSnack />
+        <TermsSnack />
+        <AppBar />
+        <main className={classes.content} ref={scrollParentRef}>
+          <ScrollContext.Provider value={{scrollParentRef: scrollParentRef}}>
+            <ErrorBoundary>
               <Routes/>
-            </ScrollContext.Provider>
-          </main>
-        </ErrorBoundary>
+            </ErrorBoundary>
+          </ScrollContext.Provider>
+        </main>
       </div>
     </div>
   )
