@@ -28,4 +28,15 @@ import '../node_modules/react-resizable/css/styles.css'
 import App from './components/App'
 import '@fontsource/material-icons'
 
+const resizeObserverMessages = new Set([
+  'ResizeObserver loop completed with undelivered notifications.',
+  'ResizeObserver loop limit exceeded'
+])
+
+window.addEventListener('error', event => {
+  if (resizeObserverMessages.has(event.message)) {
+    event.preventDefault()
+  }
+}, true)
+
 ReactDOM.render(<App />, document.getElementById('root'))
