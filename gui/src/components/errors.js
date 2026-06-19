@@ -161,9 +161,15 @@ export class ErrorBoundary extends React.Component {
     if (isIgnoredError(error)) {
       return
     }
-    console.log('caught error in boundary', error, errorInfo)
+    console.error('NOMAD React render error:', {
+      message: error?.message,
+      stack: error?.stack,
+      componentStack: errorInfo?.componentStack
+    })
     if (this.context) {
-      this.context.raiseError('There has been a Javascript error.')
+      this.context.raiseError(
+        `There has been a Javascript error: ${error?.message || 'unknown error'}`
+      )
     }
   }
 
