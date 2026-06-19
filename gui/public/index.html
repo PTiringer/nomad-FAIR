@@ -60,11 +60,22 @@
 
     <!--Root error-->
     <script>
+      const ignoredErrorMessages = new Set([
+        'ResizeObserver loop completed with undelivered notifications.',
+        'ResizeObserver loop limit exceeded'
+      ])
+
       window.addEventListener("error", async (error) => {
         // In react development builds, errors will always propagate to the top
         // (also through error boundaries) and will be displayed with the error
         // overlay, so we don't handle them here.
         if (typeof process !== 'undefined' && process.env.NODE_ENV === 'development') return
+
+        if (ignoredErrorMessages.has(error.message)) {
+          error.preventDefault()
+          error.stopImmediatePropagation()
+          return
+        }
 
         // Log the error in console to help in debugging
         console.log(error)
