@@ -15,9 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import PropTypes from 'prop-types'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useHistory } from 'react-router-dom'
 import {
   Box,
   Button,
@@ -64,6 +64,11 @@ const defaultLandingPage = {
   ]
 }
 
+const scientificStaffSchema = (
+  'mpi_cbs_scientific_staff_database.schema_packages.schema_package.' +
+  'ScientificStaffProfile'
+)
+
 const useStyles = makeStyles(theme => ({
   hero: {
     padding: theme.spacing(4),
@@ -87,6 +92,9 @@ const useStyles = makeStyles(theme => ({
   action: {
     marginTop: theme.spacing(2),
     marginRight: theme.spacing(1)
+  },
+  toolbarButton: {
+    marginLeft: theme.spacing(1)
   },
   toolbar: {
     display: 'flex',
@@ -123,8 +131,99 @@ function interpolate(value, values) {
   })
 }
 
+function getProfileDisplayName(user, displayName) {
+  return user?.name || user?.preferred_username || user?.email || displayName || 'New profile'
+}
+
+function getEntryPath(uploadId, entryId) {
+  return `/user/uploads/upload/id/${uploadId}/entry/id/${entryId}/data/data`
+}
+
+function ScientificStaffProfileButton({action, values, className}) {
+  const { api, user } = useApi()
+  const { raiseError } = useErrors()
+  const history = useHistory()
+  const [clicked, setClicked] = useState(false)
+
+  const handleClick = useCallback(async () => {
+    if (clicked) return
+
+    if (!user) {
+      history.push('/user/uploads')
+      return
+    }
+
+    setClicked(true)
+
+    try {
+      const existingProfiles = await api.post('entries/query', {
+        owner: 'user',
+        query: {
+          'section_defs.definition_qualified_name': scientificStaffSchema
+        },
+        pagination: {
+          page_size: 1,
+          order_by: 'upload_create_time',
+          order: 'desc'
+        },
+        required: {
+          include: ['upload_id', 'entry_id']
+        }
+      })
+      const existingProfile = existingProfiles?.data?.[0]
+
+      if (existingProfile?.upload_id && existingProfile?.entry_id) {
+        history.push(getEntryPath(existingProfile.upload_id, existingProfile.entry_id))
+        return
+      }
+
+      const archive = {
+        data: {
+          m_def: scientificStaffSchema,
+          display_name: getProfileDisplayName(user, values.displayName),
+          email: user?.email || '',
+          last_updated: new Date().toISOString()
+        }
+      }
+      const upload = await api.post('/uploads')
+      const response = await api.put(
+        `uploads/${upload.upload_id}/raw/?file_name=scientific-staff-profile.archive.json&overwrite_if_exists=false&wait_for_processing=true`,
+        archive
+      )
+
+      const entryId = response?.processing?.entry_id
+      if (!entryId) {
+        throw new Error('Failed to create the scientific staff profile entry.')
+      }
+
+      history.push(getEntryPath(upload.upload_id, entryId))
+    } catch (error) {
+      setClicked(false)
+      raiseError(error)
+    }
+  }, [api, clicked, history, raiseError, user, values.displayName])
+
+  return <Button
+    className={className}
+    color={action.color || 'primary'}
+    disabled={clicked}
+    onClick={handleClick}
+    variant={action.variant || 'outlined'}
+  >
+    {interpolate(action.label || 'Scientific Staff Profile', values)}
+  </Button>
+}
+ScientificStaffProfileButton.propTypes = {
+  action: PropTypes.object,
+  values: PropTypes.object.isRequired,
+  className: PropTypes.string
+}
+
 function ActionButton({action, values, className}) {
   if (!action?.label) return null
+  if (action.type === 'scientific_staff_profile') {
+    return <ScientificStaffProfileButton action={action} values={values} className={className} />
+  }
   const props = {
     className,
     color: action.color || 'primary',
@@ -212,7 +311,13 @@ export default function Home() {
 
   return <Page limitedWidth loading={!configLoaded || Boolean(uploadLimit && !uploads)}>
     <Box className={classes.toolbar}>
+      <ScientificStaffProfileButton
+        action={{label: 'Scientific Staff Profile', variant: 'outlined'}}
+        values={values}
+        className={classes.toolbarButton}
+      />
       <Button
+        className={classes.toolbarButton}
         color="primary"
         variant="outlined"
         component={RouterLink}
