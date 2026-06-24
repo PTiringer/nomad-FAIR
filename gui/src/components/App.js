@@ -24,7 +24,7 @@ import CssBaseline from '@material-ui/core/CssBaseline'
 import history from '../history'
 import DateFnsUtils from '@date-io/date-fns'
 import { MuiPickersUtilsProvider } from '@material-ui/pickers'
-import { ui, nomadTheme, keycloakBase, keycloakRealm, keycloakClientId, guiBase } from '../config'
+import { ui, nomadTheme, keycloakBase, keycloakRealm, keycloakClientId, getCurrentPageUrl } from '../config'
 import Keycloak from 'keycloak-js'
 import { ReactKeycloakProvider } from '@react-keycloak/web'
 import { MuiThemeProvider } from '@material-ui/core/styles'
@@ -42,7 +42,7 @@ const keycloak = new Keycloak({
   clientId: keycloakClientId
 })
 
-const keycloakRedirectUri = `${window.location.origin}${guiBase}/`
+const keycloakRedirectUri = getCurrentPageUrl()
 
 export default function App() {
   return <React.Fragment>

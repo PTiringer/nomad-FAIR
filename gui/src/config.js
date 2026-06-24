@@ -42,6 +42,15 @@ import { defaultApp } from './defaultApp'
   return absUrl
 }
 
+export function getCurrentPageUrl() {
+  const url = new URL(window.location.href)
+  ;['code', 'state', 'session_state', 'iss'].forEach(param => {
+    url.searchParams.delete(param)
+  })
+  url.hash = ''
+  return url.href
+}
+
 /**
  * Returns a normalized version of an UI config model. The following changes are applied
  * in the normalized version:

@@ -19,7 +19,7 @@ import React from 'react'
 import PropTypes from 'prop-types'
 import Typography from '@material-ui/core/Typography'
 import { Button, Link, makeStyles } from '@material-ui/core'
-import { keycloakBase, keycloakRealm, guiBase } from '../config'
+import { keycloakBase, keycloakRealm, getCurrentPageUrl } from '../config'
 import LoginIcon from '@material-ui/icons/AccountCircle'
 import { useApi } from './api'
 import { useKeycloak } from '@react-keycloak/web'
@@ -43,7 +43,7 @@ const LoginLogout = React.memo(function LoginLogout(props) {
   const {user} = useApi()
   const {keycloak} = useKeycloak()
   const {variant, color} = props
-  const redirectUri = `${window.location.origin}${guiBase}/`
+  const redirectUri = getCurrentPageUrl()
 
   if (keycloak?.authenticated) {
     return (
