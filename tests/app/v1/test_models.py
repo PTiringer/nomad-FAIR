@@ -83,6 +83,9 @@ def test_contains_query_qualifier():
 
     assert query == {'entry_name': Contains(contains='Pet')}
 
+    legacy_query = WithQuery(query={'entry_name:contains': ['Pet']}).query
+    assert legacy_query == query
+
 
 @pytest.mark.parametrize(
     'request_yaml, paths, error_path',

@@ -421,10 +421,15 @@ export const InputTextQuantity = React.memo(({
     const valid = true
     if (valid) {
       // Submit to search context on successful validation.
+      // Contains accepts one scalar string, unlike regular term filters which
+      // are represented as sets and serialized as arrays.
+      if (queryMode === 'contains') {
+        setFilter(value, {queryMode})
+        clearInputValue()
+        return
+      }
       setFilter(old => {
-        // A contains query accepts one substring. Repeated submissions replace
-        // the previous substring instead of producing an invalid list value.
-        const multiple = queryMode !== 'contains' && filterData[quantity].multiple
+        const multiple = filterData[quantity].multiple
         return (isNil(old) || !multiple) ? new Set([value]) : new Set([...old, value])
       }, {queryMode})
       clearInputValue()

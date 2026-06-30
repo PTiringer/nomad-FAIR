@@ -138,6 +138,14 @@ class Any_(NoneEmptyBaseModel):
 class Contains(NoneEmptyBaseModel):
     op: str = Field(None, alias='contains')
 
+    @field_validator('op', mode='before')
+    @classmethod
+    def unwrap_single_value(cls, value):
+        # Older GUI builds serialize all terms-widget values as arrays.
+        if isinstance(value, list) and len(value) == 1:
+            return value[0]
+        return value
+
     model_config = ConfigDict(extra='forbid')
 
 

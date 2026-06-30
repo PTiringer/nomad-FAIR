@@ -144,7 +144,7 @@ export const WidgetTerms = React.memo((
 
   const handleChange = useCallback((event, key, selected) => {
     setFilter(old => {
-      if (!old) return new Set([key])
+      if (!(old instanceof Set)) return new Set([key])
       const newValue = new Set(old)
       selected ? newValue.add(key) : newValue.delete(key)
       return newValue
@@ -179,7 +179,7 @@ export const WidgetTerms = React.memo((
             aggComp.push(<InputItem
               key={option.value}
               value={option.value}
-              selected={filter ? filter.has(option.value) : false}
+              selected={filter instanceof Set ? filter.has(option.value) : false}
               max={max}
               onChange={handleChange}
               variant="checkbox"
