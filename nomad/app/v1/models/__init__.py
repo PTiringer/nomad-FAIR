@@ -27,6 +27,7 @@ from .models import (
     Aggregation,
     AggregationPagination,
     Any_,
+    Contains,
     Files,
     HTTPExceptionModel,
     Metadata,

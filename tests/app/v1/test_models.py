@@ -24,6 +24,7 @@ import pytest
 import yaml
 from pydantic import BaseModel, Field, ValidationError
 
+from nomad.app.v1.models import Contains, WithQuery
 from nomad.app.v1.models.graph import GraphRequest
 from nomad.app.v1.models.graph.utils import generate_request_model, mapped
 from nomad.utils import strip
@@ -75,6 +76,12 @@ def test_module():
         assert hasattr(
             sys.modules['nomad.app.v1.models.graph.graph_models'], model_name
         )
+
+
+def test_contains_query_qualifier():
+    query = WithQuery(query={'entry_name:contains': 'Pet'}).query
+
+    assert query == {'entry_name': Contains(contains='Pet')}
 
 
 @pytest.mark.parametrize(

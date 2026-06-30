@@ -942,6 +942,15 @@ def _api_to_es_query(
             quantity = validate_quantity(name, doc_type=doc_type)
             return quantity.get_range_query(value)
 
+        elif isinstance(value, models.Contains):
+            if prefix is not None:
+                name = f'{prefix}.{name}'
+            quantity = validate_quantity(name, doc_type=doc_type)
+            try:
+                return quantity.get_contains_query(value.op)
+            except TypeError as e:
+                raise QueryValidationError(str(e), loc=[name, 'contains']) from e
+
         elif isinstance(value, models.And | models.Or | models.Not):
             return validate_query(value)
 

@@ -110,6 +110,7 @@ export const WidgetTerms = React.memo((
   search_quantity,
   scale,
   show_input,
+  input_mode,
   query_mode,
   className,
   'data-testid': testID
@@ -223,6 +224,7 @@ export const WidgetTerms = React.memo((
                 quantity={search_quantity}
                 disabled={false}
                 disableSuggestions={false}
+                queryMode={input_mode === 'contains' ? 'contains' : undefined}
                 fullWidth
               />
             : null
@@ -255,6 +257,7 @@ WidgetTerms.propTypes = {
   scale: PropTypes.string,
   autorange: PropTypes.bool,
   show_input: PropTypes.bool,
+  input_mode: PropTypes.string,
   query_mode: PropTypes.string,
   className: PropTypes.string,
   'data-testid': PropTypes.string
@@ -398,6 +401,7 @@ WidgetTermsEdit.propTypes = {
   nbins: PropTypes.number,
   autorange: PropTypes.bool,
   show_input: PropTypes.bool,
+  input_mode: PropTypes.string,
   query_mode: PropTypes.bool,
   onClose: PropTypes.func
 }
@@ -406,5 +410,6 @@ export const schemaWidgetTerms = schemaWidget.shape({
   search_quantity: string().required('Search quantity is required.'),
   scale: string().required('Scale is required.'),
   show_input: bool(),
+  input_mode: string(),
   query_mode: string()
 })

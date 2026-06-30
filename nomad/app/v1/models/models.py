@@ -135,6 +135,12 @@ class Any_(NoneEmptyBaseModel):
     model_config = ConfigDict(extra='forbid')
 
 
+class Contains(NoneEmptyBaseModel):
+    op: str = Field(None, alias='contains')
+
+    model_config = ConfigDict(extra='forbid')
+
+
 class Range(BaseModel):
     """
     Represents a finite range which can have open or closed ends. Supports
@@ -185,9 +191,12 @@ ops = {
     'all': All,
     'none': None_,
     'any': Any_,
+    'contains': Contains,
 }
 
-CriteriaValue = Value | list[Value] | Range | Any_ | All | None_ | dict[str, Any]
+CriteriaValue = (
+    Value | list[Value] | Range | Any_ | All | None_ | Contains | dict[str, Any]
+)
 
 
 class LogicalOperator(NoneEmptyBaseModel):
@@ -334,6 +343,14 @@ some values you can also use comparison operators like this:
     "results.properties.geometry_optimization.final_energy_difference": {
         "lte": 1.23e-18
     }
+}
+```
+
+String quantities also support case-insensitive substring matching with the
+`contains` suffix:
+```json
+{
+    "entry_name:contains": "partial name"
 }
 ```
 

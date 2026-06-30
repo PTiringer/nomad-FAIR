@@ -1214,6 +1214,25 @@ class SearchQuantity:
         sub_query = Q('range', **{self.search_field: value.dict(exclude_unset=True)})
         return self.wrap_dynamic(sub_query)
 
+    def get_contains_query(self, value: str):
+        """Returns a case-insensitive substring query for a string quantity."""
+        if self.annotation.mapping['type'] not in {'keyword', 'text'}:
+            raise TypeError('contains queries are only supported for string quantities')
+
+        # Treat wildcard syntax in user input literally. The surrounding wildcards
+        # provide the substring behavior.
+        escaped = value.replace('\\', '\\\\').replace('*', '\\*').replace('?', '\\?')
+        sub_query = Q(
+            'wildcard',
+            **{
+                self.search_field: {
+                    'value': f'*{escaped}*',
+                    'case_insensitive': True,
+                }
+            },
+        )
+        return self.wrap_dynamic(sub_query)
+
     def wrap_dynamic(self, sub_query: Q):
         """For dynamic quantities, wraps the given query in a nested query to
         target them correctly.

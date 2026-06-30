@@ -260,6 +260,11 @@ def test_indices(indices):
             '{"results.method.simulation.program_name": "VASP"}', 4, id='match'
         ),
         pytest.param(
+            '{"results.method.simulation.program_name:contains": "asp"}',
+            4,
+            id='contains-case-insensitive',
+        ),
+        pytest.param(
             '{"results.method.simulation.program_name": "VASP", "results.method.simulation.dft.xc_functional_type": "dne"}',
             0,
             id='match_all',
@@ -534,6 +539,12 @@ def test_search_quantity_data_types(indices, example_eln_data, api_query, total)
                 f'data.inherited_b{schema_separator}nomadschemaexample.schema.MyBaseSchemaB': 'test1'
             },
             id='multiple-inheritance',
+        ),
+        pytest.param(
+            {
+                f'data.name{schema_separator}{python_schema_name}:contains': 'EST'
+            },
+            id='contains-case-insensitive',
         ),
     ],
 )

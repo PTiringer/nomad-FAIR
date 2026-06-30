@@ -369,6 +369,7 @@ export const InputTextQuantity = React.memo(({
   loading,
   onChange,
   disableSuggestions,
+  queryMode,
   className,
   classes,
   ...TextFieldProps
@@ -421,14 +422,16 @@ export const InputTextQuantity = React.memo(({
     if (valid) {
       // Submit to search context on successful validation.
       setFilter(old => {
-        const multiple = filterData[quantity].multiple
+        // A contains query accepts one substring. Repeated submissions replace
+        // the previous substring instead of producing an invalid list value.
+        const multiple = queryMode !== 'contains' && filterData[quantity].multiple
         return (isNil(old) || !multiple) ? new Set([value]) : new Set([...old, value])
-      })
+      }, {queryMode})
       clearInputValue()
     } else {
       setError(`Invalid query`)
     }
-  }, [filterData, quantity, setFilter, clearInputValue])
+  }, [filterData, quantity, setFilter, clearInputValue, queryMode])
 
   const handleHighlight = useCallback((event, value, reason) => {
     setHighlighted(value)
@@ -558,6 +561,7 @@ InputTextQuantity.propTypes = {
    * the suggestions are turned on if they are available for the quantity.
    */
   disableSuggestions: PropTypes.bool,
+  queryMode: PropTypes.string,
   className: PropTypes.string,
   classes: PropTypes.object
 }

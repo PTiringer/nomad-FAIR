@@ -585,6 +585,11 @@ class QueryModeEnum(str, Enum):
     OR = 'or'
 
 
+class InputModeEnum(str, Enum):
+    EXACT = 'exact'
+    CONTAINS = 'contains'
+
+
 class TermsBase(ConfigBaseModel):
     """Base model for configuring terms components."""
 
@@ -602,6 +607,10 @@ class TermsBase(ConfigBaseModel):
     showinput: bool | None = Field(
         None,
         deprecated='The "showinput" field is deprecated, use "show_input" instead.',
+    )
+    input_mode: InputModeEnum = Field(
+        InputModeEnum.EXACT,
+        description='How manually entered text is matched against the targeted quantity.',
     )
     query_mode: QueryModeEnum | None = Field(
         None,
