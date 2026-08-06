@@ -292,6 +292,7 @@ const useMenuContentStyles = makeStyles(theme => {
 })
 export const MenuContent = React.memo(({
   className,
+  collapsedTitle = 'Filters',
   children
 }) => {
   const styles = useMenuContentStyles()
@@ -314,7 +315,7 @@ export const MenuContent = React.memo(({
       {collapsed && <Typography
           className={clsx(styles.collapsedText)}
           variant="button"
-        >Filters
+        >{collapsedTitle}
         </Typography>
       }
       </div>
@@ -323,6 +324,7 @@ export const MenuContent = React.memo(({
 })
 MenuContent.propTypes = {
   className: PropTypes.string,
+  collapsedTitle: PropTypes.string,
   children: PropTypes.node
 }
 

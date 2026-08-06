@@ -25,10 +25,12 @@ import {
   List,
   ListItem,
   ListItemText,
+  ListSubheader,
   Paper,
   Typography,
   makeStyles
 } from '@material-ui/core'
+import ArrowBackIcon from '@material-ui/icons/ArrowBack'
 import YAML from 'yaml'
 import About from './About'
 import Markdown from './Markdown'
@@ -36,6 +38,8 @@ import Page from './Page'
 import { DoesNotExist, useApi } from './api'
 import { useErrors } from './errors'
 import { formatTimestamp } from '../utils'
+import { Action } from './Actions'
+import { Menu, MenuContent, MenuHeader } from './search/menus/Menu'
 
 const defaultLandingPage = {
   widgets: [
@@ -123,19 +127,22 @@ const useStyles = makeStyles(theme => ({
     }
   },
   sidebar: {
-    flex: '0 0 280px',
-    overflow: 'hidden',
-    width: 280,
+    flexShrink: 0,
+    height: 'calc(100vh - 190px)',
+    minHeight: 400,
+    position: 'sticky',
+    top: theme.spacing(2),
+    zIndex: 2,
     [theme.breakpoints.down('sm')]: {
       width: '100%',
-      flexBasis: 'auto'
+      height: 360,
+      minHeight: 360,
+      position: 'relative',
+      top: 0
     }
   },
-  sidebarHeader: {
-    padding: theme.spacing(2, 2, 1)
-  },
   sidebarActions: {
-    padding: theme.spacing(1, 2, 2)
+    padding: theme.spacing(1, 1.5, 2)
   },
   content: {
     flex: '1 1 auto',
@@ -295,6 +302,7 @@ export default function Home() {
   const [sidebarConfig, setSidebarConfig] = useState(null)
   const [sidebarLoaded, setSidebarLoaded] = useState(false)
   const [wikiPages, setWikiPages] = useState(null)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   useEffect(() => {
     if (!api?.keycloak?.authenticated) {
@@ -418,53 +426,60 @@ export default function Home() {
       </Button>
     </Box>
     <Box className={classes.layout}>
-      <Paper component="aside" className={classes.sidebar}>
-        <Box className={classes.sidebarHeader}>
-          <Typography variant="h6">{interpolate(sidebar.title || 'My sidebar', values)}</Typography>
-        </Box>
-        {wikiEnabled && <React.Fragment>
-          <Divider />
-          <Box px={2} pt={2}>
-            <Typography variant="subtitle2">
-              {interpolate(wikiConfig.title || 'Wiki pages', values)}
-            </Typography>
-          </Box>
-          <List dense>
-            {(wikiPages || []).map(page => <ListItem
-              button
-              key={page.entry_id}
-              component={RouterLink}
-              to={getEntryPath(page.upload_id, page.entry_id)}
-            >
-              <ListItemText primary={page.entry_name || page.entry_id} />
-            </ListItem>)}
-            {(wikiPages || []).length === 0 && <ListItem>
-              <ListItemText secondary={interpolate(
-                wikiConfig.empty_text || 'You do not have any wiki pages yet.', values
-              )} />
-            </ListItem>}
-          </List>
-        </React.Fragment>}
-        {Array.isArray(sidebar.links) && sidebar.links.length > 0 && <React.Fragment>
-          <Divider />
-          <List dense>
-            {sidebar.links.filter(link => link?.label).map((link, index) => <ListItem
-              button
-              key={index}
-              component={link.href ? 'a' : RouterLink}
-              href={link.href ? interpolate(link.href, values) : undefined}
-              to={link.href ? undefined : interpolate(link.to || '/', values)}
-            >
-              <ListItemText primary={interpolate(link.label, values)} />
-            </ListItem>)}
-          </List>
-        </React.Fragment>}
-        <Box className={classes.sidebarActions}>
-          <Button component={RouterLink} to="/user/sidebar" color="primary" size="small">
-            Edit sidebar YAML
-          </Button>
-        </Box>
-      </Paper>
+      <aside className={classes.sidebar}>
+        <Menu
+          size="sm"
+          open
+          collapsed={sidebarCollapsed}
+          onCollapsedChanged={setSidebarCollapsed}
+          visible
+        >
+          <MenuHeader
+            title={interpolate(sidebar.title || 'My sidebar', values)}
+            actions={<Action tooltip="Collapse menu" onClick={() => setSidebarCollapsed(true)}>
+              <ArrowBackIcon fontSize="small" />
+            </Action>}
+          />
+          <MenuContent collapsedTitle={interpolate(sidebar.title || 'My sidebar', values)}>
+            {wikiEnabled && <React.Fragment>
+              <ListSubheader disableSticky>
+                {interpolate(wikiConfig.title || 'Wiki pages', values)}
+              </ListSubheader>
+              {(wikiPages || []).map(page => <ListItem
+                button
+                key={page.entry_id}
+                component={RouterLink}
+                to={getEntryPath(page.upload_id, page.entry_id)}
+              >
+                <ListItemText primary={page.entry_name || page.entry_id} />
+              </ListItem>)}
+              {(wikiPages || []).length === 0 && <ListItem>
+                <ListItemText secondary={interpolate(
+                  wikiConfig.empty_text || 'You do not have any wiki pages yet.', values
+                )} />
+              </ListItem>}
+            </React.Fragment>}
+            {Array.isArray(sidebar.links) && sidebar.links.length > 0 && <React.Fragment>
+              <Divider />
+              <ListSubheader disableSticky>Links</ListSubheader>
+              {sidebar.links.filter(link => link?.label).map((link, index) => <ListItem
+                button
+                key={index}
+                component={link.href ? 'a' : RouterLink}
+                href={link.href ? interpolate(link.href, values) : undefined}
+                to={link.href ? undefined : interpolate(link.to || '/', values)}
+              >
+                <ListItemText primary={interpolate(link.label, values)} />
+              </ListItem>)}
+            </React.Fragment>}
+            <Box className={classes.sidebarActions}>
+              <Button component={RouterLink} to="/user/sidebar" color="primary" size="small">
+                Edit sidebar YAML
+              </Button>
+            </Box>
+          </MenuContent>
+        </Menu>
+      </aside>
       <Box className={classes.content}>
     {widgets.map((widget, widgetIndex) => {
       if (widget.type === 'hero') {
