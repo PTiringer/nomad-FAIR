@@ -32,6 +32,7 @@ import EntryPage, { help as entryHelp } from '../entry/EntryPage'
 import UploadsPage, { help as uploadsHelp } from '../uploads/UploadsPage'
 import UserdataPage, { help as userdataHelp } from '../UserdataPage'
 import UserLandingPageEditor from '../UserLandingPageEditor'
+import UserSidebarEditor from '../UserSidebarEditor'
 import APIs from '../APIs'
 import SearchPage from '../search/SearchPage'
 import { SearchContext } from '../search/SearchContext'
@@ -260,6 +261,12 @@ export const routes = [
         exact: true,
         breadcrumb: 'Landing page',
         component: UserLandingPageEditor
+      },
+      {
+        path: 'sidebar',
+        exact: true,
+        breadcrumb: 'Sidebar',
+        component: UserSidebarEditor
       }
     ]
   },

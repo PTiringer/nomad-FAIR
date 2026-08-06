@@ -36,6 +36,7 @@ from .auth import get_current_user
 
 router = APIRouter()
 landing_page_file_name = 'user-home.yaml'
+sidebar_file_name = 'user-sidebar.yaml'
 landing_page_directory = 'landing-pages'
 
 
@@ -92,6 +93,38 @@ def _get_user_landing_page_path(current_user: User) -> str:
     )
 
 
+def _get_user_sidebar_path(current_user: User) -> str:
+    return os.path.join(
+        _get_user_storage_home(current_user),
+        landing_page_directory,
+        sidebar_file_name,
+    )
+
+
+def _read_user_yaml(path: str, missing_detail: str) -> Response:
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=missing_detail)
+
+    with open(path) as f:
+        content = f.read()
+    return Response(content=content, media_type='application/yaml')
+
+
+def _write_user_yaml(path: str, body: str) -> Response:
+    try:
+        yaml.safe_load(body)
+    except yaml.YAMLError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f'Invalid YAML: {str(e)}',
+        )
+
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w') as f:
+        f.write(body)
+    return Response(content=body, media_type='application/yaml')
+
+
 @router.get(
     '/me',
     tags=[APITag.DEFAULT],
@@ -127,17 +160,10 @@ async def read_user_landing_page(
         User, Depends(get_current_user([Scope.USERS_READ], allow_anonymous=False))
     ],
 ):
-    path = _get_user_landing_page_path(current_user)
-    if not os.path.isfile(path):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail='No custom landing page configuration exists for this user.',
-        )
-
-    with open(path) as f:
-        content = f.read()
-
-    return Response(content=content, media_type='application/yaml')
+    return _read_user_yaml(
+        _get_user_landing_page_path(current_user),
+        'No custom landing page configuration exists for this user.',
+    )
 
 
 @router.put(
@@ -153,20 +179,39 @@ async def write_user_landing_page(
         User, Depends(get_current_user([Scope.USERS_READ], allow_anonymous=False))
     ],
 ):
-    try:
-        yaml.safe_load(body)
-    except yaml.YAMLError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f'Invalid YAML: {str(e)}',
-        )
+    return _write_user_yaml(_get_user_landing_page_path(current_user), body)
 
-    path = _get_user_landing_page_path(current_user)
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, 'w') as f:
-        f.write(body)
 
-    return Response(content=body, media_type='application/yaml')
+@router.get(
+    '/me/sidebar',
+    tags=[APITag.DEFAULT],
+    summary='Get your landing page sidebar configuration',
+    responses=create_responses(_authentication_required_response),
+)
+async def read_user_sidebar(
+    current_user: Annotated[
+        User, Depends(get_current_user([Scope.USERS_READ], allow_anonymous=False))
+    ],
+):
+    return _read_user_yaml(
+        _get_user_sidebar_path(current_user),
+        'No custom sidebar configuration exists for this user.',
+    )
+
+
+@router.put(
+    '/me/sidebar',
+    tags=[APITag.DEFAULT],
+    summary='Store your landing page sidebar configuration',
+    responses=create_responses(_authentication_required_response),
+)
+async def write_user_sidebar(
+    body: Annotated[str, Body(media_type='application/yaml')],
+    current_user: Annotated[
+        User, Depends(get_current_user([Scope.USERS_READ], allow_anonymous=False))
+    ],
+):
+    return _write_user_yaml(_get_user_sidebar_path(current_user), body)
 
 
 @router.get(

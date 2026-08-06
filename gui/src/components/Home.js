@@ -64,6 +64,19 @@ const defaultLandingPage = {
   ]
 }
 
+const defaultSidebar = {
+  title: 'My wiki pages',
+  wiki_pages: {
+    enabled: true,
+    title: 'Wiki pages',
+    limit: 20,
+    empty_text: 'You do not have any wiki pages yet.'
+  },
+  links: []
+}
+
+const wikiPageSchema = 'wiki_page.schema_packages.schema_package.WikiPage'
+
 const scientificStaffSchema = (
   'mpi_cbs_scientific_staff_database.schema_packages.schema_package.' +
   'ScientificStaffProfile'
@@ -100,6 +113,33 @@ const useStyles = makeStyles(theme => ({
     display: 'flex',
     justifyContent: 'flex-end',
     marginBottom: theme.spacing(2)
+  },
+  layout: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: theme.spacing(3),
+    [theme.breakpoints.down('sm')]: {
+      flexDirection: 'column'
+    }
+  },
+  sidebar: {
+    flex: '0 0 280px',
+    overflow: 'hidden',
+    width: 280,
+    [theme.breakpoints.down('sm')]: {
+      width: '100%',
+      flexBasis: 'auto'
+    }
+  },
+  sidebarHeader: {
+    padding: theme.spacing(2, 2, 1)
+  },
+  sidebarActions: {
+    padding: theme.spacing(1, 2, 2)
+  },
+  content: {
+    flex: '1 1 auto',
+    minWidth: 0
   }
 }))
 
@@ -252,6 +292,9 @@ export default function Home() {
   const [uploads, setUploads] = useState(null)
   const [landingPageConfig, setLandingPageConfig] = useState(null)
   const [configLoaded, setConfigLoaded] = useState(false)
+  const [sidebarConfig, setSidebarConfig] = useState(null)
+  const [sidebarLoaded, setSidebarLoaded] = useState(false)
+  const [wikiPages, setWikiPages] = useState(null)
 
   useEffect(() => {
     if (!api?.keycloak?.authenticated) {
@@ -277,8 +320,28 @@ export default function Home() {
       })
   }, [api, errors])
 
+  useEffect(() => {
+    if (!api?.keycloak?.authenticated) {
+      setSidebarConfig(null)
+      setSidebarLoaded(false)
+      return
+    }
+
+    api.get('users/me/sidebar')
+      .then(text => setSidebarConfig(text ? YAML.parse(text) : null))
+      .catch(error => {
+        if (!(error instanceof DoesNotExist)) errors.raiseError(error)
+        setSidebarConfig(null)
+      })
+      .finally(() => setSidebarLoaded(true))
+  }, [api, errors])
+
   const landingPage = useMemo(() => getLandingPage(landingPageConfig, user), [landingPageConfig, user])
   const widgets = Array.isArray(landingPage?.widgets) ? landingPage.widgets : defaultLandingPage.widgets
+  const sidebar = sidebarConfig || defaultSidebar
+  const wikiConfig = sidebar?.wiki_pages || {}
+  const wikiEnabled = wikiConfig.enabled !== false
+  const wikiLimit = wikiConfig.limit || 20
   const uploadLimit = useMemo(() => {
     return widgets
       .filter(widget => widget?.type === 'recent_uploads')
@@ -296,6 +359,31 @@ export default function Home() {
       .catch(errors.raiseError)
   }, [api, errors, uploadLimit])
 
+  useEffect(() => {
+    if (!api?.keycloak?.authenticated || !sidebarLoaded || !wikiEnabled) {
+      setWikiPages([])
+      return
+    }
+
+    api.post('entries/query', {
+      owner: 'user',
+      query: {'section_defs.definition_qualified_name': wikiPageSchema},
+      pagination: {
+        page_size: wikiLimit,
+        order_by: 'upload_create_time',
+        order: 'desc'
+      },
+      required: {
+        include: ['upload_id', 'entry_id', 'entry_name', 'upload_create_time']
+      }
+    })
+      .then(response => setWikiPages(response?.data || []))
+      .catch(error => {
+        setWikiPages([])
+        errors.raiseError(error)
+      })
+  }, [api, errors, sidebarLoaded, wikiEnabled, wikiLimit])
+
   if (!api?.keycloak?.authenticated) {
     return <About />
   }
@@ -309,7 +397,10 @@ export default function Home() {
     email: user?.email || ''
   }
 
-  return <Page limitedWidth loading={!configLoaded || Boolean(uploadLimit && !uploads)}>
+  const loading = !configLoaded || !sidebarLoaded || Boolean(uploadLimit && !uploads) ||
+    Boolean(wikiEnabled && !wikiPages)
+
+  return <Page limitedWidth loading={loading}>
     <Box className={classes.toolbar}>
       <ScientificStaffProfileButton
         action={{label: 'Scientific Staff Profile', variant: 'outlined'}}
@@ -326,6 +417,55 @@ export default function Home() {
         Edit landing page
       </Button>
     </Box>
+    <Box className={classes.layout}>
+      <Paper component="aside" className={classes.sidebar}>
+        <Box className={classes.sidebarHeader}>
+          <Typography variant="h6">{interpolate(sidebar.title || 'My sidebar', values)}</Typography>
+        </Box>
+        {wikiEnabled && <React.Fragment>
+          <Divider />
+          <Box px={2} pt={2}>
+            <Typography variant="subtitle2">
+              {interpolate(wikiConfig.title || 'Wiki pages', values)}
+            </Typography>
+          </Box>
+          <List dense>
+            {(wikiPages || []).map(page => <ListItem
+              button
+              key={page.entry_id}
+              component={RouterLink}
+              to={getEntryPath(page.upload_id, page.entry_id)}
+            >
+              <ListItemText primary={page.entry_name || page.entry_id} />
+            </ListItem>)}
+            {(wikiPages || []).length === 0 && <ListItem>
+              <ListItemText secondary={interpolate(
+                wikiConfig.empty_text || 'You do not have any wiki pages yet.', values
+              )} />
+            </ListItem>}
+          </List>
+        </React.Fragment>}
+        {Array.isArray(sidebar.links) && sidebar.links.length > 0 && <React.Fragment>
+          <Divider />
+          <List dense>
+            {sidebar.links.filter(link => link?.label).map((link, index) => <ListItem
+              button
+              key={index}
+              component={link.href ? 'a' : RouterLink}
+              href={link.href ? interpolate(link.href, values) : undefined}
+              to={link.href ? undefined : interpolate(link.to || '/', values)}
+            >
+              <ListItemText primary={interpolate(link.label, values)} />
+            </ListItem>)}
+          </List>
+        </React.Fragment>}
+        <Box className={classes.sidebarActions}>
+          <Button component={RouterLink} to="/user/sidebar" color="primary" size="small">
+            Edit sidebar YAML
+          </Button>
+        </Box>
+      </Paper>
+      <Box className={classes.content}>
     {widgets.map((widget, widgetIndex) => {
       if (widget.type === 'hero') {
         return <Paper key={widgetIndex} className={`${classes.hero} ${classes.widget}`}>
@@ -408,5 +548,7 @@ export default function Home() {
         </Box>}
       </Paper>
     })}
+      </Box>
+    </Box>
   </Page>
 }

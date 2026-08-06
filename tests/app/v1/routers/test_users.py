@@ -91,6 +91,31 @@ def test_user_landing_page_rejects_invalid_yaml(auth_headers, client, tmp_path, 
     assert response.status_code == 400
 
 
+def test_user_sidebar_roundtrip(auth_headers, client, tmp_path, monkeypatch):
+    monkeypatch.setattr(config.fs, 'north_home', str(tmp_path))
+    sidebar = 'title: My pages\nwiki_pages:\n  enabled: true\n  limit: 10\n'
+
+    response = client.get('users/me/sidebar', headers=auth_headers['user1'])
+    assert response.status_code == 404
+
+    response = client.put(
+        'users/me/sidebar',
+        headers={**auth_headers['user1'], 'Content-Type': 'application/yaml'},
+        content=sidebar,
+    )
+    assert response.status_code == 200
+    assert response.text == sidebar
+
+    stored_path = (
+        tmp_path / fake_user_uuid(1) / 'landing-pages' / 'user-sidebar.yaml'
+    )
+    assert stored_path.read_text() == sidebar
+
+    response = client.get('users/me/sidebar', headers=auth_headers['user1'])
+    assert response.status_code == 200
+    assert response.text == sidebar
+
+
 def test_invite(auth_headers, client, no_warn):
     rv = client.put(
         'users/invite',
