@@ -60,7 +60,7 @@ const NewWikiPageButton = React.memo(() => {
         throw new Error('Failed to create the wiki page entry.')
       }
 
-      history.push(`/user/uploads/upload/id/${upload.upload_id}/entry/id/${entryId}/data/data`)
+      history.push(`/user/uploads/upload/id/${upload.upload_id}/entry/id/${entryId}`)
     } catch (error) {
       setClicked(false)
       raiseError(error)
