@@ -186,6 +186,10 @@ function getEntryPath(uploadId, entryId) {
   return `/user/uploads/upload/id/${uploadId}/entry/id/${entryId}/data/data`
 }
 
+function getEntryOverviewPath(uploadId, entryId) {
+  return `/user/uploads/upload/id/${uploadId}/entry/id/${entryId}`
+}
+
 function ScientificStaffProfileButton({action, values, className}) {
   const { api, user } = useApi()
   const { raiseError } = useErrors()
@@ -449,7 +453,7 @@ export default function Home() {
                 button
                 key={page.entry_id}
                 component={RouterLink}
-                to={getEntryPath(page.upload_id, page.entry_id)}
+                to={getEntryOverviewPath(page.upload_id, page.entry_id)}
               >
                 <ListItemText primary={page.entry_name || page.entry_id} />
               </ListItem>)}
