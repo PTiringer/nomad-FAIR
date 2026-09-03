@@ -15,10 +15,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import PropTypes from 'prop-types'
 import { isEmpty } from 'lodash'
-import { Typography, makeStyles, Box, Grid, Divider } from '@material-ui/core'
+import { Typography, makeStyles, Box, Grid, Divider, Button } from '@material-ui/core'
+import AddIcon from '@material-ui/icons/Add'
 import { Alert } from '@material-ui/lab'
 import { resolveNomadUrlNoThrow } from '../../utils'
 import Quantity from '../Quantity'
@@ -143,7 +144,9 @@ const required = {
 const OverviewView = React.memo(() => {
   const { cards } = useEntryContext()
   const { data: index, response: indexApiData } = useIndex()
-  const { url, exists, editable, archive: archiveTmp, archiveApiData } = useEntryStore(required)
+  const {
+    url, exists, editable, archive: archiveTmp, archiveApiData, handleArchiveChanged
+  } = useEntryStore(required)
   const [sections, setSections] = useState([])
 
   // The archive is accepted only once it is synced with the index. Notice that
@@ -159,6 +162,25 @@ const OverviewView = React.memo(() => {
   const m_def = archive?.data?.m_def
   const dataMetainfoDefUrl = url && resolveNomadUrlNoThrow(m_def, url)
   const dataMetainfoDef = useMetainfoDef(dataMetainfoDefUrl)
+
+  const overviewSubSections = useMemo(() => {
+    return dataMetainfoDef?._allProperties?.filter(property => (
+      property.repeats && property.sub_section?.m_annotations?.eln?.[0]?.overview
+    )) || []
+  }, [dataMetainfoDef])
+
+  const handleAddOverviewSubSection = useCallback((subSectionDef) => {
+    const name = subSectionDef.name
+    const values = archive.data[name] || []
+    const newSection = {}
+    archive.data[name] = [...values, newSection]
+    setSections(current => [...current, {
+      archivePath: `data.${name}.${values.length}`,
+      sectionDef: subSectionDef.sub_section,
+      section: newSection
+    }])
+    handleArchiveChanged()
+  }, [archive, handleArchiveChanged])
 
   const properties = useMemo(() => {
     return new Set(index?.results?.properties?.available_properties || [])
@@ -302,6 +324,16 @@ const OverviewView = React.memo(() => {
       <Grid item xs={8} className={classes.rightColumn}>
         {editable && (
           <Box textAlign="right" className={classes.editActions} display={'flex'} justifyContent={'flex-end'}>
+            {overviewSubSections.map(subSectionDef => (
+              <Button
+                key={subSectionDef.name}
+                color="primary"
+                startIcon={<AddIcon />}
+                onClick={() => handleAddOverviewSubSection(subSectionDef)}
+              >
+                Add {subSectionDef.sub_section.label || subSectionDef.sub_section.name}
+              </Button>
+            ))}
             <ArchiveReloadButton />
             <ArchiveSaveButton />
             <ArchiveReUploadButton />
